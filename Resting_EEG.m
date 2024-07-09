@@ -41,24 +41,23 @@ ins.misc.finished = [...
 ins.resting=struct();
 ins.resting.inst = [...
     'Experiment: Resting EEG' ...
-    '\n\n\nYou will see a cross in the middle of the screen. '...
-    '\n\nFocus your gaze on this cross. \n'...
+    '\n\n\n You will see a cross in the middle of the screen. '...
+    '\n\n Focus your gaze on this cross. \n'...
     ];
 ins.resting.end = [...
-    'Nun folgen weitere Aufgaben. '...
+    'Vielen Dank! Nun folgen weitere Aufgaben. '...
     ];
+
 %% Trials
 NrOfTrials = 7;   % How many Cycles to run (8 if  you want to run 6 cycles)
 eyeO = 3:60:303; % Audio cues
 eyeC = 23:60:323;
-
 
 % Setting the Trigger codes
 par.CD_START = 10;
 par.CD_eyeO = 20;
 par.CD_eyeC = 30;
 par.CD_END  = 90;
-
 
 %% Screen Calculations
 [scresw, scresh]=Screen('WindowSize',whichScreen);  % Get screen resolution
@@ -70,7 +69,6 @@ deg2px = dist_cm*cm2px*pi/180;      % multiplication factor to convert degrees t
 load gammafnCRT;   % load the gamma function parameters for this monitor - or some other CRT and hope they're similar! (none of our questions rely on precise quantification of physical contrast)
 maxLum = GrayLevel2Lum(255,Cg,gam,b0);
 par.BGcolor = Lum2GrayLevel(maxLum/2,Cg,gam,b0);
-
 
 i = 1;
 t = 1;
@@ -99,8 +97,6 @@ end
 %% Experiment Block
 time = GetSecs;
 
-% send triggers: task starts!
-% EThndl.sendMessage(par.CD_START);
 Eyelink('Message', num2str(par.CD_START));
 Eyelink('command', 'record_status_message "START"');
 sendtrigger(par.CD_START,port,SITE,stayup)
@@ -111,22 +107,13 @@ while t < NrOfTrials
     Screen('DrawLine', ptbWindow,[0 0 0],center(1),center(2)-12, center(1),center(2)+12);
     vbl = Screen('Flip',ptbWindow); % clc
     if vbl >=time+eyeO(t) %Tests if a second has passed
-
-        % send triggers
-%         EThndl.sendMessage(par.CD_eyeO);
         Eyelink('Message', num2str(par.CD_eyeO));
         Eyelink('command', 'record_status_message "eyeO"');
         sendtrigger(par.CD_eyeO,port,SITE,stayup)
-
         disp(['Resting EEG: ' num2str(t) ' of ' num2str(NrOfTrials) ' trials']);
-
         t = t+1;
     end
-
     if vbl >=time+eyeC(tt) %Tests if a second has passed
-
-        % send triggers
-        %       EThndl.sendMessage(par.CD_eyeC);
         Eyelink('Message', num2str(par.CD_eyeC));
         Eyelink('command', 'record_status_message "eyeC"');
         sendtrigger(par.CD_eyeC,port,SITE,stayup)
@@ -135,8 +122,6 @@ while t < NrOfTrials
     end
 end
 
-% send triggers
-% EThndl.sendMessage(par.CD_END);
 Eyelink('Message', num2str(par.CD_END));
 Eyelink('command', 'record_status_message "END"');
 sendtrigger(par.CD_END,port,SITE,stayup)
@@ -150,15 +135,14 @@ Screen('Flip', ptbWindow);
 ShowCursor(whichScreen);
 WaitSecs(5);
 
-% save data
+% Save data
 subjectID = num2str(subject.ID);
 filePath = fullfile(DATA_PATH, subjectID);
 mkdir(filePath)
 save(fullfile(filePath, [subjectID,'_', TASK, '.mat']),'par','eyeO','eyeC');
 
-% close and save EEG and ET
+% Close and save EEG and ET
 disp('SAVING DATA...');
 closeEEGandET;
 
 sca; %If Eyetracker wasn't used, close the Screens now
-

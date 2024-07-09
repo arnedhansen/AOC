@@ -1,9 +1,9 @@
-% #AOC Nback Arne
+% #AOC Nback
 %
 % This code requires PsychToolbox. https://psychtoolbox.org
-% This was tested with PsychToolbox version 3.0.15, and with MATLAB R2022a.
+% This was tested with PsychToolbox version 3.0.15, and with MATLAB R2023a.
 %
-% N-back task with 6 blocks of 1-, 2- and 3-back conditions in randomized order
+% N-back task with 6 blocks of 1-, 2- and 3-back conditions in randomized order.
 
 %% EEG and ET
 if TRAINING == 0
@@ -274,7 +274,7 @@ while waitResponse
     waitResponse = 0;
 end
 
-% Send triggers: task starts. If training, send only ET triggers
+% Send triggers for task start
 if TRAINING == 1
     Eyelink('Message', num2str(TASK_START));
     Eyelink('command', 'record_status_message "TASK_START"');
@@ -293,7 +293,6 @@ elseif COND == 3
     TRIGGER = COND3;
 end
 
-% Send triggers: task starts. If training, send only ET triggers
 if TRAINING == 1
     Eyelink('Message', num2str(TASK_START));
 else
@@ -339,7 +338,7 @@ noFixation = 0;
 
 for thisTrial = 1:experiment.nTrials
 
-    disp(['Start of Trial ' num2str(thisTrial) ' in Block ' num2str(BLOCK)]); % Output of current trial iteration
+    disp(['Start of Trial ' num2str(thisTrial) ' in Block ' num2str(BLOCK) ' (' num2str(cond-30) '-back)']); % Output of current trial iteration
 
     % Jittered CFI before presentation of letter (3000ms +/- 1000ms)
     Screen('DrawLines',ptbWindow,fixCoords,stimulus.fixationLineWidth,stimulus.fixationColor,[screenCentreX screenCentreY],2); % Draw fixation cross
@@ -417,10 +416,10 @@ for thisTrial = 1:experiment.nTrials
         % send triggers
         if TRAINING == 1
             Eyelink('Message', num2str(TRIGGER));
-            Eyelink('command', 'record_status_message "PRESENTATION"');
+            Eyelink('command', 'record_status_message "RESPONSE"');
         else
             Eyelink('Message', num2str(TRIGGER));
-            Eyelink('command', 'record_status_message "PRESENTATION"');
+            Eyelink('command', 'record_status_message "RESPONSE"');
             sendtrigger(TRIGGER,port,SITE,stayup)
         end
 
@@ -460,6 +459,23 @@ for thisTrial = 1:experiment.nTrials
             thisTrialMatch = 0;
         end
         data.trialMatch(thisTrial) = thisTrialMatch;
+    end
+
+    % Send triggers for block and output
+    if thisTrialMatch == 1
+        TRIGGER = MATCH;
+        el_msg = 'MATCH';
+    else
+        TRIGGER = NO_MATCH;
+        el_msg = 'NO MATCH';
+    end
+
+    % Send triggers: trial matching. If training, send only ET triggers
+    if TRAINING == 1
+        Eyelink('Message', el_msg);
+    else
+        Eyelink('Message', el_msg);
+        sendtrigger(TRIGGER,port,SITE,stayup); % EEG
     end
 
     % Check if response was correct
@@ -529,13 +545,13 @@ for thisTrial = 1:experiment.nTrials
         disp(['Response to Trial ' num2str(thisTrial) ' is ' feedbackText]);
     end
 
-    % Dynamically compute accuracy for past 10 trials and remind participant if accuracy drops below threshhold of 70%
+    % Dynamically compute accuracy for past 10 trials and remind participant if accuracy drops below threshhold of 60%
     responsesLastTrials = 0;
     if BLOCK == 1 && thisTrial > 11
         % Get 10 last trials, but ignore last data point
         responsesLastTrials = data.allCorrect(end-10 : end-1);
         percentLastTrialsCorrect = (sum(responsesLastTrials)/length(responsesLastTrials))*100;
-        if percentLastTrialsCorrect < 70 && count5trials <= thisTrial-5
+        if percentLastTrialsCorrect < 60 && count5trials <= thisTrial-5
             count5trials = thisTrial;
             feedbackLastTrials = ['Your accuracy has declined!'...
                 '\n\n Of the last 10 trials ' num2str(percentLastTrialsCorrect) ' % were correct.' ...
@@ -856,11 +872,10 @@ if BLOCK == 6
     disp(['End of Block ' num2str(BLOCK) '. Participant ' num2str(subjectID) ' has earned CHF ' num2str(amountCHFextraTotal) ' extra in total.']);
     statsCW = ['Block 1: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(1)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(1)) '%' ...
         ' \n\n Block 2: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(2)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(2)) '%' ...
-        ' \n\n Block 3: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(2)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(2)) '%' ...
-        ' \n\n Block 2: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(2)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(2)) '%' ...
-        ' \n\n Block 2: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(2)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(2)) '%' ...
-        ' \n\n Block 2: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(2)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(2)) '%' ...
-        ' \n\n Block 3: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(3)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(3)) '%'];
+        ' \n\n Block 3: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(3)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(3)) '%' ...
+        ' \n\n Block 4: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(4)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(4)) '%' ...
+        ' \n\n Block 5: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(5)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(5)) '%' ...
+        ' \n\n Block 6: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(6)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(6)) '%'];
     disp(statsCW)
     format default % Change format back to default
     Screen('Flip',ptbWindow);

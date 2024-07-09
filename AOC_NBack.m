@@ -1,11 +1,11 @@
-% #AOC Nback Arne
+% #AOC Nback
 %
 % This code requires PsychToolbox. https://psychtoolbox.org
 % This was tested with PsychToolbox version 3.0.15, and with MATLAB R2023a.
 %
-% N-back task with 6 blocks of 1-, 2- and 3-back conditions in randomized order
+% N-back task with 6 blocks of 1-, 2- and 3-back conditions in randomized order.
 
-%% EEG and ET
+%% Initialize EEG and ET
 if TRAINING == 0
     % Start recording EEG
     disp('STARTING EEG RECORDING...');
@@ -16,10 +16,10 @@ end
 disp('CALIBRATING ET...');
 calibrateET
 
-%% Task
+% Hide cursor
 HideCursor(whichScreen);
 
-% Define triggers
+%% Define triggers
 TASK_START = 10;
 MATCH = 4; % trigger for matching condition
 NO_MATCH = 5; % trigger for non-matching condition
@@ -51,7 +51,7 @@ RESP_NO = 88; % trigger for response no (no input)
 RESP_WRONG = 89;% trigger for wrong keyboard input response
 TASK_END = 90; % Trigger for end of task
 
-% Set up experiment parameters
+%% Set up experiment parameters
 % Number of trials for the experiment
 if TRAINING == 1
     experiment.nTrials = 12;
@@ -91,7 +91,7 @@ text.instructionStyle = 0;              % Styling of instruction text (0 = norma
 text.instructionWrap = 80;              % Number of characters at which to wrap instruction text
 text.color = 0;                         % Color of text (0 = black)
 
-% Define startExperimentText
+%% Define startExperimentText
 if TRAINING == 1 && COND == 1
     loadingText = 'Loading training task...';
     startExperimentText = ['Training task. \n\n' ...
@@ -157,6 +157,7 @@ performanceBonusText = ['In the following task there is a performance bonus! \n\
     'Try to be as accurate as possible. \n\n \n\n' ...
     'Press any key to continue.'];
 
+%% Setup
 % Set up temporal parameters (all in seconds)
 timing.blank = 1;                   % Duration of blank screen
 
@@ -211,7 +212,7 @@ fixHorizontal = [round(-stimulus.fixationSize_pix/2) round(stimulus.fixationSize
 fixVertical = [0 0 round(-stimulus.fixationSize_pix/2) round(stimulus.fixationSize_pix/2)];
 fixCoords = [fixHorizontal; fixVertical];
 
-% Create data structure for preallocating data
+%% Create data structure for preallocating data
 data = struct;
 data.letterSequence = 0;
 data.trialMatch(1:experiment.nTrials) = NaN;
@@ -227,7 +228,7 @@ reactionTime(1:experiment.nTrials) = 0;
 % Define alphabet (stimulus pool)
 alphabet = 'A' : 'Z';
 
-% Define letterSequence depending on block iteration
+%% Define letterSequence depending on block iteration
 if TRAINING == 1 && COND == 1
     letterSequence = 'METTHLLAABBUZHH';
 elseif TRAINING == 1  && COND == 2
@@ -251,6 +252,7 @@ end
 % Save letterSequence
 data.letterSequence = letterSequence; % 1x102 double
 
+%% Display instructive texts
 if TRAINING == 0
     % Show performance bonus incentive text
     DrawFormattedText(ptbWindow,performanceBonusText,'center','center',color.textVal);
@@ -274,7 +276,8 @@ while waitResponse
     waitResponse = 0;
 end
 
-% Send triggers: task starts. If training, send only ET triggers
+%% Send triggers
+% Send triggers for task start
 if TRAINING == 1
     Eyelink('Message', num2str(TASK_START));
     Eyelink('command', 'record_status_message "TASK_START"');
@@ -284,16 +287,18 @@ else
     sendtrigger(TASK_START,port,SITE,stayup);
 end
 
-% Send triggers for block and output
+% Send triggers for condition
 if COND == 1
     TRIGGER = COND1;
+    cond_num = COND1-30;
 elseif COND == 2
     TRIGGER = COND2;
+    cond_num = COND2-30;
 elseif COND == 3
     TRIGGER = COND3;
+    cond_num = COND3-30;
 end
 
-% Send triggers: task starts. If training, send only ET triggers
 if TRAINING == 1
     Eyelink('Message', num2str(TASK_START));
 else
@@ -301,7 +306,7 @@ else
     sendtrigger(TASK_START,port,SITE,stayup); % EEG
 end
 
-% Send triggers for block and output
+% Send triggers for block 
 if BLOCK == 1
     TRIGGER = BLOCK1;
 elseif BLOCK == 2
@@ -338,30 +343,37 @@ HideCursor(whichScreen);
 noFixation = 0;
 
 for thisTrial = 1:experiment.nTrials
+    % Display trial info in CW
+    disp(['Start of Trial ' num2str(thisTrial) ' in Block ' num2str(BLOCK) ' (' num2str(cond_num) '-back)']); % Output of current trial iteration
 
-    disp(['Start of Trial ' num2str(thisTrial) ' in Block ' num2str(BLOCK)]); % Output of current trial iteration
-
-    % Jittered CFI before presentation of letter (3000ms +/- 1000ms)
+    %% Jittered CFI before presentation of letter (3000ms +/- 1000ms)
     Screen('DrawLines',ptbWindow,fixCoords,stimulus.fixationLineWidth,stimulus.fixationColor,[screenCentreX screenCentreY],2); % Draw fixation cross
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('Flip', ptbWindow);
+    TRIGGER = STIMOFF;
+    if TRAINING == 1
+        Eyelink('Message', num2str(TRIGGER));
+        Eyelink('command', 'record_status_message "STIMOFF"');
+    else
+        Eyelink('Message', num2str(TRIGGER));
+        Eyelink('command', 'record_status_message "STIMOFF"');
+        sendtrigger(TRIGGER,port,SITE,stayup);
+    end
     TRIGGER = FIXATION;
     timing.cfi(thisTrial) = (randsample(2000:4000, 1))/1000;    % Randomize the jittered central fixation interval on trial
     if TRAINING == 1
-        %         EThndl.sendMessage(TRIGGER);
         Eyelink('Message', num2str(TRIGGER));
         Eyelink('command', 'record_status_message "FIXATION"');
     else
-        %         EThndl.sendMessage(TRIGGER);
         Eyelink('Message', num2str(TRIGGER));
         Eyelink('command', 'record_status_message "FIXATION"');
         sendtrigger(TRIGGER,port,SITE,stayup);
     end
     WaitSecs(timing.cfi(thisTrial));                            % Wait duration of the jittered central fixation interval
-
+    
+    %% Present stimulus from letterSequence (2000ms)
     % Increase size of stimuli
     Screen('TextSize', ptbWindow, 60);
-    % Present stimulus from letterSequence (2000ms)
     DrawFormattedText(ptbWindow,[letterSequence(thisTrial)],'center','center',text.color);
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('DrawDots',ptbWindow, stimPos, stimDiameter, stimColor,[],1);
@@ -417,10 +429,10 @@ for thisTrial = 1:experiment.nTrials
         % send triggers
         if TRAINING == 1
             Eyelink('Message', num2str(TRIGGER));
-            Eyelink('command', 'record_status_message "PRESENTATION"');
+            Eyelink('command', 'record_status_message "RESPONSE"');
         else
             Eyelink('Message', num2str(TRIGGER));
-            Eyelink('command', 'record_status_message "PRESENTATION"');
+            Eyelink('command', 'record_status_message "RESPONSE"');
             sendtrigger(TRIGGER,port,SITE,stayup)
         end
 
@@ -460,6 +472,23 @@ for thisTrial = 1:experiment.nTrials
             thisTrialMatch = 0;
         end
         data.trialMatch(thisTrial) = thisTrialMatch;
+    end
+
+    % Send triggers for block and output
+    if thisTrialMatch == 1
+        TRIGGER = MATCH;
+        el_msg = 'MATCH';
+    else
+        TRIGGER = NO_MATCH;
+        el_msg = 'NO MATCH';
+    end
+
+    % Send triggers: trial matching. If training, send only ET triggers
+    if TRAINING == 1
+        Eyelink('Message', el_msg);
+    else
+        Eyelink('Message', el_msg);
+        sendtrigger(TRIGGER,port,SITE,stayup); % EEG
     end
 
     % Check if response was correct
@@ -529,13 +558,13 @@ for thisTrial = 1:experiment.nTrials
         disp(['Response to Trial ' num2str(thisTrial) ' is ' feedbackText]);
     end
 
-    % Dynamically compute accuracy for past 10 trials and remind participant if accuracy drops below threshhold of 70%
+    % Dynamically compute accuracy for past 10 trials and remind participant if accuracy drops below threshhold of 60%
     responsesLastTrials = 0;
     if BLOCK == 1 && thisTrial > 11
         % Get 10 last trials, but ignore last data point
         responsesLastTrials = data.allCorrect(end-10 : end-1);
         percentLastTrialsCorrect = (sum(responsesLastTrials)/length(responsesLastTrials))*100;
-        if percentLastTrialsCorrect < 70 && count5trials <= thisTrial-5
+        if percentLastTrialsCorrect < 60 && count5trials <= thisTrial-5
             count5trials = thisTrial;
             feedbackLastTrials = ['Your accuracy has declined!'...
                 '\n\n Of the last 10 trials ' num2str(percentLastTrialsCorrect) ' % were correct.' ...

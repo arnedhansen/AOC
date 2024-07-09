@@ -1,4 +1,4 @@
-% #OCC Sternberg Arne
+% #AOC Sternberg Arne
 %
 % This code requires PsychToolbox. https://psychtoolbox.org
 % This was tested with PsychToolbox version 3.0.15, and with MATLAB R2019a.
@@ -25,7 +25,6 @@ FIXATION = 15; % trigger for fixation cross
 PRESENTATION2 = 22; % trigger for letter presentation
 PRESENTATION4 = 24; % trigger for letter presentation
 PRESENTATION6 = 26; % trigger for letter presentation
-PRESENTATION8 = 28; % trigger for letter presentation
 DIGITOFF = 20; % trigger for change of digit to blank
 BLOCK0 = 29; % trigger for start training block
 BLOCK1 = 31; % trigger for start of block 1
@@ -48,10 +47,9 @@ ENDBLOCK8 = 48; % trigger for end of block 8
 RETENTION2 = 52; % trigger for retention (setSize = 2)
 RETENTION4 = 54; % trigger for retention (setSize = 4)
 RETENTION6 = 56; % trigger for retention (setSize = 6)
-RETENTION8 = 58; % trigger for retention (setSize = 8)
-RESP_YES = 77; % trigger for response yes (depends on changing key bindings)
-RESP_NO = 78; % trigger for response no (depends on changing key bindings)
-badResponse = 79; % trigger for wrong keyboard input (any key apart from 'A', 'L' or 'Space')
+RESP_YES = 87; % trigger for response yes (depends on changing key bindings)
+RESP_NO = 88; % trigger for response no (depends on changing key bindings)
+badResponse = 89; % trigger for wrong keyboard input (any key apart from 'A', 'L' or 'Space')
 TASK_END = 90; % trigger for ET cutting
 
 % Set up experiment parameters
@@ -61,7 +59,7 @@ if TRAINING == 1
 else
     experiment.nTrials = 50;            % 8 blocks x 50 trials = 400 trials
 end
-experiment.setSizes = [2, 4, 6, 8];     % Number of items presented on the screen
+experiment.setSizes = [2, 4, 6];     % Number of items presented on the screen
 
 % Set up equipment parameters
 equipment.viewDist = 800;               % Viewing distance in millimetres
@@ -91,7 +89,7 @@ if TRAINING == 1
     loadingText = 'Loading training task...';
     startExperimentText = ['Training task. \n\n On each trial, you will be shown a number of letters in a row. \n\n' ...
         'The sides will be filled with ''Xs''. These do not count! \n\n' ...
-        'Example:  X X S A + R K X X \n\n' ...
+        'Example:  X N L + T P X \n\n' ...
         '\n\n' ...
         'Please always fixate the central fixation cross. \n\n' ...
         'After each presentation there will be a blank screen. \n\n' ...
@@ -106,7 +104,7 @@ else
         loadingText = 'Loading actual task...';
         startExperimentText = ['On each trial, you will be shown a number of letters in a row. \n\n' ...
             'The sides will be filled with ''Xs''. These do not count! \n\n' ...
-            'Example:  X X S A + R K X X \n\n' ...
+            'Example:  X S A + R K X \n\n' ...
             '\n\n' ...
             'Please always fixate the central fixation cross. \n\n' ...
             'After each presentation there will be a blank screen. \n\n' ...
@@ -222,18 +220,15 @@ data.allCorrect(1, experiment.nTrials) = NaN;
 setS2 = ones(1, 12)*experiment.setSizes(1);
 setS4 = ones(1, 12)*experiment.setSizes(2);
 setS6 = ones(1, 12)*experiment.setSizes(3);
-setS8 = ones(1, 12)*experiment.setSizes(4);
-chance = randsample(1:4, 1);
+chance = randsample(1:3, 1);
 if chance == 1
     extraNums = [experiment.setSizes(1) experiment.setSizes(1)];
 elseif chance == 2
     extraNums = [experiment.setSizes(2) experiment.setSizes(2)];
 elseif chance == 3
     extraNums = [experiment.setSizes(3) experiment.setSizes(3)];
-elseif chance == 4
-    extraNums = [experiment.setSizes(4) experiment.setSizes(4)];
 end
-setALL = [setS2, setS4, setS6, setS8, extraNums];
+setALL = [setS2, setS4, setS6, extraNums];
 for trialSetSizes = 1:experiment.nTrials
     data.trialSetSize(trialSetSizes) = randsample(setALL, 1);
 end
@@ -279,11 +274,9 @@ endTime = Screen('Flip',ptbWindow);
 
 % Send triggers for start of task (ET cutting)
 if TRAINING == 1
-    %     EThndl.sendMessage(TASK_START);
     Eyelink('Message', num2str(TASK_START));
     Eyelink('command', 'record_status_message "START"');
 else
-    %     EThndl.sendMessage(TASK_START);
     Eyelink('Message', num2str(TASK_START));
     Eyelink('command', 'record_status_message "START"');
     sendtrigger(TASK_START,port,SITE,stayup);
@@ -317,11 +310,9 @@ else
 end
 
 if TRAINING == 1
-    %     EThndl.sendMessage(TRIGGER);
     Eyelink('Message', num2str(TRIGGER));
     Eyelink('command', 'record_status_message "START BLOCK"');
 else
-    %     EThndl.sendMessage(TRIGGER);
     Eyelink('Message', num2str(TRIGGER));
     Eyelink('command', 'record_status_message "START BLOCK"');
     sendtrigger(TRIGGER,port,SITE,stayup);
@@ -349,11 +340,9 @@ for thisTrial = 1:experiment.nTrials
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('Flip', ptbWindow);
     if TRAINING == 1
-        %         EThndl.sendMessage(FIXATION);
         Eyelink('Message', num2str(FIXATION));
         Eyelink('command', 'record_status_message "FIXATION"');
     else
-        %         EThndl.sendMessage(FIXATION);
         Eyelink('Message', num2str(FIXATION));
         Eyelink('command', 'record_status_message "FIXATION"');
         sendtrigger(FIXATION,port,SITE,stayup);
@@ -366,20 +355,15 @@ for thisTrial = 1:experiment.nTrials
     Screen('TextSize', ptbWindow, 50);
     % Define stimulus
     if data.trialSetSize(thisTrial) == experiment.setSizes(1)
-        stimulusText = ['X ', 'X ', 'X ', num2str(thisTrialSequenceLetters(1)), ' + ', ...
-            num2str(thisTrialSequenceLetters(2)), ' X', ' X', ' X'];
+        stimulusText = ['X ', 'X ', num2str(thisTrialSequenceLetters(1)), ' + ', ...
+            num2str(thisTrialSequenceLetters(2)), ' X', ' X'];
     elseif data.trialSetSize(thisTrial) == experiment.setSizes(2)
-        stimulusText = ['X ', 'X ', num2str(thisTrialSequenceLetters(1)), ' ', num2str(thisTrialSequenceLetters(2)), ' + ', ...
-            num2str(thisTrialSequenceLetters(3)), ' ', num2str(thisTrialSequenceLetters(4)), ' X', ' X'];
+        stimulusText = ['X ', num2str(thisTrialSequenceLetters(1)), ' ', num2str(thisTrialSequenceLetters(2)), ' + ', ...
+            num2str(thisTrialSequenceLetters(3)), ' ', num2str(thisTrialSequenceLetters(4)), ' X'];
     elseif data.trialSetSize(thisTrial) == experiment.setSizes(3)
-        stimulusText = ['X ', num2str(thisTrialSequenceLetters(1)), ' ', num2str(thisTrialSequenceLetters(2)), ' ', ...
-            num2str(thisTrialSequenceLetters(3)), ' + ', num2str(thisTrialSequenceLetters(4)), ' ', ...
-            num2str(thisTrialSequenceLetters(5)), ' ', num2str(thisTrialSequenceLetters(6)), ' X'];
-    elseif data.trialSetSize(thisTrial) == experiment.setSizes(4)
         stimulusText = [num2str(thisTrialSequenceLetters(1)), ' ', num2str(thisTrialSequenceLetters(2)), ' ', ...
-            num2str(thisTrialSequenceLetters(3)), ' ', num2str(thisTrialSequenceLetters(4)), ' + ', ...
-            num2str(thisTrialSequenceLetters(5)), ' ', num2str(thisTrialSequenceLetters(6)), ' ', ...
-            num2str(thisTrialSequenceLetters(7)), ' ', num2str(thisTrialSequenceLetters(8))];
+            num2str(thisTrialSequenceLetters(3)), ' + ', num2str(thisTrialSequenceLetters(4)), ' ', ...
+            num2str(thisTrialSequenceLetters(5)), ' ', num2str(thisTrialSequenceLetters(6))];
     end
     stimulusLetters(thisTrial) = {thisTrialSequenceLetters(1:data.trialSetSize(thisTrial))};
     data.stimulusText(thisTrial) = {stimulusText};
@@ -391,21 +375,19 @@ for thisTrial = 1:experiment.nTrials
     % Return size of text to default
     Screen('TextSize', ptbWindow, 20);
     % Send triggers for Presentation
+
     if data.trialSetSize(thisTrial) == experiment.setSizes(1)
         TRIGGER = PRESENTATION2;
     elseif data.trialSetSize(thisTrial) == experiment.setSizes(2)
         TRIGGER = PRESENTATION4;
     elseif data.trialSetSize(thisTrial) == experiment.setSizes(3)
         TRIGGER = PRESENTATION6;
-    elseif data.trialSetSize(thisTrial) == experiment.setSizes(4)
-        TRIGGER = PRESENTATION8;
     end
+
     if TRAINING == 1
-        %             EThndl.sendMessage(TRIGGER);
         Eyelink('Message', num2str(TRIGGER));
         Eyelink('command', 'record_status_message "STIMULUS"');
     else
-        %             EThndl.sendMessage(TRIGGER);
         Eyelink('Message', num2str(TRIGGER));
         Eyelink('command', 'record_status_message "STIMULUS"');
         sendtrigger(TRIGGER,port,SITE,stayup);
@@ -413,11 +395,9 @@ for thisTrial = 1:experiment.nTrials
     WaitSecs(timing.letterPresentation);
 
     if TRAINING == 1
-        %             EThndl.sendMessage(DIGITOFF);
         Eyelink('Message', num2str(DIGITOFF));
         Eyelink('command', 'record_status_message "DIGITOFF"');
     else
-        %             EThndl.sendMessage(DIGITOFF);
         Eyelink('Message', num2str(DIGITOFF));
         Eyelink('command', 'record_status_message "DIGITOFF"');
         sendtrigger(DIGITOFF,port,SITE,stayup);
@@ -432,16 +412,12 @@ for thisTrial = 1:experiment.nTrials
         TRIGGER = RETENTION4;
     elseif data.trialSetSize(thisTrial) == experiment.setSizes(3)
         TRIGGER = RETENTION6;
-    elseif data.trialSetSize(thisTrial) == experiment.setSizes(4)
-        TRIGGER = RETENTION8;
     end
 
     if TRAINING == 1
-        %         EThndl.sendMessage(TRIGGER);
         Eyelink('Message', num2str(TRIGGER));
         Eyelink('command', 'record_status_message "RETENTION"');
     else
-        %         EThndl.sendMessage(TRIGGER);
         Eyelink('Message', num2str(TRIGGER));
         Eyelink('command', 'record_status_message "RETENTION"');
         sendtrigger(TRIGGER,port,SITE,stayup);
@@ -480,11 +456,9 @@ for thisTrial = 1:experiment.nTrials
     end
 
     if TRAINING == 1
-        %         EThndl.sendMessage(TRIGGER);
         Eyelink('Message', num2str(TRIGGER));
         Eyelink('command', 'record_status_message "PROBE STIMULUS"');
     else
-        %         EThndl.sendMessage(TRIGGER);
         Eyelink('Message', num2str(TRIGGER));
         Eyelink('command', 'record_status_message "PROBE STIMULUS"');
         sendtrigger(TRIGGER,port,SITE,stayup);
@@ -524,11 +498,9 @@ for thisTrial = 1:experiment.nTrials
                 end
 
                 if TRAINING == 1
-                    %                     EThndl.sendMessage(TRIGGER,time);
                     Eyelink('Message', num2str(TRIGGER));
                     Eyelink('command', 'record_status_message "RESPONSE"');
                 else
-                    %                     EThndl.sendMessage(TRIGGER,time);
                     Eyelink('Message', num2str(TRIGGER));
                     Eyelink('command', 'record_status_message "RESPONSE"');
                     sendtrigger(TRIGGER,port,SITE,stayup)
@@ -538,11 +510,9 @@ for thisTrial = 1:experiment.nTrials
                 % Subject pressed other button than A or L
                 TRIGGER = badResponse;
                 if TRAINING == 1
-                    %                     EThndl.sendMessage(TRIGGER,time);
                     Eyelink('Message', num2str(TRIGGER));
                     Eyelink('command', 'record_status_message "BAD RESPONSE"');
                 else
-                    %                     EThndl.sendMessage(TRIGGER,time);
                     Eyelink('Message', num2str(TRIGGER));
                     Eyelink('command', 'record_status_message "BAD RESPONSE"');
                     sendtrigger(TRIGGER,port,SITE,stayup)
@@ -601,6 +571,7 @@ for thisTrial = 1:experiment.nTrials
             'Use only A or L.'];
     end
     disp(['Response to Trial ' num2str(thisTrial) ' in Block ' num2str(BLOCK) ' is ' feedbackText]);
+    %%% ADD reaction time and accuracy info
 
     % Give feedback in training block
     if TRAINING == 1
@@ -674,11 +645,9 @@ end
 disp(['End of Block ' num2str(BLOCK)]);
 
 if TRAINING == 1
-    %     EThndl.sendMessage(TRIGGER);
     Eyelink('Message', num2str(TRIGGER));
     Eyelink('command', 'record_status_message "END BLOCK"');
 else
-    %     EThndl.sendMessage(TRIGGER);
     Eyelink('Message', num2str(TRIGGER));
     Eyelink('command', 'record_status_message "END BLOCK"');
     sendtrigger(TRIGGER,port,SITE,stayup);
@@ -686,11 +655,9 @@ end
 
 % Send triggers for end of task (ET cutting)
 if TRAINING == 1
-    %     EThndl.sendMessage(TASK_END);
     Eyelink('Message', num2str(TASK_END));
     Eyelink('command', 'record_status_message "TASK_END"');
 else
-    %     EThndl.sendMessage(TASK_END);
     Eyelink('Message', num2str(TASK_END));
     Eyelink('command', 'record_status_message "TASK_END"');
     sendtrigger(TASK_END,port,SITE,stayup);
@@ -700,7 +667,6 @@ end
 data.SetSizeOccurences(1) = numel(find(data.trialSetSize == experiment.setSizes(1)));
 data.SetSizeOccurences(2) = numel(find(data.trialSetSize == experiment.setSizes(2)));
 data.SetSizeOccurences(3) = numel(find(data.trialSetSize == experiment.setSizes(3)));
-data.SetSizeOccurences(4) = numel(find(data.trialSetSize == experiment.setSizes(4)));
 
 % Save data
 subjectID = num2str(subject.ID);
@@ -744,7 +710,6 @@ trigger.TASK_START = TASK_START;
 trigger.PRESENTATION2 = PRESENTATION2;
 trigger.PRESENTATION4 = PRESENTATION4;
 trigger.PRESENTATION6 = PRESENTATION6;
-trigger.PRESENTATION8 = PRESENTATION8;
 trigger.DIGITOFF = DIGITOFF;
 trigger.BLOCK0 = BLOCK0;
 trigger.BLOCK1 = BLOCK1;
@@ -767,7 +732,6 @@ trigger.ENDBLOCK8 = ENDBLOCK8;
 trigger.RETENTION2 = RETENTION2;
 trigger.RETENTION4 = RETENTION4;
 trigger.RETENTION6 = RETENTION6;
-trigger.RETENTION8 = RETENTION8;
 trigger.RESP_YES = RESP_YES;
 trigger.RESP_NO = RESP_NO;
 trigger.badResponse = badResponse;

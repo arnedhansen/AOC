@@ -1,5 +1,5 @@
 % Create dialog box to record subject data
-defAns = {'99','XX','99','X', 'X', 'X'};
+defAns = {'999','XX','99','X', 'X', 'X'};
 while true
     prompt = {'Subject Number', 'Subject Initials', 'Subject Age', 'Subject Gender', 'EEG Cap Size', 'Ocular Dominance'};
     box = inputdlg(prompt, 'Enter Subject Information', 1,defAns);
@@ -9,7 +9,7 @@ while true
     subject.gender = char(box(4));
     subject.capsize = char(box(5));
     subject.ocDom = char(box(6));
-    if length(subject.ID) == 2 && length(subject.initials) == 2               % Ensure response made in subject ID
+    if length(subject.ID) == 3 && length(subject.initials) == 2               % Ensure response made in subject ID
         break
     end
 end

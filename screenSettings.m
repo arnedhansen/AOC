@@ -1,4 +1,4 @@
-% setup the Screen
+%% AOC screen setup
 % XOrgConfCreator % run only once and tell psychtoolbox, how to organize
 % screens
 % XOrgConfSelector % if issues with copying the file on LInux, run the next line in
@@ -27,5 +27,5 @@ backColor = [0, 0, 0]; % black
 stimColor = [1500, 1500, 1500]; % white
 backDiameter = 35;
 stimDiameter = 33;
-backPos = [4, screenHeight - 20]; % solte 4 sein anstatt 40
-stimPos = [4, screenHeight - 20]; % solte 4 sein
+backPos = [4, screenHeight - 20]; 
+stimPos = [4, screenHeight - 20]; 

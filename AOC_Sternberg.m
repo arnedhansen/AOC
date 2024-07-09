@@ -56,7 +56,7 @@ TASK_END = 90; % trigger for ET cutting
 if TRAINING == 1
     experiment.nTrials = 10;
 else
-    experiment.nTrials = 50;            % 8 blocks x 50 trials = 400 trials
+    experiment.nTrials = 10%50;            % 8 blocks x 50 trials = 400 trials
 end
 experiment.setSizes = [2, 4, 6];     % Number of items presented on the screen
 
@@ -458,6 +458,7 @@ for thisTrial = 1:experiment.nTrials
         thisTrialMatch = 0;
         TRIGGER = NO_MATCH;
     end
+    probePresentationTime = GetSecs;
 
     if TRAINING == 1
         Eyelink('Message', num2str(TRIGGER));
@@ -482,9 +483,9 @@ for thisTrial = 1:experiment.nTrials
     maxResponseTime = GetSecs + 2;
     while getResponse
         [time,keyCode] = KbWait(-1, 2, maxResponseTime); % Wait 2 seconds for response, continue afterwards if there is no input
-
         whichKey = find(keyCode);
 
+        % Subject pressed button A or L
         if ~isempty(whichKey)
             if whichKey == KeyCodeA || whichKey == KeyCodeL
                 getResponse = false;
@@ -511,7 +512,8 @@ for thisTrial = 1:experiment.nTrials
                 end
 
             else
-                % Subject pressed other button than A or L
+
+        % Subject pressed other button than A or L
                 TRIGGER = badResponse;
                 if TRAINING == 1
                     Eyelink('Message', num2str(TRIGGER));
@@ -523,25 +525,23 @@ for thisTrial = 1:experiment.nTrials
                 end
                 badResponseFlag = true;
             end
-            % No input by participant
+
+        % No input by participant
         elseif isempty(whichKey)
             data.allResponses(thisTrial) = 0;
         end
-
         if ~isempty(whichKey)
             if time < maxResponseTime
                 WaitSecs(maxResponseTime - time);
             end
         end
-
         if time > 1
             getResponse = false;
         end
-
-        % Get and save reaction time for each trial
-        reactionTime(thisTrial) = time - maxResponseTime - 2;
-
     end
+    % Get and save reaction time for each trial
+    responseTime = time;
+    reactionTime(thisTrial) = responseTime - probePresentationTime;
 
     %% Check if response was correct
     if YesIsL == 1       % L is YES, A is NO
@@ -753,12 +753,12 @@ catch
 end
 
 %% Compute accuracy and report after each block (no additional cash for training task)
-if BLOCK == 0
+if BLOCK == 0 
     totalCorrect = sum(data.allCorrect);
     totalTrials = thisTrial;
     percentTotalCorrect = totalCorrect / totalTrials * 100;
-
-    feedbackBlockText = ['Your accuracy in the training task was ' num2str(percentTotalCorrect) ' %. '];
+ 
+    feedbackBlockText = ['Your accuracy in the training task was ' num2str(percentTotalCorrect) '%. '];
 
     format bank % Change format for display
     DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.textVal);
@@ -801,7 +801,7 @@ end
 
 % Show break instruction text
 if TRAINING == 1
-    if percentTotalCorrect >= THRESH
+    if percentTotalCorrect >= 60
         breakInstructionText = 'Well done! \n\n Press any key to start the actual task.';
     else
         breakInstructionText = ['Score too low! ' num2str(percentTotalCorrect) ' % correct. ' ...
@@ -823,7 +823,7 @@ while waitResponse
 end
 
 %% Wait at least 15 Seconds between Blocks (only after Block 1 has finished, not after Block 8)
-if TRAINING == 1 && percentTotalCorrect < THRESH
+if TRAINING == 1 && percentTotalCorrect < 60
     waitTime = 15;
     intervalTime = 1;
     timePassed = 0;

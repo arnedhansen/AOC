@@ -1,6 +1,5 @@
 %% Connect Eyetracker & Calibrate
-
-bgClr                   = 127;
+bgClr = 127;
 Screen('Preference', 'SyncTestSettings', 0.002);    % the systems are a little noisy, give the test a little more leeway
 [ptbWindow,winRect] = PsychImaging('OpenWindow', whichScreen, bgClr, [], [], [], [], 4);
 hz=Screen('NominalFrameRate', ptbWindow);
@@ -25,10 +24,10 @@ else
         edfFile = [subjectID,'_', 'STr.edf']; % training
     elseif TRAINING == 1 && strcmp(TASK, 'AOC_NBack')
         edfFile = [subjectID,'_', 'NTr.edf']; % training
-    elseif strcmp(TASK, 'ACC_Sternberg')
-        edfFile = [subjectID,'_', num2str(BLOCK), 'STsk.edf']; % actual task (8 Blocks of Sternberg)
+    elseif strcmp(TASK, 'AOC_Sternberg')
+        edfFile = [subjectID,'_', num2str(BLOCK), 'STk.edf']; % actual task (8 Blocks of Sternberg)
     elseif strcmp(TASK, 'AOC_NBack')
-        edfFile = [subjectID,'_', num2str(BLOCK), 'NTsk.edf']; % actual task (6 Blocks of NBack)
+        edfFile = [subjectID,'_', num2str(BLOCK), 'NTk.edf']; % actual task (6 Blocks of NBack)
     end
 end
 

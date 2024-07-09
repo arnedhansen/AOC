@@ -56,7 +56,7 @@ TASK_END = 90; % Trigger for end of task
 if TRAINING == 1
     experiment.nTrials = 12;
 else
-    experiment.nTrials = 100;           % 6 blocks x 100 trials = 600 trials
+    experiment.nTrials = 10%100;           % 6 blocks x 100 trials = 600 trials
 end
 
 % Set up equipment parameters
@@ -378,6 +378,7 @@ for thisTrial = 1:experiment.nTrials
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('DrawDots',ptbWindow, stimPos, stimDiameter, stimColor,[],1);
     Screen('Flip', ptbWindow);
+    probePresentationTime = GetSecs;
     % Return size of text to default
     Screen('TextSize', ptbWindow, 20);
     % Send triggers for Presentation
@@ -400,14 +401,12 @@ for thisTrial = 1:experiment.nTrials
         sendtrigger(TRIGGER,port,SITE,stayup);
     end
 
-    % Get response
+    %% Get response
     getResponse = true;
     badResponseFlag = false;
     maxResponseTime = GetSecs + 2;
     while getResponse
-
         [time,keyCode] = KbWait(-1, 2, maxResponseTime); % Wait 2 seconds for response, continue afterwards if there is no input.
-
         whichKey = find(keyCode);
 
         if ~isempty(whichKey)
@@ -441,54 +440,69 @@ for thisTrial = 1:experiment.nTrials
                 WaitSecs(maxResponseTime - time);
             end
         end
-
-        % Get and save reaction time for each trial
-        reactionTime(thisTrial) = maxResponseTime - time;
-
         if time > 1
             getResponse = false;
         end
     end
+    % Get and save reaction time for each trial
+    responseTime = time;
+    reactionTime(thisTrial) = responseTime - probePresentationTime;
 
     % Save match/no match
     if COND == 1 && thisTrial > 1
         if letterSequence(thisTrial-1) == letterSequence(thisTrial)
             thisTrialMatch = 1;
+            TRIGGER = MATCH;
+            el_msg = 'MATCH';
         else
             thisTrialMatch = 0;
+            TRIGGER = NO_MATCH;
+            el_msg = 'NO MATCH';
         end
         data.trialMatch(thisTrial) = thisTrialMatch;
+        % Send triggers: trial matching. If training, send only ET triggers
+        if TRAINING == 1
+            Eyelink('Message', el_msg);
+        else
+            Eyelink('Message', el_msg);
+            sendtrigger(TRIGGER,port,SITE,stayup); % EEG
+        end
     elseif COND == 2 && thisTrial > 2
         if letterSequence(thisTrial-2) == letterSequence(thisTrial)
             thisTrialMatch = 1;
+            TRIGGER = MATCH;
+            el_msg = 'MATCH';
         else
             thisTrialMatch = 0;
+            TRIGGER = NO_MATCH;
+            el_msg = 'NO MATCH';
         end
         data.trialMatch(thisTrial) = thisTrialMatch;
+        % Send triggers: trial matching. If training, send only ET triggers
+        if TRAINING == 1
+            Eyelink('Message', el_msg);
+        else
+            Eyelink('Message', el_msg);
+            sendtrigger(TRIGGER,port,SITE,stayup); % EEG
+        end
     elseif COND == 3 && thisTrial > 3
         if letterSequence(thisTrial-3) == letterSequence(thisTrial)
             thisTrialMatch = 1;
+            TRIGGER = MATCH;
+            el_msg = 'MATCH';
         else
             thisTrialMatch = 0;
+            TRIGGER = NO_MATCH;
+            el_msg = 'NO MATCH';
         end
         data.trialMatch(thisTrial) = thisTrialMatch;
-    end
-
-    % Send triggers for block and output
-    if thisTrialMatch == 1
-        TRIGGER = MATCH;
-        el_msg = 'MATCH';
-    else
-        TRIGGER = NO_MATCH;
-        el_msg = 'NO MATCH';
-    end
-
-    % Send triggers: trial matching. If training, send only ET triggers
-    if TRAINING == 1
-        Eyelink('Message', el_msg);
-    else
-        Eyelink('Message', el_msg);
-        sendtrigger(TRIGGER,port,SITE,stayup); % EEG
+        % Send triggers: trial matching. If training, send only ET triggers
+        if TRAINING == 1
+            Eyelink('Message', el_msg);
+        else
+            Eyelink('Message', el_msg);
+            sendtrigger(TRIGGER,port,SITE,stayup); % EEG
+        end
     end
 
     % Check if response was correct
@@ -543,24 +557,17 @@ for thisTrial = 1:experiment.nTrials
         WaitSecs(3);
     elseif thisTrial == 1
         disp('No Response to Trial 1 in N-Back Task');
-    elseif BLOCK == 2 && thisTrial == 2
-        disp('No Response to Trial 2 in Block 2 of N-Back Task');
-    elseif BLOCK == 3 && thisTrial == 2
-        disp('No Response to Trial 2 in Block 3 of N-Back Task');
-    elseif BLOCK == 3 && thisTrial == 3
-        disp('No Response to Trial 3 in Block 3 of N-Back Task');
-    end
-    if BLOCK == 2 && thisTrial > 2
-        disp(['Response to Trial ' num2str(thisTrial) ' is ' feedbackText]);
-    elseif BLOCK == 1 && thisTrial > 1
-        disp(['Response to Trial ' num2str(thisTrial) ' is ' feedbackText]);
-    elseif BLOCK == 3 && thisTrial > 3
-        disp(['Response to Trial ' num2str(thisTrial) ' is ' feedbackText]);
+    elseif COND == 2 && thisTrial == 2
+        disp('No Response to Trial 2 in 3-Back Task');
+    elseif COND == 3 && thisTrial == 2
+        disp('No Response to Trial 2 in 3-Back Task');
+    elseif COND == 3 && thisTrial == 3
+        disp('No Response to Trial 3 in 3-Back Task');
     end
 
     % Dynamically compute accuracy for past 10 trials and remind participant if accuracy drops below threshhold of 60%
     responsesLastTrials = 0;
-    if BLOCK == 1 && thisTrial > 11
+    if COND == 1 && thisTrial > 11
         % Get 10 last trials, but ignore last data point
         responsesLastTrials = data.allCorrect(end-10 : end-1);
         percentLastTrialsCorrect = (sum(responsesLastTrials)/length(responsesLastTrials))*100;
@@ -570,7 +577,7 @@ for thisTrial = 1:experiment.nTrials
                 '\n\n Of the last 10 trials ' num2str(percentLastTrialsCorrect) ' % were correct.' ...
                 '\n\n You can earn more if you perform better.' ...
                 '\n\n Please keep focused on the task!'];
-            disp(['Participant was made aware of low accuracy in the last 10 trials: ' num2str(percentLastTrialsCorrect) ' %.']);
+            disp(['Participant was made aware of low accuracy in the last 10 trials: ' num2str(percentLastTrialsCorrect) '%.']);
             DrawFormattedText(ptbWindow,feedbackLastTrials,'center','center',color.textVal);
             Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
             Screen('Flip',ptbWindow);
@@ -586,18 +593,23 @@ for thisTrial = 1:experiment.nTrials
                 '\n\n Of the last 10 trials ' num2str(percentLastTrialsCorrect) ' % were correct.' ...
                 '\n\n You can earn more if you perform better.' ...
                 '\n\n Please keep focused on the task!'];
-            disp(['Participant was made aware of low accuracy in the last 10 trials: ' num2str(percentLastTrialsCorrect) ' %.']);
+            disp(['Participant was made aware of low accuracy in the last 10 trials: ' num2str(percentLastTrialsCorrect) '%.']);
             DrawFormattedText(ptbWindow,feedbackLastTrials,'center','center',color.textVal);
             Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
             Screen('Flip',ptbWindow);
             WaitSecs(5);
         end
     end
+    %% Trialf Info CW output
+    overall_accuracy = round((sum(data.allCorrect(1:thisTrial), 'omitnan')/(thisTrial-COND))*100);
+    if thisTrial == 1 || COND == 2 && thisTrial == 2 || COND == 3 && thisTrial == 2 || COND == 3 && thisTrial == 3
+        feedbackText = ('Correct! (no response)');
+    end
+    disp(['Response to Trial ' num2str(thisTrial) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime(thisTrial)) 'ms)']);
+
 end
 
-%% End task, save data and inform participant about accuracy and extra cash
-
-% Send triggers to end task
+%% Send triggers to end task
 endT = Screen('Flip',ptbWindow);
 if TRAINING == 1
     Eyelink('Message', num2str(TASK_END));
@@ -636,7 +648,7 @@ else
     disp(['End of Block ' num2str(BLOCK)]);
 end
 
-% Save data
+%% Save data
 subjectID = num2str(subject.ID);
 filePath = fullfile(DATA_PATH, subjectID);
 mkdir(filePath)
@@ -649,24 +661,24 @@ end
 % Compute accuracy and report after each block (no additional cash for training task)
 if TRAINING == 1
     % Get sum of correct responses, but ignore first and last data point
-    totalCorrect = sum(data.allCorrect(1, 2:end-1));
+    totalCorrect = sum(data.allCorrect(1:end-1), 'omitnan');
     totalTrials = thisTrial-2;
-    percentTotalCorrect = totalCorrect / totalTrials * 100;
+    percentTotalCorrect = round(totalCorrect / totalTrials * 100);
     format bank % Change format for display
-    feedbackBlockText = ['Your accuracy in the training task was ' num2str(percentTotalCorrect) ' %. '];
+    feedbackBlockText = ['Your accuracy in the training task was ' num2str(percentTotalCorrect) '%. '];
     disp(['Participant ' subjectID ' had an accuracy of ' num2str(percentTotalCorrect) ' % in the training task.'])
     DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.textVal);
     format default % Change format back to default
     Screen('Flip',ptbWindow);
     WaitSecs(5);
-elseif BLOCK == 1
+elseif COND == 1
     % Get sum of correct responses, but ignore first and last data point
     totalCorrect = sum(data.allCorrect(1, 2:end-1));
     totalTrials = thisTrial-2;
     percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
     format bank % Change format for display
     amountCHFextra(BLOCK) = percentTotalCorrect(BLOCK)*0.01;
-    feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect(BLOCK)) ' %. ' ...
+    feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect(BLOCK)) '%. ' ...
         '\n\n Because of your accuracy you have been awarded an additional ' num2str(amountCHFextra(BLOCK)) ' CHF.' ...
         '\n\n Keep it up!'];
 
@@ -675,19 +687,19 @@ elseif BLOCK == 1
     format default % Change format back to default
     Screen('Flip',ptbWindow);
     WaitSecs(5);
-elseif BLOCK > 1
+elseif COND > 1
     % Get sum of correct responses, but ignore first 2/3/4 and last data point
-    if BLOCK == 2
+    if COND == 2
         totalCorrect = sum(data.allCorrect(1, 3:end-1));
         totalTrials = thisTrial-3;
-    elseif BLOCK == 3
+    elseif COND == 3
         totalCorrect = sum(data.allCorrect(1, 4:end-1));
         totalTrials = thisTrial-4;
     end
     percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
     format bank % Change format for display
     amountCHFextra(BLOCK) = percentTotalCorrect(BLOCK)*0.01;
-    feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect(BLOCK)) ' %. ' ...
+    feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect(BLOCK)) '%. ' ...
         '\n\n Because of your accuracy you have been awarded an additional ' num2str(amountCHFextra(BLOCK)) ' CHF.' ...
         '\n\n Keep it up!'];
     DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.textVal);
@@ -750,7 +762,7 @@ if BLOCK == 6
     saves.amountCHFextraTotal = amountCHFextraTotal;
 end
 
-% stop and close EEG and ET recordings
+%% Stop and close EEG and ET recordings
 if TRAINING == 1
     disp('TRAINING FINISHED...');
 else
@@ -767,7 +779,7 @@ end
 
 % Show break instruction text
 if TRAINING == 1
-    if percentTotalCorrect >= THRESH
+    if percentTotalCorrect >= 60
         breakInstructionText = 'Well done! \n\n Press any key to start the actual task.';
     else
         breakInstructionText = ['Score too low! ' num2str(percentTotalCorrect) ' % correct. ' ...
@@ -789,7 +801,7 @@ while waitResponse
 end
 
 % Wait at least 15 Seconds between Blocks (only after Block 1 has finished, not after Block 2)
-if TRAINING == 1 && percentTotalCorrect < THRESH
+if TRAINING == 1 && percentTotalCorrect < 60
     waitTime = 15;
     intervalTime = 1;
     timePassed = 0;

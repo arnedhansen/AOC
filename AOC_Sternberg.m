@@ -147,7 +147,6 @@ Screen('Preference', 'SkipSyncTests', 0); % For linux (can be 0)
 
 % Set verbosity to disallow CW output
 Screen('Preference','Verbosity', 0);
-% PsychTweak('ScreenVerbosity', 2)
 
 %% Window set-up
 [ptbWindow, winRect] = PsychImaging('OpenWindow', screenID, equipment.greyVal);
@@ -173,9 +172,9 @@ DrawFormattedText(ptbWindow,loadingText,'center','center',color.textVal);
 Screen('Flip',ptbWindow);
 
 %% Retrieve response keys
-KeyCodeA = KbName('A');                     % Retrieve key code for the 1 button
-KeyCodeL = KbName('L');% KbName('/?');      % Retrieve key code for the 3 button (/? is the PTB code for the keyboard rather than numpad slash button)
-spaceKeyCode = KbName('Space'); % Retrieve key code for spacebar
+KeyCodeA = KbName('A');                     % Retrieve key code for the A button
+KeyCodeL = KbName('L'); % KbName('/?');     % Retrieve key code for the L button 
+spaceKeyCode = KbName('Space');             % Retrieve key code for spacebar
 
 % Assign response keys
 if mod(subject.ID,2) == 0       % Use subject ID for assignment to ensure counterbalancing
@@ -201,6 +200,7 @@ stimulus.fixationSize_pix = round(stimulus.fixationSize_dva*equipment.ppd);
 fixHorizontal = [round(-stimulus.fixationSize_pix/2) round(stimulus.fixationSize_pix/2) 0 0];
 fixVertical = [0 0 round(-stimulus.fixationSize_pix/2) round(stimulus.fixationSize_pix/2)];
 fixCoords = [fixHorizontal; fixVertical];
+fixationPosition = [screenCentreX, screenCentreY];
 
 %% Define stimulus letter pool
 consonants_noX = char(setdiff('A':'Z', 'AEIOUX'));
@@ -336,7 +336,7 @@ for thisTrial = 1:experiment.nTrials
     data.sequenceLetters{thisTrial} = thisTrialSequenceLetters;
 
     %% Central fixation interval (jittered 500 - 1500ms)
-    Screen('DrawLines',ptbWindow,fixCoords,stimulus.fixationLineWidth,stimulus.fixationColor,[screenCentreX screenCentreY],2); % Draw fixation cross
+    Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixationPosition, 2); % Draw fixation cross
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('Flip', ptbWindow);
     if TRAINING == 1
@@ -355,25 +355,27 @@ for thisTrial = 1:experiment.nTrials
     Screen('TextSize', ptbWindow, 50);
     % Define stimulus
     if data.trialSetSize(thisTrial) == experiment.setSizes(1)
-        stimulusText = ['X ', 'X ', num2str(thisTrialSequenceLetters(1)), ' + ', ...
+        stimulusText = ['X ', 'X ', num2str(thisTrialSequenceLetters(1)), '   ', ...
             num2str(thisTrialSequenceLetters(2)), ' X', ' X'];
     elseif data.trialSetSize(thisTrial) == experiment.setSizes(2)
-        stimulusText = ['X ', num2str(thisTrialSequenceLetters(1)), ' ', num2str(thisTrialSequenceLetters(2)), ' + ', ...
+        stimulusText = ['X ', num2str(thisTrialSequenceLetters(1)), ' ', num2str(thisTrialSequenceLetters(2)), '   ', ...
             num2str(thisTrialSequenceLetters(3)), ' ', num2str(thisTrialSequenceLetters(4)), ' X'];
     elseif data.trialSetSize(thisTrial) == experiment.setSizes(3)
         stimulusText = [num2str(thisTrialSequenceLetters(1)), ' ', num2str(thisTrialSequenceLetters(2)), ' ', ...
-            num2str(thisTrialSequenceLetters(3)), ' + ', num2str(thisTrialSequenceLetters(4)), ' ', ...
+            num2str(thisTrialSequenceLetters(3)), '   ', num2str(thisTrialSequenceLetters(4)), ' ', ...
             num2str(thisTrialSequenceLetters(5)), ' ', num2str(thisTrialSequenceLetters(6))];
     end
     stimulusLetters(thisTrial) = {thisTrialSequenceLetters(1:data.trialSetSize(thisTrial))};
     data.stimulusText(thisTrial) = {stimulusText};
-    % Present stimuli
-    DrawFormattedText(ptbWindow, stimulusText,'center','center',text.color);
-    Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
-    Screen('DrawDots',ptbWindow, stimPos, stimDiameter, stimColor,[],1);
-    Screen('Flip', ptbWindow);
-    % Send triggers for Presentation
 
+    % Present stimuli
+    DrawFormattedText(ptbWindow, stimulusText, 'center', 'center', text.color); % Draw stimuli
+    Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixationPosition, 2); % Draw fixation cross
+    Screen('DrawDots', ptbWindow, backPos, backDiameter, backColor, [], 1);
+    Screen('DrawDots', ptbWindow, stimPos, stimDiameter, stimColor, [], 1);
+    Screen('Flip', ptbWindow);
+
+    % Send triggers for Presentation
     if data.trialSetSize(thisTrial) == experiment.setSizes(1)
         TRIGGER = PRESENTATION2;
     elseif data.trialSetSize(thisTrial) == experiment.setSizes(2)
@@ -406,7 +408,7 @@ for thisTrial = 1:experiment.nTrials
 
     %% Retention interval (2800ms)
     if data.retentionFixCross(thisTrial) == 1
-        Screen('DrawLines',ptbWindow,fixCoords,stimulus.fixationLineWidth,stimulus.fixationColor,[screenCentreX screenCentreY],2); % Draw fixation cross
+        Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixationPosition, 2); % Draw fixation cross
     end
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('Flip', ptbWindow);

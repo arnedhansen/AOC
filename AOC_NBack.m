@@ -225,31 +225,8 @@ count5trials = 0;
 % Preallocate reaction time variable
 reactionTime(1:experiment.nTrials) = 0;
 
-% Define alphabet (stimulus pool)
-alphabet = 'A' : 'Z';
-
 %% Define letterSequence depending on block iteration
-if TRAINING == 1 && COND == 1
-    letterSequence = 'METTHLLAABBUZHH';
-elseif TRAINING == 1  && COND == 2
-    letterSequence = 'SKLKNUNNTRTSPSS';
-elseif TRAINING == 1  && COND == 3
-    letterSequence = 'SKLSKLNUNNTRTSP';
-elseif TRAINING == 0 && COND == 1
-    createLetterSequence1;
-    letterSequence = letterSequence1;
-    checkLetterGrouping;
-elseif TRAINING == 0 && COND == 2
-    createLetterSequence2;
-    letterSequence = letterSequence2;
-    checkLetterGrouping2;
-elseif TRAINING == 0 && COND == 3
-    createLetterSequence3;
-    letterSequence = letterSequence3;
-    checkLetterGrouping3;
-end
-
-% Save letterSequence
+letterSequence = createLetterSequence(TRAINING, COND);
 data.letterSequence = letterSequence; % 1x102 double
 
 %% Display instructive texts

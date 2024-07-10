@@ -334,6 +334,9 @@ for trl = 1:experiment.nTrials
         sendtrigger(TRIGGER,port,SITE,stayup);
     end
     WaitSecs(timing.cfi(trl));                            % Wait duration of the jittered central fixation interval
+
+    %% Check fixation just before stimulus presentation
+    noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, screenCentreY);
     
     %% Present stimulus from letterSequence (2000ms)
     % Increase size of stimuli
@@ -370,11 +373,13 @@ for trl = 1:experiment.nTrials
     getResponse = true;
     badResponseFlag = false;
     maxResponseTime = GetSecs + 2;
+    responseTime = NaN;
     while getResponse
         [time,keyCode] = KbWait(-1, 2, maxResponseTime); % Wait 2 seconds for response, continue afterwards if there is no input.
         whichKey = find(keyCode);
 
         if ~isempty(whichKey)
+            responseTime = GetSecs;
             if whichKey == spaceKeyCode
                 getResponse = false;
                 data.responses(trl) = whichKey;
@@ -388,6 +393,7 @@ for trl = 1:experiment.nTrials
         elseif isempty(whichKey)
             data.responses(trl) = 0;
             TRIGGER = RESP_NO;
+            responseTime = probePresentationTime + 5;
         end
 
         % send triggers
@@ -409,11 +415,11 @@ for trl = 1:experiment.nTrials
             getResponse = false;
         end
     end
-    % Get and save reaction time for each trial
-    responseTime = time;
+
+    % Save reaction time for each trial
     data.reactionTime(trl) = responseTime - probePresentationTime;
 
-    % Save match/no match
+    %% Save match/no match
     if COND == 1 && trl > 1
         if letterSequence(trl-1) == letterSequence(trl)
             trlMatch = 1;
@@ -530,7 +536,7 @@ for trl = 1:experiment.nTrials
         disp('No Response to Trial 3 in 3-Back Task');
     end
 
-    % Dynamically compute accuracy for past 10 trials and remind participant if accuracy drops below threshhold of 60%
+    %% Dynamically compute accuracy for past 10 trials and remind participant if accuracy drops below threshhold of 60%
     responsesLastTrials = 0;
     if COND == 1 && trl > 11
         % Get 10 last trials, but ignore last data point
@@ -565,13 +571,26 @@ for trl = 1:experiment.nTrials
             WaitSecs(5);
         end
     end
+
+    %% Fixation reminder
+    if noFixation > 0
+        Screen('TextSize', ptbWindow, 30);
+        fixText = 'ALWAYS LOOK AT THE CENTER OF THE SCREEN!';
+        DrawFormattedText(ptbWindow, fixText, 'center', 'center', color.White);
+        Screen('DrawDots', ptbWindow, backPos, backDiameter, backColor, [], 1);
+        Screen('Flip', ptbWindow);
+        disp('FIXATION REMINDER')
+        WaitSecs(3);
+        Screen('TextSize', ptbWindow, 20);
+    end
+
     %% Trialf Info CW output
     overall_accuracy = round((sum(data.correct(1:trl), 'omitnan')/(trl-COND))*100);
     if trl == 1 || COND == 2 && trl == 2 || COND == 3 && trl == 2 || COND == 3 && trl == 3
         feedbackText = ('Correct! (no response)');
     end
     reactionTime = num2str(round(data.reactionTime(trl), 2), '%.2f');
-    disp(['Response to Trial ' num2str(trl) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (' num2str(COND) '-back | Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime) 'ms)']);
+    disp(['Response to Trial ' num2str(trl) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (' num2str(COND) '-back | Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime) 's)']);
 
 end
 

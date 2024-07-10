@@ -328,7 +328,6 @@ HideCursor(whichScreen);
 tic;
 
 %% Experiment Loop %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-noFixation = 0;
 for trl = 1:experiment.nTrials
     % Randomize letterSequence
     lettersRand = randperm(length(consonants));
@@ -355,6 +354,9 @@ for trl = 1:experiment.nTrials
     timing.cfi(trl) = (randsample(500:1500, 1))/1000; % Duration of the jittered inter-trial interval
     WaitSecs(timing.cfi(trl));
 
+    %% Check fixation just before stimulus presentation
+    noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, screenCentreY);
+
     %% Presentation of stimuli (200ms)
     % Increase size of stimuli
     Screen('TextSize', ptbWindow, 50);
@@ -380,7 +382,6 @@ for trl = 1:experiment.nTrials
     Screen('DrawDots', ptbWindow, backPos, backDiameter, backColor, [], 1);
     Screen('DrawDots', ptbWindow, stimPos, stimDiameter, stimColor, [], 1);
     Screen('Flip', ptbWindow);
-    checkFixation;
 
     % Send triggers for Presentation
     if data.trialSetSize(trl) == experiment.setSizes(1)
@@ -419,8 +420,7 @@ for trl = 1:experiment.nTrials
     end
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('Flip', ptbWindow);
-    checkFixation;
-    noFixation
+
     if data.trialSetSize(trl) == experiment.setSizes(1)
         TRIGGER = RETENTION2;
     elseif data.trialSetSize(trl) == experiment.setSizes(2)
@@ -492,12 +492,14 @@ for trl = 1:experiment.nTrials
     getResponse = true;
     badResponseFlag = false;
     maxResponseTime = GetSecs + 2;
+    responseTime = NaN;
     while getResponse
         [time,keyCode] = KbWait(-1, 2, maxResponseTime); % Wait 2 seconds for response, continue afterwards if there is no input
         whichKey = find(keyCode);
 
         % Subject pressed button A or L
         if ~isempty(whichKey)
+            responseTime = GetSecs;
             if whichKey == KeyCodeA || whichKey == KeyCodeL
                 getResponse = false;
                 data.responses(trl) = whichKey;
@@ -523,8 +525,8 @@ for trl = 1:experiment.nTrials
                 end
 
             else
-
-        % Subject pressed other button than A or L
+                % Subject pressed other button than A or L
+                responseTime = probePresentationTime + 4;
                 TRIGGER = BAD_RESP;
                 if TRAINING == 1
                     Eyelink('Message', num2str(TRIGGER));
@@ -537,9 +539,10 @@ for trl = 1:experiment.nTrials
                 badResponseFlag = true;
             end
 
-        % No input by participant
+            % No input by participant
         elseif isempty(whichKey)
             data.responses(trl) = 0;
+            responseTime = probePresentationTime + 5;
         end
         if ~isempty(whichKey)
             if time < maxResponseTime
@@ -550,8 +553,8 @@ for trl = 1:experiment.nTrials
             getResponse = false;
         end
     end
-    % Get and save reaction time for each trial
-    responseTime = time;
+
+    % Save reaction time for each trial
     data.reactionTime(trl) = responseTime - probePresentationTime;
 
     %% Check if response was correct
@@ -609,11 +612,10 @@ for trl = 1:experiment.nTrials
         if percentLastTrialsCorrect < 60 && count5trials <= trl-5
             count5trials = trl;
             feedbackLastTrials = ['Your accuracy has declined!'...
-                '\n\n Of the last 10 trials ' num2str(percentLastTrialsCorrect) ' % were correct.' ...
                 '\n\n ' ...
                 '\n\n Please stay focused on the task!'];
             disp(['Participant was made aware of low accuracy in the last 10 trials: ' num2str(percentLastTrialsCorrect) ' %. [' num2str(responsesLastTrials) ']']);
-            DrawFormattedText(ptbWindow,feedbackLastTrials,'center','center',color.Black);
+            DrawFormattedText(ptbWindow,feedbackLastTrials,'center','center',color.White);
             Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
             Screen('Flip',ptbWindow);
             WaitSecs(3);
@@ -621,18 +623,21 @@ for trl = 1:experiment.nTrials
     end
 
     %% Fixation reminder
-    if noFixation > 1
-        feedbackText = 'PLEASE ALWAYS LOOK AT THE CENTER OF THE SCREEN!';
-        DrawFormattedText(ptbWindow,feedbackText,'center','center',color.Black);
-        Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
-        Screen('Flip',ptbWindow);
-        WaitSecs(2);
+    if noFixation > 0
+        Screen('TextSize', ptbWindow, 30);
+        fixText = 'ALWAYS LOOK AT THE CENTER OF THE SCREEN!';
+        DrawFormattedText(ptbWindow, fixText, 'center', 'center', color.White);
+        Screen('DrawDots', ptbWindow, backPos, backDiameter, backColor, [], 1);
+        Screen('Flip', ptbWindow);
+        disp('FIXATION REMINDER')
+        WaitSecs(3);
+        Screen('TextSize', ptbWindow, 20);
     end
 
-    %% Trialf Info CW output
+    %% Trial Info CW output
     overall_accuracy = round((sum(data.correct(1:trl))/trl)*100);
     reactionTime = num2str(round(data.reactionTime(trl), 2), '%.2f');
-    disp(['Response to Trial ' num2str(trl) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (WM load ' num2str(data.trialSetSize(trl)) ' | Acc: ' num2str(overall_accuracy) '% | RT: ' reactionTime 'ms)']);
+    disp(['Response to Trial ' num2str(trl) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (WM load ' num2str(data.trialSetSize(trl)) ' | Acc: ' num2str(overall_accuracy) '% | RT: ' reactionTime 's)']);
 
     %% Blank screen for resting interval (2000ms)
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);

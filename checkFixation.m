@@ -1,33 +1,34 @@
-%% AOC Fixation Check
-% Check if the subject fixates at the center of the screen at the onset of 
-% stimulus presentation and onset of retention interval
-% If doesn't fixate, set a flag, which will trigger a warning after the trial ends
+function noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, screenCentreY)
+    numSamples = 250; % 1 second 
+    fixThresh = numSamples * 0.75; % 80% threshold
+    distOK = 45 + 45*0.5; % about 1 degree from the center (+ 1 deg of ET error)
 
-numSamples = 250; % 1 second 
-fixThresh = numSamples * 0.8; % 80% threshold
-trialGaze = EThndl.buffer.peekN('gaze', numSamples);
+    % Initialize noFixation counter
+    noFixation = 0;
 
-distOK = 45 + 45; % about 1 degree from the center (+ 1 deg of ET error)
+    % Collect gaze data for a specified number of samples
+    samples = zeros(numSamples, 2); % Initialize matrix for gaze samples
 
-try
-    % Input from left or right eye
-    if any(trialGaze.left.gazePoint.valid)
-        gaze_x = trialGaze.left.gazePoint.onDisplayArea(1, :)' * screenWidth;
-        gaze_y = trialGaze.left.gazePoint.onDisplayArea(2, :)' * screenHeight;
-    else
-        gaze_x = trialGaze.right.gazePoint.onDisplayArea(1, :)' * screenWidth;
-        gaze_y = trialGaze.right.gazePoint.onDisplayArea(2, :)' * screenHeight;
+    for i = 1:numSamples
+        % Fetch gaze data sample
+        evt = Eyelink('NewestFloatSample');
+        gaze_x = evt.gx(1);
+        gaze_y = evt.gy(1);
+        samples(i, :) = [gaze_x, gaze_y]; % Store gaze sample
+        WaitSecs(0.004); % Wait for 4 ms to get approximately 250 Hz sampling rate
     end
-    
-    % Check the fixation (80% threshold)
-    if sum(gaze_x > screenCentreX - distOK) > fixThresh & sum(gaze_x < screenCentreX + distOK) > fixThresh & ...
-            sum(gaze_y > screenCentreY - distOK) > fixThresh & sum(gaze_y < screenCentreY + distOK) > fixThresh
-        % noFixation = 0; % reset
-        %disp('FIXATION...')
+
+    % Check fixation
+    validSamples = sum(samples(:, 1) > 0 & samples(:, 2) > 0); % Count valid samples
+    if validSamples > fixThresh % Ensure enough valid samples before checking fixation
+        xFix = sum(samples(:, 1) > screenCentreX - distOK & samples(:, 1) < screenCentreX + distOK);
+        yFix = sum(samples(:, 2) > screenCentreY - distOK & samples(:, 2) < screenCentreY + distOK);
+
+        if xFix <= fixThresh || yFix <= fixThresh
+            % No fixation detected
+            noFixation = 1;
+        end
     else
-        noFixation = noFixation + 1;
-        %disp('NO FIXATION...')
+        disp('Not enough valid samples for fixation check.');
     end
-catch
-    disp('GAZE NOT FOUND. PLEASE CHECK YOUR EYE TRACKER...')
 end

@@ -147,7 +147,7 @@ else
         eval(TASK); % Run the task
         BLOCK = BLOCK + 1;
     end
-    
+     
     % Actual task
     TRAINING = 0;
     blockCount = 6;

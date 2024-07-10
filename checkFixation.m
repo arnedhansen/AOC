@@ -22,7 +22,7 @@ try
     % Check the fixation (80% threshold)
     if sum(gaze_x > screenCentreX - distOK) > fixThresh & sum(gaze_x < screenCentreX + distOK) > fixThresh & ...
             sum(gaze_y > screenCentreY - distOK) > fixThresh & sum(gaze_y < screenCentreY + distOK) > fixThresh
-        noFixation = 0; % reset
+        % noFixation = 0; % reset
         %disp('FIXATION...')
     else
         noFixation = noFixation + 1;

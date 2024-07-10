@@ -573,7 +573,7 @@ for trl = 1:experiment.nTrials
         end
     end
 
-    %% Feedback
+    %% Feedback for training block and CW output
     % CW Feedback
     if data.correct(trl) == 1
         feedbackText = 'Correct!  ';
@@ -588,12 +588,6 @@ for trl = 1:experiment.nTrials
 
     % Give feedback in training block
     if TRAINING == 1
-        DrawFormattedText(ptbWindow,feedbackText,'center','center',color.Black);
-        Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
-        Screen('Flip',ptbWindow);
-        WaitSecs(2);
-    % Give feedback for wrong button presses (DOESNT WORK - GetResponse doesnt search for responses other than A & L)
-    elseif TRAINING == 0 && data.correct(trl) == 0 && badResponseFlag == true
         DrawFormattedText(ptbWindow,feedbackText,'center','center',color.Black);
         Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
         Screen('Flip',ptbWindow);
@@ -624,6 +618,15 @@ for trl = 1:experiment.nTrials
             Screen('Flip',ptbWindow);
             WaitSecs(3);
         end
+    end
+
+    %% Fixation reminder
+    if noFixation > 1
+        feedbackText = 'PLEASE ALWAYS LOOK AT THE CENTER OF THE SCREEN!';
+        DrawFormattedText(ptbWindow,feedbackText,'center','center',color.Black);
+        Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
+        Screen('Flip',ptbWindow);
+        WaitSecs(2);
     end
 
     %% Trialf Info CW output

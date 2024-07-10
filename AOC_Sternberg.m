@@ -48,7 +48,7 @@ RETENTION4 = 54; % trigger for retention (setSize = 4)
 RETENTION6 = 56; % trigger for retention (setSize = 6)
 RESP_YES = 87; % trigger for response yes (depends on changing key bindings)
 RESP_NO = 88; % trigger for response no (depends on changing key bindings)
-badResponse = 89; % trigger for wrong keyboard input (any key apart from 'A', 'L' or 'Space')
+BAD_RESP = 89; % trigger for wrong keyboard input (any key apart from 'A', 'L' or 'Space')
 TASK_END = 90; % trigger for ET cutting
 
 %% Set up experiment parameters
@@ -93,8 +93,8 @@ if TRAINING == 1
         'Please always fixate the central fixation cross. \n\n' ...
         'After each presentation there will be a blank screen. \n\n' ...
         'Please look at the center of the screen during this interval as well. \n\n' ...
-        'Afterwards, you will be presented with a white letter. \n\n' ...
-        'Your task is to determine if this white letter was included previously. \n\n' ...
+        'Afterwards, you will be presented with one letter. \n\n' ...
+        'Your task is to determine if this single letter was included previously. \n\n' ...
         'In this training session you''ll get feedback about the correctness of your responses. \n\n' ...
         '\n\n' ...
         'Press any key to continue.'];
@@ -103,13 +103,13 @@ else
         loadingText = 'Loading actual task...';
         startExperimentText = ['On each trial, you will be shown a number of letters in a row. \n\n' ...
             'The sides will be filled with ''Xs''. These do not count! \n\n' ...
-            'Example:  X S A + R K X \n\n' ...
+            'Example:  X D S + M T X \n\n' ...
             '\n\n' ...
             'Please always fixate the central fixation cross. \n\n' ...
             'After each presentation there will be a blank screen. \n\n' ...
             'Please look at the center of the screen during this interval as well. \n\n' ...
-            'Afterwards, you will be presented with a white letter. \n\n' ...
-            'Your task is to determine if this white letter was included previously. \n\n' ...
+            'Afterwards, you will be presented with one letter. \n\n' ...
+            'Your task is to determine if this single letter was included previously. \n\n' ...
             'There will be no feedback (e.g., ''Correct!'') anymore. \n\n' ...
             'Press any key to continue.'];
     else
@@ -129,6 +129,7 @@ startBlockText = 'Press any key to begin the next block.';
 timing.letterPresentation = 0.2;            % Duration of digit presentation
 timing.rest = 2;                            % Duration of blank resting interval
 timing.retentionInterval = 2.8;             % Duration of blank retention interval
+timing.startTime = time;
 
 %% Shuffle rng for random elements
 rng('default');
@@ -200,20 +201,22 @@ stimulus.fixationSize_pix = round(stimulus.fixationSize_dva*equipment.ppd);
 fixHorizontal = [round(-stimulus.fixationSize_pix/2) round(stimulus.fixationSize_pix/2) 0 0];
 fixVertical = [0 0 round(-stimulus.fixationSize_pix/2) round(stimulus.fixationSize_pix/2)];
 fixCoords = [fixHorizontal; fixVertical];
-fixationPosition = [screenCentreX, screenCentreY];
+fixPos = [screenCentreX, screenCentreY];
 
 %% Define stimulus letter pool
 consonants_noX = char(setdiff('A':'Z', 'AEIOUX'));
 
 %% Create data structure for preallocating data
 data = struct;
-data.sequenceLetters{1, experiment.nTrials} = 0;
-data.trialSetSize(1, experiment.nTrials) = 0;
-data.probeLetter(1, experiment.nTrials) = NaN;
-data.trialMatch(1, experiment.nTrials) = NaN;
-data.allResponses(1, experiment.nTrials) = 0;
-data.allCorrect(1, experiment.nTrials) = NaN;
+data.stimuli{1, experiment.nTrials} = NaN;
+data.trialSetSize(1, experiment.nTrials) = NaN;
+data.probe(1, experiment.nTrials) = NaN;
+data.match(1, experiment.nTrials) = NaN;
+data.responses(1, experiment.nTrials) = NaN;
+data.correct(1, experiment.nTrials) = NaN;
 data.retentionFixCross = randi([0, 1], 1, experiment.nTrials);
+data.reactionTime(1:experiment.nTrials) = NaN;
+count5trials = NaN;
 
 % Fixate randomized setSizes for each block
 setS2 = ones(1, 12)*experiment.setSizes(1);
@@ -231,10 +234,10 @@ setALL = [setS2, setS4, setS6, extraNums];
 for trialSetSizes = 1:experiment.nTrials
     data.trialSetSize(trialSetSizes) = randsample(setALL, 1);
 end
-
-% Preallocate looping variables
-reactionTime(1:experiment.nTrials) = 0;
-count5trials = 0;
+% Count occurences of set sizes in trials
+data.setSizeOccurences(1) = numel(find(data.trialSetSize == experiment.setSizes(1)));
+data.setSizeOccurences(2) = numel(find(data.trialSetSize == experiment.setSizes(2)));
+data.setSizeOccurences(3) = numel(find(data.trialSetSize == experiment.setSizes(3)));
 
 if TRAINING == 0
     % Show performance bonus incentive text
@@ -319,8 +322,6 @@ end
 HideCursor(whichScreen);
 
 %% Experiment Loop %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-noFixation = 0;
-
 for thisTrial = 1:experiment.nTrials
     % Display trial info in CW
     disp(['Start of Trial ' num2str(thisTrial) ' in Block ' num2str(BLOCK) ' (WM load ' num2str(data.trialSetSize(thisTrial)) ')']); % Output of current trial iteration
@@ -333,10 +334,10 @@ for thisTrial = 1:experiment.nTrials
         thisTrialSequenceLetters(numLoc) = consonants_noX(thisTrialSequenceIdx(numLoc));
     end
     % Save sequence of letters of this trial in data
-    data.sequenceLetters{thisTrial} = thisTrialSequenceLetters;
+    data.stimuli{thisTrial} = thisTrialSequenceLetters;
 
     %% Central fixation interval (jittered 500 - 1500ms)
-    Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixationPosition, 2); % Draw fixation cross
+    Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixPos, 2); % Draw fixation cross
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('Flip', ptbWindow);
     if TRAINING == 1
@@ -365,12 +366,13 @@ for thisTrial = 1:experiment.nTrials
             num2str(thisTrialSequenceLetters(3)), '   ', num2str(thisTrialSequenceLetters(4)), ' ', ...
             num2str(thisTrialSequenceLetters(5)), ' ', num2str(thisTrialSequenceLetters(6))];
     end
-    stimulusLetters(thisTrial) = {thisTrialSequenceLetters(1:data.trialSetSize(thisTrial))};
+    data.stimulusLetters(thisTrial) = {thisTrialSequenceLetters(1:data.trialSetSize(thisTrial))};
     data.stimulusText(thisTrial) = {stimulusText};
 
     % Present stimuli
-    DrawFormattedText(ptbWindow, stimulusText, 'center', 'center', text.color); % Draw stimuli
-    Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixationPosition, 2); % Draw fixation cross
+    % DrawFormattedText(ptbWindow, stimulusText, 'center', 'center', text.color); % Draw stimuli in black
+    DrawFormattedText(ptbWindow, stimulusText, 'center', 'center', color.targetVal); % Draw stimuli in white
+    Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixPos, 2); % Draw fixation cross
     Screen('DrawDots', ptbWindow, backPos, backDiameter, backColor, [], 1);
     Screen('DrawDots', ptbWindow, stimPos, stimDiameter, stimColor, [], 1);
     Screen('Flip', ptbWindow);
@@ -408,7 +410,7 @@ for thisTrial = 1:experiment.nTrials
 
     %% Retention interval (2800ms)
     if data.retentionFixCross(thisTrial) == 1
-        Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixationPosition, 2); % Draw fixation cross
+        Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixPos, 2); % Draw fixation cross
     end
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('Flip', ptbWindow);
@@ -475,9 +477,9 @@ for thisTrial = 1:experiment.nTrials
     Screen('TextSize', ptbWindow, 20);
 
     % Save probe letter
-    data.probeLetter(thisTrial) = thisTrialprobeLetter;
+    data.probe(thisTrial) = thisTrialprobeLetter;
     % Save match/no match
-    data.trialMatch(thisTrial) = thisTrialMatch;
+    data.match(thisTrial) = thisTrialMatch;
 
     %% Get response (max 2000ms)
     getResponse = true;
@@ -491,7 +493,7 @@ for thisTrial = 1:experiment.nTrials
         if ~isempty(whichKey)
             if whichKey == KeyCodeA || whichKey == KeyCodeL
                 getResponse = false;
-                data.allResponses(thisTrial) = whichKey;
+                data.responses(thisTrial) = whichKey;
 
                 % Send triggers
                 if whichKey == KeyCodeA && YesIsL == true
@@ -516,7 +518,7 @@ for thisTrial = 1:experiment.nTrials
             else
 
         % Subject pressed other button than A or L
-                TRIGGER = badResponse;
+                TRIGGER = BAD_RESP;
                 if TRAINING == 1
                     Eyelink('Message', num2str(TRIGGER));
                     Eyelink('command', 'record_status_message "BAD RESPONSE"');
@@ -530,7 +532,7 @@ for thisTrial = 1:experiment.nTrials
 
         % No input by participant
         elseif isempty(whichKey)
-            data.allResponses(thisTrial) = 0;
+            data.responses(thisTrial) = 0;
         end
         if ~isempty(whichKey)
             if time < maxResponseTime
@@ -543,36 +545,36 @@ for thisTrial = 1:experiment.nTrials
     end
     % Get and save reaction time for each trial
     responseTime = time;
-    reactionTime(thisTrial) = responseTime - probePresentationTime;
+    data.reactionTime(thisTrial) = responseTime - probePresentationTime;
 
     %% Check if response was correct
     if YesIsL == 1       % L is YES, A is NO
-        if data.allResponses(thisTrial) == 0
-            data.allCorrect(thisTrial) = 0;
+        if data.responses(thisTrial) == 0
+            data.correct(thisTrial) = 0;
         elseif thisTrialMatch == 1     % Matched trial
-            data.allCorrect(thisTrial) = data.allResponses(thisTrial) == KeyCodeL;
+            data.correct(thisTrial) = data.responses(thisTrial) == KeyCodeL;
         elseif thisTrialMatch == 0     % Unmatched trial
-            data.allCorrect(thisTrial) = data.allResponses(thisTrial) == KeyCodeA;
+            data.correct(thisTrial) = data.responses(thisTrial) == KeyCodeA;
         end
     elseif YesIsL == 0   % L is NO, A is YES
-        if data.allResponses(thisTrial) == 0
-            data.allCorrect(thisTrial) = 0;
+        if data.responses(thisTrial) == 0
+            data.correct(thisTrial) = 0;
         elseif thisTrialMatch == 1     % Matched trial
-            data.allCorrect(thisTrial) = data.allResponses(thisTrial) == KeyCodeA;
+            data.correct(thisTrial) = data.responses(thisTrial) == KeyCodeA;
         elseif thisTrialMatch == 0     % Unmatched trial
-            data.allCorrect(thisTrial) = data.allResponses(thisTrial) == KeyCodeL;
+            data.correct(thisTrial) = data.responses(thisTrial) == KeyCodeL;
         end
     end
 
     %% Feedback
     % CW Feedback
-    if data.allCorrect(thisTrial) == 1
+    if data.correct(thisTrial) == 1
         feedbackText = 'Correct!';
-    elseif data.allCorrect(thisTrial) == 0 && data.allResponses(thisTrial) == 0
+    elseif data.correct(thisTrial) == 0 && data.responses(thisTrial) == 0
         feedbackText = 'NO RESPONSE';
-    elseif data.allCorrect(thisTrial) == 0 && badResponseFlag == false
+    elseif data.correct(thisTrial) == 0 && badResponseFlag == false
         feedbackText = 'Incorrect!';
-    elseif data.allCorrect(thisTrial) == 0 && badResponseFlag == true
+    elseif data.correct(thisTrial) == 0 && badResponseFlag == true
         feedbackText = ['Wrong button! \n\n' ...
             'Use only A or L.'];
     end
@@ -584,13 +586,13 @@ for thisTrial = 1:experiment.nTrials
         Screen('Flip',ptbWindow);
         WaitSecs(2);
     % Give feedback for wrong button presses (DOESNT WORK - GetResponse doesnt search for responses other than A & L)
-    elseif TRAINING == 0 && data.allCorrect(thisTrial) == 0 && badResponseFlag == true
+    elseif TRAINING == 0 && data.correct(thisTrial) == 0 && badResponseFlag == true
         DrawFormattedText(ptbWindow,feedbackText,'center','center',color.textVal);
         Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
         Screen('Flip',ptbWindow);
         WaitSecs(2);
     % Give feedback for no response (too slow)
-    elseif TRAINING == 0 && data.allCorrect(thisTrial) == 0 && data.allResponses(thisTrial) == 0
+    elseif TRAINING == 0 && data.correct(thisTrial) == 0 && data.responses(thisTrial) == 0
         feedbackText = 'TOO SLOW!';
         DrawFormattedText(ptbWindow,feedbackText,'center','center',color.textVal);
         Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
@@ -601,7 +603,7 @@ for thisTrial = 1:experiment.nTrials
     %% Dynamically compute accuracy for past 10 trials and remind participant if accuracy drops below threshhold of 60%
     responsesLastTrials = 0;
     if thisTrial >= 10
-        responsesLastTrials = data.allCorrect(thisTrial-9 : thisTrial);
+        responsesLastTrials = data.correct(thisTrial-9 : thisTrial);
         percentLastTrialsCorrect = sum(responsesLastTrials)*10;
         if percentLastTrialsCorrect < 60 && count5trials <= thisTrial-5
             count5trials = thisTrial;
@@ -618,8 +620,8 @@ for thisTrial = 1:experiment.nTrials
     end
 
     %% Trialf Info CW output
-    overall_accuracy = (sum(data.allCorrect(1:thisTrial))/thisTrial)*100;
-    disp(['Response to Trial ' num2str(thisTrial) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime(thisTrial)) 'ms)']);
+    overall_accuracy = (sum(data.correct(1:thisTrial))/thisTrial)*100;
+    disp(['Response to Trial ' num2str(thisTrial) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(data.reactionTime(thisTrial)) 'ms)']);
 
     %% Blank screen for resting interval (2000ms)
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
@@ -669,10 +671,8 @@ else
     sendtrigger(TASK_END,port,SITE,stayup);
 end
 
-% Count occurences of set sizes in trials
-data.SetSizeOccurences(1) = numel(find(data.trialSetSize == experiment.setSizes(1)));
-data.SetSizeOccurences(2) = numel(find(data.trialSetSize == experiment.setSizes(2)));
-data.SetSizeOccurences(3) = numel(find(data.trialSetSize == experiment.setSizes(3)));
+timing.endTime = time;
+timing.duration = timing.endTime - timing.startTime;
 
 %% Save data
 subjectID = num2str(subject.ID);
@@ -684,30 +684,26 @@ else
     fileName = [subjectID '_', TASK, '_block' num2str(BLOCK) '_task.mat'];
 end
 
-% Save data
+% Save data structure
 saves = struct;
 saves.data = data;
-saves.data.KeyCodeA = KeyCodeA;
-saves.data.KeyCodeL = KeyCodeL;
-saves.data.KeyBindingsYesIsL = YesIsL;
-saves.data.reactionTime = reactionTime;
-saves.data.stimulusLetters = stimulusLetters;
+saves.KeyCodeA = KeyCodeA;
+saves.KeyCodeL = KeyCodeL;
+saves.KeyBindingsYesIsL = YesIsL;
 saves.experiment = experiment;
-saves.screenWidth = screenWidth;
-saves.screenHeight = screenHeight;
-saves.screenCentreX = screenCentreX;
-saves.screenCentreY = screenCentreY;
+saves.screen.screenWidth = screenWidth;
+saves.screen.screenHeight = screenHeight;
+saves.screen.screenCentreX = screenCentreX;
+saves.screen.screenCentreY = screenCentreY;
 saves.startBlockText = startBlockText;
-saves.startExperimentTime = startExperimentTime;
 saves.startExperimentText = startExperimentText;
 saves.subjectID = subjectID;
 saves.subject = subject;
 saves.text = text;
 saves.timing = timing;
-saves.waitResponse = waitResponse;
 saves.flipInterval = flipInterval;
 
-% Save triggers
+%% Save triggers
 trigger = struct;
 trigger.MATCH = MATCH;
 trigger.NO_MATCH = NO_MATCH;
@@ -740,7 +736,7 @@ trigger.RETENTION4 = RETENTION4;
 trigger.RETENTION6 = RETENTION6;
 trigger.RESP_YES = RESP_YES;
 trigger.RESP_NO = RESP_NO;
-trigger.badResponse = badResponse;
+trigger.BAD_RESP = BAD_RESP;
 trigger.TASK_END = TASK_END;
 
 % Stop and close EEG and ET recordings
@@ -756,7 +752,7 @@ end
 
 %% Compute accuracy and report after each block (no additional cash for training task)
 if BLOCK == 0 
-    totalCorrect = sum(data.allCorrect);
+    totalCorrect = sum(data.correct);
     totalTrials = thisTrial;
     percentTotalCorrect = totalCorrect / totalTrials * 100;
  
@@ -769,7 +765,7 @@ if BLOCK == 0
     Screen('Flip',ptbWindow);
     WaitSecs(5);
 elseif BLOCK == 8
-    totalCorrect = sum(data.allCorrect);
+    totalCorrect = sum(data.correct);
     totalTrials = thisTrial;
     percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
     amountCHFextra(BLOCK) = percentTotalCorrect(BLOCK)*0.0125;
@@ -784,7 +780,7 @@ elseif BLOCK == 8
     Screen('Flip',ptbWindow);
     WaitSecs(5);
 elseif BLOCK > 0
-    totalCorrect = sum(data.allCorrect);
+    totalCorrect = sum(data.correct);
     totalTrials = thisTrial;
     percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
     amountCHFextra(BLOCK) = percentTotalCorrect(BLOCK)*0.0125;

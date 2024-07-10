@@ -215,11 +215,11 @@ fixCoords = [fixHorizontal; fixVertical];
 
 %% Create data structure for preallocating data
 data = struct;
-data.letterSequence = NaN; % Stimuli
-data.match(1:experiment.nTrials) = NaN; % Matching
-data.responses(1:experiment.nTrials) = NaN; % Button press response
-data.correct(1:experiment.nTrials) = NaN; % Correct answer
-data.stimulus(1:experiment.nTrials) = NaN; % Probe stimulus
+data.letterSequence = NaN; % S
+data.match(1:experiment.nTrials) = NaN;
+data.responses(1:experiment.nTrials) = NaN;
+data.correct(1:experiment.nTrials) = NaN;
+data.stimulus(1:experiment.nTrials) = NaN;
 data.reactionTime(1:experiment.nTrials) = NaN; % Reaction time 
 count5trials = NaN; % Feedback variable
 
@@ -312,6 +312,8 @@ end
 HideCursor(whichScreen);
 
 %% Experiment Loop %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+noFixation = 0;
+
 for trl = 1:experiment.nTrials
     % Display trial info in CW
     disp(['Start of Trial ' num2str(trl) ' in Block ' num2str(BLOCK) ' (' num2str(COND) '-back)']); % Output of current trial iteration
@@ -632,7 +634,7 @@ else
     fileName = [subjectID '_', TASK, '_block' num2str(BLOCK) '_' num2str(COND) 'back_task.mat'];
 end
 
-% Save data structure
+%% Save data
 saves = struct;
 saves.data = data;
 saves.spaceKeyCode = spaceKeyCode;

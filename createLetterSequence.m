@@ -15,7 +15,7 @@ end
 
 function letterSequence = generateLetterSequence(COND)
     % Create consonant sequence
-    consonants = char(setdiff('A':'Z', 'AEIOU'));
+    consonants = char(setdiff('A':'Z', 'AEIOUW')); % Exclude vowels and 'W'
     consonants102 = [consonants consonants consonants consonants(1:end-2)];
     randConsonants = consonants102(randperm(length(consonants102)));
 

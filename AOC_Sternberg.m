@@ -56,12 +56,12 @@ TASK_END = 90; % trigger for ET cutting
 if TRAINING == 1
     experiment.nTrials = 10;
 else
-    experiment.nTrials = 10%50;            % 8 blocks x 50 trials = 400 trials
+    experiment.nTrials = 50;            % 8 blocks x 50 trials = 400 trials
 end
 experiment.setSizes = [2, 4, 6];     % Number of items presented on the screen
 
 % Set up equipment parameters
-equipment.viewDist = 800;               % Viewing distance in millimetres
+equipment.viewDist = 680;               % Viewing distance in millimetres
 equipment.ppm = 3.6;                    % Pixels per millimetre !! NEEDS TO BE SET. USE THE MeasureDpi FUNCTION !!
 equipment.greyVal = .5;
 equipment.blackVal = 0;
@@ -70,20 +70,26 @@ equipment.gammaVals = [1 1 1];          % The gamma values for color calibration
 
 % Set up stimulus parameters Fixation
 stimulus.fixationOn = 1;                % Toggle fixation on (1) or off (0)
-stimulus.fixationSize_dva = .50;        % Size of fixation cross in degress of visual angle
-stimulus.fixationColor = 0;             % Color of fixation cross (1 = white)
+stimulus.fixationSize_dva = .5;         % Size of fixation cross in degress of visual angle
+stimulus.fixationColor = 1;             % Color of fixation cross (1 = white)
 stimulus.fixationLineWidth = 3;         % Line width of fixation cross
-stimulus.regionHeight_dva = 7.3;
-stimulus.regionWidth_dva = 4;
-stimulus.regionEccentricity_dva = 3;
+
+% Location
+stimulus.regionHeight_dva = 7.3;         % Height of the region
+stimulus.regionWidth_dva = 4;            % Width of the region
+stimulus.regionEccentricity_dva = 3;     % Eccentricity of regions from central fixation
+
+% Set up text parameters
+text.instructionFont = 'Menlo';         % Font of instruction text
+text.instructionPoints = 12;            % Size of instruction text (This if overwritten by )
+text.instructionStyle = 0;              % Styling of instruction text (0 = normal)
+text.instructionWrap = 80;              % Number of characters at which to wrap instruction text
 
 % Set up color parameters
-color.textVal = 0;                  % Color of text
-color.targetVal = 1;
+color.Black = 0;                      
+color.White = 1;
 
 %% Set up text parameters
-text.color = 0;                     % Color of text (0 = black)
-
 if TRAINING == 1
     loadingText = 'Loading training task...';
     startExperimentText = ['Training task. \n\n On each trial, you will be shown a number of letters in a row. \n\n' ...
@@ -129,7 +135,6 @@ startBlockText = 'Press any key to begin the next block.';
 timing.letterPresentation = 0.2;            % Duration of digit presentation
 timing.rest = 2;                            % Duration of blank resting interval
 timing.retentionInterval = 2.8;             % Duration of blank retention interval
-timing.startTime = time;
 
 %% Shuffle rng for random elements
 rng('default');
@@ -169,7 +174,7 @@ global ptb_drawformattedtext_disableClipping;       % Disable clipping of text
 ptb_drawformattedtext_disableClipping = 1;
 
 % Show loading text
-DrawFormattedText(ptbWindow,loadingText,'center','center',color.textVal);
+DrawFormattedText(ptbWindow,loadingText,'center','center',color.Black);
 Screen('Flip',ptbWindow);
 
 %% Retrieve response keys
@@ -204,7 +209,7 @@ fixCoords = [fixHorizontal; fixVertical];
 fixPos = [screenCentreX, screenCentreY];
 
 %% Define stimulus letter pool
-consonants_noX = char(setdiff('A':'Z', 'AEIOUX'));
+consonants = char(setdiff('A':'Z', 'AEIOUXW')); % Exclude vowels and 'X' and 'W'
 
 %% Create data structure for preallocating data
 data = struct;
@@ -241,7 +246,7 @@ data.setSizeOccurences(3) = numel(find(data.trialSetSize == experiment.setSizes(
 
 if TRAINING == 0
     % Show performance bonus incentive text
-    DrawFormattedText(ptbWindow,performanceBonusText,'center','center',color.textVal);
+    DrawFormattedText(ptbWindow,performanceBonusText,'center','center',color.Black);
     Screen('Flip',ptbWindow);
     disp('Participant is reading the performance bonus text');
     waitResponse = 1;
@@ -252,7 +257,7 @@ if TRAINING == 0
 end
 
 % Show task instruction text
-DrawFormattedText(ptbWindow,startExperimentText,'center','center',color.textVal);
+DrawFormattedText(ptbWindow,startExperimentText,'center','center',color.Black);
 startExperimentTime = Screen('Flip',ptbWindow);
 disp('Participant is reading the instructions');
 waitResponse = 1;
@@ -262,7 +267,7 @@ while waitResponse
 end
 
 % Show response instruction text
-DrawFormattedText(ptbWindow,responseInstructionText,'center','center',color.textVal);
+DrawFormattedText(ptbWindow,responseInstructionText,'center','center',color.Black);
 Screen('Flip',ptbWindow);
 disp('Participant is reading the response instructions');
 waitResponse = 1;
@@ -320,21 +325,20 @@ else
     sendtrigger(TRIGGER,port,SITE,stayup);
 end
 HideCursor(whichScreen);
+tic;
 
 %% Experiment Loop %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-for thisTrial = 1:experiment.nTrials
-    % Display trial info in CW
-    disp(['Start of Trial ' num2str(thisTrial) ' in Block ' num2str(BLOCK) ' (WM load ' num2str(data.trialSetSize(thisTrial)) ')']); % Output of current trial iteration
-
+noFixation = 0;
+for trl = 1:experiment.nTrials
     % Randomize letterSequence
-    lettersRand = randperm(length(consonants_noX));
-    thisTrialSequenceIdx = lettersRand(1:data.trialSetSize(thisTrial)); % Pick # of letters (# up to length of trialSetSize)
-    clear thisTrialSequenceLetters
-    for numLoc = 1:data.trialSetSize(thisTrial)
-        thisTrialSequenceLetters(numLoc) = consonants_noX(thisTrialSequenceIdx(numLoc));
+    lettersRand = randperm(length(consonants));
+    sequenceIdx = lettersRand(1:data.trialSetSize(trl)); % Pick # of letters (# up to length of trialSetSize)
+    clear sequenceLetters
+    for numLoc = 1:data.trialSetSize(trl)
+        sequenceLetters(numLoc) = consonants(sequenceIdx(numLoc));
     end
     % Save sequence of letters of this trial in data
-    data.stimuli{thisTrial} = thisTrialSequenceLetters;
+    data.stimuli{trl} = sequenceLetters;
 
     %% Central fixation interval (jittered 500 - 1500ms)
     Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixPos, 2); % Draw fixation cross
@@ -348,41 +352,42 @@ for thisTrial = 1:experiment.nTrials
         Eyelink('command', 'record_status_message "FIXATION"');
         sendtrigger(FIXATION,port,SITE,stayup);
     end
-    timing.cfi(thisTrial) = (randsample(500:1500, 1))/1000; % Duration of the jittered inter-trial interval
-    WaitSecs(timing.cfi(thisTrial));
+    timing.cfi(trl) = (randsample(500:1500, 1))/1000; % Duration of the jittered inter-trial interval
+    WaitSecs(timing.cfi(trl));
 
     %% Presentation of stimuli (200ms)
     % Increase size of stimuli
     Screen('TextSize', ptbWindow, 50);
     % Define stimulus
-    if data.trialSetSize(thisTrial) == experiment.setSizes(1)
-        stimulusText = ['X ', 'X ', num2str(thisTrialSequenceLetters(1)), '   ', ...
-            num2str(thisTrialSequenceLetters(2)), ' X', ' X'];
-    elseif data.trialSetSize(thisTrial) == experiment.setSizes(2)
-        stimulusText = ['X ', num2str(thisTrialSequenceLetters(1)), ' ', num2str(thisTrialSequenceLetters(2)), '   ', ...
-            num2str(thisTrialSequenceLetters(3)), ' ', num2str(thisTrialSequenceLetters(4)), ' X'];
-    elseif data.trialSetSize(thisTrial) == experiment.setSizes(3)
-        stimulusText = [num2str(thisTrialSequenceLetters(1)), ' ', num2str(thisTrialSequenceLetters(2)), ' ', ...
-            num2str(thisTrialSequenceLetters(3)), '   ', num2str(thisTrialSequenceLetters(4)), ' ', ...
-            num2str(thisTrialSequenceLetters(5)), ' ', num2str(thisTrialSequenceLetters(6))];
+    if data.trialSetSize(trl) == experiment.setSizes(1)
+        stimulusText = ['X ', 'X ', num2str(sequenceLetters(1)), '   ', ...
+            num2str(sequenceLetters(2)), ' X', ' X'];
+    elseif data.trialSetSize(trl) == experiment.setSizes(2)
+        stimulusText = ['X ', num2str(sequenceLetters(1)), ' ', num2str(sequenceLetters(2)), '   ', ...
+            num2str(sequenceLetters(3)), ' ', num2str(sequenceLetters(4)), ' X'];
+    elseif data.trialSetSize(trl) == experiment.setSizes(3)
+        stimulusText = [num2str(sequenceLetters(1)), ' ', num2str(sequenceLetters(2)), ' ', ...
+            num2str(sequenceLetters(3)), '   ', num2str(sequenceLetters(4)), ' ', ...
+            num2str(sequenceLetters(5)), ' ', num2str(sequenceLetters(6))];
     end
-    data.stimulusLetters(thisTrial) = {thisTrialSequenceLetters(1:data.trialSetSize(thisTrial))};
-    data.stimulusText(thisTrial) = {stimulusText};
+    data.stimulusLetters(trl) = {sequenceLetters(1:data.trialSetSize(trl))};
+    data.stimulusText(trl) = {stimulusText};
 
     % Present stimuli
-    % DrawFormattedText(ptbWindow, stimulusText, 'center', 'center', text.color); % Draw stimuli in black
-    DrawFormattedText(ptbWindow, stimulusText, 'center', 'center', color.targetVal); % Draw stimuli in white
+    % DrawFormattedText(ptbWindow, stimulusText, 'center', 'center', color.textVal); % Draw stimuli in black
+    DrawFormattedText(ptbWindow, stimulusText, 'center', 'center', color.White); % Draw stimuli in white
     Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixPos, 2); % Draw fixation cross
     Screen('DrawDots', ptbWindow, backPos, backDiameter, backColor, [], 1);
     Screen('DrawDots', ptbWindow, stimPos, stimDiameter, stimColor, [], 1);
     Screen('Flip', ptbWindow);
+    checkFixation;
 
     % Send triggers for Presentation
-    if data.trialSetSize(thisTrial) == experiment.setSizes(1)
+    if data.trialSetSize(trl) == experiment.setSizes(1)
         TRIGGER = PRESENTATION2;
-    elseif data.trialSetSize(thisTrial) == experiment.setSizes(2)
+    elseif data.trialSetSize(trl) == experiment.setSizes(2)
         TRIGGER = PRESENTATION4;
-    elseif data.trialSetSize(thisTrial) == experiment.setSizes(3)
+    elseif data.trialSetSize(trl) == experiment.setSizes(3)
         TRIGGER = PRESENTATION6;
     end
 
@@ -409,16 +414,18 @@ for thisTrial = 1:experiment.nTrials
     end
 
     %% Retention interval (2800ms)
-    if data.retentionFixCross(thisTrial) == 1
+    if data.retentionFixCross(trl) == 1
         Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixPos, 2); % Draw fixation cross
     end
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('Flip', ptbWindow);
-    if data.trialSetSize(thisTrial) == experiment.setSizes(1)
+    checkFixation;
+    noFixation
+    if data.trialSetSize(trl) == experiment.setSizes(1)
         TRIGGER = RETENTION2;
-    elseif data.trialSetSize(thisTrial) == experiment.setSizes(2)
+    elseif data.trialSetSize(trl) == experiment.setSizes(2)
         TRIGGER = RETENTION4;
-    elseif data.trialSetSize(thisTrial) == experiment.setSizes(3)
+    elseif data.trialSetSize(trl) == experiment.setSizes(3)
         TRIGGER = RETENTION6;
     end
 
@@ -438,28 +445,28 @@ for thisTrial = 1:experiment.nTrials
     Screen('TextSize', ptbWindow, 50);
     if chance == 1
         % Pick random matching probe stimulus from letterSequence
-        thisTrialprobeLetter = randsample(thisTrialSequenceLetters, 1);
+        probeLetter = randsample(sequenceLetters, 1);
         % Draw probe stimulus
-        DrawFormattedText(ptbWindow,[num2str(thisTrialprobeLetter)],'center','center',color.targetVal);
+        DrawFormattedText(ptbWindow,[num2str(probeLetter)],'center','center',color.White);
         Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
         Screen('DrawDots',ptbWindow, stimPos, stimDiameter, stimColor,[],1);
         Screen('Flip', ptbWindow);
-        thisTrialMatch = 1;
+        match = 1;
         TRIGGER = MATCH;
     else
         % Pick random NON-matching probe stimulus from letters
-        tmpAlphabet = consonants_noX;
-        for removeIdx = 1:data.trialSetSize(thisTrial)
-            tmpAlphabet = erase(tmpAlphabet, thisTrialSequenceLetters(removeIdx));
+        tmpAlphabet = consonants;
+        for removeIdx = 1:data.trialSetSize(trl)
+            tmpAlphabet = erase(tmpAlphabet, sequenceLetters(removeIdx));
         end
-        thisTrialNONSequenceLetters = tmpAlphabet;
-        thisTrialprobeLetter = randsample(thisTrialNONSequenceLetters, 1);
+        sequenceLetters_excluded = tmpAlphabet;
+        probeLetter = randsample(sequenceLetters_excluded, 1);
         % Draw probe stimulus
-        DrawFormattedText(ptbWindow,[num2str(thisTrialprobeLetter)],'center','center',color.targetVal);
+        DrawFormattedText(ptbWindow,[num2str(probeLetter)],'center','center',color.White);
         Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
         Screen('DrawDots',ptbWindow, stimPos, stimDiameter, stimColor,[],1);
         Screen('Flip', ptbWindow);
-        thisTrialMatch = 0;
+        match = 0;
         TRIGGER = NO_MATCH;
     end
     probePresentationTime = GetSecs;
@@ -477,9 +484,9 @@ for thisTrial = 1:experiment.nTrials
     Screen('TextSize', ptbWindow, 20);
 
     % Save probe letter
-    data.probe(thisTrial) = thisTrialprobeLetter;
+    data.probe(trl) = probeLetter;
     % Save match/no match
-    data.match(thisTrial) = thisTrialMatch;
+    data.match(trl) = match;
 
     %% Get response (max 2000ms)
     getResponse = true;
@@ -493,7 +500,7 @@ for thisTrial = 1:experiment.nTrials
         if ~isempty(whichKey)
             if whichKey == KeyCodeA || whichKey == KeyCodeL
                 getResponse = false;
-                data.responses(thisTrial) = whichKey;
+                data.responses(trl) = whichKey;
 
                 % Send triggers
                 if whichKey == KeyCodeA && YesIsL == true
@@ -532,7 +539,7 @@ for thisTrial = 1:experiment.nTrials
 
         % No input by participant
         elseif isempty(whichKey)
-            data.responses(thisTrial) = 0;
+            data.responses(trl) = 0;
         end
         if ~isempty(whichKey)
             if time < maxResponseTime
@@ -545,56 +552,56 @@ for thisTrial = 1:experiment.nTrials
     end
     % Get and save reaction time for each trial
     responseTime = time;
-    data.reactionTime(thisTrial) = responseTime - probePresentationTime;
+    data.reactionTime(trl) = responseTime - probePresentationTime;
 
     %% Check if response was correct
     if YesIsL == 1       % L is YES, A is NO
-        if data.responses(thisTrial) == 0
-            data.correct(thisTrial) = 0;
-        elseif thisTrialMatch == 1     % Matched trial
-            data.correct(thisTrial) = data.responses(thisTrial) == KeyCodeL;
-        elseif thisTrialMatch == 0     % Unmatched trial
-            data.correct(thisTrial) = data.responses(thisTrial) == KeyCodeA;
+        if data.responses(trl) == 0
+            data.correct(trl) = 0;
+        elseif match == 1     % Matched trial
+            data.correct(trl) = data.responses(trl) == KeyCodeL;
+        elseif match == 0     % Unmatched trial
+            data.correct(trl) = data.responses(trl) == KeyCodeA;
         end
     elseif YesIsL == 0   % L is NO, A is YES
-        if data.responses(thisTrial) == 0
-            data.correct(thisTrial) = 0;
-        elseif thisTrialMatch == 1     % Matched trial
-            data.correct(thisTrial) = data.responses(thisTrial) == KeyCodeA;
-        elseif thisTrialMatch == 0     % Unmatched trial
-            data.correct(thisTrial) = data.responses(thisTrial) == KeyCodeL;
+        if data.responses(trl) == 0
+            data.correct(trl) = 0;
+        elseif match == 1     % Matched trial
+            data.correct(trl) = data.responses(trl) == KeyCodeA;
+        elseif match == 0     % Unmatched trial
+            data.correct(trl) = data.responses(trl) == KeyCodeL;
         end
     end
 
     %% Feedback
     % CW Feedback
-    if data.correct(thisTrial) == 1
-        feedbackText = 'Correct!';
-    elseif data.correct(thisTrial) == 0 && data.responses(thisTrial) == 0
+    if data.correct(trl) == 1
+        feedbackText = 'Correct!  ';
+    elseif data.correct(trl) == 0 && data.responses(trl) == 0
         feedbackText = 'NO RESPONSE';
-    elseif data.correct(thisTrial) == 0 && badResponseFlag == false
+    elseif data.correct(trl) == 0 && badResponseFlag == false
         feedbackText = 'Incorrect!';
-    elseif data.correct(thisTrial) == 0 && badResponseFlag == true
+    elseif data.correct(trl) == 0 && badResponseFlag == true
         feedbackText = ['Wrong button! \n\n' ...
             'Use only A or L.'];
     end
 
     % Give feedback in training block
     if TRAINING == 1
-        DrawFormattedText(ptbWindow,feedbackText,'center','center',color.textVal);
+        DrawFormattedText(ptbWindow,feedbackText,'center','center',color.Black);
         Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
         Screen('Flip',ptbWindow);
         WaitSecs(2);
     % Give feedback for wrong button presses (DOESNT WORK - GetResponse doesnt search for responses other than A & L)
-    elseif TRAINING == 0 && data.correct(thisTrial) == 0 && badResponseFlag == true
-        DrawFormattedText(ptbWindow,feedbackText,'center','center',color.textVal);
+    elseif TRAINING == 0 && data.correct(trl) == 0 && badResponseFlag == true
+        DrawFormattedText(ptbWindow,feedbackText,'center','center',color.Black);
         Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
         Screen('Flip',ptbWindow);
         WaitSecs(2);
     % Give feedback for no response (too slow)
-    elseif TRAINING == 0 && data.correct(thisTrial) == 0 && data.responses(thisTrial) == 0
-        feedbackText = 'TOO SLOW!';
-        DrawFormattedText(ptbWindow,feedbackText,'center','center',color.textVal);
+    elseif TRAINING == 0 && data.correct(trl) == 0 && data.responses(trl) == 0
+        feedbackText = 'TOO SLOW! ';
+        DrawFormattedText(ptbWindow,feedbackText,'center','center',color.Black);
         Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
         Screen('Flip',ptbWindow);
         WaitSecs(2);
@@ -602,17 +609,17 @@ for thisTrial = 1:experiment.nTrials
 
     %% Dynamically compute accuracy for past 10 trials and remind participant if accuracy drops below threshhold of 60%
     responsesLastTrials = 0;
-    if thisTrial >= 10
-        responsesLastTrials = data.correct(thisTrial-9 : thisTrial);
+    if trl >= 10
+        responsesLastTrials = data.correct(trl-9 : trl);
         percentLastTrialsCorrect = sum(responsesLastTrials)*10;
-        if percentLastTrialsCorrect < 60 && count5trials <= thisTrial-5
-            count5trials = thisTrial;
+        if percentLastTrialsCorrect < 60 && count5trials <= trl-5
+            count5trials = trl;
             feedbackLastTrials = ['Your accuracy has declined!'...
                 '\n\n Of the last 10 trials ' num2str(percentLastTrialsCorrect) ' % were correct.' ...
                 '\n\n ' ...
                 '\n\n Please stay focused on the task!'];
             disp(['Participant was made aware of low accuracy in the last 10 trials: ' num2str(percentLastTrialsCorrect) ' %. [' num2str(responsesLastTrials) ']']);
-            DrawFormattedText(ptbWindow,feedbackLastTrials,'center','center',color.textVal);
+            DrawFormattedText(ptbWindow,feedbackLastTrials,'center','center',color.Black);
             Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
             Screen('Flip',ptbWindow);
             WaitSecs(3);
@@ -620,8 +627,9 @@ for thisTrial = 1:experiment.nTrials
     end
 
     %% Trialf Info CW output
-    overall_accuracy = (sum(data.correct(1:thisTrial))/thisTrial)*100;
-    disp(['Response to Trial ' num2str(thisTrial) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(data.reactionTime(thisTrial)) 'ms)']);
+    overall_accuracy = round((sum(data.correct(1:trl))/trl)*100);
+    reactionTime = num2str(round(data.reactionTime(trl), 2), '%.2f');
+    disp(['Response to Trial ' num2str(trl) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (WM load ' num2str(data.trialSetSize(trl)) ' | Acc: ' num2str(overall_accuracy) '% | RT: ' reactionTime 'ms)']);
 
     %% Blank screen for resting interval (2000ms)
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
@@ -671,8 +679,8 @@ else
     sendtrigger(TASK_END,port,SITE,stayup);
 end
 
-timing.endTime = time;
-timing.duration = timing.endTime - timing.startTime;
+% Record block duration
+timing.duration = toc;
 
 %% Save data
 subjectID = num2str(subject.ID);
@@ -753,20 +761,20 @@ end
 %% Compute accuracy and report after each block (no additional cash for training task)
 if BLOCK == 0 
     totalCorrect = sum(data.correct);
-    totalTrials = thisTrial;
+    totalTrials = trl;
     percentTotalCorrect = totalCorrect / totalTrials * 100;
  
     feedbackBlockText = ['Your accuracy in the training task was ' num2str(percentTotalCorrect) '%. '];
 
     format bank % Change format for display
-    DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.textVal);
+    DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.Black);
     disp(['Participant ' subjectID ' had an accuracy of ' num2str(percentTotalCorrect) ' % in the training task.'])
     format default % Change format back to default
     Screen('Flip',ptbWindow);
     WaitSecs(5);
 elseif BLOCK == 8
     totalCorrect = sum(data.correct);
-    totalTrials = thisTrial;
+    totalTrials = trl;
     percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
     amountCHFextra(BLOCK) = percentTotalCorrect(BLOCK)*0.0125;
 
@@ -774,14 +782,14 @@ elseif BLOCK == 8
         '\n\n Because of your accuracy you have been awarded an additional CHF ' num2str(amountCHFextra(BLOCK)) '.'];
 
     format bank % Change format for display
-    DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.textVal);
+    DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.Black);
     disp(['Participant ' subjectID ' was awarded CHF ' num2str(amountCHFextra(BLOCK)) ' for an accuracy of ' num2str(percentTotalCorrect(BLOCK)) ' % in Block ' num2str(BLOCK) '.'])
     format default % Change format back to default
     Screen('Flip',ptbWindow);
     WaitSecs(5);
 elseif BLOCK > 0
     totalCorrect = sum(data.correct);
-    totalTrials = thisTrial;
+    totalTrials = trl;
     percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
     amountCHFextra(BLOCK) = percentTotalCorrect(BLOCK)*0.0125;
 
@@ -790,7 +798,7 @@ elseif BLOCK > 0
         '\n\n Keep it up!'];
 
     format bank % Change format for display
-    DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.textVal);
+    DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.Black);
     disp(['Participant ' subjectID ' was awarded CHF ' num2str(amountCHFextra(BLOCK)) ' for an accuracy of ' num2str(percentTotalCorrect(BLOCK)) ' % in Block ' num2str(BLOCK) '.'])
     format default % Change format back to default
     Screen('Flip',ptbWindow);
@@ -812,7 +820,7 @@ else
     breakInstructionText = ['Break! Rest for a while... ' ...
         '\n\n Press any key to start the mandatory break of at least 15 seconds.'];
 end
-DrawFormattedText(ptbWindow,breakInstructionText,'center','center',color.textVal);
+DrawFormattedText(ptbWindow,breakInstructionText,'center','center',color.Black);
 Screen('Flip',ptbWindow);
 waitResponse = 1;
 while waitResponse
@@ -831,7 +839,7 @@ if TRAINING == 1 && percentTotalCorrect < 60
         ' \n\n ' ...
         ' \n\n You can repeat the training task afterwards.'];
 
-    DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.textVal);
+    DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.Black);
     Screen('Flip',ptbWindow);
 
     while timePassed < waitTime
@@ -841,7 +849,7 @@ if TRAINING == 1 && percentTotalCorrect < 60
         waitTimeText = ['Please wait for ' num2str(printTime) ' seconds...' ...
             ' \n\n ' ...
             ' \n\n You can repeat the training task afterwards.'];
-        DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.textVal);
+        DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.Black);
         Screen('Flip',ptbWindow);
     end
 elseif BLOCK >= 1 && BLOCK < 8
@@ -854,7 +862,7 @@ elseif BLOCK >= 1 && BLOCK < 8
         ' \n\n ' ...
         ' \n\n Block ' (num2str(BLOCK+1)) ' will start afterwards.'];
 
-    DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.textVal);
+    DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.Black);
     Screen('Flip',ptbWindow);
     disp('Break started');
 
@@ -865,7 +873,7 @@ elseif BLOCK >= 1 && BLOCK < 8
         waitTimeText = ['Please wait for ' num2str(printTime) ' seconds...' ...
             ' \n\n ' ...
             ' \n\n Block ' (num2str(BLOCK+1)) ' will start afterwards.'];
-        DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.textVal);
+        DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.Black);
         Screen('Flip',ptbWindow);
         disp(printTime);
     end
@@ -898,7 +906,7 @@ if BLOCK == 8
         ' \n\n Block 7: Participant ' num2str(subjectID) ' earned ' num2str(amountCHFextra(7)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(7)) '%.'...
         ' \n\n Block 8: Participant ' num2str(subjectID) ' earned ' num2str(amountCHFextra(8)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(8)) '%.'];
     disp(statsCW)
-    DrawFormattedText(ptbWindow,endTextCash,'center','center',color.textVal); % Display output for participant
+    DrawFormattedText(ptbWindow,endTextCash,'center','center',color.Black); % Display output for participant
     format default % Change format back to default
     Screen('Flip',ptbWindow);
     waitResponse = 1;

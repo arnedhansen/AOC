@@ -17,13 +17,13 @@ subjectID = str2num(subjectID);
 
 %% Load data file and extract cash amount
 try
-load([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_OCC_NBack_block6_1back_task.mat']);
-load([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_OCC_NBack_block6_2back_task.mat']);
-load([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_OCC_NBack_block6_3back_task.mat']);
+load([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_AOC_NBack_block6_1back_task.mat']);
+load([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_AOC_NBack_block6_2back_task.mat']);
+load([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_AOC_NBack_block6_3back_task.mat']);
 end
 cashNback = saves.amountCHFextraTotal;
 
-load([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_OCC_Sternberg_block8_task.mat']);
+load([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_AOC_Sternberg_block8_task.mat']);
 cashSternberg = saves.amountCHFextraTotal;
 
 cashTotal = cashNback + cashSternberg;

@@ -304,7 +304,7 @@ end
 if TRAINING == 1
     disp('Start of Training Block.');
 else
-    disp(['Start of Block ' num2str(BLOCK)]);
+    disp(['Start of Block ' num2str(BLOCK) ' (' num2str(COND) '-back)']);
 end
 HideCursor(whichScreen);
 tic;
@@ -518,7 +518,7 @@ for trl = 1:experiment.nTrials
 
     % Display (in-)correct response in CW
     if data.correct(trl) == 1 && trl > 1
-        feedbackText = 'Correct!';
+        feedbackText = 'Correct!  ';
     elseif data.correct(trl) == 0 && badResponseFlag == false && trl > 1
         feedbackText = 'Incorrect!';
     elseif data.correct(trl) == 0 && badResponseFlag == true && trl > 1
@@ -543,7 +543,7 @@ for trl = 1:experiment.nTrials
         % Get 10 last trials, but ignore last data point
         responsesLastTrials = data.correct(end-10 : end-1);
         percentLastTrialsCorrect = (sum(responsesLastTrials)/length(responsesLastTrials))*100;
-        if percentLastTrialsCorrect < 60 && count5trials <= trl-5
+        if percentLastTrialsCorrect < 75 && count5trials <= trl-5
             count5trials = trl;
             feedbackLastTrials = ['Your accuracy has declined!'...
                 '\n\n Of the last 10 trials ' num2str(percentLastTrialsCorrect) ' % were correct.' ...
@@ -745,7 +745,7 @@ elseif COND == 1
         '\n\n Keep it up!'];
 
     DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.Black);
-    disp(['Participant ' subjectID ' was awarded CHF ' num2str(amountCHFextra(BLOCK)) ' for an accuracy of ' num2str(percentTotalCorrect(BLOCK)) ' % in Block ' num2str(BLOCK) '.'])
+    disp(['Participant ' subjectID ' was awarded CHF ' num2str(amountCHFextra(BLOCK), '%.2f') ' for an accuracy of ' num2str(round(percentTotalCorrect(BLOCK))) ' % in Block ' num2str(BLOCK) '.'])
     format default % Change format back to default
     Screen('Flip',ptbWindow);
     WaitSecs(5);
@@ -765,7 +765,7 @@ elseif COND > 1
         '\n\n Because of your accuracy you have been awarded an additional ' num2str(amountCHFextra(BLOCK)) ' CHF.' ...
         '\n\n Keep it up!'];
     DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.Black);
-    disp(['Participant ' subjectID ' was awarded CHF ' num2str(amountCHFextra(BLOCK)) ' for an accuracy of ' num2str(percentTotalCorrect(BLOCK)) ' % in Block ' num2str(BLOCK) '.'])
+    disp(['Participant ' subjectID ' was awarded CHF ' num2str(amountCHFextra(BLOCK), '%.2f') ' for an accuracy of ' num2str(round(percentTotalCorrect(BLOCK))) ' % in Block ' num2str(BLOCK) '.'])
     format default % Change format back to default
     Screen('Flip',ptbWindow);
     WaitSecs(5);
@@ -794,7 +794,7 @@ while waitResponse
     waitResponse = 0;
 end
 
-%% Wait at least 15 Seconds between Blocks (only after Block 1 has finished, not after Block 2)
+%% Wait at least 15 Seconds between Blocks (only after Block 1 has finished, not after Block 6)
 if TRAINING == 1 && percentTotalCorrect < 60
     waitTime = 15;
     intervalTime = 1;
@@ -843,7 +843,7 @@ elseif BLOCK == 1 && TRAINING == 1
         Screen('Flip',ptbWindow);
         disp(printTime);
     end
-elseif BLOCK > 1 && TRAINING == 0
+elseif BLOCK > 1 && TRAINING == 0 && BLOCK < 6
     waitTime = 15;
     intervalTime = 1;
     timePassed = 0;
@@ -878,24 +878,17 @@ if BLOCK == 6
     endTextCash = ['Well done! You have completed the task.' ...
         ' \n\n Because of your accuracy you have been awarded an additional ' num2str(amountCHFextraTotal) ' CHF in total.' ...
         ' \n\n ' ...
-        ' \n\n Block 1: ' num2str(percentTotalCorrect(1)) ' % accuracy earned you ' num2str(amountCHFextra(1)) ' CHF.' ...
-        ' \n\n Block 2: ' num2str(percentTotalCorrect(2)) ' % accuracy earned you ' num2str(amountCHFextra(2)) ' CHF.' ...
-        ' \n\n Block 3: ' num2str(percentTotalCorrect(3)) ' % accuracy earned you ' num2str(amountCHFextra(3)) ' CHF.' ...
-        ' \n\n Block 4: ' num2str(percentTotalCorrect(4)) ' % accuracy earned you ' num2str(amountCHFextra(4)) ' CHF.' ...
-        ' \n\n Block 5: ' num2str(percentTotalCorrect(5)) ' % accuracy earned you ' num2str(amountCHFextra(5)) ' CHF.' ...
-        ' \n\n Block 6: ' num2str(percentTotalCorrect(6)) ' % accuracy earned you ' num2str(amountCHFextra(6)) ' CHF.' ...
+        ' \n\n Block 1: ' num2str(round(percentTotalCorrect(1))) ' % accuracy earned you ' num2str(amountCHFextra(1), '%.2f') ' CHF.' ...
+        ' \n\n Block 2: ' num2str(round(percentTotalCorrect(2))) ' % accuracy earned you ' num2str(amountCHFextra(2), '%.2f') ' CHF.' ...
+        ' \n\n Block 3: ' num2str(round(percentTotalCorrect(3))) ' % accuracy earned you ' num2str(amountCHFextra(3), '%.2f') ' CHF.' ...
+        ' \n\n Block 4: ' num2str(round(percentTotalCorrect(4))) ' % accuracy earned you ' num2str(amountCHFextra(4), '%.2f') ' CHF.' ...
+        ' \n\n Block 5: ' num2str(round(percentTotalCorrect(5))) ' % accuracy earned you ' num2str(amountCHFextra(5), '%.2f') ' CHF.' ...
+        ' \n\n Block 6: ' num2str(round(percentTotalCorrect(6))) ' % accuracy earned you ' num2str(amountCHFextra(6), '%.2f') ' CHF.' ...
         ' \n\n ' ...
         ' \n\n ' ...
         ' \n\n Press any key to end the task.'];
     DrawFormattedText(ptbWindow,endTextCash,'center','center',color.Black); % Display output for participant
     disp(['End of Block ' num2str(BLOCK) '. Participant ' num2str(subjectID) ' has earned CHF ' num2str(amountCHFextraTotal) ' extra in total.']);
-    statsCW = ['Block 1: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(1)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(1)) '%' ...
-        ' \n\n Block 2: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(2)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(2)) '%' ...
-        ' \n\n Block 3: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(3)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(3)) '%' ...
-        ' \n\n Block 4: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(4)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(4)) '%' ...
-        ' \n\n Block 5: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(5)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(5)) '%' ...
-        ' \n\n Block 6: Participant' num2str(subjectID) ' earned ' num2str(amountCHFextra(6)) ' CHF for an accuracy of ' num2str(percentTotalCorrect(6)) '%'];
-    disp(statsCW)
     format default % Change format back to default
     Screen('Flip',ptbWindow);
     waitResponse = 1;

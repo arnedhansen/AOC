@@ -113,12 +113,17 @@ if strcmp(taskOrder, 'SternbergNBack')
     blockCount = 6;
     start = 1;
     for i = blockCount:-1:1
-        if isfile([DATA_PATH, '/', num2str(subjectID), '/', [num2str(subjectID), '_', TASK, '_block', num2str(i), '_task.mat']])
-            start = i + 1;
+        for condition = 1:3
+            if isfile([DATA_PATH, '/', num2str(subjectID), '/', [num2str(subjectID), '_', TASK, '_block', num2str(i), '_', num2str(condition), 'back_task.mat']])
+                start = i + 1;
+                break;
+            end
+        end
+        if start ~= 1
             break;
         end
     end
-    
+
     for BLOCK = start:blockCount
         disp([TASK, ' STARTING...']);
         COND = nback_condition(BLOCK);
@@ -153,8 +158,13 @@ else
     blockCount = 6;
     start = 1;
     for i = blockCount:-1:1
-        if isfile([DATA_PATH, '/', num2str(subjectID), '/', [num2str(subjectID), '_', TASK, '_block', num2str(i), '_task.mat']])
-            start = i + 1;
+        for condition = 1:3
+            if isfile([DATA_PATH, '/', num2str(subjectID), '/', [num2str(subjectID), '_', TASK, '_block', num2str(i), '_', num2str(condition), 'back_task.mat']])
+                start = i + 1;
+                break;
+            end
+        end
+        if start ~= 1
             break;
         end
     end
@@ -209,4 +219,3 @@ ListenChar(0);
 
 %% Display total reward
 cash;
-

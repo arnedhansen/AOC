@@ -216,7 +216,8 @@ data.match(1:experiment.nTrials) = NaN; % Matching
 data.responses(1:experiment.nTrials) = NaN; % Button press response
 data.correct(1:experiment.nTrials) = NaN; % Correct answer
 data.stimulus(1:experiment.nTrials) = NaN; % Probe stimulus
-data.reactionTime(1:experiment.nTrials) = NaN; % Reaction time 
+data.reactionTime(1:experiment.nTrials) = NaN; % Reaction time
+data.fixation(1:experiment.nTrials) = NaN; % Reaction time 
 count5trials = NaN; % Feedback variable
 
 %% Define letterSequence depending on block iteration
@@ -581,7 +582,10 @@ for trl = 1:experiment.nTrials
         Screen('Flip', ptbWindow);
         disp('FIXATION REMINDER')
         WaitSecs(3);
+        data.fixation(trl) = 0;
         Screen('TextSize', ptbWindow, 20);
+    else
+        data.fixation(trl) = 1;
     end
 
     %% Trialf Info CW output

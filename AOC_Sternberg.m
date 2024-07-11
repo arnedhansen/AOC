@@ -21,6 +21,7 @@ MATCH = 4; % trigger for probe stimulus
 NO_MATCH = 5; % trigger for probe stimulus
 TASK_START = 10; % trigger for ET cutting
 FIXATION = 15; % trigger for fixation cross
+FIX_RETENTION = 16; % trigger for fixation cross
 PRESENTATION2 = 22; % trigger for letter presentation
 PRESENTATION4 = 24; % trigger for letter presentation
 PRESENTATION6 = 26; % trigger for letter presentation
@@ -220,6 +221,7 @@ data.match(1, experiment.nTrials) = NaN;
 data.responses(1, experiment.nTrials) = NaN;
 data.correct(1, experiment.nTrials) = NaN;
 data.retentionFixCross = randi([0, 1], 1, experiment.nTrials);
+data.fixation(1, experiment.nTrials) = NaN;
 data.reactionTime(1:experiment.nTrials) = NaN;
 count5trials = NaN;
 
@@ -417,6 +419,14 @@ for trl = 1:experiment.nTrials
     %% Retention interval (2800ms)
     if data.retentionFixCross(trl) == 1
         Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixPos, 2); % Draw fixation cross
+        if TRAINING == 1
+        Eyelink('Message', num2str(FIX_RETENTION));
+        Eyelink('command', 'record_status_message "FIXATION"');
+        else
+        Eyelink('Message', num2str(FIX_RETENTION));
+        Eyelink('command', 'record_status_message "FIXATION"');
+        sendtrigger(FIX_RETENTION,port,SITE,stayup);
+        end
     end
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('Flip', ptbWindow);
@@ -631,7 +641,10 @@ for trl = 1:experiment.nTrials
         Screen('Flip', ptbWindow);
         disp('FIXATION REMINDER')
         WaitSecs(3);
+        data.fixation(trl) = 0;
         Screen('TextSize', ptbWindow, 20);
+    else
+        data.fixation(trl) = 1;
     end
 
     %% Trial Info CW output
@@ -724,6 +737,7 @@ trigger = struct;
 trigger.MATCH = MATCH;
 trigger.NO_MATCH = NO_MATCH;
 trigger.FIXATION = FIXATION;
+trigger.FIX_RETENTION = FIX_RETENTION;
 trigger.TASK_START = TASK_START;
 trigger.PRESENTATION2 = PRESENTATION2;
 trigger.PRESENTATION4 = PRESENTATION4;

@@ -1,7 +1,7 @@
 function noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, screenCentreY)
     numSamples = 250; % 1 second 
     fixThresh = numSamples * 0.75; % 80% threshold
-    distOK = 45 + 45*0.5; % about 1 degree from the center (+ 1 deg of ET error)
+    distOK = 45 + 45*0.5; % about 1 degree from the center (+ 0.5 deg of ET error)
 
     % Initialize noFixation counter
     noFixation = 0;

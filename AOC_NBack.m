@@ -20,18 +20,18 @@ calibrateET
 HideCursor(whichScreen);
 
 %% Define triggers
-TASK_START = 10; % Trigger for start of task
 MATCH = 4; % trigger for matching condition
 NO_MATCH = 5; % trigger for non-matching condition
+TASK_START = 10; % Trigger for start of task
+COND1 = 11; % Trigger for block with 1-back
+COND2 = 12; % Trigger for block with 2-back
+COND3 = 13; % Trigger for block with 3-back
 FIXATION = 15; % trigger for fixation cross
 PRESENTATION0 = 19; % trigger for letter presentation (training task; 1-back)
 PRESENTATION1 = 21; % trigger for letter presentation (1-back)
 PRESENTATION2 = 22; % trigger for letter presentation (2-back)
 PRESENTATION3 = 23; % trigger for letter presentation (3-back)
 STIMOFF = 28; % trigger for change of letter to cfi
-COND1 = 31; % Trigger for block with 1-back
-COND2 = 32; % Trigger for block with 2-back
-COND3 = 33; % Trigger for block with 3-back
 BLOCK0 = 60; % trigger for start of training block
 BLOCK1 = 61; % trigger for start of block 1
 BLOCK2 = 62; % trigger for start of block 2

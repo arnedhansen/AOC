@@ -24,10 +24,6 @@ try
     HideCursor(whichScreen); % Hide the cursor during calibration
     Eyelink('StartSetup', 1); % Start the setup and calibration procedure
     disp('Calibration done');
-    calData = Eyelink('CalMessage'); % Store calibration data
-    valData = Eyelink('CalResult'); % Store validation data
-    print(calData)
-    print(valData)
     
     % Close any open audio devices again to ensure clean state
     try

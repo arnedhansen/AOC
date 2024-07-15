@@ -4,7 +4,7 @@
 % - Sternberg training (10 trials)
 % - Sternberg actual task (8 blocks x 50 trials)
 % - N-back training (10 trials)
-% - N-back task (3 blocks x 100 trials)
+% - N-back task (6 blocks x 100 trials)
 
 %% General settings, screens and paths
 
@@ -43,9 +43,12 @@ else
 end
 
 % Shuffle n-back conditions
-rng(123); % Set the seed for reproducibility
+rng(123);
 nback_condition = repmat(1:3, 1, 2);
 nback_condition = nback_condition(randperm(length(nback_condition)));
+while nback_condition(1) == 3 % Ensure that the first block is not a 3-back
+    nback_condition = nback_condition(randperm(length(nback_condition)));
+end
 
 %% Execute STERNBERG - NBACK %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if strcmp(taskOrder, 'SternbergNBack')

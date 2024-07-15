@@ -328,6 +328,7 @@ else
 end
 HideCursor(whichScreen);
 tic;
+timing.startTime =  datestr(now, 'dd/mm/yy-HH:MM');
 
 %% Experiment Loop %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 for trl = 1:experiment.nTrials
@@ -633,6 +634,7 @@ for trl = 1:experiment.nTrials
     end
 
     %% Fixation reminder
+    noFixation = 0;
     if noFixation > 0
         Screen('TextSize', ptbWindow, 30);
         fixText = 'ALWAYS LOOK AT THE CENTER OF THE SCREEN!';
@@ -650,7 +652,11 @@ for trl = 1:experiment.nTrials
     %% Trial Info CW output
     overall_accuracy = round((sum(data.correct(1:trl))/trl)*100);
     reactionTime = num2str(round(data.reactionTime(trl), 2), '%.2f');
-    disp(['Response to Trial ' num2str(trl) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (WM load ' num2str(data.trialSetSize(trl)) ' | Acc: ' num2str(overall_accuracy) '% | RT: ' reactionTime 's)']);
+    if trl < 10
+        disp(['Response to Trial ' num2str(trl) '/' num2str(experiment.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText '  (WM load ' num2str(data.trialSetSize(trl)) ' | Acc: ' num2str(overall_accuracy) '% | RT: ' reactionTime 's)']);
+    else
+        disp(['Response to Trial ' num2str(trl) '/' num2str(experiment.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (WM load ' num2str(data.trialSetSize(trl)) ' | Acc: ' num2str(overall_accuracy) '% | RT: ' reactionTime 's)']);
+    end
 
     %% Blank screen for resting interval (2000ms)
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
@@ -702,6 +708,7 @@ end
 
 % Record block duration
 timing.duration = toc;
+timing.endTime =  datestr(now, 'dd/mm/yy-HH:MM');
 
 %% Save data
 subjectID = num2str(subject.ID);

@@ -18,7 +18,7 @@ try
     % Change Tracker Settings 
     % Setting what data to get from Tracker (Based on Manual v 1.0.6)
     fprintf('Setting up the Tracker \n' );
-    Eyelink('Command', 'link_sample_data = LEFT,RIGHT,GAZE,AREA');
+    Eyelink('Command', 'link_sample_data = LEFT,RIGHT,GAZE,HREF,AREA');
     % Possible Commands:
     %
     % LEFT,RIGHT - Sets the intended tracking eye (usually include both LEFT and RIGHT)

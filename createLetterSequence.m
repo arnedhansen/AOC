@@ -16,15 +16,15 @@ end
 function letterSequence = generateLetterSequence(COND)
     % Create consonant sequence
     consonants = char(setdiff('A':'Z', 'AEIOUW')); % Exclude vowels and 'W'
-    consonants102 = [consonants consonants consonants consonants(1:end-2)];
-    randConsonants = consonants102(randperm(length(consonants102)));
+    consonants = [consonants consonants consonants consonants consonants consonants(1:5)];
+    randConsonants = consonants(randperm(length(consonants)));
 
     % Ensure around 33% matching pairs based on COND
     letterSequence = createMatchingPairs(randConsonants, COND);
 
     % Check pseudorandom match probability and letter grouping
     while ~checkPRMP(letterSequence, COND) || ~checkLetterGrouping(letterSequence)
-        randConsonants = consonants102(randperm(length(consonants102)));
+        randConsonants = consonants(randperm(length(consonants)));
         letterSequence = createMatchingPairs(randConsonants, COND);
     end
 end

@@ -21,16 +21,13 @@ try
     Eyelink('Command', 'set_idle_mode'); % Set the tracker to idle mode
     
     % Run Calibration
-    % Calibration and Validation need to be accessed over the Stim computer
-    % In the end, ESC must be pressed to continue
     HideCursor(whichScreen); % Hide the cursor during calibration
-    %ListenChar(2); % Optional: suppress keyboard output to MATLAB command window
     Eyelink('StartSetup', 1); % Start the setup and calibration procedure
     disp('Calibration done');
-    
-    % Uncomment these lines if you need to show the cursor and reset the mouse position
-    % ShowCursor(whichScreen);
-    % SetMouse(400, 300, 1);
+    calData = Eyelink('CalMessage'); % Store calibration data
+    valData = Eyelink('CalResult'); % Store validation data
+    print(calData)
+    print(valData)
     
     % Close any open audio devices again to ensure clean state
     try

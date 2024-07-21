@@ -16,7 +16,7 @@ end
 function letterSequence = generateLetterSequence(COND)
     % Create consonant sequence
     consonants = char(setdiff('A':'Z', 'AEIOUW')); % Exclude vowels and 'W'
-    consonants = [consonants consonants consonants consonants consonants consonants(1:5)];
+    consonants = [consonants consonants consonants consonants];
     randConsonants = consonants(randperm(length(consonants)));
 
     % Ensure around 33% matching pairs based on COND

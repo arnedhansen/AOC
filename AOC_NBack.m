@@ -56,7 +56,7 @@ TASK_END = 90; % Trigger for end of task
 if TRAINING == 1
     experiment.nTrials = 12;
 else
-    experiment.nTrials = 100;           % 6 blocks x 100 trials = 600 trials
+    experiment.nTrials = 75;           % 6 blocks x 75 trials = 450 trials
 end
 
 % Set up equipment parameters
@@ -353,11 +353,11 @@ for trl = 1:experiment.nTrials
     % Send triggers for Presentation
     if TRAINING == 1
         TRIGGER = PRESENTATION0;
-    elseif BLOCK == 1
+    elseif COND == 1
         TRIGGER = PRESENTATION1;
-    elseif BLOCK == 2
+    elseif COND == 2
         TRIGGER = PRESENTATION2;
-    elseif BLOCK == 3
+    elseif COND == 3
         TRIGGER = PRESENTATION3;
     end
 

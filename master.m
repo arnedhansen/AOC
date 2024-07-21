@@ -2,7 +2,7 @@
 
 % - Resting EEG
 % - Sternberg training (10 trials)
-% - Sternberg actual task (8 blocks x 50 trials)
+% - Sternberg actual task (6 blocks x 50 trials)
 % - N-back training (10 trials)
 % - N-back task (6 blocks x 100 trials)
 
@@ -30,9 +30,9 @@ dialogID;
 ListenChar(2);
 
 %% Resting state EEG
-% if ~isfile([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_Resting.mat'])
-%     Resting_EEG;
-% end
+if ~isfile([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_Resting.mat'])
+    Resting_EEG;
+end
 
 %% Randomize order of Sternberg Task and NBack Task
 % Use subject ID for assignment of pseudorandom task Order (Sternberg & N-back)
@@ -74,7 +74,7 @@ if strcmp(taskOrder, 'SternbergNBack')
     
     % Actual task
     TRAINING = 0;
-    blockCount = 8;
+    blockCount = 6;
     start = 1;
     for i = blockCount:-1:1
         if isfile([DATA_PATH, '/', num2str(subjectID), '/', [num2str(subjectID), '_', TASK, '_block', num2str(i), '_task.mat']])
@@ -202,7 +202,7 @@ else
     
     % Actual task
     TRAINING = 0;
-    blockCount = 8;
+    blockCount = 6;
     start = 1;
     for i = blockCount:-1:1
         if isfile([DATA_PATH, '/', num2str(subjectID), '/', [num2str(subjectID), '_', TASK, '_block', num2str(i), '_task.mat']])

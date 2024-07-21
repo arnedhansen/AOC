@@ -33,8 +33,6 @@ BLOCK3 = 33; % trigger for start of block 3
 BLOCK4 = 34; % trigger for start of block 4
 BLOCK5 = 35; % trigger for start of block 5
 BLOCK6 = 36; % trigger for start of block 6
-BLOCK7 = 37; % trigger for start of block 7
-BLOCK8 = 38; % trigger for start of block 8
 ENDBLOCK0 = 39; % trigger for end training block
 ENDBLOCK1 = 41; % trigger for end of block 1
 ENDBLOCK2 = 42; % trigger for end of block 2
@@ -42,8 +40,6 @@ ENDBLOCK3 = 43; % trigger for end of block 3
 ENDBLOCK4 = 44; % trigger for end of block 4
 ENDBLOCK5 = 45; % trigger for end of block 5
 ENDBLOCK6 = 46; % trigger for end of block 6
-ENDBLOCK7 = 47; % trigger for end of block 7
-ENDBLOCK8 = 48; % trigger for end of block 8
 RETENTION2 = 52; % trigger for retention (setSize = 2)
 RETENTION4 = 54; % trigger for retention (setSize = 4)
 RETENTION6 = 56; % trigger for retention (setSize = 6)
@@ -57,7 +53,7 @@ TASK_END = 90; % trigger for ET cutting
 if TRAINING == 1
     experiment.nTrials = 10;
 else
-    experiment.nTrials = 50;            % 8 blocks x 50 trials = 400 trials
+    experiment.nTrials = 50;            % 6 blocks x 50 trials = 300 trials
 end
 experiment.setSizes = [2, 4, 6];     % Number of items presented on the screen
 
@@ -121,7 +117,7 @@ else
             'Press any key to continue.'];
     else
         loadingText = 'Loading actual task...';
-        startExperimentText = ['Block ' num2str(BLOCK) ' / 8 \n\n' ...
+        startExperimentText = ['Block ' num2str(BLOCK) ' / 6 \n\n' ...
             'Press any key to continue.'];
     end
 end
@@ -220,7 +216,6 @@ data.probe(1, experiment.nTrials) = NaN;
 data.match(1, experiment.nTrials) = NaN;
 data.responses(1, experiment.nTrials) = NaN;
 data.correct(1, experiment.nTrials) = NaN;
-data.retentionFixCross = randi([0, 1], 1, experiment.nTrials);
 data.fixation(1, experiment.nTrials) = NaN;
 data.reactionTime(1:experiment.nTrials) = NaN;
 count5trials = NaN;
@@ -304,10 +299,6 @@ elseif BLOCK == 5
     TRIGGER = BLOCK5;
 elseif BLOCK == 6
     TRIGGER = BLOCK6;
-elseif BLOCK == 7
-    TRIGGER = BLOCK7;
-elseif BLOCK == 8
-    TRIGGER = BLOCK8;
 else
     TRIGGER = BLOCK0;
 end
@@ -418,17 +409,7 @@ for trl = 1:experiment.nTrials
     end
 
     %% Retention interval (2800ms)
-    if data.retentionFixCross(trl) == 1
-        Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixPos, 2); % Draw fixation cross
-        if TRAINING == 1
-        Eyelink('Message', num2str(FIX_RETENTION));
-        Eyelink('command', 'record_status_message "FIXATION"');
-        else
-        Eyelink('Message', num2str(FIX_RETENTION));
-        Eyelink('command', 'record_status_message "FIXATION"');
-        sendtrigger(FIX_RETENTION,port,SITE,stayup);
-        end
-    end
+    Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixPos, 2); % Draw fixation cross
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('Flip', ptbWindow);
 
@@ -677,10 +658,6 @@ elseif BLOCK == 5
     TRIGGER = ENDBLOCK5;
 elseif BLOCK == 6
     TRIGGER = ENDBLOCK6;
-elseif BLOCK == 7
-    TRIGGER = ENDBLOCK7;
-elseif BLOCK == 8
-    TRIGGER = ENDBLOCK8;
 else
     TRIGGER = ENDBLOCK0;
 end
@@ -757,8 +734,6 @@ trigger.BLOCK3 = BLOCK3;
 trigger.BLOCK4 = BLOCK4;
 trigger.BLOCK5 = BLOCK5;
 trigger.BLOCK6 = BLOCK6;
-trigger.BLOCK7 = BLOCK7;
-trigger.BLOCK8 = BLOCK8;
 trigger.ENDBLOCK0 = ENDBLOCK0;
 trigger.ENDBLOCK1 = ENDBLOCK1;
 trigger.ENDBLOCK2 = ENDBLOCK2;
@@ -766,8 +741,6 @@ trigger.ENDBLOCK3 = ENDBLOCK3;
 trigger.ENDBLOCK4 = ENDBLOCK4;
 trigger.ENDBLOCK5 = ENDBLOCK5;
 trigger.ENDBLOCK6 = ENDBLOCK6;
-trigger.ENDBLOCK7 = ENDBLOCK7;
-trigger.ENDBLOCK8 = ENDBLOCK8;
 trigger.RETENTION2 = RETENTION2;
 trigger.RETENTION4 = RETENTION4;
 trigger.RETENTION6 = RETENTION6;
@@ -801,7 +774,7 @@ if BLOCK == 0
     format default % Change format back to default
     Screen('Flip',ptbWindow);
     WaitSecs(5);
-elseif BLOCK == 8
+elseif BLOCK == 6
     totalCorrect = sum(data.correct);
     totalTrials = trl;
     percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
@@ -842,7 +815,7 @@ if TRAINING == 1
         breakInstructionText = ['Score too low! ' num2str(percentTotalCorrect) ' % correct. ' ...
             '\n\n Press any key to repeat the training task.'];
     end
-elseif BLOCK == 8
+elseif BLOCK == 6
     breakInstructionText = ['End of the Task! ' ...
         '\n\n Press any key to view your stats.'];
 else
@@ -857,7 +830,7 @@ while waitResponse
     waitResponse = 0;
 end
 
-%% Wait at least 15 Seconds between Blocks (only after Block 1 has finished, not after Block 8)
+%% Wait at least 15 Seconds between Blocks (only after Block 1 has finished, not after Block 6)
 if TRAINING == 1 && percentTotalCorrect < 60
     waitTime = 15;
     intervalTime = 1;
@@ -881,7 +854,7 @@ if TRAINING == 1 && percentTotalCorrect < 60
         DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.Black);
         Screen('Flip',ptbWindow);
     end
-elseif BLOCK >= 1 && BLOCK < 8
+elseif BLOCK >= 1 && BLOCK < 6
     waitTime = 15;
     intervalTime = 1;
     timePassed = 0;
@@ -909,7 +882,7 @@ elseif BLOCK >= 1 && BLOCK < 8
 end
 
 %% Display total amount
-if BLOCK == 8
+if BLOCK == 6
     amountCHFextraTotal = sum(amountCHFextra);
     saves.amountCHFextraTotal = amountCHFextraTotal;
     endTextCash = ['Well done! You have completed the task.' ...
@@ -921,8 +894,6 @@ if BLOCK == 8
         ' \n\n Block 4: ' num2str(round(percentTotalCorrect(4))) ' % accuracy earned you ' num2str(amountCHFextra(4), '%.2f') ' CHF.' ...
         ' \n\n Block 5: ' num2str(round(percentTotalCorrect(5))) ' % accuracy earned you ' num2str(amountCHFextra(5), '%.2f') ' CHF.' ...
         ' \n\n Block 6: ' num2str(round(percentTotalCorrect(6))) ' % accuracy earned you ' num2str(amountCHFextra(6), '%.2f') ' CHF.' ...
-        ' \n\n Block 7: ' num2str(round(percentTotalCorrect(7))) ' % accuracy earned you ' num2str(amountCHFextra(7), '%.2f') ' CHF.' ...
-        ' \n\n Block 8: ' num2str(round(percentTotalCorrect(8))) ' % accuracy earned you ' num2str(amountCHFextra(8), '%.2f') ' CHF.' ...
         ' \n\n ' ...
         ' \n\n ' ...
         'Press any key to end the task.'];

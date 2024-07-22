@@ -46,9 +46,6 @@ end
 rng(123);
 nback_condition = repmat(1:3, 1, 2);
 nback_condition = nback_condition(randperm(length(nback_condition)));
-while nback_condition(1) == 3 % Ensure that the first block is not a 3-back
-    nback_condition = nback_condition(randperm(length(nback_condition)));
-end
 
 %% Execute STERNBERG - NBACK %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if strcmp(taskOrder, 'SternbergNBack')

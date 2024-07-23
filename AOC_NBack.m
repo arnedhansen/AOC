@@ -575,7 +575,7 @@ for trl = 1:experiment.nTrials
     end
 
     %% Fixation reminder
-    noFixation = 0;
+    % noFixation = 0;
     if noFixation > 0
         Screen('TextSize', ptbWindow, 30);
         fixText = 'ALWAYS LOOK AT THE CENTER OF THE SCREEN!';

@@ -23,7 +23,7 @@ load([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_AOC_NBack_b
 end
 cashNback = saves.amountCHFextraTotal;
 
-load([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_AOC_Sternberg_block8_task.mat']);
+load([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_AOC_Sternberg_block6_task.mat']);
 cashSternberg = saves.amountCHFextraTotal;
 
 cashTotal = cashNback + cashSternberg;

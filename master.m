@@ -216,6 +216,3 @@ end
 
 %% Allow keyboard input into Matlab code
 ListenChar(0);
-
-%% Display total reward
-cash;

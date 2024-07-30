@@ -3,17 +3,28 @@
 % This code requires PsychToolbox. https://psychtoolbox.org
 % This was tested with PsychToolbox version 3.0.15, and with MATLAB R2019a.
 
-%% EEG and ET
-if TRAINING == 0
-    % Start recording EEG
-    disp('STARTING EEG RECORDING...');
-    initEEG;
-end
-
+%% Initialize EEG and ET
 % Calibrate ET (Tobii Pro Fusion)
 disp('CALIBRATING ET...');
 calibrateET;
 
+if TRAINING == 0
+    % Start recording EEG
+    disp('STARTING EEG RECORDING...');
+    initEEG;
+
+    % Wait ten seconds to initialize EEG
+    disp('INITIALIZING EEG... PLEASE WAIT 10 SECONDS')
+    for i=1:15
+        waitbar(i/15, 'INITIALIZING EEG');
+        pause(1);
+    end
+    wbar = findall(0,'type','figure','tag','TMWWaitbar');
+    delete(wbar)
+    disp('EEG INITIALIZED!')
+end
+
+% Hide cursor on participant screen
 HideCursor(whichScreen);
 
 %% Define triggers
@@ -864,6 +875,7 @@ elseif BLOCK >= 1 && BLOCK < 6
     disp('Break started');
 
     while timePassed < waitTime
+        waitbar(timePassed/15, 'INITIALIZING EEG');
         pause(intervalTime);
         timePassed = timePassed + intervalTime;
         printTime = waitTime - timePassed;
@@ -872,37 +884,39 @@ elseif BLOCK >= 1 && BLOCK < 6
             ' \n\n Block ' (num2str(BLOCK+1)) ' will start afterwards.'];
         DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.Black);
         Screen('Flip',ptbWindow);
-        disp(printTime);
     end
+    wbar = findall(0,'type','figure','tag','TMWWaitbar');
+    delete(wbar)
+    disp('Break done!')
 end
 
 %% Display total amount
-if BLOCK == 6
-    amountCHFextraTotal = sum(amountCHFextra);
-    saves.amountCHFextraTotal = amountCHFextraTotal;
-    endTextCash = ['Well done! You have completed the task.' ...
-        ' \n\n Because of your accuracy you have been awarded an additional CHF ' num2str(amountCHFextraTotal, '%.2f') ' in total.' ...
-        ' \n\n ' ...
-        ' \n\n Block 1: ' num2str(round(percentTotalCorrect(1))) ' % accuracy earned you ' num2str(amountCHFextra(1), '%.2f') ' CHF.' ...
-        ' \n\n Block 2: ' num2str(round(percentTotalCorrect(2))) ' % accuracy earned you ' num2str(amountCHFextra(2), '%.2f') ' CHF.' ...
-        ' \n\n Block 3: ' num2str(round(percentTotalCorrect(3))) ' % accuracy earned you ' num2str(amountCHFextra(3), '%.2f') ' CHF.' ...
-        ' \n\n Block 4: ' num2str(round(percentTotalCorrect(4))) ' % accuracy earned you ' num2str(amountCHFextra(4), '%.2f') ' CHF.' ...
-        ' \n\n Block 5: ' num2str(round(percentTotalCorrect(5))) ' % accuracy earned you ' num2str(amountCHFextra(5), '%.2f') ' CHF.' ...
-        ' \n\n Block 6: ' num2str(round(percentTotalCorrect(6))) ' % accuracy earned you ' num2str(amountCHFextra(6), '%.2f') ' CHF.' ...
-        ' \n\n ' ...
-        ' \n\n ' ...
-        'Press any key to end the task.'];
-    format bank % Change format for display
-    disp(['End of Block ' num2str(BLOCK) '. Participant ' num2str(subjectID) ' has earned CHF ' num2str(amountCHFextraTotal) ' extra in total.']);
-    DrawFormattedText(ptbWindow,endTextCash,'center','center',color.Black); % Display output for participant
-    format default % Change format back to default
-    Screen('Flip',ptbWindow);
-    waitResponse = 1;
-    while waitResponse
-        [time, keyCode] = KbWait(-1,2);
-        waitResponse = 0;
-    end
-end
+% if BLOCK == 6
+%     amountCHFextraTotal = sum(amountCHFextra);
+%     saves.amountCHFextraTotal = amountCHFextraTotal;
+%     endTextCash = ['Well done! You have completed the task.' ...
+%         ' \n\n Because of your accuracy you have been awarded an additional CHF ' num2str(amountCHFextraTotal, '%.2f') ' in total.' ...
+%         ' \n\n ' ...
+%         ' \n\n Block 1: ' num2str(round(percentTotalCorrect(1))) ' % accuracy earned you ' num2str(amountCHFextra(1), '%.2f') ' CHF.' ...
+%         ' \n\n Block 2: ' num2str(round(percentTotalCorrect(2))) ' % accuracy earned you ' num2str(amountCHFextra(2), '%.2f') ' CHF.' ...
+%         ' \n\n Block 3: ' num2str(round(percentTotalCorrect(3))) ' % accuracy earned you ' num2str(amountCHFextra(3), '%.2f') ' CHF.' ...
+%         ' \n\n Block 4: ' num2str(round(percentTotalCorrect(4))) ' % accuracy earned you ' num2str(amountCHFextra(4), '%.2f') ' CHF.' ...
+%         ' \n\n Block 5: ' num2str(round(percentTotalCorrect(5))) ' % accuracy earned you ' num2str(amountCHFextra(5), '%.2f') ' CHF.' ...
+%         ' \n\n Block 6: ' num2str(round(percentTotalCorrect(6))) ' % accuracy earned you ' num2str(amountCHFextra(6), '%.2f') ' CHF.' ...
+%         ' \n\n ' ...
+%         ' \n\n ' ...
+%         'Press any key to end the task.'];
+%     format bank % Change format for display
+%     disp(['End of Block ' num2str(BLOCK) '. Participant ' num2str(subjectID) ' has earned CHF ' num2str(amountCHFextraTotal) ' extra in total.']);
+%     DrawFormattedText(ptbWindow,endTextCash,'center','center',color.Black); % Display output for participant
+%     format default % Change format back to default
+%     Screen('Flip',ptbWindow);
+%     waitResponse = 1;
+%     while waitResponse
+%         [time, keyCode] = KbWait(-1,2);
+%         waitResponse = 0;
+%     end
+% end
 
-% Quit
+%% Quit
 Screen('CloseAll');

@@ -17,11 +17,12 @@ calibrateET;
 %% Settings
 testmode = 0;
 monitorwidth_cm = 53;
-dist_cm = 70;
+dist_cm = 68;
+
 % Text
-tSize1 = 18;
-tSize2 = 25;
-tSize3 = 35;
+tSize1 = 15;
+tSize2 = 20;
+tSize3 = 30;
 colorText = 0;
 colorBG = [];
 colorBrightBG = [255,255,255];

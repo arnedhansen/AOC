@@ -1,0 +1,39 @@
+%% AOC MASTER Matrix Sternberg
+
+%% Setup
+clear
+clc
+close all
+path = '/Volumes/methlab/Students/Arne/AOC/data/';
+dirs = dir(path);
+folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
+subjects = {folders.name};
+
+%% Load data
+load('/Volumes/methlab/Students/Arne/AOC/data/features/behavioral_matrix_sternberg.mat');
+load('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg.mat');
+load('/Volumes/methlab/Students/Arne/AOC/data/features/gaze_matrix_sternberg.mat');
+
+%% Sort behavioral structure
+conds = [behav_data_sternberg.Condition];
+[~, sortedIndices] = sort(conds);
+behav = behav_data_sternberg(sortedIndices);
+
+%% Merge structures
+% Initialize the merged structure array with the same size as the original structures
+merged_data_sternberg = struct('ID', {behav.ID}, ...
+                               'TrialTRUE', {behav.Trial}, ...
+                               'Trial', {gaze_data_sternberg.Trial}, ...
+                               'Condition', {behav.Condition}, ...
+                               'Accuracy', {behav.Accuracy}, ...
+                               'ReactionTime', {behav.ReactionTime}, ...
+                               'Stimuli', {behav.Stimuli}, ...
+                               'Probe', {behav.Probe}, ...
+                               'Match', {behav.Match}, ...
+                               'GazeDeviation', {gaze_data_sternberg.GazeDeviation}, ...
+                               'PupilSize', {gaze_data_sternberg.PupilSize}, ...
+                               'AlphaPower', {eeg_data_sternberg.AlphaPower}, ...
+                               'IAF', {eeg_data_sternberg.IAF});
+
+% Save
+save /Volumes/methlab/Students/Arne/AOC/data/features/merged_data_sternberg.mat merged_data_sternberg

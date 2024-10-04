@@ -4,7 +4,7 @@
 %   Gaze deviation
 %   Pupil size
 
-%% Setup 
+%% Setup
 clear
 clc
 close all
@@ -60,34 +60,12 @@ for subj = 1:length(subjects)
 
         %% Compute microsaccades
         fsample = 500; % Sample rate of 500 Hz
-        kernel = [1 1 0 -1 -1].*(fsample/6); % Convolution kernel as per Engbert et al., 2003
         velthres = 6; % Threshold as per Engbert et al. (2003): 6x median SD of velocity
         mindur = 6; % Minimum duration of microsaccades of 6 samples = 12ms at 500 Hz
+        velData = [gaze_x{subj, trl}; gaze_y{subj, trl}]; % Concatenate x and y gaze coordinates to compute the velocity of eye movements in a 2D space
+        trlLength = length(dataet.time{trl});
+        microsaccade_rate = detect_microsaccades(fsample, velthres, mindur, velData, trlLength);
 
-        % Concatenate x and y gaze coordinates to compute the velocity of eye movements in a 2D space
-        velDataX = [gaze_x{subj, trl}; gaze_y{subj, trl}];
-
-        % Padding and convolution
-        n = size(kernel, 2);
-        pad = ceil(n/2);
-        dat = ft_preproc_padding(velDataX, 'localmean', pad);
-        vel = convn(dat, kernel, 'same');
-        vel = ft_preproc_padding(vel, 'remove', pad);
-
-        % Compute velocity thresholds (Engbert et al. 2003, Eqn. 2)
-        medianstd = sqrt(median(vel.^2, 2) - (median(vel, 2)).^2);
-        radius = velthres * medianstd;
-
-        % Microsaccade detection based on threshold crossing
-        test = sum((vel ./ radius(:, ones(1, size(vel, 2)))).^2, 1);
-        sacsmp = find(test > 1); % Find samples where velocity exceeds threshold
-
-        % Count microsaccades
-        microsaccades = detect_microsaccades(sacsmp, mindur);
-
-        % Compute microsaccade rate (microsaccades per second)
-        microsaccade_rate = length(microsaccades) / (length(dataet.time{trl}) / fsample);
- 
         %% Append data for this trial
         subject_id = [subject_id; str2num(subjects{subj})];
         trial_num = [trial_num; trl];
@@ -150,29 +128,3 @@ end
 data(:, removal_indices) = NaN;
 cleaned_data = data;
 end
-
-%% Function for microsaccade detection
-function microsaccades = detect_microsaccades(sacsmp, mindur)
-    % Initialize microsaccades array
-    microsaccades = [];
-    
-    % Find consecutive samples that are microsaccades
-    j = find(diff(sacsmp) == 1); 
-    j1 = [j; j + 1];
-    com = intersect(j, j + 1);
-    cut = ~ismember(j1, com);
-    sacidx = reshape(j1(cut), 2, []);
-
-    % Loop through detected saccades
-    for k = 1:size(sacidx, 2)
-        duration = sacidx(1, k):sacidx(2, k);
-        if length(duration) >= mindur
-            % Store the onset, offset, and peak of each microsaccade
-            onset = sacsmp(duration(1)); % Onset of the microsaccade
-            offset = sacsmp(duration(end)); % Offset of the microsaccade
-            peak = sacsmp(duration(round(length(duration) / 2))); % Peak of the microsaccade
-            microsaccades = [microsaccades; onset, offset, peak]; % Append to the microsaccades array
-        end
-    end
-end
-

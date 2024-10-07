@@ -3,6 +3,7 @@
 % Extracted features:
 %   Gaze deviation
 %   Pupil size
+%   Microsaccade rate
 
 %% Setup
 clear
@@ -37,8 +38,9 @@ for subj = 1:length(subjects)
         valid_data_indices = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
         valid_data = data(1:3, valid_data_indices); % Excluding pupil size data
 
-        %% Remove blinks with a window of 100ms (= 50 timepoints)
-        data = remove_blink_window(data, 50);
+        %% Remove blinks with a window of 100ms (= 50 samples/timepoints)
+        win_size = 50;
+        data = remove_blinks(data, win_size);
 
         %% Extract gaze data and pupil size
         gaze_x{subj, trl} = data(1, :);
@@ -60,11 +62,9 @@ for subj = 1:length(subjects)
 
         %% Compute microsaccades
         fsample = 500; % Sample rate of 500 Hz
-        velthres = 6; % Threshold as per Engbert et al. (2003): 6x median SD of velocity
-        mindur = 6; % Minimum duration of microsaccades of 6 samples = 12ms at 500 Hz
         velData = [gaze_x{subj, trl}; gaze_y{subj, trl}]; % Concatenate x and y gaze coordinates to compute the velocity of eye movements in a 2D space
         trlLength = length(dataet.time{trl});
-        microsaccade_rate = detect_microsaccades(fsample, velthres, mindur, velData, trlLength);
+        microsaccade_rate = detect_microsaccades(fsample, velData, trlLength);
 
         %% Append data for this trial
         subject_id = [subject_id; str2num(subjects{subj})];
@@ -115,16 +115,3 @@ end
 trialinfo = dataet.trialinfo';
 save /Volumes/methlab/Students/Arne/AOC/data/features/gaze_sternberg gaze_x gaze_y trialinfo
 save /Volumes/methlab/Students/Arne/AOC/data/features/gaze_matrix_sternberg gaze_data_sternberg
-
-%% Function for blink removal
-function cleaned_data = remove_blink_window(data, window_size)
-blink_indices = find(all(data(1:2, :) == 0, 1));
-removal_indices = [];
-for i = 1:length(blink_indices)
-    start_idx = max(1, blink_indices(i) - window_size);
-    end_idx = min(size(data, 2), blink_indices(i) + window_size);
-    removal_indices = [removal_indices, start_idx:end_idx];
-end
-data(:, removal_indices) = NaN;
-cleaned_data = data;
-end

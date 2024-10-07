@@ -12,7 +12,7 @@ path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
-gaze_data_nback = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, 'PupilSize', {});
+gaze_data_nback = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, 'PupilSize', {}, 'MSRate', {});
 
 %% Load all eye movements
 for subj = 1:length(subjects)
@@ -26,6 +26,7 @@ for subj = 1:length(subjects)
     condition = [];
     gazeDev = [];
     pupilSize = [];
+    microsaccadeRate = [];
 
     %% Get trial-by-trial gaze data
     for trl = 1:length(dataet.trialinfo)
@@ -36,8 +37,9 @@ for subj = 1:length(subjects)
         valid_data_indices = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
         valid_data = data(1:3, valid_data_indices); % Excluding pupil size data
 
-        %% Remove blinks with a window of 100ms (= 50 timepoints)
-        data = remove_blink_window(data, 50);
+        %% Remove blinks with a window of 100ms (= 50 samples/timepoints)
+        win_size = 50;
+        data = remove_blinks(data, win_size);
 
         %% Extract gaze data and pupil size
         gaze_x{subj, trl} = data(1, :);
@@ -57,10 +59,11 @@ for subj = 1:length(subjects)
         % Calculate the mean Euclidean distance
         mean_euclidean_distance = mean(gaze_euclidean_dev, 'omitnan');
 
-        % Sanity check
-        % plot(gaze_euclidean_dev)
-
-        %% Compute miscrosaccades
+        %% Compute microsaccades
+        fsample = 500; % Sample rate of 500 Hz
+        velData = [gaze_x{subj, trl}; gaze_y{subj, trl}]; % Concatenate x and y gaze coordinates to compute the velocity of eye movements in a 2D space
+        trlLength = length(dataet.time{trl});
+        microsaccade_rate = detect_microsaccades(fsample, velData, trlLength);
 
         %% Append data for this trial
         subject_id = [subject_id; str2num(subjects{subj})];
@@ -68,28 +71,29 @@ for subj = 1:length(subjects)
         condition = [condition; dataet.trialinfo(trl)];
         gazeDev = [gazeDev; mean_euclidean_distance];
         pupilSize = [pupilSize; mean(pupil_size, 'omitnan')/1000];
+        microsaccadeRate = [microsaccadeRate; microsaccade_rate];
     end
     %% Create a trial-by-trial structure array for this subject
-    subj_data_gaze_trial = struct('ID', num2cell(subject_id), 'Trial', num2cell(trial_num), 'Condition', num2cell(condition), 'GazeDeviation', num2cell(gazeDev), 'PupilSize', num2cell(pupilSize));
+    subj_data_gaze_trial = struct('ID', num2cell(subject_id), 'Trial', num2cell(trial_num), 'Condition', num2cell(condition), 'GazeDeviation', num2cell(gazeDev), 'PupilSize', num2cell(pupilSize), 'MSRate', num2cell(microsaccadeRate));
 
-    %% Calculate subject-specific GazeDev by condition
+    %% Calculate subject-specific data by condition (GazeDev, PupilSize, MSRate)
     l1 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 1);
     l1gdev = mean([l1.GazeDeviation], 'omitnan');
+    l1pups = mean([l1.PupilSize], 'omitnan');
+    l1msrate = mean([l1.MSRate], 'omitnan');
+
     l2 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 2);
     l2gdev = mean([l2.GazeDeviation], 'omitnan');
+    l2pups = mean([l2.PupilSize], 'omitnan');
+    l2msrate = mean([l2.MSRate], 'omitnan');
+
     l3 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 3);
     l3gdev = mean([l3.GazeDeviation], 'omitnan');
-
-    %% Calculate subject-specific PupilSize by condition
-    l1 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 1);
-    l1pups = mean([l1.PupilSize], 'omitnan');
-    l2 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 2);
-    l2pups = mean([l2.PupilSize], 'omitnan');
-    l3 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 3);
     l3pups = mean([l3.PupilSize], 'omitnan');
+    l3msrate = mean([l3.MSRate], 'omitnan');
 
     %% Create across condition structure
-    subj_data_gaze = struct('ID', num2cell(subject_id(1:3)), 'Condition', num2cell([1; 2; 3]), 'GazeDeviation', num2cell([l1gdev; l2gdev; l3gdev]), 'PupilSize', num2cell([l1pups; l2pups; l3pups]));
+    subj_data_gaze = struct('ID', num2cell(subject_id(1:3)), 'Condition', num2cell([1; 2; 3]), 'GazeDeviation', num2cell([l1gdev; l2gdev; l3gdev]), 'PupilSize', num2cell([l1pups; l2pups; l3pups]), 'MSRate', num2cell([l1msrate; l2msrate; l3msrate]));
 
     %% Save
     savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/gaze/');
@@ -99,6 +103,7 @@ for subj = 1:length(subjects)
     save gaze_matrix_nback subj_data_gaze
     save gaze_dev_nback l1gdev l2gdev l3gdev
     save pupil_size_nback l1pups l2pups l3pups
+    save ms_rate_nback l1msrate l2msrate l3msrate
     clc
     disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' done.'])
 
@@ -107,16 +112,3 @@ for subj = 1:length(subjects)
 end
 save /Volumes/methlab/Students/Arne/AOC/data/features/gaze_nback gaze_x gaze_y
 save /Volumes/methlab/Students/Arne/AOC/data/features/gaze_matrix_nback gaze_data_nback
-
-%% Define function for blink removal
-function cleaned_data = remove_blink_window(data, window_size)
-blink_indices = find(all(data(1:2, :) == 0, 1));
-removal_indices = [];
-for i = 1:length(blink_indices)
-    start_idx = max(1, blink_indices(i) - window_size);
-    end_idx = min(size(data, 2), blink_indices(i) + window_size);
-    removal_indices = [removal_indices, start_idx:end_idx];
-end
-data(:, removal_indices) = NaN;
-cleaned_data = data;
-end

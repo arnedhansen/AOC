@@ -182,7 +182,7 @@ for subj = 1:length(subjects)
     cfg.output       = 'pow';
     cfg.method       = 'mtmconvol';
     cfg.taper        = 'hanning';
-    cfg.foi          = 2:1:31;                         % analysis 2 to 30 Hz in steps of 1 Hz
+    cfg.foi          = 2:2:40;                         % analysis 2 to 40 Hz in steps of 2 Hz
     cfg.t_ftimwin    = ones(length(cfg.foi),1).*0.5;   % length of time window = 0.5 sec
     cfg.toi          = -3:0.05:3;
     cfg.keeptrials = 'no';

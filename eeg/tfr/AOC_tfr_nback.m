@@ -25,6 +25,12 @@ gatfr1 = ft_freqgrandaverage([],l1{:});
 gatfr2 = ft_freqgrandaverage([],l2{:});
 gatfr3 = ft_freqgrandaverage([],l3{:});
 
+%% Apply percentage change for baseline correction
+baseline_period = [-Inf -0.5];  
+gatfr1 = baseline_corr_powspctrm(gatfr1, baseline_period);
+gatfr2 = baseline_corr_powspctrm(gatfr2, baseline_period);
+gatfr3 = baseline_corr_powspctrm(gatfr3, baseline_period);
+
 %% Define channels
 load('power_nback.mat');
 % Occipital channels
@@ -42,9 +48,7 @@ close all
 
 % Define the common configuration
 cfg = [];
-cfg.channel = channels; % specify the channels to include
-cfg.baseline = [-Inf -0.5]; % baseline correction window in seconds
-cfg.baselinetype = 'absolute'; % type of baseline correction
+% cfg.channel = channels; % specify the channels to include
 cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
 cfg.xlim = [-.5 2]; % Time axis limits in secon

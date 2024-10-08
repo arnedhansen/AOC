@@ -2,19 +2,12 @@
 %
 % Extracted features:
 %   Power Spectrum
+%   IAF  and Power at IAF
 %   FOOOF Power
 %   TFR
 
 %% Setup
-clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.0');
-eeglab
-clc
-close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+setup('AOC');
 
 %% Extract POWER
 % Read data, segment and convert to FieldTrip data structure
@@ -55,15 +48,104 @@ for subj = 1:length(subjects)
 end
 
 %% Setup
-clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.0');
-eeglab
-clc
-close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+setup('AOC');
+
+%% Define channels
+subj = 1;
+datapath = strcat(path, subjects{subj}, '/eeg');
+cd(datapath);
+load('power_stern.mat');
+% Occipital channels
+occ_channels = {};
+for i = 1:length(powload2.label)
+    label = powload2.label{i};
+    if contains(label, {'O'})
+        occ_channels{end+1} = label;
+    end
+end
+channels = occ_channels;
+
+%% Load data and calculate alpha power and IAF
+alphaRange = [8 14];
+powerIAF2 = [];
+powerIAF4 = [];
+powerIAF6 = [];
+IAF_results = struct();
+eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {});
+
+for subj = 1:length(subjects)
+    datapath = strcat(path, subjects{subj}, '/eeg');
+    cd(datapath);
+    load('power_stern.mat');
+    
+    % Channel selection
+    channelIdx = find(ismember(powload2.label, channels));
+    
+    % Extract power spectra for selected channels
+    powspctrm2 = mean(powload2.powspctrm(channelIdx, :), 1);
+    powspctrm4 = mean(powload4.powspctrm(channelIdx, :), 1);
+    powspctrm6 = mean(powload6.powspctrm(channelIdx, :), 1);
+
+    % Find the indices corresponding to the alpha range
+    alphaIndices = find(powload2.freq >= alphaRange(1) & powload2.freq <= alphaRange(2));
+    
+    % Calculate IAF for WM load 2
+    alphaPower2 = powspctrm2(alphaIndices);
+    [pks,locs] = findpeaks(alphaPower2);
+    [~, ind] = max(pks);
+    IAF2 = powload2.freq(alphaIndices(locs(ind)));
+    IAF_range2 = find(powload2.freq > (IAF2-4) & powload2.freq < (IAF2+2));
+
+    % Calculate IAF for WM load 4
+    alphaPower4 = powspctrm4(alphaIndices);
+    [pks,locs] = findpeaks(alphaPower4);
+    [~, ind] = max(pks);
+    IAF4 = powload4.freq(alphaIndices(locs(ind)));
+    IAF_range4 = find(powload4.freq > (IAF4-4) & powload4.freq < (IAF4+2));
+
+    % Calculate IAF for WM load 6
+    alphaPower6 = powspctrm6(alphaIndices);
+    [pks,locs] = findpeaks(alphaPower6);
+    [~, ind] = max(pks);
+    IAF6 = powload6.freq(alphaIndices(locs(ind)));
+    IAF_range6 = find(powload6.freq > (IAF6-4) & powload6.freq < (IAF6+2));
+
+    % Store the power values at the calculated IAFs
+    powerIAF2 = mean(powspctrm2(IAF_range2));
+    powerIAF4 = mean(powspctrm4(IAF_range4));
+    powerIAF6 = mean(powspctrm6(IAF_range6));
+
+    % Check if any IAF is 8 or 14 and set the corresponding power to NaN
+    if IAF2 == 8 || IAF2 == 14
+        powerIAF2 = NaN;
+    end
+    if IAF4 == 8 || IAF4 == 14
+        powerIAF4 = NaN;
+    end
+    if IAF6 == 8 || IAF6 == 14
+        powerIAF6 = NaN;
+    end
+
+    %% Create a structure array for this subject
+    subID = str2num(subjects{subj});
+    subj_data_eeg = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell([2; 4; 6]), ...
+        'AlphaPower', num2cell([powerIAF2; powerIAF4; powerIAF6]), 'IAF', num2cell([IAF2; IAF4; IAF6]));
+
+    %% Save
+    savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/');
+    mkdir(savepath)
+    cd(savepath)
+    save eeg_matrix_sternberg_subj subj_data_eeg
+    save alpha_power_sternberg powerIAF2 powerIAF4 powerIAF6
+    save IAF_sternberg IAF2 IAF4 IAF6
+    eeg_data_sternberg = [eeg_data_sternberg; subj_data_eeg];
+    clc
+    fprintf('Subject %s IAF: load2: %f Hz (Power: %f), load4: %f Hz (Power: %f), load6: %f Hz (Power: %f) \n', subjects{subj}, IAF2, powerIAF2, IAF4, powerIAF4, IAF6, powerIAF6);
+end
+save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg eeg_data_sternberg
+
+%% Setup
+setup('AOC');
 
 %% Extract POWER WITH TRIAL INFO
 % Read data, segment and convert to FieldTrip data structure
@@ -104,15 +186,7 @@ for subj = 1:length(subjects)
 end
 
 %% Setup
-clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.0');
-eeglab
-clc
-close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+setup('AOC');
 
 %% Extract FOOOF Power
 % Read data, segment and convert to FieldTrip data structure
@@ -153,15 +227,7 @@ for subj = 1:length(subjects)
 end
 
 %% Setup
-clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.0');
-eeglab
-clc
-close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+setup('AOC');
 
 %% Extract TFR
 % Read data, segment and convert to FieldTrip data structure

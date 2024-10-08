@@ -1,12 +1,7 @@
 %% Alpha Power Time Frequency Analysis for AOC Sternberg data
-clear
-clc
-close all
-run startup
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+
+%% Setup
+setup('AOC');
 
 %% Compute grand average time and frequency data GATFR
 for subj= 1:length(subjects)
@@ -23,6 +18,12 @@ end
 gatfr2 = ft_freqgrandaverage([],tfr2_all{:});
 gatfr4 = ft_freqgrandaverage([],tfr4_all{:});
 gatfr6 = ft_freqgrandaverage([],tfr6_all{:});
+
+%% Apply percentage change for baseline correction
+baseline_period = [-Inf -0.5];  
+gatfr2 = baseline_corr_powspctrm(gatfr2, baseline_period);
+gatfr4 = baseline_corr_powspctrm(gatfr4, baseline_period);
+gatfr6 = baseline_corr_powspctrm(gatfr6, baseline_period);
 
 %% Define channels
 load('tfr_stern.mat');
@@ -43,14 +44,12 @@ close all
 cfg = [];
 load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
 cfg.layout = layANThead; % your specific layout
-cfg.baseline = [-Inf -0.5]; % baseline correction window in seconds
-cfg.baselinetype = 'absolute'; % type of baseline correction
 cfg.showlabels = 'yes'; % show channel labels
 cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
 cfg.xlim = ([-0.5 2]);
 cfg.ylim = [5 20];
-clim = ([-1.25 1.25]);
+% clim = ([-1.25 1.25]);
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
 
 % Wm load 2
@@ -58,7 +57,7 @@ figure;
 set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr2);
 colormap(color_map);
-set(gca, 'CLim', clim);
+% set(gca, 'CLim', clim);
 colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
@@ -70,7 +69,7 @@ figure;
 set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w'); 
 ft_singleplotTFR(cfg, gatfr4);
 colormap(color_map);
-set(gca, 'CLim', clim); 
+% set(gca, 'CLim', clim); 
 colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
@@ -82,7 +81,7 @@ figure;
 set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w'); 
 ft_singleplotTFR(cfg, gatfr6);
 colormap(color_map);
-set(gca, 'CLim', clim); 
+% set(gca, 'CLim', clim); 
 colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
@@ -113,7 +112,7 @@ xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 colorbar;
 colormap(flipud(cbrewer('div', 'RdBu', 64))); 
-% set(gca, 'CLim', [-1, 1]);
+% set(gca, 'CLim', [-50, 50]);
 set(gca, 'FontSize', 25);
 title('Sternberg Time-Frequency Response Difference (WM load 6 minus WM load 2)', 'FontName', 'Arial', 'FontSize', 30);
 

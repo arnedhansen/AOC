@@ -1,7 +1,7 @@
 % #AOC Sternberg Arne
 %
 % This code requires PsychToolbox. https://psychtoolbox.org
-% This was tested with PsychToolbox version 3.0.15, and with MATLAB R2019a.
+% This was tested with PsychToolbox version 3.0.15, and with MATLAB R2023b.
 
 %% Initialize EEG and ET
 % Calibrate ET (Tobii Pro Fusion)
@@ -157,7 +157,7 @@ Screen('Preference', 'SkipSyncTests', 0); % For linux (can be 0)
 % Set verbosity to disallow CW output
 Screen('Preference','Verbosity', 0);
 
-%% Window set-up
+% Window setup
 [ptbWindow, winRect] = PsychImaging('OpenWindow', screenID, equipment.greyVal);
 PsychColorCorrection('SetEncodingGamma', ptbWindow, equipment.gammaVals);
 [screenWidth, screenHeight] = RectSize(winRect);
@@ -524,7 +524,7 @@ for trl = 1:experiment.nTrials
 
             else
                 % Subject pressed other button than A or L
-                responseTime = probePresentationTime + 4;
+                responseTime = probePresentationTime + 4; % +4 to check; will be set to NaN
                 TRIGGER = BAD_RESP;
                 if TRAINING == 1
                     Eyelink('Message', num2str(TRIGGER));
@@ -540,7 +540,7 @@ for trl = 1:experiment.nTrials
             % No input by participant
         elseif isempty(whichKey)
             data.responses(trl) = 0;
-            responseTime = probePresentationTime + 5;
+            responseTime = probePresentationTime + 5; % +5 to check; will be set to NaN
         end
         if ~isempty(whichKey)
             if time < maxResponseTime

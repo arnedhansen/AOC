@@ -246,6 +246,16 @@ end
 DrawFormattedText(ptbWindow,startExperimentText,'center','center',color.black);
 Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
 Screen('Flip',ptbWindow);
+
+
+
+% Take screenshot of current screen
+screenshotFilename = sprintf('AOC_Nback_screenshot_instructions.png');
+imageArray = Screen('GetImage', ptbWindow);
+imwrite(imageArray, screenshotFilename);
+
+
+
 disp('Participant is reading the instructions.');
 waitResponse = 1;
 while waitResponse
@@ -354,6 +364,19 @@ for trl = 1:exp.nTrials
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('DrawDots',ptbWindow, stimPos, stimDiameter, stimColor,[],1);
     Screen('Flip', ptbWindow);
+
+
+
+
+    % Take screenshot of current screen
+    screenshotFilename = sprintf('AOC_Nback_screenshot_trl%d.png', trl);
+    imageArray = Screen('GetImage', ptbWindow);
+    imwrite(imageArray, screenshotFilename);
+
+
+
+
+
     probePresentationTime = GetSecs;
     % Return size of text to default
     Screen('TextSize', ptbWindow, 20);

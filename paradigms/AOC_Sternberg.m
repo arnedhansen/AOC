@@ -86,10 +86,10 @@ stimulus.regionWidth_dva = 4;            % Width of the region
 stimulus.regionEccentricity_dva = 3;     % Eccentricity of regions from central fixation
 
 % Set up color parameters
-color.black = 0;                      
+color.black = 0;
 color.white = 1;
 
-%% Set up texts 
+%% Set up texts
 if TRAINING == 1
     loadingText = 'Loading training task...';
     startExperimentText = ['Training task. \n\n On each trial, you will be shown a number of letters in a row. \n\n' ...
@@ -175,7 +175,7 @@ Screen('Flip',ptbWindow);
 
 %% Retrieve response keys
 KeyCodeA = KbName('A');                     % Retrieve key code for the A button
-KeyCodeL = KbName('L'); % KbName('/?');     % Retrieve key code for the L button 
+KeyCodeL = KbName('L'); % KbName('/?');     % Retrieve key code for the L button
 spaceKeyCode = KbName('Space');             % Retrieve key code for spacebar
 
 % Assign response keys
@@ -265,6 +265,17 @@ while waitResponse
     waitResponse = 0;
 end
 
+
+
+
+% Take screenshot of current screen
+screenshotFilename = 'AOC_Sternberg_screenshot_startExperimentText.png';
+imageArray = Screen('GetImage', ptbWindow);
+imwrite(imageArray, screenshotFilename);
+
+
+
+
 % Show response instruction text
 DrawFormattedText(ptbWindow,responseInstructionText,'center','center',color.black);
 Screen('Flip',ptbWindow);
@@ -274,6 +285,18 @@ while waitResponse
     [time, keyCode] = KbWait(-1,2);
     waitResponse = 0;
 end
+
+
+
+% Take screenshot of current screen
+screenshotFilename = 'AOC_Sternberg_screenshot_responseInstructionText.png';
+imageArray = Screen('GetImage', ptbWindow);
+imwrite(imageArray, screenshotFilename);
+
+
+
+
+
 
 Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
 endTime = Screen('Flip',ptbWindow);
@@ -350,6 +373,16 @@ for trl = 1:exp.nTrials
         sendtrigger(FIXATION,port,SITE,stayup);
     end
     timing.cfi(trl) = (randsample(500:1500, 1))/1000; % Duration of the jittered inter-trial interval
+
+
+
+    % Take screenshot of current screen
+    screenshotFilename = 'AOC_Sternberg_screenshot_fixcross.png';
+    imageArray = Screen('GetImage', ptbWindow);
+    imwrite(imageArray, screenshotFilename);
+
+
+
     WaitSecs(timing.cfi(trl));
 
     %% Check fixation just before stimulus presentation
@@ -380,6 +413,18 @@ for trl = 1:exp.nTrials
     Screen('DrawDots', ptbWindow, backPos, backDiameter, backColor, [], 1);
     Screen('DrawDots', ptbWindow, stimPos, stimDiameter, stimColor, [], 1);
     Screen('Flip', ptbWindow);
+
+
+
+
+    % Take screenshot of current screen
+    screenshotFilename = sprintf('AOC_Sternberg_screenshot_WMload%d_trl%d.png', data.trialSetSize(trl), trl);
+    imageArray = Screen('GetImage', ptbWindow);
+    imwrite(imageArray, screenshotFilename);
+
+
+
+
 
     % Send triggers for Presentation
     if data.trialSetSize(trl) == exp.setSizes(1)
@@ -466,6 +511,14 @@ for trl = 1:exp.nTrials
         TRIGGER = NO_MATCH;
     end
     probePresentationTime = GetSecs;
+
+
+
+    % Take screenshot of current screen
+    screenshotFilename = sprintf('AOC_Sternberg_screenshot_probe_trl%d.png', trl);
+    imageArray = Screen('GetImage', ptbWindow);
+    imwrite(imageArray, screenshotFilename);
+
 
     if TRAINING == 1
         Eyelink('Message', num2str(TRIGGER));
@@ -590,8 +643,16 @@ for trl = 1:exp.nTrials
         DrawFormattedText(ptbWindow,feedbackText,'center','center',color.black);
         Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
         Screen('Flip',ptbWindow);
+
+
+        % Take screenshot of current screen
+        screenshotFilename = sprintf('AOC_Sternberg_screenshot_feedback_trl%d.png', trl);
+        imageArray = Screen('GetImage', ptbWindow);
+        imwrite(imageArray, screenshotFilename);
+
+
         WaitSecs(2);
-    % Give feedback for no response (too slow)
+        % Give feedback for no response (too slow)
     elseif TRAINING == 0 && data.correct(trl) == 0 && data.responses(trl) == 0
         feedbackText = 'TOO SLOW! ';
         DrawFormattedText(ptbWindow,feedbackText,'center','center',color.black);
@@ -614,6 +675,15 @@ for trl = 1:exp.nTrials
             DrawFormattedText(ptbWindow,feedbackLastTrials,'center','center',color.white);
             Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
             Screen('Flip',ptbWindow);
+
+
+
+            % Take screenshot of current screen
+            screenshotFilename = sprintf('AOC_Sternberg_screenshot_accuracy_reminder_trl%d.png', trl);
+            imageArray = Screen('GetImage', ptbWindow);
+            imwrite(imageArray, screenshotFilename);
+
+
             WaitSecs(3);
         end
     end
@@ -627,6 +697,17 @@ for trl = 1:exp.nTrials
         Screen('DrawDots', ptbWindow, backPos, backDiameter, backColor, [], 1);
         Screen('Flip', ptbWindow);
         disp('FIXATION REMINDER')
+
+
+        % Take screenshot of current screen
+        screenshotFilename = sprintf('AOC_Sternberg_screenshot_fixation_reminder_trl%d.png', trl);
+        imageArray = Screen('GetImage', ptbWindow);
+        imwrite(imageArray, screenshotFilename);
+
+
+
+
+
         WaitSecs(3);
         data.fixation(trl) = 0;
         Screen('TextSize', ptbWindow, 20);
@@ -646,6 +727,16 @@ for trl = 1:exp.nTrials
     %% Blank screen for resting interval (2000ms)
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('Flip', ptbWindow);
+
+
+    % Take screenshot of current screen
+    screenshotFilename = 'AOC_Sternberg_screenshot_resting_blank.png';
+    imageArray = Screen('GetImage', ptbWindow);
+    imwrite(imageArray, screenshotFilename);
+
+
+
+
     WaitSecs(timing.rest);
 
     % Save trial duration in seconds
@@ -772,11 +863,11 @@ catch
 end
 
 %% Compute accuracy and report after each block (no additional cash for training task)
-if BLOCK == 0 
+if BLOCK == 0
     totalCorrect = sum(data.correct);
     totalTrials = trl;
     percentTotalCorrect = totalCorrect / totalTrials * 100;
- 
+
     feedbackBlockText = ['Your accuracy in the training task was ' num2str(percentTotalCorrect) '%. '];
 
     format bank % Change format for display

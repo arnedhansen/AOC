@@ -17,8 +17,8 @@ if TRAINING == 0
 
     % Wait ten seconds to initialize EEG
     disp('INITIALIZING EEG... PLEASE WAIT 10 SECONDS')
-    for i=1:15
-        waitbar(i/15, 'INITIALIZING EEG');
+    for i=1:10
+        waitbar(i/10, 'INITIALIZING EEG');
         pause(1);
     end
     wbar = findall(0,'type','figure','tag','TMWWaitbar');
@@ -30,43 +30,43 @@ end
 HideCursor(whichScreen);
 
 %% Define triggers
-MATCH = 4; % trigger for matching condition
-NO_MATCH = 5; % trigger for non-matching condition
+MATCH = 4; % Trigger for matching condition
+NO_MATCH = 5; % Trigger for non-matching condition
 TASK_START = 10; % Trigger for start of task
 COND1 = 11; % Trigger for block with 1-back
 COND2 = 12; % Trigger for block with 2-back
 COND3 = 13; % Trigger for block with 3-back
-FIXATION = 15; % trigger for fixation cross
-PRESENTATION0 = 19; % trigger for letter presentation (training task; 1-back)
-PRESENTATION1 = 21; % trigger for letter presentation (1-back)
-PRESENTATION2 = 22; % trigger for letter presentation (2-back)
-PRESENTATION3 = 23; % trigger for letter presentation (3-back)
-STIMOFF = 28; % trigger for change of letter to cfi
-BLOCK0 = 60; % trigger for start of training block
-BLOCK1 = 61; % trigger for start of block 1
-BLOCK2 = 62; % trigger for start of block 2
-BLOCK3 = 63; % trigger for start of block 3
-BLOCK4 = 64; % trigger for start of block 4
-BLOCK5 = 65; % trigger for start of block 5
-BLOCK6 = 66; % trigger for start of block 6
-ENDBLOCK0 = 70; % trigger for end of training block
-ENDBLOCK1 = 71; % trigger for end of block 1
-ENDBLOCK2 = 72; % trigger for end of block 2
-ENDBLOCK3 = 73; % trigger for end of block 3
-ENDBLOCK4 = 74; % trigger for end of block 4
-ENDBLOCK5 = 75; % trigger for end of block 5
-ENDBLOCK6 = 76; % trigger for end of block 6
-RESP_YES = 87; % trigger for response yes (spacebar)
-RESP_NO = 88; % trigger for response no (no input)
-RESP_WRONG = 89;% trigger for wrong keyboard input response
+FIXATION = 15; % Trigger for fixation cross
+PRESENTATION0 = 19; % Trigger for letter presentation (training task; 1-back)
+PRESENTATION1 = 21; % Trigger for letter presentation (1-back)
+PRESENTATION2 = 22; % Trigger for letter presentation (2-back)
+PRESENTATION3 = 23; % Trigger for letter presentation (3-back)
+STIMOFF = 28; % Trigger for change of letter to cfi
+BLOCK0 = 60; % Trigger for start of training block
+BLOCK1 = 61; % Trigger for start of block 1
+BLOCK2 = 62; % Trigger for start of block 2
+BLOCK3 = 63; % Trigger for start of block 3
+BLOCK4 = 64; % Trigger for start of block 4
+BLOCK5 = 65; % Trigger for start of block 5
+BLOCK6 = 66; % Trigger for start of block 6
+ENDBLOCK0 = 70; % Trigger for end of training block
+ENDBLOCK1 = 71; % Trigger for end of block 1
+ENDBLOCK2 = 72; % Trigger for end of block 2
+ENDBLOCK3 = 73; % Trigger for end of block 3
+ENDBLOCK4 = 74; % Trigger for end of block 4
+ENDBLOCK5 = 75; % Trigger for end of block 5
+ENDBLOCK6 = 76; % Trigger for end of block 6
+RESP_YES = 87; % Trigger for response yes (spacebar)
+RESP_NO = 88; % Trigger for response no (no input)
+RESP_WRONG = 89;% Trigger for wrong keyboard input response
 TASK_END = 90; % Trigger for end of task
 
 %% Set up experiment parameters
 % Number of trials for the experiment
 if TRAINING == 1
-    experiment.nTrials = 12;
+    exp.nTrials = 12;
 else
-    experiment.nTrials = 75;           % 6 blocks x 75 trials = 450 trials
+    exp.nTrials = 75;                   % 6 blocks x 75 trials = 450 trials
 end
 
 % Set up equipment parameters
@@ -88,15 +88,9 @@ stimulus.regionHeight_dva = 7.3;         % Height of the region
 stimulus.regionWidth_dva = 4;            % Width of the region
 stimulus.regionEccentricity_dva = 3;     % Eccentricity of regions from central fixation
 
-% Set up text parameters
-text.instructionFont = 'Menlo';         % Font of instruction text
-text.instructionPoints = 12;            % Size of instruction text (This if overwritten by )
-text.instructionStyle = 0;              % Styling of instruction text (0 = normal)
-text.instructionWrap = 80;              % Number of characters at which to wrap instruction text
-
 % Set up color parameters
-color.Black = 0;                      
-color.White = 1;
+color.black = 0;
+color.white = 1;
 
 %% Define startExperimentText
 if TRAINING == 1 && COND == 1
@@ -191,7 +185,7 @@ screenCentreX = round(screenWidth/2);
 screenCentreY = round(screenHeight/2);
 flipInterval = Screen('GetFlipInterval', ptbWindow);
 Screen('BlendFunction', ptbWindow, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
-experiment.runPriority = MaxPriority(ptbWindow);
+exp.runPriority = MaxPriority(ptbWindow);
 
 % Set font size for instructions and stimuli
 Screen('TextSize', ptbWindow, 20);
@@ -203,7 +197,7 @@ global ptb_drawformattedtext_disableClipping;       % Disable clipping of text
 ptb_drawformattedtext_disableClipping = 1;
 
 % Show loading text
-DrawFormattedText(ptbWindow,loadingText,'center','center',color.Black);
+DrawFormattedText(ptbWindow,loadingText,'center','center',color.black);
 Screen('Flip',ptbWindow);
 
 % Retrieve response key
@@ -222,12 +216,13 @@ fixCoords = [fixHorizontal; fixVertical];
 %% Create data structure for preallocating data
 data = struct;
 data.letterSequence = NaN; % Stimuli
-data.match(1:experiment.nTrials) = NaN; % Matching
-data.responses(1:experiment.nTrials) = NaN; % Button press response
-data.correct(1:experiment.nTrials) = NaN; % Correct answer
-data.stimulus(1:experiment.nTrials) = NaN; % Probe stimulus
-data.reactionTime(1:experiment.nTrials) = NaN; % Reaction time
-data.fixation(1:experiment.nTrials) = NaN; % Reaction time 
+data.match(1:exp.nTrials) = NaN; % Matching
+data.responses(1:exp.nTrials) = NaN; % Button press response
+data.correct(1:exp.nTrials) = NaN; % Correct answer
+data.stimulus(1:exp.nTrials) = NaN; % Probe stimulus
+data.reactionTime(1:exp.nTrials) = NaN; % Reaction time
+data.fixation(1:exp.nTrials) = NaN; % Reaction time
+data.trlDuration(1:exp.nTrials) = NaN; % Trial duration
 count5trials = NaN; % Feedback variable
 
 %% Define letterSequence depending on block iteration
@@ -237,7 +232,7 @@ data.letterSequence = letterSequence; % 1x102 double
 %% Display instructive texts
 if TRAINING == 0
     % Show performance bonus incentive text
-    DrawFormattedText(ptbWindow,performanceBonusText,'center','center',color.Black);
+    DrawFormattedText(ptbWindow,performanceBonusText,'center','center',color.black);
     Screen('Flip',ptbWindow);
     disp('Participant is reading the performance bonus text');
     waitResponse = 1;
@@ -248,7 +243,7 @@ if TRAINING == 0
 end
 
 % Show task instruction text
-DrawFormattedText(ptbWindow,startExperimentText,'center','center',color.Black);
+DrawFormattedText(ptbWindow,startExperimentText,'center','center',color.black);
 Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
 Screen('Flip',ptbWindow);
 disp('Participant is reading the instructions.');
@@ -285,7 +280,7 @@ else
     sendtrigger(TRIGGER,port,SITE,stayup); % EEG
 end
 
-% Send triggers for block 
+% Send triggers for block
 if BLOCK == 1
     TRIGGER = BLOCK1;
 elseif BLOCK == 2
@@ -316,12 +311,14 @@ if TRAINING == 1
 else
     disp(['Start of Block ' num2str(BLOCK) ' (' num2str(COND) '-back)']);
 end
-HideCursor(whichScreen);
-tic;
-timing.startTime =  datestr(now, 'dd/mm/yy-HH:MM');
+
+% Experiment prep
+HideCursor(whichScreen); % Make sure to hide cursor from participant screen
+timing.startTime = datestr(now, 'dd/mm/yy-HH:MM:SS'); % Measure duration
 
 %% Experiment Loop %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-for trl = 1:experiment.nTrials
+for trl = 1:exp.nTrials
+    tic;
     %% Jittered CFI before presentation of letter (3000ms +/- 1000ms)
     Screen('DrawLines',ptbWindow,fixCoords,stimulus.fixationLineWidth,stimulus.fixationColor,[screenCentreX screenCentreY],2); % Draw fixation cross
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
@@ -349,11 +346,11 @@ for trl = 1:experiment.nTrials
 
     %% Check fixation just before stimulus presentation
     noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, screenCentreY);
-    
+
     %% Present stimulus from letterSequence (2000ms)
     % Increase size of stimuli
     Screen('TextSize', ptbWindow, 60);
-    DrawFormattedText(ptbWindow,[letterSequence(trl)],'center','center',color.White);
+    DrawFormattedText(ptbWindow,[letterSequence(trl)],'center','center',color.white);
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('DrawDots',ptbWindow, stimPos, stimDiameter, stimColor,[],1);
     Screen('Flip', ptbWindow);
@@ -534,7 +531,7 @@ for trl = 1:experiment.nTrials
         feedbackText = 'Incorrect!';
     elseif data.correct(trl) == 0 && badResponseFlag == true && trl > 1
         feedbackText = 'Wrong button! Use only SPACE.';
-        DrawFormattedText(ptbWindow,feedbackText,'center','center',color.Black);
+        DrawFormattedText(ptbWindow,feedbackText,'center','center',color.black);
         Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
         Screen('Flip',ptbWindow);
         WaitSecs(3);
@@ -561,7 +558,7 @@ for trl = 1:experiment.nTrials
                 '\n\n You can earn more if you perform better.' ...
                 '\n\n Please keep focused on the task!'];
             disp(['Participant was made aware of low accuracy in the last 10 trials: ' num2str(percentLastTrialsCorrect) '%.']);
-            DrawFormattedText(ptbWindow,feedbackLastTrials,'center','center',color.Black);
+            DrawFormattedText(ptbWindow,feedbackLastTrials,'center','center',color.black);
             Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
             Screen('Flip',ptbWindow);
             WaitSecs(5);
@@ -577,7 +574,7 @@ for trl = 1:experiment.nTrials
                 '\n\n You can earn more if you perform better.' ...
                 '\n\n Please keep focused on the task!'];
             disp(['Participant was made aware of low accuracy in the last 10 trials: ' num2str(percentLastTrialsCorrect) '%.']);
-            DrawFormattedText(ptbWindow,feedbackLastTrials,'center','center',color.Black);
+            DrawFormattedText(ptbWindow,feedbackLastTrials,'center','center',color.black);
             Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
             Screen('Flip',ptbWindow);
             WaitSecs(5);
@@ -589,7 +586,7 @@ for trl = 1:experiment.nTrials
     if noFixation > 0
         Screen('TextSize', ptbWindow, 30);
         fixText = 'ALWAYS LOOK AT THE CENTER OF THE SCREEN!';
-        DrawFormattedText(ptbWindow, fixText, 'center', 'center', color.White);
+        DrawFormattedText(ptbWindow, fixText, 'center', 'center', color.white);
         Screen('DrawDots', ptbWindow, backPos, backDiameter, backColor, [], 1);
         Screen('Flip', ptbWindow);
         disp('FIXATION REMINDER')
@@ -607,11 +604,13 @@ for trl = 1:experiment.nTrials
     end
     reactionTime = num2str(round(data.reactionTime(trl), 2), '%.2f');
     if trl < 10
-        disp(['Response to Trial ' num2str(trl) '/' num2str(experiment.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText '  (' num2str(COND) '-back | Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime) 's)']);
+        disp(['Response to Trial ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText '  (' num2str(COND) '-back | Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime) 's)']);
     else
-        disp(['Response to Trial ' num2str(trl) '/' num2str(experiment.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (' num2str(COND) '-back | Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime) 's)']);
+        disp(['Response to Trial ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (' num2str(COND) '-back | Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime) 's)']);
     end
 
+    % Save trial duration in seconds
+    data.trlDuration(trl) = toc;
 end
 
 %% Send triggers to end task
@@ -653,9 +652,13 @@ else
     disp(['End of Block ' num2str(BLOCK)]);
 end
 
-% Record block duration
-timing.duration = toc;
-timing.endTime =  datestr(now, 'dd/mm/yy-HH:MM');
+%% Record block duration
+timing.endTime = datestr(now, 'dd/mm/yy-HH:MM:SS');
+% Convert to datetime objects
+startTime = datetime(timing.startTime, 'InputFormat', 'dd/MM/yy-HH:mm:ss');
+endTime = datetime(timing.endTime, 'InputFormat', 'dd/MM/yy-HH:mm:ss');
+% Calculate block duration in seconds
+timing.duration = seconds(endTime - startTime);
 
 %% Save data
 subjectID = num2str(subject.ID);
@@ -746,7 +749,7 @@ if TRAINING == 1
     format bank % Change format for display
     feedbackBlockText = ['Your accuracy in the training task was ' num2str(percentTotalCorrect) '%. '];
     disp(['Participant ' subjectID ' had an accuracy of ' num2str(percentTotalCorrect) ' % in the training task.'])
-    DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.Black);
+    DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.black);
     format default % Change format back to default
     Screen('Flip',ptbWindow);
     WaitSecs(5);
@@ -761,7 +764,7 @@ elseif COND == 1
         '\n\n Because of your accuracy you have been awarded an additional ' num2str(amountCHFextra(BLOCK)) ' CHF.' ...
         '\n\n Keep it up!'];
 
-    DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.Black);
+    DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.black);
     disp(['Participant ' subjectID ' was awarded CHF ' num2str(amountCHFextra(BLOCK), '%.2f') ' for an accuracy of ' num2str(round(percentTotalCorrect(BLOCK))) ' % in Block ' num2str(BLOCK) '.'])
     format default % Change format back to default
     Screen('Flip',ptbWindow);
@@ -781,7 +784,7 @@ elseif COND > 1
     feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect(BLOCK)) '%. ' ...
         '\n\n Because of your accuracy you have been awarded an additional ' num2str(amountCHFextra(BLOCK)) ' CHF.' ...
         '\n\n Keep it up!'];
-    DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.Black);
+    DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.black);
     disp(['Participant ' subjectID ' was awarded CHF ' num2str(amountCHFextra(BLOCK), '%.2f') ' for an accuracy of ' num2str(round(percentTotalCorrect(BLOCK))) ' % in Block ' num2str(BLOCK) '.'])
     format default % Change format back to default
     Screen('Flip',ptbWindow);
@@ -801,9 +804,9 @@ elseif BLOCK == 3
         '\n\n Press any key to view your stats.'];
 else
     breakInstructionText = ['Break! Rest for a while... ' ...
-        '\n\n Press any key to start the mandatory break of at least 15 seconds.'];
+        '\n\n Press any key to start the mandatory break of at least 10 seconds.'];
 end
-DrawFormattedText(ptbWindow,breakInstructionText,'center','center',color.Black);
+DrawFormattedText(ptbWindow,breakInstructionText,'center','center',color.black);
 Screen('Flip',ptbWindow);
 waitResponse = 1;
 while waitResponse
@@ -811,18 +814,18 @@ while waitResponse
     waitResponse = 0;
 end
 
-%% Wait at least 15 Seconds between Blocks (only after Block 1 has finished, not after Block 6)
+%% Wait at least 10 Seconds between Blocks (only after Block 1 has finished, not after Block 6)
 if TRAINING == 1 && percentTotalCorrect < 60
-    waitTime = 15;
+    waitTime = 10;
     intervalTime = 1;
     timePassed = 0;
-    printTime = 15;
+    printTime = 10;
 
     waitTimeText = ['Please wait for ' num2str(printTime) ' seconds...' ...
         ' \n\n ' ...
         ' \n\n You can repeat the training task afterwards.'];
 
-    DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.Black);
+    DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.black);
     Screen('Flip',ptbWindow);
 
     while timePassed < waitTime
@@ -832,20 +835,20 @@ if TRAINING == 1 && percentTotalCorrect < 60
         waitTimeText = ['Please wait for ' num2str(printTime) ' seconds...' ...
             ' \n\n ' ...
             ' \n\n You can repeat the training task afterwards.'];
-        DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.Black);
+        DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.black);
         Screen('Flip',ptbWindow);
     end
 elseif BLOCK == 1 && TRAINING == 1
-    waitTime = 15;
+    waitTime = 10;
     intervalTime = 1;
     timePassed = 0;
-    printTime = 15;
+    printTime = 10;
 
     waitTimeText = ['Please wait for ' num2str(printTime) ' seconds...' ...
         ' \n\n ' ...
         ' \n\n Block 1 of the N-back task will start afterwards.'];
 
-    DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.Black);
+    DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.black);
     Screen('Flip',ptbWindow);
     disp('Break started');
 
@@ -856,67 +859,39 @@ elseif BLOCK == 1 && TRAINING == 1
         waitTimeText = ['Please wait for ' num2str(printTime) ' seconds...' ...
             ' \n\n ' ...
             ' \n\n Block 1 of the N-back task will start afterwards.'];
-        DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.Black);
+        DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.black);
         Screen('Flip',ptbWindow);
         disp(printTime);
     end
 elseif BLOCK > 1 && TRAINING == 0 && BLOCK < 6
-    waitTime = 15;
+    waitTime = 10;
     intervalTime = 1;
     timePassed = 0;
-    printTime = 15;
+    printTime = 10;
 
     waitTimeText = ['Please wait for ' num2str(printTime) ' seconds...' ...
         ' \n\n ' ...
         ' \n\n Block ' (num2str(BLOCK+1)) ' will start afterwards.'];
 
-    DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.Black);
+    DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.black);
     Screen('Flip',ptbWindow);
     disp('Break started');
 
     while timePassed < waitTime
-        waitbar(timePassed/15, 'INITIALIZING EEG');
+        waitbar(timePassed/10, 'INITIALIZING EEG');
         pause(intervalTime);
         timePassed = timePassed + intervalTime;
         printTime = waitTime - timePassed;
         waitTimeText = ['Please wait for ' num2str(printTime) ' seconds...' ...
             ' \n\n ' ...
             ' \n\n Block ' (num2str(BLOCK+1)) ' will start afterwards.'];
-        DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.Black);
+        DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.black);
         Screen('Flip',ptbWindow);
     end
     wbar = findall(0,'type','figure','tag','TMWWaitbar');
     delete(wbar)
     disp('Break done!')
 end
-
-%% Save total amount earned and display
-% if BLOCK == 6
-%     amountCHFextraTotal = sum(amountCHFextra);
-%     saves.amountCHFextraTotal = amountCHFextraTotal;
-%     format bank % Change format for display
-%     endTextCash = ['Well done! You have completed the task.' ...
-%         ' \n\n Because of your accuracy you have been awarded an additional ' num2str(amountCHFextraTotal) ' CHF in total.' ...
-%         ' \n\n ' ...
-%         ' \n\n Block 1: ' num2str(round(percentTotalCorrect(1))) ' % accuracy earned you ' num2str(amountCHFextra(1), '%.2f') ' CHF.' ...
-%         ' \n\n Block 2: ' num2str(round(percentTotalCorrect(2))) ' % accuracy earned you ' num2str(amountCHFextra(2), '%.2f') ' CHF.' ...
-%         ' \n\n Block 3: ' num2str(round(percentTotalCorrect(3))) ' % accuracy earned you ' num2str(amountCHFextra(3), '%.2f') ' CHF.' ...
-%         ' \n\n Block 4: ' num2str(round(percentTotalCorrect(4))) ' % accuracy earned you ' num2str(amountCHFextra(4), '%.2f') ' CHF.' ...
-%         ' \n\n Block 5: ' num2str(round(percentTotalCorrect(5))) ' % accuracy earned you ' num2str(amountCHFextra(5), '%.2f') ' CHF.' ...
-%         ' \n\n Block 6: ' num2str(round(percentTotalCorrect(6))) ' % accuracy earned you ' num2str(amountCHFextra(6), '%.2f') ' CHF.' ...
-%         ' \n\n ' ...
-%         ' \n\n ' ...
-%         ' \n\n Press any key to end the task.'];
-%     DrawFormattedText(ptbWindow,endTextCash,'center','center',color.Black); % Display output for participant
-%     disp(['End of Block ' num2str(BLOCK) '. Participant ' num2str(subjectID) ' has earned CHF ' num2str(amountCHFextraTotal) ' extra in total.']);
-%     format default % Change format back to default
-%     Screen('Flip',ptbWindow);
-%     waitResponse = 1;
-%     while waitResponse
-%         [time, keyCode] = KbWait(-1,2);
-%         waitResponse = 0;
-%     end
-% end
 
 %% Quit
 Screen('CloseAll');

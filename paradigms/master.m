@@ -1,10 +1,12 @@
-%% Master script for the AOC study
-
+%% Master script for the AOC (Alpha Oculomotr Control) Study
+%
 % - Resting EEG
-% - Sternberg training (10 trials)
-% - Sternberg actual task (6 blocks x 50 trials)
-% - N-back training (10 trials)
-% - N-back task (6 blocks x 75 trials)
+% - Sternberg
+%   - Training (10 trials)
+%   - Task (6 blocks x 50 trials)
+% - N-back
+%   - Training (10 trials)
+%   - N-back task (6 blocks x 75 trials)
 
 %% General settings, screens and paths
 
@@ -19,11 +21,10 @@ PPDEV_PATH = '/home/methlab/Documents/MATLAB/ppdev-mex-master'; % For sending EE
 DATA_PATH = '/home/methlab/Desktop/AOC_data'; % Folder to save data
 FUNS_PATH = '/home/methlab/Desktop/AOC' ; % Folder with all functions
 
-mkdir(DATA_PATH) % Make data dir, if doesn't exist yet
 addpath(FUNS_PATH) % Add path to folder with functions
 screenSettings % Manage screens
 
-%% Collect ID and Age  
+%% Collect ID and Age
 dialogID;
 
 %% Protect Matlab code from participant keyboard input
@@ -50,7 +51,7 @@ nback_condition = nback_condition(randperm(length(nback_condition)));
 %% Execute STERNBERG - NBACK %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if strcmp(taskOrder, 'SternbergNBack')
     disp(['Subject ' num2str(subjectID) ': Running Sternberg followed by N-Back...']);
-    
+
     %% Execute Sternberg Task
     % Training phase
     TASK = 'AOC_Sternberg';
@@ -62,13 +63,13 @@ if strcmp(taskOrder, 'SternbergNBack')
     else
         percentTotalCorrect = 0;
     end
-    
+
     while percentTotalCorrect < 59
         disp([TASK, ' Training TASK...']);
         eval(TASK); % Run the task
         BLOCK = BLOCK + 1;
     end
-    
+
     % Actual task
     TRAINING = 0;
     blockCount = 6;
@@ -79,16 +80,16 @@ if strcmp(taskOrder, 'SternbergNBack')
             break;
         end
     end
-    
+
     for BLOCK = start:blockCount
         disp([TASK, ' STARTING...']);
         eval(TASK); % Run the task
     end
-    
+
     %% Mandatory Break of at least 5 seconds
     disp('Waiting 5 seconds between tasks...');
     WaitSecs(5);
-    
+
     %% Execute N-back Task
     % Training phase
     TASK = 'AOC_NBack';
@@ -100,14 +101,14 @@ if strcmp(taskOrder, 'SternbergNBack')
     else
         percentTotalCorrect = 0;
     end
-    
+
     while percentTotalCorrect < 59
         disp([TASK, ' Training TASK...']);
         COND = nback_condition(1);
         eval(TASK); % Run the task
         BLOCK = BLOCK + 1;
     end
-    
+
     % Actual task
     TRAINING = 0;
     blockCount = 6;
@@ -129,12 +130,12 @@ if strcmp(taskOrder, 'SternbergNBack')
         COND = nback_condition(BLOCK);
         eval(TASK); % Run the task
     end
-    
-%% Execute NBACK - STERNBERG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+    %% Execute NBACK - STERNBERG %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 else
     disp(['Subject ' num2str(subjectID) ': Running N-back followed by Sternberg...']);
-    
-     %% Execute N-back Task
+
+    %% Execute N-back Task
     % Training phase
     TASK = 'AOC_NBack';
     BLOCK = 0;
@@ -145,14 +146,14 @@ else
     else
         percentTotalCorrect = 0;
     end
-    
+
     while percentTotalCorrect < 59
         disp([TASK, ' Training TASK...']);
         COND = nback_condition(1);
         eval(TASK); % Run the task
         BLOCK = BLOCK + 1;
     end
-     
+
     % Actual task
     TRAINING = 0;
     blockCount = 6;
@@ -168,17 +169,17 @@ else
             break;
         end
     end
-    
+
     for BLOCK = start:blockCount
         disp([TASK, ' STARTING...']);
         COND = nback_condition(BLOCK);
         eval(TASK); % Run the task
     end
-    
+
     %% Mandatory Break of at least 5 seconds
     disp('Waiting 5 seconds between tasks...');
     WaitSecs(5);
-    
+
     %% Execute Sternberg Task
     % Training phase
     TASK = 'AOC_Sternberg';
@@ -190,13 +191,13 @@ else
     else
         percentTotalCorrect = 0;
     end
-    
+
     while percentTotalCorrect < 59
         disp([TASK, ' Training TASK...']);
         eval(TASK); % Run the task
         BLOCK = BLOCK + 1;
     end
-    
+
     % Actual task
     TRAINING = 0;
     blockCount = 6;
@@ -207,7 +208,7 @@ else
             break;
         end
     end
-    
+
     for BLOCK = start:blockCount
         disp([TASK, ' STARTING...']);
         eval(TASK); % Run the task

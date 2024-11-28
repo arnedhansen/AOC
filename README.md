@@ -23,7 +23,7 @@ Visualizes accuracy and reaction times.
 
 **Gaze**
 
-Visualizes gaze deviation as euclidean distances.
+Visualizes gaze deviation (in euclidean distances) and microsaccades.
 
 **Alpha Power**
 

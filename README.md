@@ -3,7 +3,7 @@
 Sternberg and N-back tasks. Combined EEG and ET analysis of neural signatures of oculomotor control in the alpha band. Published in Psychophysiology. https://doi.org/10.22541/au.172466871.17083913/v1
 
 
-The following are short descriptions of what the files in the respective folders in this OSF repository do. The titles below correspond to the folder names. Apart from the R scripts in ’Stats’, all files are MATLAB scripts.
+The following are short descriptions of what the files in the respective folders in this repository do. The titles below correspond to the folder names. Apart from the R scripts in ’Stats’, all files are MATLAB scripts.
 
 Paradigms
 The experimental paradigms ‚AOC_nback.m’ and ‚AOC_Sternberg.m‘ are executed using ‚master.m‘. The dependencies can be found in this folder as well.

@@ -69,6 +69,9 @@ else
     exp.nTrials = 75;                   % 6 blocks x 75 trials = 450 trials
 end
 
+% Enable (=1) or disable (=0) screenshots
+enableScreenshots = 0;
+
 % Set up equipment parameters
 equipment.viewDist = 680;               % Viewing distance in millimetres
 equipment.ppm = 3.6;                    % Pixels per millimetre !! NEEDS TO BE SET. USE THE MeasureDpi FUNCTION !!
@@ -246,16 +249,7 @@ end
 DrawFormattedText(ptbWindow,startExperimentText,'center','center',color.black);
 Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
 Screen('Flip',ptbWindow);
-
-
-
-% Take screenshot of current screen
-screenshotFilename = sprintf('AOC_Nback_screenshot_instructions.png');
-imageArray = Screen('GetImage', ptbWindow);
-imwrite(imageArray, screenshotFilename);
-
-
-
+screenshot(sprintf('AOC_Nback_screenshot_instructions.png'), enableScreenshots);
 disp('Participant is reading the instructions.');
 waitResponse = 1;
 while waitResponse
@@ -364,19 +358,7 @@ for trl = 1:exp.nTrials
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('DrawDots',ptbWindow, stimPos, stimDiameter, stimColor,[],1);
     Screen('Flip', ptbWindow);
-
-
-
-
-    % Take screenshot of current screen
-    screenshotFilename = sprintf('AOC_Nback_screenshot_trl%d.png', trl);
-    imageArray = Screen('GetImage', ptbWindow);
-    imwrite(imageArray, screenshotFilename);
-
-
-
-
-
+    screenshot(sprintf('AOC_Nback_screenshot_trl%d.png', trl), enableScreenshots);
     probePresentationTime = GetSecs;
     % Return size of text to default
     Screen('TextSize', ptbWindow, 20);

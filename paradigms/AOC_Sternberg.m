@@ -164,7 +164,7 @@ Screen('BlendFunction', ptbWindow, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
 exp.runPriority = MaxPriority(ptbWindow);
 
 % Set font and font size for instructions and stimuli
-Screen('TextFont', win, 'Menlo');
+Screen('TextFont', ptbWindow, 'Liberation Mono');
 Screen('TextSize', ptbWindow, 20);
 
 global psych_default_colormode;                     % Sets colormode to be unclamped 0-1 range.
@@ -187,13 +187,15 @@ if mod(subject.ID,2) == 0 % Use subject ID for assignment to ensure counterbalan
     YesIsL = true;        % L is YES, A is NO
     responseInstructionText = ['If you think the letter was included previously, press L. \n\n' ...
         'If you think the letter was not included previously, press A. \n\n'...
-        'Use your left hand to press A and right hand to press L \n\n' ...
+        ' \n\n' ...
+        ' \n\n' ...
         'Press any key to continue.'];
 elseif mod(subject.ID,2) == 1
     YesIsL = false;       % L is NO, A is YES
     responseInstructionText = ['If you think the letter was included previously, press A. \n\n' ...
         'If you think the letter was not included previously, press L. \n\n'...
-        'Use your left hand to press A and right hand to press L \n\n' ...
+        ' \n\n' ...
+        ' \n\n' ...
         'Press any key to continue.'];
 end
 
@@ -209,7 +211,7 @@ fixCoords = [fixHorizontal; fixVertical];
 fixPos = [screenCentreX, screenCentreY];
 
 %% Define stimulus letter pool
-consonants = char(setdiff('A':'Z', 'AEIOUXW')); % Exclude vowels and 'X' and 'W'
+consonants = char(setdiff('A':'Z', 'AEIOUXQ')); % Exclude vowels and 'X' and 'Q'
 
 %% Create data structure for preallocating data
 data = struct;
@@ -247,6 +249,7 @@ data.setSizeOccurences(3) = numel(find(data.trialSetSize == exp.setSizes(3)));
 
 
 %% Display info texts
+clc
 if TRAINING == 0
     % Show performance bonus incentive text
     DrawFormattedText(ptbWindow,performanceBonusText,'center','center',color.black);
@@ -269,7 +272,6 @@ while waitResponse
     waitResponse = 0;
 end
 screenshot('AOC_Sternberg_screenshot_startExperimentText.png', ptbWindow, enableScreenshots);
-
 
 % Show response instruction text
 DrawFormattedText(ptbWindow,responseInstructionText,'center','center',color.black);
@@ -649,7 +651,7 @@ for trl = 1:exp.nTrials
     overall_accuracy = round((sum(data.correct(1:trl))/trl)*100);
     reactionTime = num2str(round(data.reactionTime(trl), 2), '%.2f');
     if trl < 10
-        disp(['Response to Trial ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText '  (WM load ' num2str(data.trialSetSize(trl)) ' | Acc: ' num2str(overall_accuracy) '% | RT: ' reactionTime 's)']);
+        disp(['Response to Trial  ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (WM load ' num2str(data.trialSetSize(trl)) ' | Acc: ' num2str(overall_accuracy) '% | RT: ' reactionTime 's)']);
     else
         disp(['Response to Trial ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (WM load ' num2str(data.trialSetSize(trl)) ' | Acc: ' num2str(overall_accuracy) '% | RT: ' reactionTime 's)']);
     end

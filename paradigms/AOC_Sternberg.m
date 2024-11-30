@@ -131,7 +131,7 @@ performanceBonusText = ['In the following task there is a performance bonus! \n\
 startBlockText = 'Press any key to begin the next block.';
 
 %% Set up temporal parameters (in seconds)
-timing.letterPresentation = 0.2;            % Duration of digit presentation (200ms)
+timing.letterPresentation = 0.2;            % Duration of letter presentation (200ms)
 timing.rest = 2;                            % Duration of blank resting interval (2000ms)
 timing.retentionInterval = 2.8;             % Duration of blank retention interval (2800ms)
 
@@ -163,7 +163,8 @@ flipInterval = Screen('GetFlipInterval', ptbWindow);
 Screen('BlendFunction', ptbWindow, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
 exp.runPriority = MaxPriority(ptbWindow);
 
-% Set font size for instructions and stimuli
+% Set font and font size for instructions and stimuli
+Screen('TextFont', win, 'Menlo');
 Screen('TextSize', ptbWindow, 20);
 
 global psych_default_colormode;                     % Sets colormode to be unclamped 0-1 range.
@@ -267,7 +268,7 @@ while waitResponse
     [time, keyCode] = KbWait(-1,2);
     waitResponse = 0;
 end
-screenshot('AOC_Sternberg_screenshot_startExperimentText.png', enableScreenshots);
+screenshot('AOC_Sternberg_screenshot_startExperimentText.png', ptbWindow, enableScreenshots);
 
 
 % Show response instruction text
@@ -279,7 +280,7 @@ while waitResponse
     [time, keyCode] = KbWait(-1,2);
     waitResponse = 0;
 end
-screenshot('AOC_Sternberg_screenshot_responseInstructionText.png', enableScreenshots);
+screenshot('AOC_Sternberg_screenshot_responseInstructionText.png', ptbWindow, enableScreenshots);
 Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
 Screen('Flip',ptbWindow);
 
@@ -354,7 +355,7 @@ for trl = 1:exp.nTrials
         Eyelink('command', 'record_status_message "FIXATION"');
         sendtrigger(FIXATION,port,SITE,stayup);
     end
-    screenshot('AOC_Sternberg_screenshot_fixcross.png', enableScreenshots);
+    screenshot('AOC_Sternberg_screenshot_fixcross.png', ptbWindow, enableScreenshots);
     timing.cfi(trl) = (randsample(500:1500, 1))/1000; % Duration of the jittered inter-trial interval
     WaitSecs(timing.cfi(trl));
 
@@ -380,13 +381,12 @@ for trl = 1:exp.nTrials
     data.stimulusText(trl) = {stimulusText};
 
     % Present stimuli
-    % DrawFormattedText(ptbWindow, stimulusText, 'center', 'center', color.textVal); % Draw stimuli in black
     DrawFormattedText(ptbWindow, stimulusText, 'center', 'center', color.white); % Draw stimuli in white
     Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixPos, 2); % Draw fixation cross
     Screen('DrawDots', ptbWindow, backPos, backDiameter, backColor, [], 1);
     Screen('DrawDots', ptbWindow, stimPos, stimDiameter, stimColor, [], 1);
     Screen('Flip', ptbWindow);
-    screenshot(sprintf('AOC_Sternberg_screenshot_WMload%d_trl%d.png', data.trialSetSize(trl), trl), enableScreenshots);
+    screenshot(sprintf('AOC_Sternberg_screenshot_WMload%d_trl%d.png', data.trialSetSize(trl), trl), ptbWindow, enableScreenshots);
 
     % Send triggers for Presentation
     if data.trialSetSize(trl) == exp.setSizes(1)
@@ -473,7 +473,7 @@ for trl = 1:exp.nTrials
         TRIGGER = NO_MATCH;
     end
     probePresentationTime = GetSecs;
-    screenshot(sprintf('AOC_Sternberg_screenshot_probe_trl%d.png', trl), enableScreenshots);
+    screenshot(sprintf('AOC_Sternberg_screenshot_probe_trl%d.png', trl), ptbWindow, enableScreenshots);
 
     if TRAINING == 1
         Eyelink('Message', num2str(TRIGGER));
@@ -598,7 +598,7 @@ for trl = 1:exp.nTrials
         DrawFormattedText(ptbWindow,feedbackText,'center','center',color.black);
         Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
         Screen('Flip',ptbWindow);
-        screenshot(sprintf('AOC_Sternberg_screenshot_feedback_trl%d.png', trl), enableScreenshots);
+        screenshot(sprintf('AOC_Sternberg_screenshot_feedback_trl%d.png', trl), ptbWindow, enableScreenshots);
         WaitSecs(2);
         % Give feedback for no response (too slow)
     elseif TRAINING == 0 && data.correct(trl) == 0 && data.responses(trl) == 0
@@ -623,7 +623,7 @@ for trl = 1:exp.nTrials
             DrawFormattedText(ptbWindow,feedbackLastTrials,'center','center',color.white);
             Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
             Screen('Flip',ptbWindow);
-            screenshot(sprintf('AOC_Sternberg_screenshot_accuracy_reminder_trl%d.png', trl), enableScreenshots);
+            screenshot(sprintf('AOC_Sternberg_screenshot_accuracy_reminder_trl%d.png', trl), ptbWindow, enableScreenshots);
             WaitSecs(3);
         end
     end
@@ -637,7 +637,7 @@ for trl = 1:exp.nTrials
         Screen('DrawDots', ptbWindow, backPos, backDiameter, backColor, [], 1);
         Screen('Flip', ptbWindow);
         disp('FIXATION REMINDER')
-        screenshot(sprintf('AOC_Sternberg_screenshot_fixation_reminder_trl%d.png', trl), enableScreenshots);
+        screenshot(sprintf('AOC_Sternberg_screenshot_fixation_reminder_trl%d.png', trl), ptbWindow, enableScreenshots);
         WaitSecs(3);
         data.fixation(trl) = 0;
         Screen('TextSize', ptbWindow, 20);
@@ -657,7 +657,7 @@ for trl = 1:exp.nTrials
     %% Blank screen for resting interval (2000ms)
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('Flip', ptbWindow);
-    screenshot('AOC_Sternberg_screenshot_resting_blank.png', enableScreenshots);
+    screenshot('AOC_Sternberg_screenshot_resting_blank.png', ptbWindow, enableScreenshots);
     WaitSecs(timing.rest);
 
     % Save trial duration in seconds

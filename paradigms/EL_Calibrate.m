@@ -14,7 +14,7 @@ try
     Eyelink('Command', 'saccade_velocity_threshold = 35'); % Set saccade velocity threshold
     Eyelink('Command', 'saccade_acceleration_threshold = 9500'); % Set saccade acceleration threshold
     Eyelink('Command', 'link_sample_data  = LEFT,RIGHT,GAZE,AREA,PUPIL,HREF'); % Request left and right eye data, gaze position, pupil size, and head-reflected distance (HREF)
-    Eyelink('Command', 'active_eye = LEFT'); % Set the active eye to left
+    %Eyelink('Command', 'active_eye = LEFT'); % Set the active eye to left
     Eyelink('Command', 'calibration_type = HV9'); % Set calibration type to 9-point
     Eyelink('Command', 'enable_automatic_calibration = YES'); % Enable automatic calibration
     Eyelink('Command', 'automatic_calibration_pacing = 500'); % Set calibration pacing to 500ms

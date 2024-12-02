@@ -18,7 +18,4 @@ trigger = 1;
 
 sendtrigger(trigger,port,SITE,stayup)
 
-% wait for EEG recording to start. It takes ca 10 s. 
-% Or put initEEG before ET calibration, which also takes some time...
-% WaitSecs(15);
-
+% Wait for EEG recording to start. It takes ca 10 s. 

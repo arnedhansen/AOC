@@ -24,7 +24,7 @@ par.BGcolor = 192;
 % photo diode
 % define the background and diode stimulus
 backColor = [0, 0, 0]; % black
-stimColor = [1500, 1500, 1500]; % white
+stimColor = [255, 255, 255]; % [1500, 1500, 1500]; % white
 backDiameter = 35;
 stimDiameter = 33;
 backPos = [4, screenHeight - 20]; 

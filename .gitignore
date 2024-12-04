@@ -1,4 +1,2 @@
-
-_OSF_241009-RR-S1-Revision/gaze/pupil/.DS_Store
-_OSF_241009-RR-S1-Revision/eeg/.DS_Store
-_OSF_241009-RR-S1-Revision/.DS_Store
+*.DS_Store
+*.asv

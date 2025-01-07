@@ -38,6 +38,7 @@ for subj = 1:length(subjects)
         valid_data_indices = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
         valid_data = data(1:3, valid_data_indices);
         data = valid_data;
+        data(2, :) = 600 - data(2, :); % Invert Y-axis
 
         %% Remove blinks with a window of 100ms (= 50 samples/timepoints)
         win_size = 50;

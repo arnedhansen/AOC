@@ -35,7 +35,8 @@ for subj = 1:length(subjects)
 
         %% Filter out data points outside the screen boundaries
         valid_data_indices = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
-        valid_data = data(1:3, valid_data_indices); % Excluding pupil size data
+        valid_data = data(1:3, valid_data_indices);
+        data = valid_data;
 
         %% Remove blinks with a window of 100ms (= 50 samples/timepoints)
         win_size = 50;
@@ -44,7 +45,8 @@ for subj = 1:length(subjects)
         %% Extract gaze data and pupil size
         gaze_x{subj, trl} = data(1, :);
         gaze_y{subj, trl} = data(2, :);
-        pupil_size = data(3, :);
+        pupil_size{subj, trl} = mean(data(3, :), 'omitnan') / 1000;
+        pups = pupil_size{subj, trl};
 
         %% Compute gaze deviation as euclidean distances from the center
         x_coords = gaze_x{subj, trl};
@@ -70,7 +72,7 @@ for subj = 1:length(subjects)
         trial_num = [trial_num; trl];
         condition = [condition; dataet.trialinfo(trl)];
         gazeDev = [gazeDev; mean_euclidean_distance];
-        pupilSize = [pupilSize; mean(pupil_size, 'omitnan')/1000];
+        pupilSize = [pupilSize; pups];
         microsaccadeRate = [microsaccadeRate; microsaccade_rate];
     end
     %% Create a trial-by-trial structure array for this subject

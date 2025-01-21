@@ -1,13 +1,14 @@
-%% Cutting of EEG data
+%% Cutting of EEG data for the AOC study
 % Automatically finds all not converted .cnt files
 
 %% EEGlab
+clear
+clc
 p = pwd;
 cd /Volumes/methlab/4marius_bdf/eeglab
 eeglab
 close()
 cd(p)
-clc
 
 %% Define path, cut data and convert asc to mat files.
 d = dir(strcat('/Volumes/methlab_data/AOC/data/*/', '*cnt'));
@@ -16,24 +17,25 @@ for f = 1 : size(d, 1)
 
     filePath = fullfile( d(f).folder, d(f).name);
     cutData(filePath)
-    
+
     id = strsplit(d(f).name, '_');
     ids{f} = id{1};
+    fprintf('Cutting of data for Subject AOC %.3s done', ids{f})
 end
 
 %% Load and synchronize EEG & Eyelink
-for id = 1 : length(ids) 
+for id = 1 : length(ids)
     ID = ids{id};
 
     filePath = fullfile('/Volumes/methlab_data/AOC/data', ID);
     d = dir([filePath, filesep, '*.asc']);
-    
+
     if not(isempty(d))
         for f = 1 : size(d, 1)
-            
+
             % convert ET asc to mat
             inputFile = fullfile(d(f).folder, d(f).name);
-            
+
             % rename the files (EyeLink can't deal with long filenames, edf filenames has to be short)
             x = strsplit(d(f).name, '_');
             name = x{2};

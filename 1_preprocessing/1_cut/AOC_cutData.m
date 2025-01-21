@@ -6,35 +6,34 @@ function  cutData(filePath)
 
 % EEGlab with 'pop_loadeep_v4' required
 
-% load the data
+%% Load the data
 [EEGorig, command] = pop_loadeep_v4(filePath);
 
-% extract path and filename
+%% Extract path and filename
 p = strsplit(filePath, filesep);
 filePath = fullfile(filesep, p{1:end-1});
 fileName = p{end};
 p = strsplit(fileName, '_');
 subjectID = p{1};
 
-% remove photodiode data and save to a file
-diode = pop_select(EEGorig, 'channel', [129]);
-task = [subjectID, '_Photodiode.mat'];
-save(fullfile(filePath, task), 'diode', '-v7.3')
+%% Remove photodiode data and save to a file
+diode = pop_select(EEGorig, 'channel', 129);
+savename_pd = [subjectID, '_Photodiode.mat'];
+save(fullfile(filePath, savename_pd), 'diode', '-v7.3')
 
-% exclude photodiode data
+% Exclude photodiode data
 if EEGorig.nbchan > 128
-    EEGorig = pop_select(EEGorig, 'nochannel', [129:EEGorig.nbchan]);
+    EEGorig = pop_select(EEGorig, 'nochannel', 129:EEGorig.nbchan);
 end
 
-% add Ref channel and data, and load channel location file
+%% Add Ref channel and data, and load channel location file
 EEGorig.data(129, :) = 0;
 EEGorig.nbchan = 129;
 EEGorig.chanlocs(129).labels = 'CPz';                
 locspath = 'standard_1005.elc';
 EEGorig = pop_chanedit(EEGorig, 'lookup', locspath);
 
-% find start and end triggers of each task
-
+%% Find start and end triggers of the data recording:
 % Resting
 i10 = find(ismember({EEGorig.event.type}, '10')); % Start
 i90 = find(ismember({EEGorig.event.type}, '90')); % End
@@ -93,7 +92,6 @@ i76 = find(ismember({EEGorig.event.type}, '76'));
 try
     EEG = pop_select(EEGorig, 'point', [EEGorig.event(i10(1)).latency, EEGorig.event(i90(1)).latency]);
     task = [subjectID, '_Resting_EEG.mat'];
-    % save to a file
     save(fullfile(filePath, task), 'EEG', '-v7.3')
 catch ME
     ME.message
@@ -104,7 +102,6 @@ end
 try
     EEG = pop_select(EEGorig, 'point', [EEGorig.event(i31(end)).latency, EEGorig.event(i41(end)).latency]);
     task = [subjectID, '_AOC_Sternberg', '_block1_task', '_EEG.mat'];
-    % save to a file
     save(fullfile(filePath, task), 'EEG', '-v7.3')
 catch ME
     ME.message
@@ -115,7 +112,6 @@ end
 try
     EEG = pop_select(EEGorig, 'point', [EEGorig.event(i32(end)).latency, EEGorig.event(i42(end)).latency]);
     task = [subjectID, '_AOC_Sternberg', '_block2_task', '_EEG.mat'];
-    % save to a file
     save(fullfile(filePath, task), 'EEG', '-v7.3')
 catch ME
     ME.message
@@ -126,7 +122,6 @@ end
 try
     EEG = pop_select(EEGorig, 'point', [EEGorig.event(i33(end)).latency, EEGorig.event(i43(end)).latency]);
     task = [subjectID, '_AOC_Sternberg', '_block3_task', '_EEG.mat'];
-    % save to a file
     save(fullfile(filePath, task), 'EEG', '-v7.3')
 catch ME
     ME.message
@@ -137,7 +132,6 @@ end
 try
     EEG = pop_select(EEGorig, 'point', [EEGorig.event(i34(end)).latency, EEGorig.event(i44(end)).latency]);
     task = [subjectID, '_AOC_Sternberg', '_block4_task', '_EEG.mat'];
-    % save to a file
     save(fullfile(filePath, task), 'EEG', '-v7.3')
 catch ME
     ME.message
@@ -148,7 +142,6 @@ end
 try
     EEG = pop_select(EEGorig, 'point', [EEGorig.event(i35(end)).latency, EEGorig.event(i45(end)).latency]);
     task = [subjectID, '_AOC_Sternberg', '_block5_task', '_EEG.mat'];
-    % save to a file
     save(fullfile(filePath, task), 'EEG', '-v7.3')
 catch ME
     ME.message
@@ -159,7 +152,6 @@ end
 try
     EEG = pop_select(EEGorig, 'point', [EEGorig.event(i36(end)).latency, EEGorig.event(i46(end)).latency]);
     task = [subjectID, '_AOC_Sternberg', '_block6_task', '_EEG.mat'];
-    % save to a file
     save(fullfile(filePath, task), 'EEG', '-v7.3')
 catch ME
     ME.message
@@ -170,7 +162,6 @@ end
 try
     EEG = pop_select(EEGorig, 'point', [EEGorig.event(i61(end)).latency, EEGorig.event(i71(end)).latency]);
     task = [subjectID, '_AOC_Nback', '_block1_task', '_EEG.mat'];
-    % save to a file
     save(fullfile(filePath, task), 'EEG', '-v7.3')
 catch ME
     ME.message
@@ -181,7 +172,6 @@ end
 try
     EEG = pop_select(EEGorig, 'point', [EEGorig.event(i62(end)).latency, EEGorig.event(i72(end)).latency]);
     task = [subjectID, '_AOC_Nback', '_block2_task', '_EEG.mat'];
-    % save to a file
     save(fullfile(filePath, task), 'EEG', '-v7.3')
 catch ME
     ME.message
@@ -192,7 +182,6 @@ end
 try
     EEG = pop_select(EEGorig, 'point', [EEGorig.event(i63(end)).latency, EEGorig.event(i73(end)).latency]);
     task = [subjectID, '_AOC_Nback', '_block3_task', '_EEG.mat'];
-    % save to a file
     save(fullfile(filePath, task), 'EEG', '-v7.3')
 catch ME
     ME.message
@@ -203,7 +192,6 @@ end
 try
     EEG = pop_select(EEGorig, 'point', [EEGorig.event(i64(end)).latency, EEGorig.event(i74(end)).latency]);
     task = [subjectID, '_AOC_Nback', '_block4_task', '_EEG.mat'];
-    % save to a file
     save(fullfile(filePath, task), 'EEG', '-v7.3')
 catch ME
     ME.message
@@ -214,7 +202,6 @@ end
 try
     EEG = pop_select(EEGorig, 'point', [EEGorig.event(i65(end)).latency, EEGorig.event(i75(end)).latency]);
     task = [subjectID, '_AOC_Nback', '_block5_task', '_EEG.mat'];
-    % save to a file
     save(fullfile(filePath, task), 'EEG', '-v7.3')
 catch ME
     ME.message
@@ -225,14 +212,13 @@ end
 try
     EEG = pop_select(EEGorig, 'point', [EEGorig.event(i66(end)).latency, EEGorig.event(i76(end)).latency]);
     task = [subjectID, '_AOC_Nback', '_block6_task', '_EEG.mat'];
-    % save to a file
     save(fullfile(filePath, task), 'EEG', '-v7.3')
 catch ME
     ME.message
     warning('Nback Block 6 is missing...')
 end
 
-% mkdir Archiv and move the orig files there
+%% mkdir archive and move the orig files there
 source = fullfile(filePath, fileName);
 destination = fullfile(fullfile(filePath, 'archive'));
 mkdir(destination)
@@ -241,6 +227,4 @@ source = fullfile(filePath, [fileName(1:end-4), '.evt']);
 movefile(source,destination) % .evt file
 source = fullfile(filePath, [fileName(1:end-4), '.seg']);
 movefile(source,destination) % .seg file
-
-% end function
 end

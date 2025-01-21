@@ -1,6 +1,4 @@
 %% AOC Preprocessing for Sternberg task
-% Add EEGLAB temporarly to segment data
-% later on it needs to be removed from matlab path to avoid collision with FT
 
 %% Setup
 clear

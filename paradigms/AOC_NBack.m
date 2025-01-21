@@ -166,7 +166,6 @@ performanceBonusText = ['In the following task you can earn a performance bonus!
 timing.blank = 1;                   % Duration of blank screen
 
 % Shuffle rng for random elements
-rng('default');
 rng('shuffle');                     % Use MATLAB twister for rng
 
 % Set up Psychtoolbox Pipeline
@@ -226,7 +225,8 @@ data.stimulus(1:exp.nTrials) = NaN; % Probe stimulus
 data.reactionTime(1:exp.nTrials) = NaN; % Reaction time
 data.fixation(1:exp.nTrials) = NaN; % Reaction time
 data.trlDuration(1:exp.nTrials) = NaN; % Trial duration
-count5trials = NaN; % Feedback variable
+data.badResponse(1:exp.nTrials) = NaN; % Wrong button presses
+count5trials = 0; % Feedback variable
 
 %% Define letterSequence depending on block iteration
 letterSequence = createLetterSequence(TRAINING, COND);
@@ -346,9 +346,10 @@ for trl = 1:exp.nTrials
         Eyelink('command', 'record_status_message "FIXATION"');
         sendtrigger(TRIGGER,port,SITE,stayup);
     end
-    WaitSecs(timing.cfi(trl));                            % Wait duration of the jittered central fixation interval
 
     %% Check fixation just before stimulus presentation
+    fixCheckDuration = timing.cfi(trl);
+    noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, screenCentreY, fixCheckDuration);
     noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, screenCentreY);
 
     %% Present stimulus from letterSequence (2000ms)
@@ -502,6 +503,7 @@ for trl = 1:exp.nTrials
             data.correct(trl) = 0;
         elseif data.responses(trl) ~= spaceKeyCode
             data.correct(trl) = 0;
+            data.badResponse(trl) = 1;
         end
     elseif COND == 2 && trl > 2
         if trlMatch == 1 && data.responses(trl) == spaceKeyCode  % Correct matched trial
@@ -514,6 +516,7 @@ for trl = 1:exp.nTrials
             data.correct(trl) = 0;
         elseif data.responses(trl) ~= spaceKeyCode
             data.correct(trl) = 0;
+            data.badResponse(trl) = 1;
         end
     elseif COND == 3 && trl > 3
         if trlMatch == 1 && data.responses(trl) == spaceKeyCode  % Correct matched trial
@@ -526,6 +529,7 @@ for trl = 1:exp.nTrials
             data.correct(trl) = 0;
         elseif data.responses(trl) ~= spaceKeyCode
             data.correct(trl) = 0;
+            data.badResponse(trl) = 1;
         end
     end
 
@@ -587,7 +591,6 @@ for trl = 1:exp.nTrials
     end
 
     %% Fixation reminder
-    % noFixation = 0;
     if noFixation > 0
         Screen('TextSize', ptbWindow, 30);
         fixText = 'ALWAYS LOOK AT THE CENTER OF THE SCREEN!';

@@ -138,7 +138,6 @@ timing.rest = 2;                            % Duration of blank resting interval
 timing.retentionInterval = 2.8;             % Duration of blank retention interval (2800ms)
 
 %% Shuffle rng for random elements
-rng('default');
 rng('shuffle');                     % Use MATLAB twister for rng
 
 %% Set up Psychtoolbox Pipeline
@@ -365,10 +364,10 @@ for trl = 1:exp.nTrials
     end
     screenshot('AOC_Sternberg_screenshot_fixcross.png', ptbWindow, enableScreenshots);
     timing.cfi(trl) = (randsample(500:1500, 1))/1000; % Duration of the jittered inter-trial interval
-    WaitSecs(timing.cfi(trl));
 
     %% Check fixation just before stimulus presentation
-    noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, screenCentreY);
+    fixCheckDuration = timing.cfi(trl);
+    noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, screenCentreY, fixCheckDuration);
 
     %% Presentation of stimuli (200ms)
     % Increase size of stimuli
@@ -638,7 +637,6 @@ for trl = 1:exp.nTrials
     end
 
     %% Fixation reminder
-    % noFixation = 0;
     if noFixation > 0
         Screen('TextSize', ptbWindow, 30);
         fixText = 'ALWAYS LOOK AT THE CENTER OF THE SCREEN!';

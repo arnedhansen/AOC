@@ -44,7 +44,7 @@ else
 end
 
 % Shuffle n-back conditions
-rng(123);
+rng();
 nback_condition = repmat(1:3, 1, 2);
 nback_condition = nback_condition(randperm(length(nback_condition)));
 
@@ -219,4 +219,13 @@ end
 ListenChar(0);
 
 %%
-    fileName = [subjectID '_', TASK, '_block' num2str(BLOCK) '_task.mat'];
+for block = 1:6
+    for TASK = {'AOC_NBack'; 'AOC_Sternberg'}
+        if TASK == 1
+            tsk = 'AOC_NBack'
+        cd(DATA_PATH)
+        fileName = [subjectID '_', TASK, '_block' num2str(BLOCK) '_task.mat'];
+        load(filename)
+        percCorr(BLOCK) = data.percentTotalCorrect(BLOCK);
+    end
+end

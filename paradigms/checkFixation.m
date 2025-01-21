@@ -1,6 +1,7 @@
-function noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, screenCentreY)
-    numSamples = 250; % 1 second 
-    fixThresh = numSamples * 0.75; % 80% threshold
+function noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, screenCentreY, fixCheckDuration)
+    numSamples = (fixCheckDuration*1000)/2; % 1 sample every 2 ms at 500Hz
+    numSamples = ceil(numSamples);
+    fixThresh = numSamples * 0.80; % 80% threshold
     distOK = 45 + 45; % 1 degree from the center (+ 0.5 deg of ET error)
 
     % Initialize noFixation counter
@@ -8,14 +9,22 @@ function noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, sc
 
     % Collect gaze data for a specified number of samples
     samples = zeros(numSamples, 2); % Initialize matrix for gaze samples
+    i = 1;
 
-    for i = 1:numSamples
-        % Fetch gaze data sample
-        evt = Eyelink('NewestFloatSample');
-        gaze_x = evt.gx(1);
-        gaze_y = evt.gy(1);
-        samples(i, :) = [gaze_x, gaze_y]; % Store gaze sample
-        WaitSecs(0.004); % Wait for 4 ms to get approximately 250 Hz sampling rate
+    % Collect gaze data for 4 ms
+    while GetSecs < startTimeSample + 0.004
+        if i <= numSamples
+            % Fetch gaze data sample
+            evt = Eyelink('NewestFloatSample');
+            if evt.time > 0 % Ensure a valid sample is received
+                gaze_x = evt.gx(1);
+                gaze_y = evt.gy(1);
+                samples(i, :) = [gaze_x, gaze_y]; % Store gaze sample
+                i = i + 1;
+            end
+        else
+            break; % Stop if numSamples is reached
+        end
     end
 
     % Check fixation

@@ -1,4 +1,8 @@
-%% Resting state EEG
+%% Resting state EEG for the AOC and GCP studies
+% 2.5 minutes fixation cross
+% 2.5 minutes of blank
+
+%% Resting
 TASK = 'Resting';
 TRAINING = 0; % no training for Resting
 
@@ -45,19 +49,13 @@ ins.resting.inst = [...
     '\n\n Focus your gaze on this cross. \n'...
     ];
 ins.resting.end = [...
-    'Vielen Dank! Nun folgen weitere Aufgaben. '...
+    'Thank you! Now we will go on to other tasks. '...
     ];
 
-%% Trials
-NrOfTrials = 7;   % How many Cycles to run (8 if  you want to run 6 cycles)
-eyeO = 3:60:303; % Audio cues
-eyeC = 23:60:323;
-
-% Setting the Trigger codes
-par.CD_START = 10;
-par.CD_eyeO = 20;
-par.CD_eyeC = 30;
-par.CD_END  = 90;
+%% Setting the Trigger codes
+START = 10;
+FLIPTONOFIXCROSS = 50;
+END  = 90;
 
 %% Screen Calculations
 [scresw, scresh]=Screen('WindowSize',whichScreen);  % Get screen resolution
@@ -70,63 +68,53 @@ load gammafnCRT;   % load the gamma function parameters for this monitor - or so
 maxLum = GrayLevel2Lum(255,Cg,gam,b0);
 par.BGcolor = Lum2GrayLevel(maxLum/2,Cg,gam,b0);
 
-i = 1;
-t = 1;
-tt = 1;
-
 %% Experiment ptbWindow
 clc;
 ptbWindow=Screen('OpenWindow', whichScreen, par.BGcolor); % dont need to open a screen again
-
 Screen('TextSize', ptbWindow, tSize2);
 DrawFormattedText(ptbWindow, ins.resting.inst, scresw / 3, scresh / 3, colorText);
 DrawFormattedText(ptbWindow, ins.misc.mouse,'center', 0.9*scresh, colorText);
 Screen('Flip', ptbWindow);
-
 HideCursor(whichScreen);
-
 clc;
-disp('THE SUBJECT IS READING THE INSTRUCTIONS');
+disp('RESTING STATE. THE SUBJECT IS READING THE INSTRUCTIONS...');
 
+% Wait for participant to start the resting
 waitResponse = 1;
 while waitResponse
     [time, keyCode] = KbWait(-1,2);
     waitResponse = 0;
 end
 
-%% Experiment Block
-time = GetSecs;
-
-Eyelink('Message', num2str(par.CD_START));
+%% Send start triggers
+Eyelink('Message', num2str(START));
 Eyelink('command', 'record_status_message "START"');
-sendtrigger(par.CD_START,port,SITE,stayup)
+sendtrigger(START,port,SITE,stayup)
 
-fprintf('Running Trials\n');
-while t < NrOfTrials
-    Screen('DrawLine', ptbWindow,[0 0 0],center(1)-12,center(2), center(1)+12,center(2));
-    Screen('DrawLine', ptbWindow,[0 0 0],center(1),center(2)-12, center(1),center(2)+12);
-    vbl = Screen('Flip',ptbWindow); % clc
-    if vbl >=time+eyeO(t) %Tests if a second has passed
-        Eyelink('Message', num2str(par.CD_eyeO));
-        Eyelink('command', 'record_status_message "eyeO"');
-        sendtrigger(par.CD_eyeO,port,SITE,stayup)
-        disp(['Resting EEG: ' num2str(t) ' of ' num2str(NrOfTrials) ' trials']);
-        t = t+1;
-    end
-    if vbl >=time+eyeC(tt) %Tests if a second has passed
-        Eyelink('Message', num2str(par.CD_eyeC));
-        Eyelink('command', 'record_status_message "eyeC"');
-        sendtrigger(par.CD_eyeC,port,SITE,stayup)
+disp('STARTING RESTING STATE');
+% Display fixation cross for 2.5 minutes
+Screen('DrawLine', ptbWindow,[0 0 0],center(1)-12,center(2), center(1)+12,center(2));
+Screen('DrawLine', ptbWindow,[0 0 0],center(1),center(2)-12, center(1),center(2)+12);
+Screen('Flip',ptbWindow);
+WaitSecs(150);
 
-        tt = tt+1;
-    end
-end
+%% Switch to blank
+% Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
+Screen('Flip', ptbWindow);
+% Send blank triggers
+Eyelink('Message', num2str(FLIPTONOFIXCROSS));
+Eyelink('command', 'record_status_message "FLIPTONOFIXCROSS"');
+sendtrigger(FLIPTONOFIXCROSS,port,SITE,stayup)
+disp('2.5 MINUTES DONE. FLIP TO BLANK...');
+WaitSecs(150);
 
-Eyelink('Message', num2str(par.CD_END));
+%% Send end triggers
+Eyelink('Message', num2str(END));
 Eyelink('command', 'record_status_message "END"');
-sendtrigger(par.CD_END,port,SITE,stayup)
+sendtrigger(END,port,SITE,stayup)
+disp('RESTING EEG FINISHED');
 
-disp('Resting EEG finished');
+%% Display end texts
 Screen('TextSize', ptbWindow, tSize3);
 DrawFormattedText(ptbWindow, ins.misc.finished,'center', 0.4*scresh, colorText);
 Screen('TextSize', ptbWindow, tSize2);
@@ -135,14 +123,14 @@ Screen('Flip', ptbWindow);
 ShowCursor(whichScreen);
 WaitSecs(5);
 
-% Save data
+%% Save data
 subjectID = num2str(subject.ID);
 filePath = fullfile(DATA_PATH, subjectID);
 mkdir(filePath)
 save(fullfile(filePath, [subjectID,'_', TASK, '.mat']),'par','eyeO','eyeC');
 
-% Close and save EEG and ET
+%% Close and save EEG and ET
 disp('SAVING DATA...');
 closeEEGandET;
 
-sca; %If Eyetracker wasn't used, close the Screens now
+sca; % If Eyetracker wasn't used, close the Screens now

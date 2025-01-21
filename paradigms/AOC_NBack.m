@@ -665,6 +665,16 @@ endTime = datetime(timing.endTime, 'InputFormat', 'dd/MM/yy-HH:mm:ss');
 % Calculate block duration in seconds
 timing.duration = seconds(endTime - startTime);
 
+%% Record accuracy
+if TRAINING == 0
+    try
+        totalCorrect = sum(data.correct(1, 2:end-1));
+        totalTrials = trl-2;
+        data.percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
+    catch
+    end
+end
+
 %% Save data
 subjectID = num2str(subject.ID);
 filePath = fullfile(DATA_PATH, subjectID);
@@ -725,11 +735,6 @@ trigger.RESP_NO = RESP_NO;
 trigger.RESP_WRONG = RESP_WRONG;
 trigger.TASK_END = TASK_END;
 
-if BLOCK == 6
-    amountCHFextraTotal = sum(amountCHFextra);
-    saves.amountCHFextraTotal = amountCHFextraTotal;
-end
-
 %% Stop and close EEG and ET recordings and SAVE FILE
 if TRAINING == 1
     disp('TRAINING FINISHED...');
@@ -764,13 +769,10 @@ elseif COND == 1
     totalTrials = trl-2;
     percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
     format bank % Change format for display
-    amountCHFextra(BLOCK) = percentTotalCorrect(BLOCK)*0.01;
     feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect(BLOCK)) '%. ' ...
-        '\n\n Because of your accuracy you have been awarded an additional ' num2str(amountCHFextra(BLOCK)) ' CHF.' ...
         '\n\n Keep it up!'];
 
     DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.black);
-    disp(['Participant ' subjectID ' was awarded CHF ' num2str(amountCHFextra(BLOCK), '%.2f') ' for an accuracy of ' num2str(round(percentTotalCorrect(BLOCK))) ' % in Block ' num2str(BLOCK) '.'])
     format default % Change format back to default
     Screen('Flip',ptbWindow);
     WaitSecs(5);
@@ -785,18 +787,15 @@ elseif COND > 1
     end
     percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
     format bank % Change format for display
-    amountCHFextra(BLOCK) = percentTotalCorrect(BLOCK)*0.01;
     feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect(BLOCK)) '%. ' ...
-        '\n\n Because of your accuracy you have been awarded an additional ' num2str(amountCHFextra(BLOCK)) ' CHF.' ...
         '\n\n Keep it up!'];
     DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.black);
-    disp(['Participant ' subjectID ' was awarded CHF ' num2str(amountCHFextra(BLOCK), '%.2f') ' for an accuracy of ' num2str(round(percentTotalCorrect(BLOCK))) ' % in Block ' num2str(BLOCK) '.'])
     format default % Change format back to default
     Screen('Flip',ptbWindow);
     WaitSecs(5);
 end
 
-% Show break instruction text
+%% Show break instruction text
 if TRAINING == 1
     if percentTotalCorrect >= 60
         breakInstructionText = 'Well done! \n\n Press any key to start the actual task.';

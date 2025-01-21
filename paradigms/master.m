@@ -217,3 +217,6 @@ end
 
 %% Allow keyboard input into Matlab code
 ListenChar(0);
+
+%%
+    fileName = [subjectID '_', TASK, '_block' num2str(BLOCK) '_task.mat'];

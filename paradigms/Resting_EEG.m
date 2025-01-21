@@ -1,5 +1,4 @@
 %% Resting state EEG
-
 TASK = 'Resting';
 TRAINING = 0; % no training for Resting
 
@@ -17,7 +16,7 @@ calibrateET;
 %% Settings
 testmode = 0;
 monitorwidth_cm = 53;
-dist_cm = 68;
+dist_cm = 80;
 
 % Text
 tSize1 = 15;

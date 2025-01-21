@@ -37,7 +37,7 @@ FIXATION = 15; % trigger for fixation cross
 PRESENTATION2 = 22; % trigger for letter presentation
 PRESENTATION4 = 24; % trigger for letter presentation
 PRESENTATION6 = 26; % trigger for letter presentation
-DIGITOFF = 20; % trigger for change of digit to blank
+STIMOFF = 20; % trigger for change of digit to blank
 BLOCK0 = 29; % trigger for start training block
 BLOCK1 = 31; % trigger for start of block 1
 BLOCK2 = 32; % trigger for start of block 2
@@ -223,6 +223,7 @@ data.probe(1, exp.nTrials) = NaN;
 data.match(1, exp.nTrials) = NaN;
 data.responses(1, exp.nTrials) = NaN;
 data.correct(1, exp.nTrials) = NaN;
+data.badResponseFlag(1, exp.nTrials) = NaN;
 data.fixation(1, exp.nTrials) = NaN;
 data.reactionTime(1:exp.nTrials) = NaN;
 data.trlDuration(1:exp.nTrials) = NaN;
@@ -352,7 +353,7 @@ for trl = 1:exp.nTrials
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('Flip', ptbWindow);
     if trl == 1 % Wait rest time for first trial
-            WaitSecs(timing.rest);
+        WaitSecs(timing.rest);
     end
     if TRAINING == 1
         Eyelink('Message', num2str(FIXATION));
@@ -418,12 +419,12 @@ for trl = 1:exp.nTrials
     Screen('TextSize', ptbWindow, 20);
 
     if TRAINING == 1
-        Eyelink('Message', num2str(DIGITOFF));
-        Eyelink('command', 'record_status_message "DIGITOFF"');
+        Eyelink('Message', num2str(STIMOFF));
+        Eyelink('command', 'record_status_message "STIMOFF"');
     else
-        Eyelink('Message', num2str(DIGITOFF));
-        Eyelink('command', 'record_status_message "DIGITOFF"');
-        sendtrigger(DIGITOFF,port,SITE,stayup);
+        Eyelink('Message', num2str(STIMOFF));
+        Eyelink('command', 'record_status_message "STIMOFF"');
+        sendtrigger(STIMOFF,port,SITE,stayup);
     end
 
     %% Retention interval (2800ms)
@@ -501,7 +502,7 @@ for trl = 1:exp.nTrials
 
     %% Get response (max 2000ms)
     getResponse = true;
-    badResponseFlag = false;
+    data.badResponseFlag(trl) = 0;
     maxResponseTime = GetSecs + 2;
     responseTime = NaN;
     while getResponse
@@ -539,6 +540,7 @@ for trl = 1:exp.nTrials
                 % Subject pressed other button than A or L
                 responseTime = probePresentationTime + 4; % +4 to check; will be set to NaN
                 TRIGGER = BAD_RESP;
+                getResponse = false;
                 if TRAINING == 1
                     Eyelink('Message', num2str(TRIGGER));
                     Eyelink('command', 'record_status_message "BAD RESPONSE"');
@@ -547,7 +549,7 @@ for trl = 1:exp.nTrials
                     Eyelink('command', 'record_status_message "BAD RESPONSE"');
                     sendtrigger(TRIGGER,port,SITE,stayup)
                 end
-                badResponseFlag = true;
+                data.badResponseFlag(trl) = 1;
             end
 
             % No input by participant
@@ -593,9 +595,9 @@ for trl = 1:exp.nTrials
         feedbackText = 'Correct!  ';
     elseif data.correct(trl) == 0 && data.responses(trl) == 0
         feedbackText = 'NO RESPONSE';
-    elseif data.correct(trl) == 0 && badResponseFlag == false
+    elseif data.correct(trl) == 0 && data.badResponseFlag(trl) == 0
         feedbackText = 'Incorrect!';
-    elseif data.correct(trl) == 0 && badResponseFlag == true
+    elseif data.correct(trl) == 0 && data.badResponseFlag(trl) == 1
         feedbackText = ['Wrong button! \n\n' ...
             'Use only A or L.'];
     end
@@ -717,6 +719,16 @@ endTime = datetime(timing.endTime, 'InputFormat', 'dd/MM/yy-HH:mm:ss');
 % Calculate block duration in seconds
 timing.duration = seconds(endTime - startTime);
 
+%% Record accuracy
+if TRAINING == 0
+    try
+        totalCorrect = sum(data.correct);
+        totalTrials = trl;
+        data.percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
+    catch
+    end
+end
+
 %% Save data
 subjectID = num2str(subject.ID);
 filePath = fullfile(DATA_PATH, subjectID);
@@ -756,7 +768,7 @@ trigger.TASK_START = TASK_START;
 trigger.PRESENTATION2 = PRESENTATION2;
 trigger.PRESENTATION4 = PRESENTATION4;
 trigger.PRESENTATION6 = PRESENTATION6;
-trigger.DIGITOFF = DIGITOFF;
+trigger.STIMOFF = STIMOFF;
 trigger.BLOCK0 = BLOCK0;
 trigger.BLOCK1 = BLOCK1;
 trigger.BLOCK2 = BLOCK2;
@@ -808,14 +820,9 @@ elseif BLOCK == 6
     totalCorrect = sum(data.correct);
     totalTrials = trl;
     percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
-    amountCHFextra(BLOCK) = percentTotalCorrect(BLOCK)*0.0125;
-
-    feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect(BLOCK)) ' %. ' ...
-        '\n\n Because of your accuracy you have been awarded an additional CHF ' num2str(amountCHFextra(BLOCK)) '.'];
-
+    feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect(BLOCK)) ' %. '];
     format bank % Change format for display
     DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.black);
-    disp(['Participant ' subjectID ' was awarded CHF ' num2str(amountCHFextra(BLOCK)) ' for an accuracy of ' num2str(percentTotalCorrect(BLOCK)) ' % in Block ' num2str(BLOCK) '.'])
     format default % Change format back to default
     Screen('Flip',ptbWindow);
     WaitSecs(5);
@@ -823,15 +830,10 @@ elseif BLOCK > 0
     totalCorrect = sum(data.correct);
     totalTrials = trl;
     percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
-    amountCHFextra(BLOCK) = percentTotalCorrect(BLOCK)*0.0125;
-
     feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect(BLOCK)) ' %. ' ...
-        '\n\n Because of your accuracy you have been awarded an additional CHF ' num2str(amountCHFextra(BLOCK)) '.' ...
         '\n\n Keep it up!'];
-
     format bank % Change format for display
     DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.black);
-    disp(['Participant ' subjectID ' was awarded CHF ' num2str(amountCHFextra(BLOCK)) ' for an accuracy of ' num2str(percentTotalCorrect(BLOCK)) ' % in Block ' num2str(BLOCK) '.'])
     format default % Change format back to default
     Screen('Flip',ptbWindow);
     WaitSecs(5);

@@ -14,10 +14,8 @@ cd(p)
 d = dir(strcat('/Volumes/methlab_data/AOC/data/*/', '*cnt'));
 ids = {};
 for f = 1 : size(d, 1)
-
     filePath = fullfile( d(f).folder, d(f).name);
     cutData(filePath)
-
     id = strsplit(d(f).name, '_');
     ids{f} = id{1};
     fprintf('Cutting of data for Subject AOC %.3s done', ids{f})
@@ -33,10 +31,10 @@ for id = 1 : length(ids)
     if not(isempty(d))
         for f = 1 : size(d, 1)
 
-            % convert ET asc to mat
+            % Convert ET asc to mat
             inputFile = fullfile(d(f).folder, d(f).name);
 
-            % rename the files (EyeLink can't deal with long filenames, edf filenames has to be short)
+            % Rename the files (EyeLink can't deal with long filenames, edf filenames has to be short)
             x = strsplit(d(f).name, '_');
             name = x{2};
             id = x{end-1};
@@ -70,7 +68,7 @@ for id = 1 : length(ids)
         end
     end
 
-    % Move files to archive
+    % Move asc files to archive
     d = dir([filePath, filesep, '*.asc']);
     for f = 1 : size(d, 1)
         source = fullfile(d(f).folder, d(f).name);
@@ -78,7 +76,7 @@ for id = 1 : length(ids)
         movefile(source,destination)
     end
 
-    % Move files to archive
+    % Move edf files to archive
     d = dir([filePath, filesep, '*.edf']);
     for f = 1 : size(d, 1)
         source = fullfile(d(f).folder, d(f).name);
@@ -86,3 +84,4 @@ for id = 1 : length(ids)
         movefile(source,destination)
     end
 end
+disp('SYNCHRONIZATION COMPLETE')

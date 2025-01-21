@@ -218,14 +218,74 @@ end
 %% Allow keyboard input into Matlab code
 ListenChar(0);
 
-%%
+%% Load and display accuracy
+cd(DATA_PATH)
 for block = 1:6
     for TASK = {'AOC_NBack'; 'AOC_Sternberg'}
-        if TASK == 1
-            tsk = 'AOC_NBack'
-        cd(DATA_PATH)
-        fileName = [subjectID '_', TASK, '_block' num2str(BLOCK) '_task.mat'];
-        load(filename)
-        percCorr(BLOCK) = data.percentTotalCorrect(BLOCK);
+        if strcmp(TASK, 'AOC_Sternberg')
+            tsk = 'AOC_Sternberg';
+            fileName = [subjectID '_', tsk, '_block' num2str(BLOCK) '_task.mat'];
+            load(filename)
+            percCorr(BLOCK, 1) = data.percentTotalCorrect(BLOCK);
+        elseif strcmp(TASK, 'AOC_NBack')
+            tsk = 'AOC_NBack';
+            fileName = [subjectID '_', tsk, '_block' num2str(BLOCK) '_task.mat'];
+            load(filename)
+            percCorr(BLOCK, 2) = data.percentTotalCorrect(BLOCK);
+        end
     end
+end
+
+% Create a UI figure
+uiFig = uifigure('Name', 'Task Accuracy', 'Position', [500, 400, 350, 300]);
+
+% Define the tasks
+tasks = {'Sternberg', 'NBack'};
+
+% Round the percentage accuracy and convert to character arrays with a percentage sign
+roundedPercCorr = round(percCorr); % Round to the nearest integer
+percStrings = strcat(string(roundedPercCorr), '%'); % Append percentage sign
+percStrings = cellstr(percStrings); % Convert to cell array of character arrays
+
+% Create a vertical spacing offset
+yOffset = 250;
+rowHeight = 30;
+
+% Add column headers for tasks
+headerLabel1 = uilabel(uiFig, ...
+    'Text', tasks{1}, ...
+    'FontSize', 12, ...
+    'FontWeight', 'bold', ...
+    'HorizontalAlignment', 'center', ...
+    'Position', [100, yOffset, 100, 20]);
+
+headerLabel2 = uilabel(uiFig, ...
+    'Text', tasks{2}, ...
+    'FontSize', 12, ...
+    'FontWeight', 'bold', ...
+    'HorizontalAlignment', 'center', ...
+    'Position', [200, yOffset, 100, 20]);
+
+% Loop through each block to display the data
+for block = 1:6
+    % Block number
+    blockLabel = uilabel(uiFig, ...
+        'Text', ['Block ' num2str(block)], ...
+        'FontSize', 12, ...
+        'HorizontalAlignment', 'left', ...
+        'Position', [20, yOffset - block * rowHeight, 100, 20]);
+    
+    % NBack accuracy
+    nBackLabel = uilabel(uiFig, ...
+        'Text', percStrings{block, 1}, ...
+        'FontSize', 12, ...
+        'HorizontalAlignment', 'center', ...
+        'Position', [120, yOffset - block * rowHeight, 80, 20]);
+    
+    % Sternberg accuracy
+    sternbergLabel = uilabel(uiFig, ...
+        'Text', percStrings{block, 2}, ...
+        'FontSize', 12, ...
+        'HorizontalAlignment', 'center', ...
+        'Position', [220, yOffset - block * rowHeight, 80, 20]);
 end

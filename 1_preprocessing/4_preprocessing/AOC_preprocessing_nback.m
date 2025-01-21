@@ -171,10 +171,21 @@ for subj = 1:length(subjects)
     update_labels(data2);
     update_labels(data3);
 
-    %% Add trialinfo data
-    data1.trialinfo = ones(1,length(data1.trial));
-    data2.trialinfo = ones(1,length(data2.trial))*2;
-    data3.trialinfo = ones(1,length(data3.trial))*3;
+    %% Add trialinfo
+    for block = 1:6
+        try
+            if ~isempty(data1{1, block})
+                data1{1, block}.trialinfo = zeros(numel(data1{1, block}.trial), 1) + 21;
+            elseif ~isempty(data2{1, block})
+                data2{1, block}.trialinfo = zeros(numel(data2{1, block}.trial), 1) + 22;
+            elseif ~isempty(data3{1, block})
+                data3{1, block}.trialinfo = zeros(numel(data3{1, block}.trial), 1) + 23;
+            end
+        catch ME
+            ME.message
+            disp(['ERROR adding trialinfo in Block ' num2str(block) '!'])
+        end
+    end
 
     %% Append data for conditions
     cfg = [];

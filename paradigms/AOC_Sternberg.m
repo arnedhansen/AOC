@@ -126,7 +126,7 @@ else
     end
 end
 
-performanceBonusText = ['In the following task there is a performance bonus! \n\n' ...
+performanceBonusText = ['In the following task you can earn a performance bonus! \n\n' ...
     'Try to be as accurate as possible. \n\n \n\n' ...
     'Press any key to continue.'];
 
@@ -226,7 +226,7 @@ data.correct(1, exp.nTrials) = NaN;
 data.fixation(1, exp.nTrials) = NaN;
 data.reactionTime(1:exp.nTrials) = NaN;
 data.trlDuration(1:exp.nTrials) = NaN;
-count5trials = NaN;
+count5trials = 0;
 
 %% Fixate randomized setSizes for each block
 setS2 = ones(1, 12)*exp.setSizes(1);
@@ -351,6 +351,9 @@ for trl = 1:exp.nTrials
     Screen('DrawLines', ptbWindow, fixCoords, stimulus.fixationLineWidth, stimulus.fixationColor, fixPos, 2); % Draw fixation cross
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('Flip', ptbWindow);
+    if trl == 1 % Wait rest time for first trial
+            WaitSecs(timing.rest);
+    end
     if TRAINING == 1
         Eyelink('Message', num2str(FIXATION));
         Eyelink('command', 'record_status_message "FIXATION"');

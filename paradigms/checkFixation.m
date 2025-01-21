@@ -1,4 +1,4 @@
-function noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, screenCentreY, fixCheckDuration)
+function noFixation = checkFixation(screenCentreX, screenCentreY, fixCheckDuration)
     numSamples = (fixCheckDuration*1000)/2; % 1 sample every 2 ms at 500Hz
     numSamples = ceil(numSamples);
     fixThresh = numSamples * 0.80; % 80% threshold

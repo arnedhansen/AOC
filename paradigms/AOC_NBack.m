@@ -349,8 +349,7 @@ for trl = 1:exp.nTrials
 
     %% Check fixation just before stimulus presentation
     fixCheckDuration = timing.cfi(trl);
-    noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, screenCentreY, fixCheckDuration);
-    noFixation = checkFixation(screenWidth, screenHeight, screenCentreX, screenCentreY);
+    noFixation = checkFixation(screenCentreX, screenCentreY, fixCheckDuration);
 
     %% Present stimulus from letterSequence (2000ms)
     % Increase size of stimuli

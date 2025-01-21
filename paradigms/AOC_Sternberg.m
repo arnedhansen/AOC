@@ -222,7 +222,7 @@ data.probe(1, exp.nTrials) = NaN;
 data.match(1, exp.nTrials) = NaN;
 data.responses(1, exp.nTrials) = NaN;
 data.correct(1, exp.nTrials) = NaN;
-data.badResponseFlag(1, exp.nTrials) = NaN;
+data.badResponse(1, exp.nTrials) = NaN;
 data.fixation(1, exp.nTrials) = NaN;
 data.reactionTime(1:exp.nTrials) = NaN;
 data.trlDuration(1:exp.nTrials) = NaN;
@@ -501,7 +501,7 @@ for trl = 1:exp.nTrials
 
     %% Get response (max 2000ms)
     getResponse = true;
-    data.badResponseFlag(trl) = 0;
+    data.badResponse(trl) = 0;
     maxResponseTime = GetSecs + 2;
     responseTime = NaN;
     while getResponse
@@ -548,7 +548,7 @@ for trl = 1:exp.nTrials
                     Eyelink('command', 'record_status_message "BAD RESPONSE"');
                     sendtrigger(TRIGGER,port,SITE,stayup)
                 end
-                data.badResponseFlag(trl) = 1;
+                data.badResponse(trl) = 1;
             end
 
             % No input by participant
@@ -594,9 +594,9 @@ for trl = 1:exp.nTrials
         feedbackText = 'Correct!  ';
     elseif data.correct(trl) == 0 && data.responses(trl) == 0
         feedbackText = 'NO RESPONSE';
-    elseif data.correct(trl) == 0 && data.badResponseFlag(trl) == 0
+    elseif data.correct(trl) == 0 && data.badResponse(trl) == 0
         feedbackText = 'Incorrect!';
-    elseif data.correct(trl) == 0 && data.badResponseFlag(trl) == 1
+    elseif data.correct(trl) == 0 && data.badResponse(trl) == 1
         feedbackText = ['Wrong button! \n\n' ...
             'Use only A or L.'];
     end

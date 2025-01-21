@@ -401,6 +401,7 @@ for trl = 1:exp.nTrials
             else
                 TRIGGER = RESP_WRONG;
                 data.responses(trl) = whichKey;
+                getResponse = false;
                 badResponseFlag = true;
             end
 

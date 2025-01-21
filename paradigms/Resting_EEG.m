@@ -101,11 +101,14 @@ WaitSecs(150);
 %% Switch to blank
 % Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
 Screen('Flip', ptbWindow);
-% Send blank triggers
+
+%% Send blank triggers
 Eyelink('Message', num2str(FLIPTONOFIXCROSS));
 Eyelink('command', 'record_status_message "FLIPTONOFIXCROSS"');
 sendtrigger(FLIPTONOFIXCROSS,port,SITE,stayup)
+
 disp('2.5 MINUTES DONE. FLIP TO BLANK...');
+% Display blank for 2.5 minutes
 WaitSecs(150);
 
 %% Send end triggers

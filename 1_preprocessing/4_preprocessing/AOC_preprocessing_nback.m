@@ -18,263 +18,240 @@ for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj});
     cd(datapath)
 
-    if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/dataEEG_nback.mat']))
-        %% Read blocks
-        for block = 1:6
-            try % Do not load emtpy blocks
-                load(strcat(subjects{subj}, '_EEG_ET_Nback_block',num2str(block),'_merged.mat'))
-                alleeg{block} = EEG;
-                clear EEG
-                fprintf('Subject %.3d/%.3d: Block %.1d loaded \n', subj, length(subjects), block)
-            catch ME
-                ME.message
-                disp(['ERROR loading Block ' num2str(block) '!'])
-            end
-        end
-
-        %% Segment data into epochs -1.5s before and 2.5s after stim onset and
-        %  convert to Fieldtrip data structure AND extract gaze metrics from raw EEG data
-        epoch_window = [-1.5 2.5];
-        for block = 1:6
-            % 21 = PRESENTATION1 (Trigger for letter presentation (1-back))
-            % 22 = PRESENTATION2 (Trigger for letter presentation (2-back))
-            % 23 = PRESENTATION3 (Trigger for letter presentation (3-back))
-
-            %% Segment 1-back data
-            try
-                EEG1back = pop_epoch(alleeg{block}, {'21'}, epoch_window);
-
-                % Exclude matching trials to avoid including motor responses
-                matching_trials = find(strcmp({EEG1back.event.type}, '4'));
-                exclude_epochs = unique([EEG1back.event(matching_trials).epoch]);
-                EEG1back = pop_select(EEG1back, 'notrial', exclude_epochs);
-                data1{block} = eeglab2fieldtrip(EEG1back, 'raw');
-
-                % 1-back gaze metrics extraction
-                gaze_metrics_1back = pop_epoch(alleeg{block}, {'21'}, analysis_window);
-                trl_1back(block) = gaze_metrics_1back.trials;
-                % Extract blink timepoints
-                blink_times = [gaze_metrics_1back.event(strcmp({gaze_metrics_1back.event.type}, 'L_blink') | strcmp({gaze_metrics_1back.event.type}, 'R_blink')).latency];
-                % Extract saccades timepoints
-                saccade_events = gaze_metrics_1back.event(strcmp({gaze_metrics_1back.event.type}, 'L_saccade') | strcmp({gaze_metrics_1back.event.type}, 'R_saccade'));
-
-                % Exclude saccades around blinks
-                valid_saccades = 0;
-                for s = 1:length(saccade_events)
-                    saccade_time = saccade_events(s).latency;
-                    % Check if this saccade is within 100 ms of any blink
-                    near_blink = any(abs(saccade_time - blink_times) <= 50); % 50 samples = 100 ms
-                    if ~near_blink
-                        valid_saccades = valid_saccades + 1;
-                    end
-                end
-
-                % Count 1-back gaze metrics
-                sacc_1back(block) = valid_saccades;
-                fix_1back(block) = sum(ismember({gaze_metrics_1back.event.type}, {'L_fixation', 'R_fixation'}));
-                blink_1back(block) = numel(blink_times);
-
-                fprintf('1-back data processed for block %d.\n', block);
-            catch ME
-                fprintf('ERROR processing 1-back for block %d: %s\n', block, ME.message);
-                data1{block} = struct;
-            end
-
-            %% Segment 2-back data
-            try
-                EEG2back = pop_epoch(alleeg{block}, {'22'}, epoch_window);
-
-                % Exclude matching trials to avoid including motor responses
-                matching_trials = find(strcmp({EEG2back.event.type}, '4'));
-                exclude_epochs = unique([EEG2back.event(matching_trials).epoch]);
-                EEG2back = pop_select(EEG2back, 'notrial', exclude_epochs);
-                data2{block} = eeglab2fieldtrip(EEG2back, 'raw');
-
-                % 2-back gaze metrics extraction
-                gaze_metrics_2back = pop_epoch(alleeg{block}, {'22'}, analysis_window);
-                trl_2back(block) = gaze_metrics_2back.trials;
-                % Extract blink timepoints
-                blink_times = [gaze_metrics_2back.event(strcmp({gaze_metrics_2back.event.type}, 'L_blink') | strcmp({gaze_metrics_2back.event.type}, 'R_blink')).latency];
-                % Extract saccades timepoints
-                saccade_events = gaze_metrics_2back.event(strcmp({gaze_metrics_2back.event.type}, 'L_saccade') | strcmp({gaze_metrics_2back.event.type}, 'R_saccade'));
-
-                % Exclude saccades around blinks
-                valid_saccades = 0;
-                for s = 1:length(saccade_events)
-                    saccade_time = saccade_events(s).latency;
-                    % Check if this saccade is within 100 ms of any blink
-                    near_blink = any(abs(saccade_time - blink_times) <= 50); % 50 samples = 100 ms
-                    if ~near_blink
-                        valid_saccades = valid_saccades + 1;
-                    end
-                end
-
-                % Count 2-back gaze metrics
-                sacc_2back(block) = valid_saccades;
-                fix_2back(block) = sum(ismember({gaze_metrics_2back.event.type}, {'L_fixation', 'R_fixation'}));
-                blink_2back(block) = numel(blink_times);
-
-                fprintf('2-back data processed for block %d.\n', block);
-            catch ME
-                fprintf('ERROR processing 2-back for block %d: %s\n', block, ME.message);
-                data2{block} = struct;
-            end
-
-            %% Segment 3-back data
-            try
-                EEG3back = pop_epoch(alleeg{block}, {'23'}, epoch_window);
-                % Exclude matching trials to avoid including motor responses
-                matching_trials = find(strcmp({EEG3back.event.type}, '4'));
-                exclude_epochs = unique([EEG3back.event(matching_trials).epoch]);
-                EEG3back = pop_select(EEG3back, 'notrial', exclude_epochs);
-                data3{block} = eeglab2fieldtrip(EEG3back, 'raw');
-
-                % 3-back gaze metrics extraction
-                gaze_metrics_3back = pop_epoch(alleeg{block}, {'23'}, analysis_window);
-                trl_3back(block) = gaze_metrics_3back.trials;
-                % Extract blink timepoints
-                blink_times = [gaze_metrics_3back.event(strcmp({gaze_metrics_3back.event.type}, 'L_blink') | strcmp({gaze_metrics_3back.event.type}, 'R_blink')).latency];
-                % Extract saccades timepoints
-                saccade_events = gaze_metrics_3back.event(strcmp({gaze_metrics_3back.event.type}, 'L_saccade') | strcmp({gaze_metrics_3back.event.type}, 'R_saccade'));
-
-                % Exclude saccades around blinks
-                valid_saccades = 0;
-                for s = 1:length(saccade_events)
-                    saccade_time = saccade_events(s).latency;
-                    % Check if this saccade is within 100 ms of any blink
-                    near_blink = any(abs(saccade_time - blink_times) <= 50); % 50 samples = 100 ms
-                    if ~near_blink
-                        valid_saccades = valid_saccades + 1;
-                    end
-                end
-
-                % Count 3-back gaze metrics
-                sacc_3back(block) = valid_saccades;
-                fix_3back(block) = sum(ismember({gaze_metrics_3back.event.type}, {'L_fixation', 'R_fixation'}));
-                blink_3back(block) = numel(blink_times);
-
-                fprintf('3-back data processed for block %d.\n', block);
-            catch ME
-                fprintf('ERROR processing 3-back for block %d: %s\n', block, ME.message);
-                data3{block} = struct;
-            end
-        end
-
-        %% Remove empty blocks
-        % block = 1;
-        % while block <= length(data1)
-        %     if isfield(data1{block}, 'fsample')
-        %         block = block + 1;
-        %     else
-        %         data1(block) = [];
-        %     end
-        % end
-        % block = 1;
-        % while block <= length(data2)
-        %     if isfield(data2{block}, 'fsample')
-        %         block = block + 1;
-        %     else
-        %         data2(block) = [];
-        %     end
-        % end
-        % block = 1;
-        % while block <= length(data3)
-        %     if isfield(data3{block}, 'fsample')
-        %         block = block + 1;
-        %     else
-        %         data3(block) = [];
-        %     end
-        % end
-        data1 = data1(~cellfun('isempty', data1));
-        data2 = data2(~cellfun('isempty', data2));
-        data3 = data3(~cellfun('isempty', data3));
-
-        %% Equalize labels
-        update_labels(data1);
-        update_labels(data2);
-        update_labels(data3);
-
-        %% Add trialinfo data
-        data1.trialinfo = ones(1,length(data1.trial));
-        data2.trialinfo = ones(1,length(data2.trial))*2;
-        data3.trialinfo = ones(1,length(data3.trial))*3;
-
-        %% Append data for conditions
-        cfg = [];
-        cfg.keepsampleinfo = 'no';
-        data1 = ft_appenddata(cfg,data1{:});
-        data2 = ft_appenddata(cfg,data2{:});
-        data3 = ft_appenddata(cfg,data3{:});
-
-        %% Append all data into single data file with appropriate trialinfo
-        cfg = [];
-        cfg.keepsampleinfo = 'no';
-        data = ft_appenddata(cfg,data1,data2,data3);
-        trialinfo = [data1.trialinfo, data2.trialinfo, data3.trialinfo];
-        data.trialinfo = trialinfo;
-        data.cfg = [];
-
-        %% Get EyeTracking data
-        cfg = [];
-        cfg.channel = {'L-GAZE-X'  'L-GAZE-Y' 'L-AREA', 'R-GAZE-X'  'R-GAZE-Y' 'R-AREA'};
-        dataet = ft_selectdata(cfg,data);
-
-        %% Get EEG data (excl. ET and EOG data)
-        cfg = [];
-        cfg.channel = {'all' '-B*' '-HEOGR' '-HEOGL', '-VEOGU', '-VEOGL' ,'-L-GAZE-X' , '-L-GAZE-Y' , '-L-AREA', '-R-GAZE-X'  '-R-GAZE-Y' '-R-AREA'};
-        data = ft_selectdata(cfg,data);
-
-        %% Resegment data to avoid filter ringing
-        cfg = [];
-        dataTFR = ft_selectdata(cfg,data); % TRF data long
-        dataTFR.trialinfo = trialinfo;
-        cfg = [];
-        cfg.latency = [0 2]; % Time window for N-back task
-        data = ft_selectdata(cfg,data);
-        dataet = ft_selectdata(cfg,dataet);
-        dataet.trialinfo = trialinfo;
-
-        %% Re-reference data to average or common reference
-        cfg = [];
-        cfg.reref   = 'yes';
-        cfg.refchannel = 'all';
-        data = ft_preprocessing(cfg,data);
-        data.trialinfo = trialinfo;
-
-        %% Compute gaze metric data
-        % 1-back gaze metrics average across trials
-        saccades_1back = sum(sacc_1back(:)) / sum(trl_1back(:));
-        fixations_1back = sum(fix_1back(:)) / sum(trl_1back(:));
-        blinks_1back = sum(blink_1back(:)) / sum(trl_1back(:));
-
-        % 2-back gaze metrics average across trials
-        saccades_2back = sum(sacc_2back(:)) / sum(trl_2back(:));
-        fixations_2back = sum(fix_2back(:)) / sum(trl_2back(:));
-        blinks_2back = sum(blink_2back(:)) / sum(trl_2back(:));
-
-        % 3-back gaze metrics average across trials
-        saccades_3back = sum(sacc_3back(:)) / sum(trl_3back(:));
-        fixations_3back = sum(fix_3back(:)) / sum(trl_3back(:));
-        blinks_3back = sum(blink_3back(:)) / sum(trl_3back(:));
-
-        %% Save to disk
-        savepathEEG = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/');
-        mkdir(savepathEEG)
-        cd(savepathEEG)
-        save dataEEG_nback data
-        save dataEEG_TFR_nback dataTFR
-        savepathET = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/gaze/');
-        mkdir(savepathET)
-        cd(savepathET)
-        save dataET_nback dataet
-        save gaze_metrics_nback saccades_1back fixations_1back blinks_1back ...
-            saccades_2back fixations_2back blinks_2back ...
-            saccades_3back fixations_3backblinks_3back
-        clc
-        if subj == length(subjects)
-            disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. PREPROCESSING FINALIZED.'])
-        else
-            disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. Loading next subject...'])
+    %if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/dataEEG_nback.mat']))
+    %% Read blocks
+    for block = 1:6
+        try % Do not load emtpy blocks
+            load(strcat(subjects{subj}, '_EEG_ET_Nback_block',num2str(block),'_merged.mat'))
+            alleeg{block} = EEG;
+            clear EEG
+            fprintf('Subject %.3d/%.3d: Block %.1d loaded \n', subj, length(subjects), block)
+        catch ME
+            ME.message
+            disp(['ERROR loading Block ' num2str(block) '!'])
         end
     end
+
+    %% Segment data into epochs -1.5s before and 2.5s after stim onset and
+    %  convert to Fieldtrip data structure AND extract gaze metrics from raw EEG data
+    epoch_window = [-1.5 2.5];
+    analysis_window = [0 2]; % Analysis window for eye metric extraction
+    for block = 1:6
+        % 21 = PRESENTATION1 (Trigger for letter presentation (1-back))
+        % 22 = PRESENTATION2 (Trigger for letter presentation (2-back))
+        % 23 = PRESENTATION3 (Trigger for letter presentation (3-back))
+
+        %% Segment 1-back data
+        try
+            EEG1back = pop_epoch(alleeg{block}, {'21'}, epoch_window);
+
+            % Exclude matching trials to avoid including motor responses
+            matching_trials = find(strcmp({EEG1back.event.type}, '4'));
+            exclude_epochs = unique([EEG1back.event(matching_trials).epoch]);
+            EEG1back = pop_select(EEG1back, 'notrial', exclude_epochs);
+            data1{block} = eeglab2fieldtrip(EEG1back, 'raw');
+
+            % 1-back gaze metrics extraction
+            gaze_metrics_1back = pop_epoch(alleeg{block}, {'21'}, analysis_window);
+            trl_1back(block) = gaze_metrics_1back.trials;
+            % Extract blink timepoints
+            blink_times = [gaze_metrics_1back.event(strcmp({gaze_metrics_1back.event.type}, 'L_blink') | strcmp({gaze_metrics_1back.event.type}, 'R_blink')).latency];
+            % Extract saccades timepoints
+            saccade_events = gaze_metrics_1back.event(strcmp({gaze_metrics_1back.event.type}, 'L_saccade') | strcmp({gaze_metrics_1back.event.type}, 'R_saccade'));
+
+            % Exclude saccades around blinks
+            valid_saccades = 0;
+            for s = 1:length(saccade_events)
+                saccade_time = saccade_events(s).latency;
+                % Check if this saccade is within 100 ms of any blink
+                near_blink = any(abs(saccade_time - blink_times) <= 50); % 50 samples = 100 ms
+                if ~near_blink
+                    valid_saccades = valid_saccades + 1;
+                end
+            end
+
+            % Count 1-back gaze metrics
+            sacc_1back(block) = valid_saccades;
+            fix_1back(block) = sum(ismember({gaze_metrics_1back.event.type}, {'L_fixation', 'R_fixation'}));
+            blink_1back(block) = numel(blink_times);
+
+            fprintf('1-back data processed for block %d.\n', block);
+        catch ME
+            fprintf('ERROR processing 1-back for block %d: %s\n', block, ME.message);
+            data1{block} = struct;
+        end
+
+        %% Segment 2-back data
+        try
+            EEG2back = pop_epoch(alleeg{block}, {'22'}, epoch_window);
+
+            % Exclude matching trials to avoid including motor responses
+            matching_trials = find(strcmp({EEG2back.event.type}, '4'));
+            exclude_epochs = unique([EEG2back.event(matching_trials).epoch]);
+            EEG2back = pop_select(EEG2back, 'notrial', exclude_epochs);
+            data2{block} = eeglab2fieldtrip(EEG2back, 'raw');
+
+            % 2-back gaze metrics extraction
+            gaze_metrics_2back = pop_epoch(alleeg{block}, {'22'}, analysis_window);
+            trl_2back(block) = gaze_metrics_2back.trials;
+            % Extract blink timepoints
+            blink_times = [gaze_metrics_2back.event(strcmp({gaze_metrics_2back.event.type}, 'L_blink') | strcmp({gaze_metrics_2back.event.type}, 'R_blink')).latency];
+            % Extract saccades timepoints
+            saccade_events = gaze_metrics_2back.event(strcmp({gaze_metrics_2back.event.type}, 'L_saccade') | strcmp({gaze_metrics_2back.event.type}, 'R_saccade'));
+
+            % Exclude saccades around blinks
+            valid_saccades = 0;
+            for s = 1:length(saccade_events)
+                saccade_time = saccade_events(s).latency;
+                % Check if this saccade is within 100 ms of any blink
+                near_blink = any(abs(saccade_time - blink_times) <= 50); % 50 samples = 100 ms
+                if ~near_blink
+                    valid_saccades = valid_saccades + 1;
+                end
+            end
+
+            % Count 2-back gaze metrics
+            sacc_2back(block) = valid_saccades;
+            fix_2back(block) = sum(ismember({gaze_metrics_2back.event.type}, {'L_fixation', 'R_fixation'}));
+            blink_2back(block) = numel(blink_times);
+
+            fprintf('2-back data processed for block %d.\n', block);
+        catch ME
+            fprintf('ERROR processing 2-back for block %d: %s\n', block, ME.message);
+            data2{block} = struct;
+        end
+
+        %% Segment 3-back data
+        try
+            EEG3back = pop_epoch(alleeg{block}, {'23'}, epoch_window);
+            % Exclude matching trials to avoid including motor responses
+            matching_trials = find(strcmp({EEG3back.event.type}, '4'));
+            exclude_epochs = unique([EEG3back.event(matching_trials).epoch]);
+            EEG3back = pop_select(EEG3back, 'notrial', exclude_epochs);
+            data3{block} = eeglab2fieldtrip(EEG3back, 'raw');
+
+            % 3-back gaze metrics extraction
+            gaze_metrics_3back = pop_epoch(alleeg{block}, {'23'}, analysis_window);
+            trl_3back(block) = gaze_metrics_3back.trials;
+            % Extract blink timepoints
+            blink_times = [gaze_metrics_3back.event(strcmp({gaze_metrics_3back.event.type}, 'L_blink') | strcmp({gaze_metrics_3back.event.type}, 'R_blink')).latency];
+            % Extract saccades timepoints
+            saccade_events = gaze_metrics_3back.event(strcmp({gaze_metrics_3back.event.type}, 'L_saccade') | strcmp({gaze_metrics_3back.event.type}, 'R_saccade'));
+
+            % Exclude saccades around blinks
+            valid_saccades = 0;
+            for s = 1:length(saccade_events)
+                saccade_time = saccade_events(s).latency;
+                % Check if this saccade is within 100 ms of any blink
+                near_blink = any(abs(saccade_time - blink_times) <= 50); % 50 samples = 100 ms
+                if ~near_blink
+                    valid_saccades = valid_saccades + 1;
+                end
+            end
+
+            % Count 3-back gaze metrics
+            sacc_3back(block) = valid_saccades;
+            fix_3back(block) = sum(ismember({gaze_metrics_3back.event.type}, {'L_fixation', 'R_fixation'}));
+            blink_3back(block) = numel(blink_times);
+
+            fprintf('3-back data processed for block %d.\n', block);
+        catch ME
+            fprintf('ERROR processing 3-back for block %d: %s\n', block, ME.message);
+            data3{block} = struct;
+        end
+    end
+
+    %% Remove empty blocks
+    data1 = data1(~cellfun('isempty', data1));
+    data2 = data2(~cellfun('isempty', data2));
+    data3 = data3(~cellfun('isempty', data3));
+
+    %% Equalize labels
+    update_labels(data1);
+    update_labels(data2);
+    update_labels(data3);
+
+    %% Add trialinfo data
+    data1.trialinfo = ones(1,length(data1.trial));
+    data2.trialinfo = ones(1,length(data2.trial))*2;
+    data3.trialinfo = ones(1,length(data3.trial))*3;
+
+    %% Append data for conditions
+    cfg = [];
+    cfg.keepsampleinfo = 'no';
+    data1 = ft_appenddata(cfg,data1{:});
+    data2 = ft_appenddata(cfg,data2{:});
+    data3 = ft_appenddata(cfg,data3{:});
+
+    %% Append all data into single data file with appropriate trialinfo
+    cfg = [];
+    cfg.keepsampleinfo = 'no';
+    data = ft_appenddata(cfg,data1,data2,data3);
+    trialinfo = [data1.trialinfo, data2.trialinfo, data3.trialinfo];
+    data.trialinfo = trialinfo;
+    data.cfg = [];
+
+    %% Get EyeTracking data
+    cfg = [];
+    cfg.channel = {'L-GAZE-X'  'L-GAZE-Y' 'L-AREA', 'R-GAZE-X'  'R-GAZE-Y' 'R-AREA'};
+    dataet = ft_selectdata(cfg,data);
+
+    %% Get EEG data (excl. ET and EOG data)
+    cfg = [];
+    cfg.channel = {'all' '-B*' '-HEOGR' '-HEOGL', '-VEOGU', '-VEOGL' ,'-L-GAZE-X' , '-L-GAZE-Y' , '-L-AREA', '-R-GAZE-X'  '-R-GAZE-Y' '-R-AREA'};
+    data = ft_selectdata(cfg,data);
+
+    %% Resegment data to avoid filter ringing
+    cfg = [];
+    dataTFR = ft_selectdata(cfg,data); % TRF data long
+    dataTFR.trialinfo = trialinfo;
+    cfg = [];
+    cfg.latency = [0 2]; % Time window for N-back task
+    data = ft_selectdata(cfg,data);
+    dataet = ft_selectdata(cfg,dataet);
+    dataet.trialinfo = trialinfo;
+
+    %% Re-reference data to average or common reference
+    cfg = [];
+    cfg.reref   = 'yes';
+    cfg.refchannel = 'all';
+    data = ft_preprocessing(cfg,data);
+    data.trialinfo = trialinfo;
+
+    %% Compute gaze metric data
+    % 1-back gaze metrics average across trials
+    saccades_1back = sum(sacc_1back(:)) / sum(trl_1back(:));
+    fixations_1back = sum(fix_1back(:)) / sum(trl_1back(:));
+    blinks_1back = sum(blink_1back(:)) / sum(trl_1back(:));
+
+    % 2-back gaze metrics average across trials
+    saccades_2back = sum(sacc_2back(:)) / sum(trl_2back(:));
+    fixations_2back = sum(fix_2back(:)) / sum(trl_2back(:));
+    blinks_2back = sum(blink_2back(:)) / sum(trl_2back(:));
+
+    % 3-back gaze metrics average across trials
+    saccades_3back = sum(sacc_3back(:)) / sum(trl_3back(:));
+    fixations_3back = sum(fix_3back(:)) / sum(trl_3back(:));
+    blinks_3back = sum(blink_3back(:)) / sum(trl_3back(:));
+
+    %% Save to disk
+    savepathEEG = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/');
+    mkdir(savepathEEG)
+    cd(savepathEEG)
+    save dataEEG_nback data
+    save dataEEG_TFR_nback dataTFR
+    savepathET = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/gaze/');
+    mkdir(savepathET)
+    cd(savepathET)
+    save dataET_nback dataet
+    save gaze_metrics_nback saccades_1back fixations_1back blinks_1back ...
+        saccades_2back fixations_2back blinks_2back ...
+        saccades_3back fixations_3backblinks_3back
+    clc
+    if subj == length(subjects)
+        disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. PREPROCESSING FINALIZED.'])
+    else
+        disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. Loading next subject...'])
+    end
+    %end
 end

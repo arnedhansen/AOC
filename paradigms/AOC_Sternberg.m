@@ -2,6 +2,8 @@
 %
 % This code requires PsychToolbox. https://psychtoolbox.org
 % This was tested with PsychToolbox version 3.0.15, and with MATLAB R2023b.
+%
+% Sternberg Task with 6 blocks of WM load 2, 4, and 6.
 
 %% Initialize EEG and ET
 % Calibrate ET (Tobii Pro Fusion)
@@ -70,7 +72,7 @@ exp.setSizes = [2, 4, 6];     % Number of items presented on the screen
 % Enable (=1) or disable (=0) screenshots
 enableScreenshots = 0;
 
-% Set up equipment parameters
+%% Set up equipment parameters
 equipment.viewDist = 680;               % Viewing distance in millimetres
 equipment.ppm = 3.6;                    % Pixels per millimetre !! NEEDS TO BE SET. USE THE MeasureDpi FUNCTION !!
 equipment.greyVal = .5;

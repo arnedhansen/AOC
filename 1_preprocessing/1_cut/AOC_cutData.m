@@ -87,11 +87,6 @@ i75 = find(ismember({EEGorig.event.type}, '75'));
 i66 = find(ismember({EEGorig.event.type}, '66'));
 i76 = find(ismember({EEGorig.event.type}, '76'));
 
-%% MANUALLY add missing start or end block trigger indexes (due to EyeTracker-dependent MATLAB shutdown)
-% if subjectID == 'XXX'
-%     iXX = ;
-% end
-
 %% Cut
 
 % Resting  

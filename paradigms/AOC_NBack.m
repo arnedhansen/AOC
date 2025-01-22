@@ -620,10 +620,15 @@ for trl = 1:exp.nTrials
         feedbackText = ('Correct! (no response)');
     end
     reactionTime = num2str(round(data.reactionTime(trl), 2), '%.2f');
-    if trl < 10
+    
+    if trl < 10 && overall_accuracy == 100
         disp(['Response to Trial  ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (' num2str(COND) '-back | Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime) 's)']);
-    else
+    elseif trl < 10
+        disp(['Response to Trial  ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (' num2str(COND) '-back | Acc:  ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime) 's)']);
+    elseif trl >= 10 && overall_accuracy == 100
         disp(['Response to Trial ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (' num2str(COND) '-back | Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime) 's)']);
+    else
+        disp(['Response to Trial ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (' num2str(COND) '-back | Acc:  ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime) 's)']);
     end
 
     % Save trial duration in seconds

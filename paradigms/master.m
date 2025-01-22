@@ -224,8 +224,8 @@ for block = 1:6
     % Load Sternberg accuracy data
     tsk = 'AOC_Sternberg';
     fileName = [subjectID '_', tsk, '_block' num2str(block) '_task.mat'];
-    load(['/home/methlab/Desktop/AOC_data/', subjectID, '/', fileName])
-    percCorr(block, 1) = data.percentTotalCorrect;
+    dataSternberg = load(['/home/methlab/Desktop/AOC_data/', subjectID, '/', fileName]);
+    percCorr(block, 1) = dataSternberg.saves.data.percentTotalCorrect;
 
     % Load Nback accuracy data
     tsk = 'AOC_NBack';
@@ -233,8 +233,8 @@ for block = 1:6
     filePattern = [subjectID, '_', tsk, '_block', num2str(block), '_*_task.mat'];
     files = dir(fullfile(dataDir, filePattern));
     fileName = files.name;
-    load(['/home/methlab/Desktop/AOC_data/', subjectID, '/', fileName])
-    percCorr(block, 2) = data.percentTotalCorrect;
+    dataNback = load(['/home/methlab/Desktop/AOC_data/', subjectID, '/', fileName]);
+    percCorr(block, 2) = dataNback.saves.data.percentTotalCorrect;
 end
 
 % Create a UI figure

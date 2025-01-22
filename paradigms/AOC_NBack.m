@@ -620,7 +620,7 @@ for trl = 1:exp.nTrials
         feedbackText = ('Correct! (no response)');
     end
     reactionTime = num2str(round(data.reactionTime(trl), 2), '%.2f');
-    
+
     if trl < 10 && overall_accuracy == 100
         disp(['Response to Trial  ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (' num2str(COND) '-back | Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime) 's)']);
     elseif trl < 10
@@ -685,8 +685,8 @@ timing.duration = seconds(endTime - startTime);
 %% Record accuracy
 if TRAINING == 0
     try
-        totalCorrect = sum(data.correct(1, 2:end-1));
-        totalTrials = trl-2;
+        totalCorrect = sum(data.correct(1, 3:end-1), 'omitnan');
+        totalTrials = trl-3;
         data.percentTotalCorrect = totalCorrect / totalTrials * 100;
     catch
     end
@@ -784,9 +784,9 @@ elseif COND == 1
     % Get sum of correct responses, but ignore first and last data point
     totalCorrect = sum(data.correct(1, 2:end-1));
     totalTrials = trl-2;
-    percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
+    percentTotalCorrect = totalCorrect / totalTrials * 100;
     format bank % Change format for display
-    feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect(BLOCK)) '%. ' ...
+    feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect) '%. ' ...
         '\n\n Keep it up!'];
 
     DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.black);
@@ -802,9 +802,9 @@ elseif COND > 1
         totalCorrect = sum(data.correct(1, 4:end-1));
         totalTrials = trl-4;
     end
-    percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
+    percentTotalCorrect = totalCorrect / totalTrials * 100;
     format bank % Change format for display
-    feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect(BLOCK)) '%. ' ...
+    feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect) '%. ' ...
         '\n\n Keep it up!'];
     DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.black);
     format default % Change format back to default

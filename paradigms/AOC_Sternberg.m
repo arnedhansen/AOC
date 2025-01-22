@@ -732,7 +732,7 @@ timing.duration = seconds(endTime - startTime);
 %% Record accuracy
 if TRAINING == 0
     try
-        totalCorrect = sum(data.correct);
+        totalCorrect = sum(data.correct, 'omitnan');
         totalTrials = trl;
         data.percentTotalCorrect = totalCorrect / totalTrials * 100;
     catch
@@ -828,8 +828,8 @@ if BLOCK == 0
 elseif BLOCK == 6
     totalCorrect = sum(data.correct);
     totalTrials = trl;
-    percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
-    feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect(BLOCK)) ' %. '];
+    percentTotalCorrect = totalCorrect / totalTrials * 100;
+    feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect) ' %. '];
     format bank % Change format for display
     DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.black);
     format default % Change format back to default
@@ -838,8 +838,8 @@ elseif BLOCK == 6
 elseif BLOCK > 0
     totalCorrect = sum(data.correct);
     totalTrials = trl;
-    percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
-    feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect(BLOCK)) ' %. ' ...
+    percentTotalCorrect = totalCorrect / totalTrials * 100;
+    feedbackBlockText = ['Your accuracy in Block ' num2str(BLOCK) ' was ' num2str(percentTotalCorrect) ' %. ' ...
         '\n\n Keep it up!'];
     format bank % Change format for display
     DrawFormattedText(ptbWindow,feedbackBlockText,'center','center',color.black);

@@ -69,14 +69,14 @@ maxLum = GrayLevel2Lum(255,Cg,gam,b0);
 par.BGcolor = Lum2GrayLevel(maxLum/2,Cg,gam,b0);
 
 %% Experiment ptbWindow
-clc;
+clc
 ptbWindow=Screen('OpenWindow', whichScreen, par.BGcolor); % dont need to open a screen again
 Screen('TextSize', ptbWindow, tSize2);
 DrawFormattedText(ptbWindow, ins.resting.inst, scresw / 3, scresh / 3, colorText);
 DrawFormattedText(ptbWindow, ins.misc.mouse,'center', 0.9*scresh, colorText);
 Screen('Flip', ptbWindow);
 HideCursor(whichScreen);
-clc;
+clc
 disp('RESTING STATE. THE SUBJECT IS READING THE INSTRUCTIONS...');
 
 % Wait for participant to start the resting
@@ -130,7 +130,11 @@ WaitSecs(5);
 subjectID = num2str(subject.ID);
 filePath = fullfile(DATA_PATH, subjectID);
 mkdir(filePath)
-save(fullfile(filePath, [subjectID,'_', TASK, '.mat']),'par','eyeO','eyeC');
+trigger = struct;
+trigger.START = START;
+trigger.FLIPTONOFIXCROSS = FLIPTONOFIXCROSS;
+trigger.END = END;
+save(fullfile(filePath, [subjectID,'_', TASK, '.mat']),'trigger');
 
 %% Close and save EEG and ET
 disp('SAVING DATA...');

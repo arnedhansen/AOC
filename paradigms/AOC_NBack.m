@@ -101,6 +101,7 @@ if TRAINING == 1 && COND == 1
     startExperimentText = ['Training task. \n\n' ...
         'You will see a series of random letters. \n\n' ...
         'Your task is to press SPACE if you see the same letter twice in a row. \n\n' ...
+        'Example: T  -  K  -  K \n\n' ...
         'Otherwise, do not press any button. \n\n' ...
         'Please always use your right hand.' ...
         '\n\n Don''t worry, you can do a training sequence in the beginning. \n\n' ...
@@ -111,7 +112,7 @@ elseif TRAINING == 1 && COND == 2
         'You will see a series of random letters. \n\n' ...
         'Your task is to press SPACE if the letter you see \n\n' ...
         'is the same letter as the one 2 letters before. \n\n' ...
-        'Example: K  -  Q  -  K \n\n' ...
+        'Example: K  -  T  -  K \n\n' ...
         'Otherwise, do not press any button. \n\n' ...
         'Please always use your right hand.' ...
         '\n\n Press any key to continue.'];
@@ -121,7 +122,7 @@ elseif TRAINING == 1 && COND == 3
         'You will see a series of random letters. \n\n' ...
         'Your task is to press SPACE if the letter you see \n\n' ...
         'is the same letter as the one 3 letters before. \n\n' ...
-        'Example: S - Q - P - S \n\n' ...
+        'Example: S - R - P - S \n\n' ...
         'Otherwise, do not press any button. \n\n' ...
         'Please always use your right hand.' ...
         '\n\n Press any key to continue.'];
@@ -237,6 +238,7 @@ if TRAINING == 0
     % Show performance bonus incentive text
     DrawFormattedText(ptbWindow,performanceBonusText,'center','center',color.black);
     Screen('Flip',ptbWindow);
+    clc
     disp('Participant is reading the performance bonus text');
     waitResponse = 1;
     while waitResponse
@@ -249,7 +251,7 @@ end
 DrawFormattedText(ptbWindow,startExperimentText,'center','center',color.black);
 Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
 Screen('Flip',ptbWindow);
-screenshot(sprintf('AOC_Nback_screenshot_instructions.png'), enableScreenshots);
+screenshot(sprintf('AOC_Nback_screenshot_instructions.png'), ptbWindow, enableScreenshots);
 disp('Participant is reading the instructions.');
 waitResponse = 1;
 while waitResponse
@@ -346,10 +348,11 @@ for trl = 1:exp.nTrials
         Eyelink('command', 'record_status_message "FIXATION"');
         sendtrigger(TRIGGER,port,SITE,stayup);
     end
+    WaitSecs(timing.cfi(trl));
 
     %% Check fixation just before stimulus presentation
-    fixCheckDuration = timing.cfi(trl);
-    noFixation = checkFixation(screenCentreX, screenCentreY, fixCheckDuration);
+%     fixCheckDuration = timing.cfi(trl);
+%     noFixation = checkFixation(screenCentreX, screenCentreY, fixCheckDuration);
 
     %% Present stimulus from letterSequence (2000ms)
     % Increase size of stimuli
@@ -358,7 +361,7 @@ for trl = 1:exp.nTrials
     Screen('DrawDots',ptbWindow, backPos, backDiameter, backColor,[],1);
     Screen('DrawDots',ptbWindow, stimPos, stimDiameter, stimColor,[],1);
     Screen('Flip', ptbWindow);
-    screenshot(sprintf('AOC_Nback_screenshot_trl%d.png', trl), enableScreenshots);
+    screenshot(sprintf('AOC_Nback_screenshot_trl%d.png', trl), ptbWindow, enableScreenshots);
     probePresentationTime = GetSecs;
     % Return size of text to default
     Screen('TextSize', ptbWindow, 20);
@@ -591,6 +594,7 @@ for trl = 1:exp.nTrials
     end
 
     %% Fixation reminder
+    noFixation = 0;
     if noFixation > 0
         Screen('TextSize', ptbWindow, 30);
         fixText = 'ALWAYS LOOK AT THE CENTER OF THE SCREEN!';
@@ -612,7 +616,7 @@ for trl = 1:exp.nTrials
     end
     reactionTime = num2str(round(data.reactionTime(trl), 2), '%.2f');
     if trl < 10
-        disp(['Response to Trial ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText '  (' num2str(COND) '-back | Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime) 's)']);
+        disp(['Response to Trial  ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (' num2str(COND) '-back | Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime) 's)']);
     else
         disp(['Response to Trial ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (' num2str(COND) '-back | Acc: ' num2str(overall_accuracy) '% | RT: ' num2str(reactionTime) 's)']);
     end
@@ -673,7 +677,7 @@ if TRAINING == 0
     try
         totalCorrect = sum(data.correct(1, 2:end-1));
         totalTrials = trl-2;
-        data.percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
+        data.percentTotalCorrect = totalCorrect / totalTrials * 100;
     catch
     end
 end
@@ -693,7 +697,7 @@ saves = struct;
 saves.data = data;
 saves.spaceKeyCode = spaceKeyCode;
 saves.timing = timing;
-saves.experiment = experiment;
+saves.experiment = exp;
 saves.screen.screenWidth = screenWidth;
 saves.screen.screenHeight = screenHeight;
 saves.screen.screenCentreX = screenCentreX;
@@ -885,7 +889,6 @@ elseif BLOCK > 1 && TRAINING == 0 && BLOCK < 6
     disp('Break started');
 
     while timePassed < waitTime
-        waitbar(timePassed/10, 'INITIALIZING EEG');
         pause(intervalTime);
         timePassed = timePassed + intervalTime;
         printTime = waitTime - timePassed;
@@ -895,8 +898,6 @@ elseif BLOCK > 1 && TRAINING == 0 && BLOCK < 6
         DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.black);
         Screen('Flip',ptbWindow);
     end
-    wbar = findall(0,'type','figure','tag','TMWWaitbar');
-    delete(wbar)
     disp('Break done!')
 end
 

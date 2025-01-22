@@ -10,10 +10,12 @@ function noFixation = checkFixation(screenCentreX, screenCentreY, fixCheckDurati
     % Collect gaze data for a specified number of samples
     samples = zeros(numSamples, 2); % Initialize matrix for gaze samples
     i = 1;
-
-    % Collect gaze data for 4 ms
-    while GetSecs < startTimeSample + 0.004
+    
+    % Collect gaze data
+    startTime = GetSecs;
+    while GetSecs < startTime + fixCheckDuration
         if i <= numSamples
+            startTimeSample = GetSecs;
             % Fetch gaze data sample
             evt = Eyelink('NewestFloatSample');
             if evt.time > 0 % Ensure a valid sample is received
@@ -22,6 +24,8 @@ function noFixation = checkFixation(screenCentreX, screenCentreY, fixCheckDurati
                 samples(i, :) = [gaze_x, gaze_y]; % Store gaze sample
                 i = i + 1;
             end
+            if GetSecs < startTimeSample + 0.004 % Wait at least 4 ms
+                WaitSecs(0.004-(GetSecs-startTimeSample))
         else
             break; % Stop if numSamples is reached
         end

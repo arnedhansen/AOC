@@ -249,7 +249,6 @@ data.setSizeOccurences(1) = numel(find(data.trialSetSize == exp.setSizes(1)));
 data.setSizeOccurences(2) = numel(find(data.trialSetSize == exp.setSizes(2)));
 data.setSizeOccurences(3) = numel(find(data.trialSetSize == exp.setSizes(3)));
 
-
 %% Display info texts
 clc
 if TRAINING == 0
@@ -265,6 +264,7 @@ if TRAINING == 0
 end
 
 % Show task instruction text
+Screen('TextSize', ptbWindow, 15);
 DrawFormattedText(ptbWindow,startExperimentText,'center','center',color.black);
 startExperimentTime = Screen('Flip',ptbWindow);
 disp('Participant is reading the instructions');
@@ -274,6 +274,7 @@ while waitResponse
     waitResponse = 0;
 end
 screenshot('AOC_Sternberg_screenshot_startExperimentText.png', ptbWindow, enableScreenshots);
+Screen('TextSize', ptbWindow, 15);
 
 % Show response instruction text
 DrawFormattedText(ptbWindow,responseInstructionText,'center','center',color.black);
@@ -364,10 +365,11 @@ for trl = 1:exp.nTrials
     end
     screenshot('AOC_Sternberg_screenshot_fixcross.png', ptbWindow, enableScreenshots);
     timing.cfi(trl) = (randsample(500:1500, 1))/1000; % Duration of the jittered inter-trial interval
+    WaitSecs(timing.cfi(trl));
 
     %% Check fixation just before stimulus presentation
-    fixCheckDuration = timing.cfi(trl);
-    noFixation = checkFixation(screenCentreX, screenCentreY, fixCheckDuration);
+%     fixCheckDuration = timing.cfi(trl);
+%     noFixation = checkFixation(screenCentreX, screenCentreY, fixCheckDuration);
 
     %% Presentation of stimuli (200ms)
     % Increase size of stimuli
@@ -637,6 +639,7 @@ for trl = 1:exp.nTrials
     end
 
     %% Fixation reminder
+    noFixation = 0;
     if noFixation > 0
         Screen('TextSize', ptbWindow, 30);
         fixText = 'ALWAYS LOOK AT THE CENTER OF THE SCREEN!';
@@ -722,7 +725,7 @@ if TRAINING == 0
     try
         totalCorrect = sum(data.correct);
         totalTrials = trl;
-        data.percentTotalCorrect(BLOCK) = totalCorrect / totalTrials * 100;
+        data.percentTotalCorrect = totalCorrect / totalTrials * 100;
     catch
     end
 end
@@ -743,7 +746,7 @@ saves.data = data;
 saves.KeyCodeA = KeyCodeA;
 saves.KeyCodeL = KeyCodeL;
 saves.KeyBindingsYesIsL = YesIsL;
-saves.experiment = experiment;
+saves.experiment = exp;
 saves.screen.screenWidth = screenWidth;
 saves.screen.screenHeight = screenHeight;
 saves.screen.screenCentreX = screenCentreX;
@@ -761,7 +764,6 @@ trigger = struct;
 trigger.MATCH = MATCH;
 trigger.NO_MATCH = NO_MATCH;
 trigger.FIXATION = FIXATION;
-trigger.FIX_RETENTION = FIX_RETENTION;
 trigger.TASK_START = TASK_START;
 trigger.PRESENTATION2 = PRESENTATION2;
 trigger.PRESENTATION4 = PRESENTATION4;
@@ -899,7 +901,6 @@ elseif BLOCK >= 1 && BLOCK < 6
     disp('Break started');
 
     while timePassed < waitTime
-        waitbar(timePassed/10, 'INITIALIZING EEG');
         pause(intervalTime);
         timePassed = timePassed + intervalTime;
         printTime = waitTime - timePassed;
@@ -909,8 +910,6 @@ elseif BLOCK >= 1 && BLOCK < 6
         DrawFormattedText(ptbWindow,waitTimeText,'center','center',color.black);
         Screen('Flip',ptbWindow);
     end
-    wbar = findall(0,'type','figure','tag','TMWWaitbar');
-    delete(wbar)
     disp('Break done!')
 end
 

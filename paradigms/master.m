@@ -221,19 +221,20 @@ ListenChar(0);
 %% Load and display accuracy
 cd(DATA_PATH)
 for block = 1:6
-    for TASK = {'AOC_NBack'; 'AOC_Sternberg'}
-        if strcmp(TASK, 'AOC_Sternberg')
-            tsk = 'AOC_Sternberg';
-            fileName = [subjectID '_', tsk, '_block' num2str(BLOCK) '_task.mat'];
-            load(filename)
-            percCorr(BLOCK, 1) = data.percentTotalCorrect(BLOCK);
-        elseif strcmp(TASK, 'AOC_NBack')
-            tsk = 'AOC_NBack';
-            fileName = [subjectID '_', tsk, '_block' num2str(BLOCK) '_task.mat'];
-            load(filename)
-            percCorr(BLOCK, 2) = data.percentTotalCorrect(BLOCK);
-        end
-    end
+    % Load Sternberg accuracy data
+    tsk = 'AOC_Sternberg';
+    fileName = [subjectID '_', tsk, '_block' num2str(block) '_task.mat'];
+    load(['/home/methlab/Desktop/AOC_data/', subjectID, '/', fileName])
+    percCorr(block, 1) = data.percentTotalCorrect;
+
+    % Load Nback accuracy data
+    tsk = 'AOC_NBack';
+    dataDir = ['/home/methlab/Desktop/AOC_data/', subjectID, '/'];
+    filePattern = [subjectID, '_', tsk, '_block', num2str(block), '_*_task.mat'];
+    files = dir(fullfile(dataDir, filePattern));
+    fileName = files.name;
+    load(['/home/methlab/Desktop/AOC_data/', subjectID, '/', fileName])
+    percCorr(block, 2) = data.percentTotalCorrect;
 end
 
 % Create a UI figure

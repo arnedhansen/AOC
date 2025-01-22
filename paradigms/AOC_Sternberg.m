@@ -16,6 +16,7 @@ if TRAINING == 0
     initEEG;
 
     % Wait ten seconds to initialize EEG
+    close all
     disp('INITIALIZING EEG... PLEASE WAIT 10 SECONDS')
     for i=1:10
         waitbar(i/10, 'INITIALIZING EEG');
@@ -842,25 +843,19 @@ end
 % Show break instruction text
 if TRAINING == 1
     if percentTotalCorrect >= 60
-        breakInstructionText = 'Well done! \n\n Press any key to start the actual task.';
+        breakInstructionText = 'Well done!';
     else
         breakInstructionText = ['Score too low! ' num2str(percentTotalCorrect) ' % correct. ' ...
-            '\n\n Press any key to repeat the training task.'];
+            '\n\n Let''s do the training task again.'];
     end
 elseif BLOCK == 6
-    breakInstructionText = ['End of the Task! ' ...
-        '\n\n Press any key to view your stats.'];
+    breakInstructionText = 'End of the Task! ';
 else
-    breakInstructionText = ['Break! Rest for a while... ' ...
-        '\n\n Press any key to start the mandatory break of at least 10 seconds.'];
+    breakInstructionText = 'Break! Rest for a short while... ';
 end
 DrawFormattedText(ptbWindow,breakInstructionText,'center','center',color.black);
 Screen('Flip',ptbWindow);
-waitResponse = 1;
-while waitResponse
-    [time, keyCode] = KbWait(-1,2);
-    waitResponse = 0;
-end
+WaitSecs(3);
 
 %% Wait at least 10 Seconds between Blocks (only after Block 1 has finished, not after Block 6)
 if TRAINING == 1 && percentTotalCorrect < 60
@@ -912,6 +907,7 @@ elseif BLOCK >= 1 && BLOCK < 6
     end
     disp('Break done!')
 end
+close all
 
 %% Quit
 Screen('CloseAll');

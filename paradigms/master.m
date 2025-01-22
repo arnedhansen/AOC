@@ -37,10 +37,10 @@ end
 
 %% Randomize order of Sternberg Task and NBack Task
 % Use subject ID for assignment of pseudorandom task Order (Sternberg & N-back)
-if mod(subjectID, 2) == 0
-    taskOrder = 'NBackSternberg';
+if mod(str2double(subjectID), 2) == 0
+    taskOrder = 'NBackSternberg'; % Even subjectIDs do Nback first
 else
-    taskOrder = 'SternbergNBack';
+    taskOrder = 'SternbergNBack'; % Uneven subjectIDs do Sternberg first
 end
 
 % Shuffle n-back conditions

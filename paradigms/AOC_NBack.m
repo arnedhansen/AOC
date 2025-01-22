@@ -16,8 +16,13 @@ if TRAINING == 0
     initEEG;
 
     % Wait ten seconds to initialize EEG
+    close all
     disp('INITIALIZING EEG... PLEASE WAIT 10 SECONDS')
     for i=1:10
+        if i > 1
+            wbar = findall(0,'type','figure','tag','TMWWaitbar');
+            delete(wbar)
+        end
         waitbar(i/10, 'INITIALIZING EEG');
         pause(1);
     end

@@ -9,13 +9,31 @@ TRAINING = 0; % no training for Resting
 % Run Resting
 disp('RESTING EEG...');
 
-%% start recording EEG
-disp('STARTING EEG RECORDING...');
-initEEG;
-
+%% Initialize EEG and ET
 % Calibrate ET (Tobii Pro Fusion)
 disp('CALIBRATING ET...');
 calibrateET;
+
+% Start recording EEG
+disp('STARTING EEG RECORDING...');
+initEEG;
+
+% Wait ten seconds to initialize EEG
+disp('INITIALIZING EEG... PLEASE WAIT 10 SECONDS')
+for i=1:10
+    if i > 1
+        wbar = findall(0,'type','figure','tag','TMWWaitbar');
+        delete(wbar)
+    end
+    waitbar(i/10, 'INITIALIZING EEG');
+    pause(1);
+end
+wbar = findall(0,'type','figure','tag','TMWWaitbar');
+delete(wbar)
+disp('EEG INITIALIZED!')
+
+% Hide cursor on participant screen
+HideCursor(whichScreen);
 
 %% Settings
 testmode = 0;

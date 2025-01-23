@@ -246,8 +246,12 @@ elseif chance == 3
     extraNums = [exp.setSizes(3) exp.setSizes(3)];
 end
 setALL = [setS2, setS4, setS6, extraNums];
-for trialSetSizes = 1:exp.nTrials
-    data.trialSetSize(trialSetSizes) = randsample(setALL, 1);
+if TRAINING == 1
+    data.trialSetSize = [2, 4, 2, 6, 2, 2, 4, 2, 6, 2];
+else
+    for trialSetSizes = 1:exp.nTrials
+        data.trialSetSize(trialSetSizes) = randsample(setALL, 1);
+    end
 end
 % Count occurences of set sizes in trials
 data.setSizeOccurences(1) = numel(find(data.trialSetSize == exp.setSizes(1)));
@@ -668,7 +672,7 @@ for trl = 1:exp.nTrials
     elseif trl < 10
         disp(['Response to Trial  ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (WM load ' num2str(data.trialSetSize(trl)) ' | Acc:  ' num2str(overall_accuracy) '% | RT: ' reactionTime 's)']);
     elseif trl >= 10 && overall_accuracy == 100
-        disp(['Response to Trial ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (WM load ' num2str(data.trialSetSize(trl)) ' | Acc:  ' num2str(overall_accuracy) '% | RT: ' reactionTime 's)']);
+        disp(['Response to Trial ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (WM load ' num2str(data.trialSetSize(trl)) ' | Acc: ' num2str(overall_accuracy) '% | RT: ' reactionTime 's)']);
     else
         disp(['Response to Trial ' num2str(trl) '/' num2str(exp.nTrials) ' in Block ' num2str(BLOCK) ' is ' feedbackText ' (WM load ' num2str(data.trialSetSize(trl)) ' | Acc:  ' num2str(overall_accuracy) '% | RT: ' reactionTime 's)']);
     end

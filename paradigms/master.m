@@ -11,10 +11,9 @@
 %% General settings, screens and paths
 
 % Set up MATLAB workspace
-clear all;
+clear;
 close all;
 clc;
-rootFilepath = pwd; % Retrieve the present working directory
 
 % Define paths
 PPDEV_PATH = '/home/methlab/Documents/MATLAB/ppdev-mex-master'; % For sending EEG triggers
@@ -219,74 +218,13 @@ end
 ListenChar(0);
 
 %% Load and display accuracy
-cd(DATA_PATH)
-for block = 1:6
-    % Load Sternberg accuracy data
-    tsk = 'AOC_Sternberg';
-    fileName = [subjectID '_', tsk, '_block' num2str(block) '_task.mat'];
-    dataSternberg = load(['/home/methlab/Desktop/AOC_data/', subjectID, '/', fileName]);
-    percCorr(block, 1) = dataSternberg.saves.data.percentTotalCorrect;
-
-    % Load Nback accuracy data
-    tsk = 'AOC_NBack';
-    dataDir = ['/home/methlab/Desktop/AOC_data/', subjectID, '/'];
-    filePattern = [subjectID, '_', tsk, '_block', num2str(block), '_*_task.mat'];
-    files = dir(fullfile(dataDir, filePattern));
-    fileName = files.name;
-    dataNback = load(['/home/methlab/Desktop/AOC_data/', subjectID, '/', fileName]);
-    percCorr(block, 2) = dataNback.saves.data.percentTotalCorrect;
+try
+AOC_display_accuracy;
+catch 
 end
 
-% Create a UI figure
-uiFig = uifigure('Name', 'Task Accuracy', 'Position', [500, 400, 350, 300]);
-
-% Define the tasks
-tasks = {'Sternberg', 'NBack'};
-
-% Round the percentage accuracy and convert to character arrays with a percentage sign
-roundedPercCorr = round(percCorr); % Round to the nearest integer
-percStrings = strcat(string(roundedPercCorr), '%'); % Append percentage sign
-percStrings = cellstr(percStrings); % Convert to cell array of character arrays
-
-% Create a vertical spacing offset
-yOffset = 250;
-rowHeight = 30;
-
-% Add column headers for tasks
-headerLabel1 = uilabel(uiFig, ...
-    'Text', tasks{1}, ...
-    'FontSize', 12, ...
-    'FontWeight', 'bold', ...
-    'HorizontalAlignment', 'center', ...
-    'Position', [100, yOffset, 100, 20]);
-
-headerLabel2 = uilabel(uiFig, ...
-    'Text', tasks{2}, ...
-    'FontSize', 12, ...
-    'FontWeight', 'bold', ...
-    'HorizontalAlignment', 'center', ...
-    'Position', [200, yOffset, 100, 20]);
-
-% Loop through each block to display the data
-for block = 1:6
-    % Block number
-    blockLabel = uilabel(uiFig, ...
-        'Text', ['Block ' num2str(block)], ...
-        'FontSize', 12, ...
-        'HorizontalAlignment', 'left', ...
-        'Position', [20, yOffset - block * rowHeight, 100, 20]);
-    
-    % NBack accuracy
-    nBackLabel = uilabel(uiFig, ...
-        'Text', percStrings{block, 1}, ...
-        'FontSize', 12, ...
-        'HorizontalAlignment', 'center', ...
-        'Position', [120, yOffset - block * rowHeight, 80, 20]);
-    
-    % Sternberg accuracy
-    sternbergLabel = uilabel(uiFig, ...
-        'Text', percStrings{block, 2}, ...
-        'FontSize', 12, ...
-        'HorizontalAlignment', 'center', ...
-        'Position', [220, yOffset - block * rowHeight, 80, 20]);
+%% Display payment plan
+try
+AOC_display_cash;
+catch
 end

@@ -35,15 +35,22 @@ if ~isfile([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_Resti
 end
 
 %% Randomize order of Sternberg Task and NBack Task
-% Use subject ID for assignment of pseudorandom task Order (Sternberg & N-back)
-if mod(str2double(subjectID), 2) == 0
-    taskOrder = 'NBackSternberg'; % Even subjectIDs do Nback first
-else
-    taskOrder = 'SternbergNBack'; % Uneven subjectIDs do Sternberg first
+% Check if the conversion was successful
+if isnan(subjectID)
+    error('ERROR. Subject ID must be a numeric value.');
 end
+% Use subject ID for assignment of pseudorandom task Order (Sternberg & N-back)
+if mod(subjectID, 2) == 0
+    taskOrder = 'NBackSternberg'; % Even subjectIDs do Nback first
+elseif mod(subjectID, 2) == 1
+    taskOrder = 'SternbergNBack'; % Uneven subjectIDs do Sternberg first
+else
+    error('ERROR: TASK ORDER COULD NOT BE DETERMINED BY SUBJECT ID')
+end
+disp(['SubjectID AOC ', num2str(subjectID),'. Task order is: ', taskOrder])
 
-% Shuffle n-back conditions
-rng();
+% Shuffle n-back conditions (same rng for same subjectID in case of crashes) 
+rng(subjectID);
 nback_condition = repmat(1:3, 1, 2);
 nback_condition = nback_condition(randperm(length(nback_condition)));
 

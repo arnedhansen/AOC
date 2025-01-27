@@ -11,11 +11,12 @@ close()
 cd(p)
 
 %% Define path, cut data and convert asc to mat files.
-d = dir(strcat('/Volumes/methlab_data/AOC/data/*/', '*cnt'));
+tic
+d = dir(strcat('/Volumes/methlab_data/OCC/AOC/data/*/', '*cnt'));
 ids = {};
 for f = 1 : size(d, 1)
     filePath = fullfile( d(f).folder, d(f).name);
-    cutData(filePath)
+    AOC_cutData(filePath)
     id = strsplit(d(f).name, '_');
     ids{f} = id{1};
     fprintf('Cutting of data for Subject AOC %.3s done', ids{f})
@@ -25,7 +26,7 @@ end
 for id = 1 : length(ids)
     ID = ids{id};
 
-    filePath = fullfile('/Volumes/methlab_data/AOC/data', ID);
+    filePath = fullfile('/Volumes/methlab_data/OCC/AOC/data', ID);
     d = dir([filePath, filesep, '*.asc']);
 
     if not(isempty(d))
@@ -85,3 +86,4 @@ for id = 1 : length(ids)
     end
 end
 disp('SYNCHRONIZATION COMPLETE')
+toc

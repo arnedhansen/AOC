@@ -1,0 +1,93 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2821
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;\f1\fmodern\fcharset0 Courier;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww18200\viewh17640\viewkind0
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 AOC Triggers for Sternberg & N-back task\
+\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+\cf0 START \
+10 31 32 33 34 35 36 61 62 63 64 65 66\
+END \
+90 41 42 43 44 45 46 71 72 73 74 75 76\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+\cf0 \
+Resting\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f1\fs20 \cf0 START = 10;\
+FLIPTONOFIXCROSS = 50;\
+END  = 90;\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 \
+Sternberg\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f1\fs20 \cf0 MATCH = 4; % trigger for probe stimulus\
+NO_MATCH = 5; % trigger for probe stimulus\
+TASK_START = 10; % trigger for ET cutting\
+FIXATION = 15; % trigger for fixation cross\
+PRESENTATION2 = 22; % trigger for letter presentation\
+PRESENTATION4 = 24; % trigger for letter presentation\
+PRESENTATION6 = 26; % trigger for letter presentation\
+STIMOFF = 20; % trigger for change of digit to blank\
+BLOCK0 = 29; % trigger for start training block\
+BLOCK1 = 31; % trigger for start of block 1\
+BLOCK2 = 32; % trigger for start of block 2\
+BLOCK3 = 33; % trigger for start of block 3\
+BLOCK4 = 34; % trigger for start of block 4\
+BLOCK5 = 35; % trigger for start of block 5\
+BLOCK6 = 36; % trigger for start of block 6\
+ENDBLOCK0 = 39; % trigger for end training block\
+ENDBLOCK1 = 41; % trigger for end of block 1\
+ENDBLOCK2 = 42; % trigger for end of block 2\
+ENDBLOCK3 = 43; % trigger for end of block 3\
+ENDBLOCK4 = 44; % trigger for end of block 4\
+ENDBLOCK5 = 45; % trigger for end of block 5\
+ENDBLOCK6 = 46; % trigger for end of block 6\
+RETENTION2 = 52; % trigger for retention (setSize = 2)\
+RETENTION4 = 54; % trigger for retention (setSize = 4)\
+RETENTION6 = 56; % trigger for retention (setSize = 6)\
+RESP_YES = 87; % trigger for response yes (depends on changing key bindings)\
+RESP_NO = 88; % trigger for response no (depends on changing key bindings)\
+BAD_RESP = 89; % trigger for wrong keyboard input (any key apart from 'A', 'L' or 'Space')\
+TASK_END = 90; % trigger for ET cutting
+\f0\fs24 \
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+\cf0 \
+N-back\
+\pard\tx566\tx1133\tx1700\tx2267\tx2834\tx3401\tx3968\tx4535\tx5102\tx5669\tx6236\tx6803\pardirnatural\partightenfactor0
+
+\f1\fs20 \cf0 MATCH = 4; % Trigger for matching condition\
+NO_MATCH = 5; % Trigger for non-matching condition\
+TASK_START = 10; % Trigger for start of task\
+COND1 = 11; % Trigger for block with 1-back\
+COND2 = 12; % Trigger for block with 2-back\
+COND3 = 13; % Trigger for block with 3-back\
+FIXATION = 15; % Trigger for fixation cross\
+PRESENTATION0 = 19; % Trigger for letter presentation (training task; 1-back)\
+PRESENTATION1 = 21; % Trigger for letter presentation (1-back)\
+PRESENTATION2 = 22; % Trigger for letter presentation (2-back)\
+PRESENTATION3 = 23; % Trigger for letter presentation (3-back)\
+STIMOFF = 28; % Trigger for change of letter to cfi\
+BLOCK0 = 60; % Trigger for start of training block\
+BLOCK1 = 61; % Trigger for start of block 1\
+BLOCK2 = 62; % Trigger for start of block 2\
+BLOCK3 = 63; % Trigger for start of block 3\
+BLOCK4 = 64; % Trigger for start of block 4\
+BLOCK5 = 65; % Trigger for start of block 5\
+BLOCK6 = 66; % Trigger for start of block 6\
+ENDBLOCK0 = 70; % Trigger for end of training block\
+ENDBLOCK1 = 71; % Trigger for end of block 1\
+ENDBLOCK2 = 72; % Trigger for end of block 2\
+ENDBLOCK3 = 73; % Trigger for end of block 3\
+ENDBLOCK4 = 74; % Trigger for end of block 4\
+ENDBLOCK5 = 75; % Trigger for end of block 5\
+ENDBLOCK6 = 76; % Trigger for end of block 6\
+RESP_YES = 87; % Trigger for response yes (spacebar)\
+RESP_NO = 88; % Trigger for response no (no input)\
+RESP_WRONG = 89;% Trigger for wrong keyboard input response\
+TASK_END = 90; % Trigger for end of task}

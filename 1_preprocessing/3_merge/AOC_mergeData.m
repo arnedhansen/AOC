@@ -2,6 +2,7 @@
 % Use data after AUTOMAGIC
 
 %% Setup
+startup
 clear
 addpath /Volumes/methlab/4marius_bdf/eeglab % for pop_importeyetracker (EYE-EEG)
 eeglab
@@ -15,11 +16,11 @@ subjectIDs = {folders.name};
 %% Merge data
 tic;
 for subjects = 1 : length(subjectIDs)
-    subjectID = subjectIDs(subjects);
+    subjectID = subjectIDs{subjects};
     % Check if subject files have already been merged
     if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/merged/', char(subjectID), filesep, char(subjectID), '*_merged.mat']))
         % Set up data paths
-        filePathET = ['/Volumes/methlab_data/AOC/data/', char(subjectID)];
+        filePathET = ['/Volumes/methlab_data/OCC/AOC/data/', char(subjectID)];
         filePathEEG = ['/Volumes/methlab/Students/Arne/AOC/data/automagic/',  char(subjectID)];
         resultFolder = ['/Volumes/methlab/Students/Arne/AOC/data/merged/', char(subjectID)];
         mkdir(resultFolder)
@@ -40,8 +41,13 @@ for subjects = 1 : length(subjectIDs)
 
             fileTaskName = strsplit(EEGname, '_');
             task = sprintf('%s', char(fileTaskName(3)), '_', char(fileTaskName(4)));
-            block = sprintf('%s', char(fileTaskName(5)));
-            block = block(6:end);
+            if strcmp(task, 'Resting_EEG.mat')
+                task = 'Resting';
+            end
+            if ~strcmp(task, 'Resting')
+                block = sprintf('%s', char(fileTaskName(5)));
+                block = block(6:end);
+            end
 
             %% Define start and end triggers
             % Resting
@@ -58,8 +64,8 @@ for subjects = 1 : length(subjectIDs)
                 endTrigger = endTriggers(ismember(startTriggersCell, {EEG.event.type}));
             end
             % End trigger
-            endTrigger = startTrigger + 10;
-            
+            %endTrigger = startTrigger + 10;
+
             %% Merge files
             EEG = pop_importeyetracker(EEG, ETfile,[startTrigger endTrigger],[2 3 4],{'L_GAZE_X', 'L_GAZE_Y', 'L_AREA', 'R_GAZE_X', 'R_GAZE_Y', 'R_AREA'},1,1,1,0);
 
@@ -72,7 +78,7 @@ for subjects = 1 : length(subjectIDs)
                 fileName = [char(subjectID) '_EEG_ET_Nback_block' num2str(block) '_merged'];
             end
             save(fullfile(resultFolder, fileName), 'EEG', '-v7.3')
-            if strcmp(task, 'Resting.mat') == 1
+            if strcmp(task, 'Resting') == 1
                 disp(['AOC' char(subjectID) ': Resting done' ])
             else
                 step = sprintf('%s', char(fileTaskName(4)), '_', char(fileTaskName(5)));

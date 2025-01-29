@@ -161,31 +161,15 @@ for subj = 1:length(subjects)
             end
         end
 
-        %% Remove empty blocks
-        data1 = data1(~cellfun('isempty', data1));
-        data2 = data2(~cellfun('isempty', data2));
-        data3 = data3(~cellfun('isempty', data3));
-
         %% Equalize labels
         update_labels(data1);
         update_labels(data2);
         update_labels(data3);
 
-        %% Add trialinfo
-        for block = 1:6
-            try
-                if ~isempty(data1{1, block})
-                    data1{1, block}.trialinfo = zeros(numel(data1{1, block}.trial), 1) + 21; % maybe the problem is that its not tranposed? 52'
-                elseif ~isempty(data2{1, block})
-                    data2{1, block}.trialinfo = zeros(numel(data2{1, block}.trial), 1) + 22;
-                elseif ~isempty(data3{1, block})
-                    data3{1, block}.trialinfo = zeros(numel(data3{1, block}.trial), 1) + 23;
-                end
-            catch ME
-                ME.message
-                disp(['ERROR adding trialinfo in Block ' num2str(block) '!'])
-            end
-        end
+        %% Remove empty blocks
+        data1 = data1(~cellfun(@(x) isempty(fieldnames(x)), data1));
+        data2 = data2(~cellfun(@(x) isempty(fieldnames(x)), data2));
+        data3 = data3(~cellfun(@(x) isempty(fieldnames(x)), data3));
 
         %% Append data for conditions
         cfg = [];
@@ -193,6 +177,14 @@ for subj = 1:length(subjects)
         data1 = ft_appenddata(cfg,data1{:});
         data2 = ft_appenddata(cfg,data2{:});
         data3 = ft_appenddata(cfg,data3{:});
+
+        %% Add trialinfo
+        data1.trialinfo = zeros(numel(data1.trial), 1) + 21;
+        disp(['Adding trialinfo 1-back in Block ' num2str(block) '!']);
+        data2.trialinfo = zeros(numel(data2.trial), 1) + 22;
+        disp(['Adding trialinfo 2-back in Block ' num2str(block) '!']);
+        data3.trialinfo = zeros(numel(data3.trial), 1) + 23;
+        disp(['Adding trialinfo 3-back in Block ' num2str(block) '!']);
 
         %% Append all data into single data file with appropriate trialinfo
         cfg = [];

@@ -147,31 +147,15 @@ for subj = 1:length(subjects)
             end
         end
 
-        %% Remove empty blocks
-        data2 = data2(~cellfun('isempty', data2));
-        data4 = data4(~cellfun('isempty', data4));
-        data6 = data6(~cellfun('isempty', data6));
-
         %% Equalize labels
         update_labels(data2);
         update_labels(data4);
         update_labels(data6);
 
-        %% Add trialinfo
-        for block = 1:6
-            try
-                if ~isempty(data2{1, block})
-                    data2{1, block}.trialinfo = zeros(numel(data2{1, block}.trial), 1) + 52; % maybe the problem is that its not tranposed? 52'
-                elseif ~isempty(data4{1, block})
-                    data4{1, block}.trialinfo = zeros(numel(data4{1, block}.trial), 1) + 54;
-                elseif ~isempty(data6{1, block})
-                    data6{1, block}.trialinfo = zeros(numel(data6{1, block}.trial), 1) + 56;
-                end
-            catch ME
-                ME.message
-                disp(['ERROR adding trialinfo in Block ' num2str(block) '!'])
-            end
-        end
+        %% Remove empty blocks
+        data2 = data2(~cellfun(@(x) isempty(fieldnames(x)), data2));
+        data4 = data4(~cellfun(@(x) isempty(fieldnames(x)), data4));
+        data6 = data6(~cellfun(@(x) isempty(fieldnames(x)), data6));
 
         %% Append data for conditions
         cfg = [];
@@ -179,6 +163,11 @@ for subj = 1:length(subjects)
         data2 = ft_appenddata(cfg,data2{:});
         data4 = ft_appenddata(cfg,data4{:});
         data6 = ft_appenddata(cfg,data6{:});
+
+        %% Add trialinfo
+        data2.trialinfo = zeros(numel(data2.trial), 1) + 52;
+        data4.trialinfo = zeros(numel(data4.trial), 1) + 54;
+        data6.trialinfo = zeros(numel(data6.trial), 1) + 56;
 
         %% Append all data into single data file with appropriate trialinfo
         cfg = [];

@@ -190,7 +190,7 @@ for subj = 1:length(subjects)
         cfg = [];
         cfg.keepsampleinfo = 'no';
         data = ft_appenddata(cfg,data1,data2,data3);
-        trialinfo = [data1.trialinfo, data2.trialinfo, data3.trialinfo];
+        trialinfo = [data1.trialinfo; data2.trialinfo; data3.trialinfo];
         data.trialinfo = trialinfo;
         data.cfg = [];
 
@@ -249,7 +249,7 @@ for subj = 1:length(subjects)
         save dataET_nback dataet
         save gaze_metrics_nback saccades_1back fixations_1back blinks_1back ...
             saccades_2back fixations_2back blinks_2back ...
-            saccades_3back fixations_3backblinks_3back
+            saccades_3back fixations_3back blinks_3back
         clc
         if subj == length(subjects)
             disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. PREPROCESSING FINALIZED.'])

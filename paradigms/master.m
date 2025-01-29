@@ -36,13 +36,13 @@ end
 
 %% Randomize order of Sternberg Task and NBack Task
 % Check if the conversion was successful
-if isnan(subjectID)
+if isnan(subject.ID)
     error('ERROR. Subject ID must be a numeric value.');
 end
 % Use subject ID for assignment of pseudorandom task Order (Sternberg & N-back)
-if mod(subjectID, 2) == 0
+if mod(subject.ID, 2) == 0
     taskOrder = 'NBackSternberg'; % Even subjectIDs do Nback first
-elseif mod(subjectID, 2) == 1
+elseif mod(subject.ID, 2) == 1
     taskOrder = 'SternbergNBack'; % Uneven subjectIDs do Sternberg first
 else
     error('ERROR: TASK ORDER COULD NOT BE DETERMINED BY SUBJECT ID')
@@ -50,7 +50,7 @@ end
 disp(['SubjectID AOC ', num2str(subjectID),'. Task order is: ', taskOrder])
 
 % Shuffle n-back conditions (same rng for same subjectID in case of crashes) 
-rng(subjectID);
+rng(subject.ID);
 nback_condition = repmat(1:3, 1, 2);
 nback_condition = nback_condition(randperm(length(nback_condition)));
 

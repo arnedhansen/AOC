@@ -2,6 +2,7 @@
 % Automatically finds all not converted .cnt files
 
 %% EEGlab
+startup
 clear
 clc
 p = pwd;

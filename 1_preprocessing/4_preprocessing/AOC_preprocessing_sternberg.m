@@ -173,8 +173,8 @@ for subj = 1:length(subjects)
         cfg = [];
         cfg.keepsampleinfo = 'no';
         data = ft_appenddata(cfg,data2, data4, data6);
-        trialinfo = [data2.trialinfo, data4.trialinfo, data6.trialinfo];
-        data.trialinfo = trialinfo';
+        trialinfo = [data2.trialinfo; data4.trialinfo; data6.trialinfo];
+        data.trialinfo = trialinfo;
         data.cfg = [];
 
         %% Get EyeTracking data
@@ -231,10 +231,10 @@ for subj = 1:length(subjects)
         save dataET_sternberg dataet
         save gaze_metrics_sternberg saccades_l2 fixations_l2 blinks_l2 ...
             saccades_l4 fixations_l4 blinks_l4 ...
-            saccades_l6 fixations_l6blinks_l6
+            saccades_l6 fixations_l6 blinks_l6
         clc
         if subj == length(subjects)
-            disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. PREPROCESSING FINALIZED.'])
+            disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. STERNBERG PREPROCESSING FINALIZED.'])
         else
             disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. Loading next subject...'])
         end

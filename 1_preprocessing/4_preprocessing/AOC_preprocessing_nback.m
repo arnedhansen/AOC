@@ -252,7 +252,7 @@ for subj = 1:length(subjects)
             saccades_3back fixations_3back blinks_3back
         clc
         if subj == length(subjects)
-            disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. PREPROCESSING FINALIZED.'])
+            disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. N-BACK PREPROCESSING FINALIZED.'])
         else
             disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. Loading next subject...'])
         end

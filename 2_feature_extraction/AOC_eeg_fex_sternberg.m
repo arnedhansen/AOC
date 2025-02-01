@@ -7,6 +7,7 @@
 %   TFR
 
 %% Setup
+clear
 setup('AOC');
 
 %% Extract POWER

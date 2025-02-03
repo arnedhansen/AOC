@@ -139,7 +139,7 @@ saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctr
 close all;
 clc;
 cfg = [];
-load('/Volumes/methlab/Students/Arne/AOC/toolboxes/headmodel/layANThead.mat');
+load('/Volumes/methlab/Students/Arne/toolboxes/headmodel/layANThead.mat');
 cfg.layout = layANThead;
 allchannels = cfg.layout.label;
 cfg.layout = layANThead;
@@ -209,7 +209,7 @@ ga_diff.powspctrm = gapow6.powspctrm - gapow2.powspctrm;
 figure('Color', 'w');
 set(gcf, 'Position', [100, 250, 1000, 800]);
 cfg = [];
-load('/Volumes/methlab/Students/Arne/AOC/toolboxes/headmodel/layANThead.mat');
+load('/Volumes/methlab/Students/Arne/toolboxes/headmodel/layANThead.mat');
 cfg.layout = layANThead;
 allchannels = cfg.layout.label;
 cfg.layout = layANThead;

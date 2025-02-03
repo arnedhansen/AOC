@@ -36,5 +36,5 @@ if ~isempty(missingFiles)
         disp(missingFiles{i});
     end
 else
-    disp('No files are missing.');
+    disp(upper('No files are missing.'));
 end

@@ -20,7 +20,7 @@ for f = 1 : size(d, 1)
     AOC_cutData(filePath)
     id = strsplit(d(f).name, '_');
     ids{f} = id{1};
-    fprintf('Cutting of data for Subject AOC %.3s done', ids{f})
+    fprintf('Cutting of data for Subject AOC %.3s done \n', ids{f})
 end
 
 %% Load and synchronize EEG & Eyelink

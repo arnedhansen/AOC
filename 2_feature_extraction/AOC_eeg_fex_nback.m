@@ -7,10 +7,18 @@
 %   TFR
 
 %% Setup
-setup('AOC');
+clear
+addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
+eeglab
+clc
+close all
+path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
+dirs = dir(path);
+folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
+subjects = {folders.name};
 
 %% Extract POWER
-for subj= 1:length(subjects)
+for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj}, '/eeg');
     cd(datapath)
     close all
@@ -18,9 +26,9 @@ for subj= 1:length(subjects)
     load('/Volumes/methlab/Students/Arne/MA/headmodel/ant128lay.mat');
     
     %% Identify indices of trials belonging to conditions
-    ind1=find(data.trialinfo==1);
-    ind2=find(data.trialinfo==2);
-    ind3=find(data.trialinfo==3);
+    ind1=find(data.trialinfo==21);
+    ind2=find(data.trialinfo==22);
+    ind3=find(data.trialinfo==23);
 
     %% Frequency analysis
     cfg=[];
@@ -48,11 +56,18 @@ for subj= 1:length(subjects)
 end
 
 %% Setup
-setup('AOC');
+clear
+addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
+eeglab
+clc
+close all
+path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
+dirs = dir(path);
+folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
+subjects = {folders.name};
 
 %% Define channels
-subj = 1;
-datapath = strcat(path, subjects{subj}, '/eeg');
+datapath = strcat(path, subjects{1}, '/eeg');
 cd(datapath);
 load('power_nback.mat');
 % Occipital channels
@@ -74,8 +89,8 @@ powerIAF3 = [];
 IAF_results = struct();
 eeg_data_nback = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {});
 
-for numSubjects = 1:length(subjects)
-    datapath = strcat(path, subjects{numSubjects}, '/eeg');
+for subj = 1:length(subjects)
+    datapath = strcat(path, subjects{subj}, '/eeg');
     cd(datapath);
     load('power_nback.mat');
     
@@ -141,12 +156,20 @@ for numSubjects = 1:length(subjects)
     save IAF_nback IAF1 IAF2 IAF3
     eeg_data_nback = [eeg_data_nback; subj_data_eeg];
     clc
-    fprintf('Subject %s IAF: 1-back: %f Hz (Power: %f), 2-back: %f Hz (Power: %f), 3-back: %f Hz (Power: %f)\n', subjects{numSubjects}, IAF1, powerIAF1, IAF2, powerIAF2, IAF3, powerIAF3);
+    fprintf('Subject %s IAF: 1-back: %f Hz (Power: %f), 2-back: %f Hz (Power: %f), 3-back: %f Hz (Power: %f)\n', subjects{subj}, IAF1, powerIAF1, IAF2, powerIAF2, IAF3, powerIAF3);
 end
 save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_nback eeg_data_nback
 
 %% Setup
-setup('AOC');
+clear
+addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
+eeglab
+clc
+close all
+path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
+dirs = dir(path);
+folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
+subjects = {folders.name};
 
 %% Extract POWER WITH TRIAL INFO
 for subj= 1:length(subjects)
@@ -157,9 +180,9 @@ for subj= 1:length(subjects)
     load('/Volumes/methlab/Students/Arne/MA/headmodel/ant128lay.mat');
     
     %% Identify indices of trials belonging to conditions
-    ind1=find(data.trialinfo==1);
-    ind2=find(data.trialinfo==2);
-    ind3=find(data.trialinfo==3);
+    ind1=find(data.trialinfo==21);
+    ind2=find(data.trialinfo==22);
+    ind3=find(data.trialinfo==23);
 
     %% Frequency analysis
     cfg=[];
@@ -190,7 +213,15 @@ for subj= 1:length(subjects)
 end
 
 %% Setup
-setup('AOC');
+clear
+addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
+eeglab
+clc
+close all
+path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
+dirs = dir(path);
+folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
+subjects = {folders.name};
 
 %% Extract FOOOF Power
 % Read data, segment and convert to FieldTrip data structure
@@ -202,9 +233,9 @@ for subj = 1:length(subjects)
     load('/Volumes/methlab/Students/Arne/MA/headmodel/ant128lay.mat');
 
     %% Identify indices of trials belonging to conditions
-    ind1=find(data.trialinfo==1);
-    ind2=find(data.trialinfo==2);
-    ind3=find(data.trialinfo==3);
+    ind1=find(data.trialinfo==21);
+    ind2=find(data.trialinfo==22);
+    ind3=find(data.trialinfo==23);
 
     %% Frequency analysis
     cfg = [];
@@ -231,7 +262,15 @@ for subj = 1:length(subjects)
 end
 
 %% Setup
-setup('AOC');
+clear
+addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
+eeglab
+clc
+close all
+path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
+dirs = dir(path);
+folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
+subjects = {folders.name};
 
 %% Extract TFR
 % Read data, segment and convert to FieldTrip data structure
@@ -243,9 +282,9 @@ for subj = 1:length(subjects)
     load('/Volumes/methlab/Students/Arne/MA/headmodel/ant128lay.mat');
 
     %% Identify indices of trials belonging to conditions
-    ind1 = find(dataTFR.trialinfo==1);
-    ind2 = find(dataTFR.trialinfo==2);
-    ind3 = find(dataTFR.trialinfo==3);
+    ind1 = find(dataTFR.trialinfo==21);
+    ind2 = find(dataTFR.trialinfo==22);
+    ind3 = find(dataTFR.trialinfo==23);
 
     %% Time frequency analysis
     cfg              = [];

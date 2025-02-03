@@ -2,7 +2,7 @@
 
 %% Setup
 clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.0');
+addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
 eeglab
 clc
 close all
@@ -100,7 +100,7 @@ for subj= 1:length(subjects)
     powl3{subj} = powload3;
 end
 % Compute grand avg
-load('/Volumes/methlab/Students/Arne/AOC/toolboxes/headmodel/layANThead.mat');
+load('/Volumes/methlab/Students/Arne/toolboxes/headmodel/layANThead.mat');
 gapow1 = ft_freqgrandaverage([],powl1{:});
 gapow2 = ft_freqgrandaverage([],powl2{:});
 gapow3 = ft_freqgrandaverage([],powl3{:});
@@ -146,7 +146,7 @@ saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctr
 close all;
 clc;
 cfg = [];
-load('/Volumes/methlab/Students/Arne/AOC/toolboxes/headmodel/layANThead.mat');
+load('/Volumes/methlab/Students/Arne/toolboxes/headmodel/layANThead.mat');
 cfg.layout = layANThead;
 allchannels = cfg.layout.label;
 cfg.layout = layANThead;
@@ -216,7 +216,7 @@ ga_diff.powspctrm = gapow3.powspctrm - gapow1.powspctrm;
 figure('Color', 'w');
 set(gcf, 'Position', [100, 250, 800, 600]);
 cfg = [];
-load('/Volumes/methlab/Students/Arne/AOC/toolboxes/headmodel/layANThead.mat');
+load('/Volumes/methlab/Students/Arne/toolboxes/headmodel/layANThead.mat');
 cfg.layout = layANThead;
 allchannels = cfg.layout.label;
 cfg.layout = layANThead;

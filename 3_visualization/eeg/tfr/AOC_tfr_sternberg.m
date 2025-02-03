@@ -1,10 +1,18 @@
 %% Alpha Power Time Frequency Analysis for AOC Sternberg data
 
 %% Setup
-setup('AOC');
+clear
+clc
+close all
+run startup
+
+path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
+dirs = dir(path);
+folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
+subjects = {folders.name};
 
 %% Compute grand average time and frequency data GATFR
-for subj= 1:length(subjects)
+for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj}, '/eeg');
     cd(datapath)
     load tfr_stern

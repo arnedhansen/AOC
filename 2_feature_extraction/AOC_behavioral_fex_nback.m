@@ -8,7 +8,7 @@
 clear
 clc
 close all
-path = '/Volumes/methlab_data/AOC/data/';
+path = '/Volumes/methlab_data/OCC/AOC/data/';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};

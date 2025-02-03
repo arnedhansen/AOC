@@ -8,7 +8,14 @@
 
 %% Setup
 clear
-setup('AOC');
+addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
+eeglab
+clc
+close all
+path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
+dirs = dir(path);
+folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
+subjects = {folders.name};
 
 %% Extract POWER
 % Read data, segment and convert to FieldTrip data structure

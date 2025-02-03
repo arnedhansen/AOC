@@ -6,7 +6,7 @@ addpath('/Users/Arne/Documents/matlabtools/eeglab2024.0');
 eeglab
 clc
 close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
+path = '/Volumes/methlab/Students/Arne/AOC/data/features/eeg/';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};

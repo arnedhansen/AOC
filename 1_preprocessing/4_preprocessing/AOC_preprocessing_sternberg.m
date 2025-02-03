@@ -3,7 +3,7 @@
 %% Setup
 startup
 clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.0');
+addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
 eeglab
 clc
 close all
@@ -13,6 +13,7 @@ folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
 %% Read data, segment and convert to FieldTrip data structure
+tic;
 for subj = 1:length(subjects)
     clearvars -except subjects subj path
     datapath = strcat(path,subjects{subj});
@@ -240,3 +241,4 @@ for subj = 1:length(subjects)
         end
     end
 end
+toc;

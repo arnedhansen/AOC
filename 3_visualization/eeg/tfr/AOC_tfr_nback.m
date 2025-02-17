@@ -1,13 +1,7 @@
 %% Alpha Power Time Frequency Analysis for AOC Nback data
-clear
-clc
-close all
-run startup
 
-path = '/Volumes/methlab/Students/Arne/MA/data/mergedSIM/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+%% Setup
+[subjects, path] = setup('AOC');
 
 %% Compute grand average time and frequency data GATFR
 for subj= 1:length(subjects)

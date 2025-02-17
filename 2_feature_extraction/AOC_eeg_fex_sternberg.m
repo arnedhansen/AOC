@@ -7,15 +7,7 @@
 %   TFR
 
 %% Setup
-clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
-eeglab
-clc
-close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+[subjects, path] = setup('AOC');
 
 %% Extract POWER
 % Read data, segment and convert to FieldTrip data structure
@@ -56,7 +48,7 @@ for subj = 1:length(subjects)
 end
 
 %% Setup
-setup('AOC');
+[subjects, path] = setup('AOC');
 
 %% Define channels
 subj = 1;
@@ -153,7 +145,7 @@ end
 save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg eeg_data_sternberg
 
 %% Setup
-setup('AOC');
+[subjects, path] = setup('AOC');
 
 %% Extract POWER WITH TRIAL INFO
 % Read data, segment and convert to FieldTrip data structure
@@ -194,7 +186,7 @@ for subj = 1:length(subjects)
 end
 
 %% Setup
-setup('AOC');
+[subjects, path] = setup('AOC');
 
 %% Extract FOOOF Power
 % Read data, segment and convert to FieldTrip data structure
@@ -235,7 +227,7 @@ for subj = 1:length(subjects)
 end
 
 %% Setup
-setup('AOC');
+[subjects, path] = setup('AOC');
 
 %% Extract TFR
 % Read data, segment and convert to FieldTrip data structure
@@ -267,7 +259,15 @@ for subj = 1:length(subjects)
     cfg.trials = ind6;
     tfr6 = ft_freqanalysis(cfg,dataTFR);
 
+    %% Baseline
+    cfg                              = [];
+    cfg.baseline                     = [-1.5 -.5];
+    cfg.baselinetype                 = 'db';
+    tfr2_bl                          = ft_freqbaseline(cfg, tfr2);
+    tfr4_bl                          = ft_freqbaseline(cfg, tfr4);
+    tfr6_bl                          = ft_freqbaseline(cfg, tfr6);
+
     %% Save data
     cd(datapath)
-    save tfr_stern tfr2 tfr4 tfr6
+    save tfr_stern tfr2 tfr4 tfr6 tfr2_bl tfr4_bl tfr6_bl
 end

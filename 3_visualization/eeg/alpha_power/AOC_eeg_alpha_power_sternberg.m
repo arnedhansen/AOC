@@ -33,6 +33,8 @@ powIAF4 = [];
 powIAF6 = [];
 IAF_results = struct();
 eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {});
+
+% Load power at IAF
 for subj = 1:length(subjects)
     datapath = strcat(path, subjects{subj}, '/eeg');
     cd(datapath);
@@ -41,6 +43,20 @@ for subj = 1:length(subjects)
     powIAF4(subj) = powerIAF4;
     powIAF6(subj) = powerIAF6;
 end
+
+% Load powerspctrm data
+for subj = 1:length(subjects)
+    datapath = strcat(path,subjects{subj}, '/eeg');
+    cd(datapath)
+    load power_stern
+    powl2{subj} = powload2;
+    powl4{subj} = powload4;
+    powl6{subj} = powload6;
+end
+% Compute grand avg
+gapow2 = ft_freqgrandaverage([],powl2{:});
+gapow4 = ft_freqgrandaverage([],powl4{:});
+gapow6 = ft_freqgrandaverage([],powl6{:});
 
 %% Plot alpha power BOXPLOT
 close all
@@ -85,20 +101,6 @@ colors = {'b', 'r', 'k'};
 conditions = {'WM load 2', 'WM load 4', 'WM load 6'};
 numSubjects = length(subjects);
 
-% Load powerspctrm data
-for subj = 1:length(subjects)
-    datapath = strcat(path,subjects{subj}, '/eeg');
-    cd(datapath)
-    load power_stern
-    powl2{subj} = powload2;
-    powl4{subj} = powload4;
-    powl6{subj} = powload6;
-end
-% Compute grand avg
-gapow2 = ft_freqgrandaverage([],powl2{:});
-gapow4 = ft_freqgrandaverage([],powl4{:});
-gapow6 = ft_freqgrandaverage([],powl6{:});
-
 % Plot 
 cfg = [];
 cfg.channel = channels;
@@ -135,7 +137,7 @@ hold off;
 % Save
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/AOC_alpha_power_sternberg_powspctrm.png');
 
-%% Plot INDIVIDUAL power spectra BASELINED
+%% Plot INDIVIDUAL power spectra
 close all
 output_dir = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
 colors = color_def('AOC');
@@ -193,14 +195,88 @@ for subj = 1:length(subjects)
     xlim([5 30]);
     xlabel('Frequency [Hz]');
     ylabel('Power [a.u.]');
-    legend([eb2.mainLine, eb4.mainLine], {'Low Contrast', 'High Contrast'}, 'FontName', 'Arial', 'FontSize', 20);
+    legend([eb2.mainLine, eb4.mainLine eb6.mainLine], {'WM Load 2', 'WM Load 4', 'WM Load 6'}, 'FontName', 'Arial', 'FontSize', 20);
     title(sprintf('Subject %s: Power Spectrum', subjects{subj}), 'FontSize', 30);
     hold off;
 
     % Save individual plot
-    save_path = fullfile(output_dir, sprintf('AOC_powspctrm_subj%s.png', subjects{subj}));
+    save_path = fullfile(output_dir, sprintf('AOC_powspctrm_sternberg_subj%s.png', subjects{subj}));
     saveas(gcf, save_path);
 end
+
+%% Plot SUBPLOT of INDIVIDUAL powerspectra
+close all;
+output_dir = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
+colors = color_def('AOC');
+num_subj = length(subjects);
+
+% Determine subplot grid size
+default_cols = 5;
+nrows = ceil(num_subj / default_cols);
+ncols = min(num_subj, default_cols);
+
+% Create figure
+figure;
+set(gcf, 'Color', 'w', 'Position', [0, 0, 300 * ncols, 300 * nrows]);
+
+for subj = 1:num_subj
+    % Extract participant data
+    pow2 = powl2{subj};
+    pow4 = powl4{subj};
+    pow6 = powl6{subj};
+    
+    % Select subplot position
+    subplot(nrows, ncols, subj);
+    hold on;
+    
+    % Figure common config
+    cfg = [];
+    cfg.channel = channels;
+    cfg.figure = 'gcf';
+    cfg.linewidth = 1;
+    
+    % Plot power spectrum for low and high contrast
+    ft_singleplotER(cfg, pow2, pow4, pow6);
+    
+    % Add shaded error bars
+    channels_seb = ismember(pow2.label, cfg.channel);
+    eb2 = shadedErrorBar(pow2.freq, mean(pow2.powspctrm(channels_seb, :), 1), ...
+        std(pow2.powspctrm(channels_seb, :)) / sqrt(size(pow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+    eb4 = shadedErrorBar(pow4.freq, mean(pow4.powspctrm(channels_seb, :), 1), ...
+        std(pow4.powspctrm(channels_seb, :)) / sqrt(size(pow4.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+    eb6 = shadedErrorBar(pow6.freq, mean(pow6.powspctrm(channels_seb, :), 1), ...
+        std(pow6.powspctrm(channels_seb, :)) / sqrt(size(pow6.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+    
+    eb2.mainLine.Color = colors(1, :);
+    eb4.mainLine.Color = colors(2, :);
+    eb6.mainLine.Color = colors(3, :);
+    eb2.patch.FaceColor = colors(1, :);
+    eb4.patch.FaceColor = colors(2, :);
+    eb6.patch.FaceColor = colors(3, :);
+    set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
+    set(eb4.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
+    set(eb6.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
+    set(eb2.patch, 'FaceAlpha', 0.5);
+    set(eb4.patch, 'FaceAlpha', 0.5);
+    set(eb6.patch, 'FaceAlpha', 0.5);
+    
+    % Adjust plot aesthetics
+    set(gca, 'FontSize', 12);
+    max_spctrm = max([max(max(pow2.powspctrm(channels_seb, :))), max(max(pow4.powspctrm(channels_seb, :))), max(max(pow6.powspctrm(channels_seb, :))) ]);
+    ylim([0 max_spctrm * 0.75]);
+    xlim([5 30]);
+    xlabel('Frequency [Hz]');
+    ylabel('Power [a.u.]');
+    if subj == 1
+        legend([eb2.mainLine, eb4.mainLine eb6.mainLine], {'WM Load 2', 'WM Load 4', 'WM Load 6'}, 'FontName', 'Arial', 'FontSize', 15, 'Location', 'best');
+    end
+    title(sprintf('Subject %s', subjects{subj}), 'FontSize', 14);
+    hold off;
+end
+
+% Save combined figure
+save_path = fullfile(output_dir, 'AOC_powspctrm_sternberg_all_subs.png');
+saveas(gcf, save_path);
 
 %% Plot alpha power TOPOS
 close all;

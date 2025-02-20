@@ -80,17 +80,17 @@ for subj = 1:length(subjects)
     subj_data_gaze_trial = struct('ID', num2cell(subject_id), 'Trial', num2cell(trial_num), 'Condition', num2cell(condition), 'GazeDeviation', num2cell(gazeDev), 'PupilSize', num2cell(pupilSize), 'MSRate', num2cell(microsaccadeRate));
 
     %% Calculate subject-specific data by condition (GazeDev, PupilSize, MSRate)
-    l1 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 1);
+    l1 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 21);
     l1gdev = mean([l1.GazeDeviation], 'omitnan');
     l1pups = mean([l1.PupilSize], 'omitnan');
     l1msrate = mean([l1.MSRate], 'omitnan');
 
-    l2 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 2);
+    l2 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 22);
     l2gdev = mean([l2.GazeDeviation], 'omitnan');
     l2pups = mean([l2.PupilSize], 'omitnan');
     l2msrate = mean([l2.MSRate], 'omitnan');
 
-    l3 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 3);
+    l3 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 23);
     l3gdev = mean([l3.GazeDeviation], 'omitnan');
     l3pups = mean([l3.PupilSize], 'omitnan');
     l3msrate = mean([l3.MSRate], 'omitnan');

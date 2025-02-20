@@ -49,7 +49,9 @@ ylabel('Mean Euclidean Deviation [px]', 'FontName', 'Arial', 'FontSize', 20);
 set(gca, 'XTick', 1:length(conditions), 'XTickLabel', conditions, 'FontSize', 15);
 set(gca, 'LineWidth', 1.5);
 set(gca, 'XLim', [0.5 length(conditions) + 0.5]);
-set(gca, 'YLim', [min(dataDeviation(:)) * 0.85 max(dataDeviation(:)) * 1.15]);
+%set(gca, 'YLim', [min(dataDeviation(:)) * 0.85 max(dataDeviation(:)) * 1.15]);
+set(gca, 'YLim', [min(dataDeviation(:)) * 0.85 130])
+
 
 legend(scatterHandles, conditions, 'FontName', 'Arial', 'FontSize', 15, 'Location', 'best');
 title('Sternberg Mean Euclidean Gaze Deviation', 'FontName', 'Arial', 'FontSize', 25);

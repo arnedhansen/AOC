@@ -155,12 +155,6 @@ for subj = 1:length(subjects)
             end
         end
 
-        % Skip subject if there is no Sternberg data for each condition
-        if isempty(data2) || isempty(data4) || isempty(data6)
-            fprintf('No Sternberg data for each condition... SKIPPING processing of Subject %s\n....', subjects{subj})
-            continue;
-        end
-
         %% Equalize labels
         update_labels(data2);
         update_labels(data4);

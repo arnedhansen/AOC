@@ -10,7 +10,6 @@
 [subjects, path] = setup('AOC');
 
 %% Extract POWER
-% Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj}, '/eeg');
     cd(datapath)

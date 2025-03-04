@@ -13,12 +13,20 @@ folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
 %% Read data, segment and convert to FieldTrip data structure
-for subj = 1:2length(subjects)
+for subj = 5:length(subjects)
     clearvars -except subjects subj path
     clear data1 data2 data3
     datapath = strcat(path,subjects{subj});
     cd(datapath)
-    fprintf('Processing subject: %s\n', subjects{subj})
+    fprintf('Processing Subject %s\n', subjects{subj})
+
+    % Skip processing of completely missing data
+    files = dir(datapath);
+    files = files(~ismember({files.name}, {'.', '..'})); % Remove hidden entries
+    if isempty(files)
+        fprintf('EMPTY FOLDER... SKIPPING Processing of Subject %s\n....', subjects{subj})
+        continue;
+    end
 
     %if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/dataEEG_nback.mat']))
         clear alleeg

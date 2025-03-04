@@ -17,8 +17,8 @@ subjectIDs = {folders.name};
 tic;
 for subjects = 1 : length(subjectIDs)
     subjectID = subjectIDs{subjects};
-    % Do not merge subjects with defect data
-    if strcmp(subjectID, '320')
+    % Do not merge subjects with completely missing data
+    if strcmp(subjectID, '319') || strcmp(subjectID, '320')
         continue;
     end
 

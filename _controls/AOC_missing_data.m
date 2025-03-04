@@ -4,13 +4,14 @@
 clear
 clc
 close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
+path = '/Volumes/methlab_data/OCC/AOC/data';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
 %% Check missing data
 missingFiles = {};
+path = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
 for subj = 1 : length(subjects)
     for type = {'Sternberg', 'Nback'}
         for block = 1 : 6

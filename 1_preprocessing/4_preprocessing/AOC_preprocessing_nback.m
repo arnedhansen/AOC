@@ -14,14 +14,14 @@ subjects = {folders.name};
 
 %% Read data, segment and convert to FieldTrip data structure
 tic;
-for subj = 21:length(subjects)
+for subj = 1:length(subjects)
     clearvars -except subjects subj path
     clear data1 data2 data3
     datapath = strcat(path,subjects{subj});
     cd(datapath)
     fprintf('Processing Subject %s\n', subjects{subj})
 
-    %if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/dataEEG_nback.mat']))
+    if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/dataEEG_nback.mat']))
         clear alleeg
         %% Read blocks
         for block = 1:6
@@ -172,10 +172,10 @@ for subj = 21:length(subjects)
         end
 
         % Skip subject if there is no N-back data for each condition
-        if isempty(data1) || isempty(data2) || isempty(data3)
-            fprintf('No N-back data for each condition... SKIPPING processing of Subject %s\n....', subjects{subj})
-            continue;
-        end
+        % if isempty(data1) || isempty(data2) || isempty(data3)
+        %     fprintf('No N-back data for each condition... SKIPPING processing of Subject %s\n....', subjects{subj})
+        %     continue;
+        % end
 
         %% Remove empty blocks
         data1 = data1(~cellfun(@(x) isempty(fieldnames(x)), data1));
@@ -272,6 +272,6 @@ for subj = 21:length(subjects)
         else
             disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. Loading next subject...'])
         end
-    %end
+    end
 end
 toc

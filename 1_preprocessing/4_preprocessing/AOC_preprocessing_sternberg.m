@@ -215,7 +215,7 @@ for subj = 1:length(subjects)
         cfg.reref   = 'yes';
         cfg.refchannel = 'all';
         data = ft_preprocessing(cfg,data);
-        data.trialinfo = trialinfo;
+        data.trialinfo = trialinfo; 
 
         %% Compute gaze metric data
         % WM load 2 gaze metrics average across trials

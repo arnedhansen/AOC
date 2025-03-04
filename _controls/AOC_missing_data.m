@@ -38,3 +38,6 @@ if ~isempty(missingFiles)
 else
     disp(upper('No files are missing.'));
 end
+
+missingFilesPercentage = size(missingFiles, 2) / (length(subjects)*12)*100;
+fprintf('%.2f%% of files are missing\n', missingFilesPercentage);

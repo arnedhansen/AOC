@@ -13,19 +13,22 @@ folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
 %% Read data, segment and convert to FieldTrip data structure
-for subj = 1:length(subjects)
+for subj = 1:2length(subjects)
     clearvars -except subjects subj path
+    clear data1 data2 data3
     datapath = strcat(path,subjects{subj});
     cd(datapath)
+    fprintf('Processing subject: %s\n', subjects{subj})
 
-    if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/dataEEG_nback.mat']))
+    %if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/dataEEG_nback.mat']))
+        clear alleeg
         %% Read blocks
         for block = 1:6
             try % Do not load emtpy blocks
                 load(strcat(subjects{subj}, '_EEG_ET_Nback_block',num2str(block),'_merged.mat'))
                 alleeg{block} = EEG;
                 clear EEG
-                fprintf('Subject %.3d/%.3d: Block %.1d loaded \n', subj, length(subjects), block)
+                fprintf('Subject %s (%.3d/%.3d): Block %.1d loaded \n', subjects{subj}, subj, length(subjects), block)
             catch ME
                 ME.message
                 disp(['ERROR loading Block ' num2str(block) '!'])
@@ -256,5 +259,5 @@ for subj = 1:length(subjects)
         else
             disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. Loading next subject...'])
         end
-    end
+    %end
 end

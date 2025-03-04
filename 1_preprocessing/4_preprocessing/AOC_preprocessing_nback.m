@@ -14,7 +14,7 @@ subjects = {folders.name};
 
 %% Read data, segment and convert to FieldTrip data structure
 tic;
-for subj = 5:length(subjects)
+for subj = 21:length(subjects)
     clearvars -except subjects subj path
     clear data1 data2 data3
     datapath = strcat(path,subjects{subj});
@@ -34,6 +34,12 @@ for subj = 5:length(subjects)
                 ME.message
                 disp(['ERROR loading Block ' num2str(block) '!'])
             end
+        end
+
+        % Skip subject if there is no N-back data
+        if exist('alleeg', 'var') == 0
+            fprintf('No N-back data... SKIPPING processing of Subject %s\n....', subjects{subj})
+            continue;
         end
 
         %% Segment data into epochs -1.5s before and 2.5s after stim onset and
@@ -165,15 +171,21 @@ for subj = 5:length(subjects)
             end
         end
 
-        %% Equalize labels
-        update_labels(data1);
-        update_labels(data2);
-        update_labels(data3);
+        % Skip subject if there is no N-back data for each condition
+        if isempty(data1) || isempty(data2) || isempty(data3)
+            fprintf('No N-back data for each condition... SKIPPING processing of Subject %s\n....', subjects{subj})
+            continue;
+        end
 
         %% Remove empty blocks
         data1 = data1(~cellfun(@(x) isempty(fieldnames(x)), data1));
         data2 = data2(~cellfun(@(x) isempty(fieldnames(x)), data2));
         data3 = data3(~cellfun(@(x) isempty(fieldnames(x)), data3));
+
+        %% Equalize labels
+        update_labels(data1);
+        update_labels(data2);
+        update_labels(data3);
 
         %% Append data for conditions
         cfg = [];

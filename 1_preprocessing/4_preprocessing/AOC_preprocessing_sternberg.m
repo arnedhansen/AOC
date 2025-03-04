@@ -20,6 +20,7 @@ for subj = 1:length(subjects)
     cd(datapath)
 
     if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/dataEEG_sternberg.mat']))
+        clear alleeg
         %% Read blocks
         for block = 1:6
             try % Do not load emtpy blocks
@@ -31,6 +32,12 @@ for subj = 1:length(subjects)
                 ME.message
                 disp(['ERROR loading Block ' num2str(block) '!'])
             end
+        end
+
+        % Skip subject if there is no Sternberg data
+        if exist('alleeg', 'var') == 0
+            fprintf('No Sternberg data... SKIPPING processing of Subject %s\n....', subjects{subj})
+            continue;
         end
 
         %% Segment data into epochs -2s before and 3.5s after stim onset and
@@ -146,6 +153,12 @@ for subj = 1:length(subjects)
                 fprintf('ERROR processing WM load 6 for block %d: %s\n', block, ME.message);
                 data6{block} = struct;
             end
+        end
+
+        % Skip subject if there is no Sternberg data for each condition
+        if isempty(data2) || isempty(data4) || isempty(data6)
+            fprintf('No Sternberg data for each condition... SKIPPING processing of Subject %s\n....', subjects{subj})
+            continue;
         end
 
         %% Equalize labels

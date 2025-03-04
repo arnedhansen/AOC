@@ -18,7 +18,7 @@ tic;
 for subjects = 1 : length(subjectIDs)
     subjectID = subjectIDs{subjects};
     % Check if subject files have already been merged
-    if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/merged/', char(subjectID), filesep, char(subjectID), '*_merged.mat']))
+    %if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/merged/', char(subjectID), filesep, char(subjectID), '*_merged.mat']))
         % Set up data paths
         filePathET = ['/Volumes/methlab_data/OCC/AOC/data/', char(subjectID)];
         filePathEEG = ['/Volumes/methlab/Students/Arne/AOC/data/automagic/',  char(subjectID)];
@@ -63,11 +63,15 @@ for subjects = 1 : length(subjectIDs)
                 startTrigger = startTriggers (ismember(startTriggersCell, {EEG.event.type}));
                 endTrigger = endTriggers(ismember(startTriggersCell, {EEG.event.type}));
             end
-            % End trigger
-            %endTrigger = startTrigger + 10;
 
             %% Merge files
-            EEG = pop_importeyetracker(EEG, ETfile,[startTrigger endTrigger],[2 3 4],{'L_GAZE_X', 'L_GAZE_Y', 'L_AREA', 'R_GAZE_X', 'R_GAZE_Y', 'R_AREA'},1,1,1,0);
+            EEG = pop_importeyetracker(EEG, ETfile,[startTrigger endTrigger],[2 3 4],{'L_GAZE_X', 'L_GAZE_Y', 'L_AREA', 'R_GAZE_X', 'R_GAZE_Y', 'R_AREA'},1,1,1,1);
+            
+            %% Save merge info as image
+            % savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/',subjectID);
+            % mkdir(savepath)
+            % saveName = [savepath, filesep, num2str(subjectID) '_mergeInfo.png'];
+            % saveas(gcf, saveName);
 
             %% Save to disk
             if strcmp(task, 'Resting') == 1
@@ -85,7 +89,7 @@ for subjects = 1 : length(subjectIDs)
                 disp(['AOC' char(subjectID) ': ' step ' done' ])
             end
         end
-    end
+    %end
 end
 disp('SYNCHRONIZATION COMPLETE')
 toc

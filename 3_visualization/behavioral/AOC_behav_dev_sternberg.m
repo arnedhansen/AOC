@@ -28,7 +28,7 @@ end
 
 %% Plot Accuracy BOXPLOTS
 dataAcc = [acc2', acc4', acc6'];
-conditions = {'WM load 2', 'WM load 4', 'WM load 4'};
+conditions = {'WM load 2', 'WM load 4', 'WM load 6'};
 close all
 figure;
 set(gcf, 'Position', [0, 0, 1000, 600], 'Color', 'w');
@@ -74,7 +74,7 @@ disp(Stds);
 
 %% Plot Reaction Times BOXPLOTS
 dataRT = [rt2', rt4', rt6'];
-conditions = {'WM load 2', 'WM load 4', 'WM load 4'};
+conditions = {'WM load 2', 'WM load 4', 'WM load 6'};
 close all
 figure;
 set(gcf, 'Position', [0, 0, 1000, 600], 'Color', 'w');
@@ -117,3 +117,32 @@ disp('Means:');
 disp(means);
 disp('Stds:');
 disp(Stds);
+
+%% Plot Reaction Times vs. Accuracy
+dataAcc = [acc2', acc4', acc6'];
+dataRT = [rt2', rt4', rt6'];
+dataRT = dataRT * 1000;
+conditions = {'WM load 2', 'WM load 4', 'WM load 6'};
+close all
+figure;
+set(gcf, 'Position', [0, 0, 1200, 800], 'Color', 'w');
+colors = {'b', 'k', 'r'};
+hold on;
+
+% Scatter plot for individual points
+scatterHandles = gobjects(1, length(conditions));
+for condIdx = 1:length(conditions)
+    scatterHandles(condIdx) = scatter(dataRT(:, condIdx), dataAcc(:, condIdx), 250, colors{condIdx}, 'filled', 'MarkerEdgeColor', 'k');
+end
+lsline()
+xlabel('Reaction Time [ms]', 'FontName', 'Arial', 'FontSize', 20);
+ylabel('Accuracy [%]', 'FontName', 'Arial', 'FontSize', 20);
+set(gca, 'XLim', [500 1000]);
+set(gca, 'YLim', [60 100]);
+
+legend(scatterHandles, conditions, 'FontName', 'Arial', 'FontSize', 15, 'Location', 'best', 'FontSize', 20);
+title('Sternberg Reaction Times vs. Accuracy', 'FontName', 'Arial', 'FontSize', 25);
+hold off;
+
+% Save the plot
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/behavioral/AOC_sternberg_rt_vs_acc.png');

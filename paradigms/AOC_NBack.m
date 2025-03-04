@@ -456,10 +456,13 @@ for trl = 1:exp.nTrials
         data.match(trl) = trlMatch;
         % Send triggers: trial matching. If training, send only ET triggers
         if TRAINING == 1
-            Eyelink('Message', el_msg);
+            Eyelink('Message', num2str(TRIGGER));
+            Eyelink('command', 'record_status_message "MATCH/NOMATCH"');
+
         else
-            Eyelink('Message', el_msg);
-            sendtrigger(TRIGGER,port,SITE,stayup); % EEG
+            Eyelink('Message', num2str(TRIGGER));
+            Eyelink('command', 'record_status_message "MATCH/NOMATCH"');
+            sendtrigger(TRIGGER,port,SITE,stayup);
         end
     elseif COND == 2 && trl > 2
         if letterSequence(trl-2) == letterSequence(trl)
@@ -474,10 +477,12 @@ for trl = 1:exp.nTrials
         data.match(trl) = trlMatch;
         % Send triggers: trial matching. If training, send only ET triggers
         if TRAINING == 1
-            Eyelink('Message', el_msg);
+            Eyelink('Message', num2str(TRIGGER));
+            Eyelink('command', 'record_status_message "MATCH/NOMATCH"');
         else
-            Eyelink('Message', el_msg);
-            sendtrigger(TRIGGER,port,SITE,stayup); % EEG
+            Eyelink('Message', num2str(TRIGGER));
+            Eyelink('command', 'record_status_message "MATCH/NOMATCH"');
+            sendtrigger(TRIGGER,port,SITE,stayup)
         end
     elseif COND == 3 && trl > 3
         if letterSequence(trl-3) == letterSequence(trl)
@@ -492,10 +497,12 @@ for trl = 1:exp.nTrials
         data.match(trl) = trlMatch;
         % Send triggers: trial matching. If training, send only ET triggers
         if TRAINING == 1
-            Eyelink('Message', el_msg);
+            Eyelink('Message', num2str(TRIGGER));
+            Eyelink('command', 'record_status_message "MATCH/NOMATCH"');
         else
-            Eyelink('Message', el_msg);
-            sendtrigger(TRIGGER,port,SITE,stayup); % EEG
+            Eyelink('Message', num2str(TRIGGER));
+            Eyelink('command', 'record_status_message "MATCH/NOMATCH"');
+            sendtrigger(TRIGGER,port,SITE,stayup)
         end
     end
 

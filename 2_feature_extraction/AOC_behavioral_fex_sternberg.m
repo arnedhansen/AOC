@@ -1,10 +1,11 @@
 %% AOC Behavioral Feature Extraction Sternberg
-% 
+%
 % Extracted features:
 %   Accuracy
 %   Reaction Time
 
 %% Setup
+%startup
 clear
 clc
 close all
@@ -18,7 +19,7 @@ behav_data_sternberg = struct('ID', {}, 'Condition', {}, 'Accuracy', {}, 'Reacti
 for subj = 1:length(subjects)
     datapath = strcat(path, subjects{subj});
     cd(datapath)
-    
+
     % Initialize subject-specific arrays
     subject_id = [];
     trial_num = [];
@@ -28,29 +29,46 @@ for subj = 1:length(subjects)
     stimuli = [];
     probe = [];
     match = [];
-    
+
     %% Read blocks
     trial_counter = 1;
     for block = 1:6
-        load(strcat(subjects{subj}, '_AOC_Sternberg_block', num2str(block), '_task.mat'))
-        num_trials = length(saves.data.correct);
-        
-        % Append data for this block
-        subject_id = [subject_id; repmat({saves.subject.ID}, num_trials, 1)];
-        trial_num = [trial_num; (trial_counter:(trial_counter + num_trials - 1))'];
-        condition = [condition; saves.data.trialSetSize'];
-        accuracy = [accuracy; saves.data.correct'];
-        reaction_time = [reaction_time; saves.data.reactionTime'];
-        stimuli = [stimuli; saves.data.stimuli'];
-        probe = [probe; saves.data.probe'];
-        match = [match; saves.data.match'];
-        trial_counter = trial_counter + num_trials;
+        try
+            load(strcat(subjects{subj}, '_AOC_Sternberg_block', num2str(block), '_task.mat'))
+            num_trials = length(saves.data.correct);
+
+            % Append data for this block
+            subject_id = [subject_id; repmat({saves.subject.ID}, num_trials, 1)];
+            trial_num = [trial_num; (trial_counter:(trial_counter + num_trials - 1))'];
+            condition = [condition; saves.data.trialSetSize'];
+            accuracy = [accuracy; saves.data.correct'];
+            reaction_time = [reaction_time; saves.data.reactionTime'];
+            stimuli = [stimuli; saves.data.stimuli'];
+            probe = [probe; saves.data.probe'];
+            match = [match; saves.data.match'];
+            trial_counter = trial_counter + num_trials;
+        catch ME
+            ME.message
+            disp(['ERROR loading Block ' num2str(block) '!'])
+            num_trials = 50;
+            trial_counter = trial_counter + num_trials;
+        end
+    end
+    if isempty(subject_id)
+        subject_id = [subject_id; repmat({str2num(subjects{subj})}, num_trials, 1)];
+        trial_num = nan(50, 1);
+        condition = nan(50, 1);
+        accuracy = nan(50, 1);
+        reaction_time = nan(50, 1);
+        stimuli = nan(50, 1);
+        probe = nan(50, 1);
+        match = nan(50, 1);
     end
     % Convert ASCII numbers to letters
     probe = char(probe);
     % Set RT > 2 to NaN
     reaction_time(reaction_time > 2) = NaN;
-    
+
     %% Create a trial-by-trial structure array for this subject
     subj_data_behav_trial = struct('ID', subject_id, 'Trial', num2cell(trial_num), 'Condition', num2cell(condition), ...
         'Accuracy', num2cell(accuracy), 'ReactionTime', num2cell(reaction_time), 'Stimuli', num2cell(stimuli), ...
@@ -80,7 +98,7 @@ for subj = 1:length(subjects)
     save rt_sternberg l2rt l4rt l6rt
     clc
     disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' done.'])
-    
+
     % Append to the final structure array
     behav_data_sternberg = [behav_data_sternberg; subj_data_behav];
 end

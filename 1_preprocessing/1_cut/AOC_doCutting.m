@@ -5,7 +5,7 @@
 startup
 clear
 clc
-p = pwd;
+p = '/Users/Arne/Documents/GitHub/AOC/1_preprocessing/1_cut';
 cd /Volumes/methlab/4marius_bdf/eeglab
 eeglab
 close()

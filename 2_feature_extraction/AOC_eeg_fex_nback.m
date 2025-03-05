@@ -307,15 +307,23 @@ for subj = 1:length(subjects)
         cfg.toi          = -1:0.05:2;
         cfg.keeptrials = 'no';
         cfg.trials = ind1;
-        load1 = ft_freqanalysis(cfg,dataTFR);
+        tfr1 = ft_freqanalysis(cfg,dataTFR);
         cfg.trials = ind2;
-        load2 = ft_freqanalysis(cfg,dataTFR);
+        tfr2 = ft_freqanalysis(cfg,dataTFR);
         cfg.trials = ind3;
-        load3 = ft_freqanalysis(cfg,dataTFR);
+        tfr3 = ft_freqanalysis(cfg,dataTFR);
+
+        %% Baseline
+        cfg                              = [];
+        cfg.baseline                     = [-1.5 -0.5];
+        cfg.baselinetype                 = 'db';
+        tfr1_bl                          = ft_freqbaseline(cfg, tfr1);
+        tfr2_bl                          = ft_freqbaseline(cfg, tfr2);
+        tfr3_bl                          = ft_freqbaseline(cfg, tfr3);
 
         %% Save data
         cd(datapath)
-        save tfr_nback load1 load2 load3
+        save tfr_nback tfr1 tfr2 tfr3 tfr1_bl tfr2_bl tfr3_bl
     catch ME
         ME.message
         error(['ERROR extracting TFR for Subject ' num2str(subjects{subj}) '!'])

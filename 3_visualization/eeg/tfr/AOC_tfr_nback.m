@@ -5,25 +5,19 @@
 
 %% Compute grand average time and frequency data GATFR
 for subj= 1:length(subjects)
-    datapath = strcat(path,subjects{subj});
+    datapath = strcat(path,subjects{subj}, '/eeg');
     cd(datapath)
     load tfr_nback
-    l1{subj} = load1;
-    l2{subj} = load2;
-    l3{subj} = load3;
-    disp(['Subject ' num2str(subj) '/10 TRF loaded.'])
+    l1{subj} = tfr1_bl;
+    l2{subj} = tfr2_bl;
+    l3{subj} = tfr3_bl;
+    disp(['Subject ' num2str(subjects{subj}) ' TFR loaded.'])
 end
 
 % Compute grand average
 gatfr1 = ft_freqgrandaverage([],l1{:});
 gatfr2 = ft_freqgrandaverage([],l2{:});
 gatfr3 = ft_freqgrandaverage([],l3{:});
-
-%% Apply percentage change for baseline correction
-baseline_period = [-Inf -0.5];  
-gatfr1 = baseline_corr_powspctrm(gatfr1, baseline_period);
-gatfr2 = baseline_corr_powspctrm(gatfr2, baseline_period);
-gatfr3 = baseline_corr_powspctrm(gatfr3, baseline_period);
 
 %% Define channels
 load('power_nback.mat');
@@ -42,22 +36,22 @@ close all
 
 % Define the common configuration
 cfg = [];
-% cfg.channel = channels; % specify the channels to include
+cfg.channel = channels; % specify the channels to include
 cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
 cfg.xlim = [-.5 2]; % Time axis limits in secon
+cfg.ylim = [4 20];
 load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
 cfg.layout = layANThead; % your specific layout
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
+
 % Find maximum deviation across conditions
-% [~, channel_idx] = ismember(channels, gatfr1.label);
-% max_spctrm = max([
-%     max(abs(gatfr1.powspctrm(channel_idx, :, :)), [], 'all'), ...
-%     max(abs(gatfr2.powspctrm(channel_idx, :, :)), [], 'all'), ...
-%     max(abs(gatfr3.powspctrm(channel_idx, :, :)), [], 'all')
-% ]);
-% clim = [-max_spctrm, max_spctrm]
-clim = [-5.5, 5.5];
+[~, channel_idx] = ismember(channels, gatfr1.label);
+max_spctrm = max([
+    max(abs(gatfr1.powspctrm(channel_idx, :, :)), [], 'all'), ...
+    max(abs(gatfr2.powspctrm(channel_idx, :, :)), [], 'all'), ...
+    max(abs(gatfr3.powspctrm(channel_idx, :, :)), [], 'all')]);
+clim = double([-max_spctrm * 0.9, max_spctrm * 0.9]);
 
 % 1-back
 figure;
@@ -69,7 +63,7 @@ colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
 set(gca, 'FontSize', 25);
-title('1-back - Time-Frequency Response', 'FontSize', 30);
+title('1-back TFR', 'FontSize', 30);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_ga_1back.png');
 
 % 2-back
@@ -81,7 +75,7 @@ set(gca, 'CLim', clim);
 colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
-title('2-back - Time-Frequency Response', 'FontSize', 30);
+title('2-back TFR', 'FontSize', 30);
 set(gca, 'FontSize', 25);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_ga_2back.png');
 
@@ -94,7 +88,7 @@ set(gca, 'CLim', clim);
 colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
-title('3-back - Time-Frequency Response', 'FontSize', 30);
+title('3-back TFR', 'FontSize', 30);
 set(gca, 'FontSize', 25);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_ga_3back.png');
 
@@ -107,29 +101,33 @@ load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat');
 diff = gatfr3;
 diff.powspctrm = gatfr3.powspctrm - gatfr1.powspctrm;
 
-% Define configuration for multiplot
+% Define configuration 
 cfg = [];
-cfg.layout = layANThead; % your specific layout
 cfg.channel = channels; % specify the channels to include
-% cfg.baseline = [-Inf -0.5]; % baseline correction window in seconds
-% cfg.baselinetype = 'absolute'; % type of baseline correction
 cfg.colorbar = 'yes'; % include color bar
-cfg.xlim = [0 2]; % Time axis limits in secon
-cfg.ylim = [5 20];
+cfg.zlim = 'maxabs'; % color limits
+cfg.xlim = [-.5 2]; % Time axis limits in secon
+cfg.ylim = [4 20];
+load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
+cfg.layout = layANThead; % your specific layout
+color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
+
+% Find maximum deviation
+[~, channel_idx] = ismember(channels, gatfr1.label);
+max_spctrm = max(abs(diff.powspctrm(channel_idx, :, :)), [], 'all');
+clim = double([-max_spctrm, max_spctrm]);
 
 % Plot: Difference (Condition 3 minus Condition 1) - Time-Frequency Response
 figure;
+set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w'); 
 ft_singleplotTFR(cfg, diff);
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
-xlabel('Time [s]', 'FontName', 'Arial', 'FontSize', 20);
-ylabel('Frequency [Hz]', 'FontName', 'Arial', 'FontSize', 20);
+colormap(color_map);
+set(gca, 'CLim', clim); 
 colorbar;
-colormap(flipud(cbrewer('div', 'RdBu', 64))); % 'RdBu' for blue to red diverging color map
-caxis([-max(abs(diff.powspctrm(:))), max(abs(diff.powspctrm(:)))]); % Symmetric limits
-set(gca, 'XLim', [0 2]); % Set time limits directly on axes
-set(gca, 'CLim', [-3, 3]) % Set color limits directly on axes
+xlabel('Time [ms]');
+ylabel('Frequency [Hz]');
+title('N-back TFR Difference (3-back minus 1-back)', 'FontName', 'Arial', 'FontSize', 30);
 set(gca, 'FontSize', 25);
-title('Time-Frequency Response Difference (3-back minus 1-back)', 'FontName', 'Arial', 'FontSize', 30);
 
 % Save the figure
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_nback_diff.png');

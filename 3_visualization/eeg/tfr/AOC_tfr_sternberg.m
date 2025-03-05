@@ -33,22 +33,27 @@ channels = occ_channels;
 
 %% Plot TFR for each individual condition
 close all
-load('/Volumes/methlab/Students/Arne/toolboxes/headmodel/layANThead.mat')
 
-% Common configuration
+% Define the common configuration
 cfg = [];
-cfg.layout = layANThead;
-cfg.showlabels = 'yes';
-cfg.colorbar = 'yes';
-cfg.xlim = ([-0.5 2]);
-cfg.ylim = [5 20];
-% clim = ([-150 150]);
-min_val = min(gatfr2.powspctrm(:));
-max_val = max(gatfr2.powspctrm(:));
-cfg.zlim = [min_val, max_val];
+cfg.channel = channels; % specify the channels to include
+cfg.colorbar = 'yes'; % include color bar
+cfg.zlim = 'maxabs'; % color limits
+cfg.xlim = [-.5 2]; % Time axis limits in secon
+cfg.ylim = [4 20];
+load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
+cfg.layout = layANThead; % your specific layout
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
 
-% Wm load 2
+% Find maximum deviation across conditions
+[~, channel_idx] = ismember(channels, gatfr1.label);
+max_spctrm = max([
+    max(abs(gatfr2.powspctrm(channel_idx, :, :)), [], 'all'), ...
+    max(abs(gatfr4.powspctrm(channel_idx, :, :)), [], 'all'), ...
+    max(abs(gatfr6.powspctrm(channel_idx, :, :)), [], 'all')]);
+clim = double([-max_spctrm * 0.9, max_spctrm * 0.9]);
+
+% WM load 2
 figure;
 set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr2);
@@ -66,7 +71,7 @@ figure;
 set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr4);
 colormap(color_map);
-% set(gca, 'CLim', clim);
+set(gca, 'CLim', clim);
 colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
@@ -79,7 +84,7 @@ figure;
 set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr6);
 colormap(color_map);
-% set(gca, 'CLim', clim);
+set(gca, 'CLim', clim);
 colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
@@ -89,30 +94,38 @@ saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_ga_stern
 
 %% Plot the grand averages for the difference between condition 3 and condition 1
 close all
+
 % Plot the difference
 diff = gatfr6;
 diff.powspctrm = gatfr6.powspctrm - gatfr2.powspctrm;
 
-% Define configuration
+% Define configuration 
 cfg = [];
-load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat');
-cfg.layout = layANThead;
-cfg.channel = channels;
-cfg.showlabels = 'yes';
-cfg.colorbar = 'yes';
-cfg.xlim = [1 2];
-cfg.ylim = [5 20];
+cfg.channel = channels; % specify the channels to include
+cfg.colorbar = 'yes'; % include color bar
+cfg.zlim = 'maxabs'; % color limits
+cfg.xlim = [-.5 2]; % Time axis limits in secon
+cfg.ylim = [4 20];
+load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
+cfg.layout = layANThead; % your specific layout
+color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
+
+% Find maximum deviation
+[~, channel_idx] = ismember(channels, gatfr2.label);
+max_spctrm = max(abs(diff.powspctrm(channel_idx, :, :)), [], 'all');
+clim = double([-1 1]);
 
 % Plot: Difference Time-Frequency Response
 figure;
-ft_singleplotTFR(cfg, diff);
 set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
-xlabel('Time [s]');
-ylabel('Frequency [Hz]');
+ft_singleplotTFR(cfg, diff);
+colormap(color_map);
+set(gca, 'CLim', clim); 
 colorbar;
-colormap(flipud(cbrewer('div', 'RdBu', 64)));
+xlabel('Time [ms]');
+ylabel('Frequency [Hz]');
+title('Sternberg TFR Difference (WM load 6 minus WM load 2)', 'FontName', 'Arial', 'FontSize', 30);
 set(gca, 'FontSize', 25);
-title('Sternberg Time-Frequency Response Difference (WM load 6 minus WM load 2)', 'FontName', 'Arial', 'FontSize', 30);
 
 % Save
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_diff.png');

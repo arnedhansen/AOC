@@ -259,9 +259,9 @@ for subj = 1:length(subjects)
         load('/Volumes/methlab/Students/Arne/MA/headmodel/ant128lay.mat');
 
         %% Identify indices of trials belonging to conditions
-        ind2 = find(dataTFR.trialinfo==52);
-        ind4 = find(dataTFR.trialinfo==54);
-        ind6 = find(dataTFR.trialinfo==56);
+        ind2 = find(dataTFR.trialinfo == 52);
+        ind4 = find(dataTFR.trialinfo == 54);
+        ind6 = find(dataTFR.trialinfo == 56);
 
         %% Time frequency analysis
         cfg              = [];

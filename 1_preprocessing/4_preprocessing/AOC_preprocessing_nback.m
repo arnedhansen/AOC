@@ -254,12 +254,12 @@ for subj = 1:length(subjects)
         blinks_3back = sum(blink_3back(:)) / sum(trl_3back(:));
 
         %% Save data
-        savepathEEG = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/');
+        savepathEEG = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
         mkdir(savepathEEG)
         cd(savepathEEG)
         save dataEEG_nback data
         save dataEEG_TFR_nback dataTFR
-        savepathET = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/gaze/');
+        savepathET = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
         mkdir(savepathET)
         cd(savepathET)
         save dataET_nback dataet

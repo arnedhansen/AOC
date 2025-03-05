@@ -27,13 +27,6 @@ end
 channels = occ_channels;
 
 %% Load data 
-alphaRange = [8 14];
-powIAF1 = [];
-powIAF2 = [];
-powIAF3 = [];
-IAF_results = struct();
-eeg_data_nback = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {});
-
 % Load power at IAF
 for subj = 1:length(subjects)
     datapath = strcat(path, subjects{subj}, '/eeg');
@@ -53,6 +46,7 @@ for subj = 1:length(subjects)
     powl2{subj} = powload2;
     powl3{subj} = powload3;
 end
+
 % Compute grand avg
 load('/Volumes/methlab/Students/Arne/toolboxes/headmodel/layANThead.mat');
 gapow1 = ft_freqgrandaverage([],powl1{:});
@@ -149,6 +143,7 @@ close all
 output_dir = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
 colors = color_def('AOC');
 for subj = 1:length(subjects)
+    clear pow1 pow2 pow3
     close all;
     figure;
     set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');

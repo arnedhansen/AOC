@@ -124,7 +124,7 @@ end
 hold off;
 
 % Set font sizes for labels and title
-set(gca, 'FontSize', 12, 'LineWidth', 1.5, 'Box', 'on');
+set(gca, 'FontSize', 15, 'LineWidth', 1.5, 'Box', 'on');
 titleHandle = get(gca, 'Title');
 set(titleHandle, 'FontSize', 30);
 xlabelHandle = get(gca, 'XLabel');

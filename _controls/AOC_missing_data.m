@@ -48,8 +48,6 @@ end
 missingFilesPercentage = size(missingFiles, 2) / (length(subjects)*12)*100;
 fprintf('%.2f%% of files are missing\n', missingFilesPercentage);
 
-%% bei wie vielen fehlt eine condition
-
 %% Heatmap Visualization (Using Precomputed Data)
 close all
 
@@ -90,9 +88,8 @@ end
 % Compute missing files percentage from the precomputed matrix
 missingPercentage = sum(missingMatrix(:) == 0) / numel(missingMatrix) * 100;
 
-figure('Position', [100, 100, 2000, 1200]);
-
-% Create heatmap
+% Heatmap figure
+figure('Position', [100, 100, 2000, 1200], 'Color', 'W');
 imagesc(missingMatrix);
 colormap([1 0 0; 0 1 0]); % Red for missing, Green for present
 caxis([0 1]);
@@ -109,16 +106,31 @@ yticklabels(subjects);
 % Labels and title
 xlabel('Condition & Block');
 ylabel('Subjects');
-title(sprintf('Missing Data Heatmap (%.2f%% missing)', missingPercentage), 'FontSize', 50, 'FontWeight', 'bold');
+title(sprintf('AOC Missing Data Heatmap (%.2f%% missing)', missingPercentage), 'FontSize', 50, 'FontWeight', 'bold');
 
-% Add grid lines
-set(gca, 'FontSize', 18);
-grid on;
-ax = gca;
-ax.GridColor = [0 0 0]; % Black grid lines
-ax.XGrid = 'on';
-ax.YGrid = 'on';
+% Add grid lines (grid lines removed and replaced with explicit lines)
+hold on;
+[numRows, numCols] = size(missingMatrix);
+numRows = numRows+1;
+numCols = numCols+1;
+for i = 1:numCols
+    % Vertical lines between columns
+    plot([i+0.5, i+0.5], [0, numRows], 'k-', 'LineWidth', 1.5);
+end
+for j = 1:numRows
+    % Horizontal lines between rows
+    plot([0, numCols], [j+0.5, j+0.5], 'k-', 'LineWidth', 1.5);
+end
+hold off;
+
+% Set font sizes for labels and title
 set(gca, 'FontSize', 12, 'LineWidth', 1.5, 'Box', 'on');
+titleHandle = get(gca, 'Title');
+set(titleHandle, 'FontSize', 30);
+xlabelHandle = get(gca, 'XLabel');
+set(xlabelHandle, 'FontSize', 25);
+ylabelHandle = get(gca, 'YLabel');
+set(ylabelHandle, 'FontSize', 25);
 
 % Save
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/data/controls/AOC_missing_data_heatmap.png')

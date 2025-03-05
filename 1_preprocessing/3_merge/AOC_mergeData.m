@@ -17,10 +17,7 @@ subjectIDs = {folders.name};
 tic;
 for subjects = 1 : length(subjectIDs)
     subjectID = subjectIDs{subjects};
-    % Do not merge subjects with completely missing data
-    if strcmp(subjectID, '319') || strcmp(subjectID, '320')
-        continue;
-    end
+    fprintf('Processing Subject %s\n', subjectID)
 
     % Check if subject files have already been merged
     if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/merged/', char(subjectID), filesep, char(subjectID), '*_merged.mat']))
@@ -93,7 +90,8 @@ for subjects = 1 : length(subjectIDs)
                     disp(['AOC' char(subjectID) ': ' step ' done' ])
                 end
             catch ME
-                ME.message
+                ME.message;
+                disp(ME.message)
                 disp(['ERROR merging file ' num2str(files) '!'])
             end
         end

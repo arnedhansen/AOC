@@ -1,4 +1,9 @@
 %% AOC check for missing data
+%
+% AOC 319 - only Sternberg block 1
+% AOC 320 - only N-back block 1-4; NO ET DATA
+% AOC 378 - all N-back data, only Sternberg block 1
+% AOC 412 - only N-back block 1-3
 
 %% Setup
 clear
@@ -45,8 +50,9 @@ fprintf('%.2f%% of files are missing\n', missingFilesPercentage);
 
 %% bei wie vielen fehlt eine condition
 
-%% Heatmap Visualization
+%% Heatmap Visualization (Using Precomputed Data)
 close all
+
 % Define paths
 data_path = '/Volumes/methlab_data/OCC/AOC/data';
 check_path = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
@@ -81,20 +87,20 @@ for subj = 1:length(subjects)
     end
 end
 
-% Compute missing files percentage
+% Compute missing files percentage from the precomputed matrix
 missingPercentage = sum(missingMatrix(:) == 0) / numel(missingMatrix) * 100;
 
-figure('Position', [100, 100, 2000, 1200]); % Large figure
+figure('Position', [100, 100, 2000, 1200]);
 
 % Create heatmap
 imagesc(missingMatrix);
-colormap([1 0 0; 0 1 0]);
+colormap([1 0 0; 0 1 0]); % Red for missing, Green for present
 caxis([0 1]);
 
 % Custom X-tick labels
 xticks(1:length(conditions)*num_blocks);
 xticklabels(arrayfun(@(i) sprintf('%s Block %d', conditions{ceil(i/num_blocks)}, mod(i-1, num_blocks)+1), 1:length(conditions)*num_blocks, 'UniformOutput', false));
-xtickangle(45); 
+xtickangle(45);
 
 % Custom Y-tick labels
 yticks(1:length(subjects));
@@ -106,13 +112,13 @@ ylabel('Subjects');
 title(sprintf('Missing Data Heatmap (%.2f%% missing)', missingPercentage), 'FontSize', 50, 'FontWeight', 'bold');
 
 % Add grid lines
+set(gca, 'FontSize', 18);
 grid on;
 ax = gca;
 ax.GridColor = [0 0 0]; % Black grid lines
 ax.XGrid = 'on';
 ax.YGrid = 'on';
-
-% Enhance figure aesthetics
 set(gca, 'FontSize', 12, 'LineWidth', 1.5, 'Box', 'on');
 
+% Save
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/data/controls/AOC_missing_data_heatmap.png')

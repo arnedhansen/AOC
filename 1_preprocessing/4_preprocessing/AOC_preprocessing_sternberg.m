@@ -11,6 +11,7 @@ path = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
+subjects = exclude_subjects(subjects, 'AOC');
 
 %% Read data, segment and convert to FieldTrip data structure
 tic;

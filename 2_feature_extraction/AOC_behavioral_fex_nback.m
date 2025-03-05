@@ -12,6 +12,7 @@ path = '/Volumes/methlab_data/OCC/AOC/data/';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
+subjects = exclude_subjects(subjects, 'AOC');
 behav_data_nback = struct('ID', {}, 'Condition', {}, 'Accuracy', {}, 'ReactionTime', {});
 
 %% Read data

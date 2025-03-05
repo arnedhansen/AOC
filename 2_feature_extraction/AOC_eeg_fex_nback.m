@@ -11,6 +11,7 @@
 
 %% Extract POWER
 for subj = 1:length(subjects)
+    try
     datapath = strcat(path,subjects{subj}, '/eeg');
     cd(datapath)
     close all
@@ -44,6 +45,7 @@ for subj = 1:length(subjects)
     %% Save
     cd(datapath)
     save power_nback powload1 powload2 powload3
+    end
 end
 
 %% Setup
@@ -81,6 +83,7 @@ IAF_results = struct();
 eeg_data_nback = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {});
 
 for subj = 1:length(subjects)
+    try
     datapath = strcat(path, subjects{subj}, '/eeg');
     cd(datapath);
     load('power_nback.mat');
@@ -148,7 +151,8 @@ for subj = 1:length(subjects)
     eeg_data_nback = [eeg_data_nback; subj_data_eeg];
     clc
     fprintf('Subject %s IAF: 1-back: %f Hz (Power: %f), 2-back: %f Hz (Power: %f), 3-back: %f Hz (Power: %f)\n', subjects{subj}, IAF1, powerIAF1, IAF2, powerIAF2, IAF3, powerIAF3);
-end
+    end
+    end
 save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_nback eeg_data_nback
 
 %% Setup
@@ -164,6 +168,7 @@ subjects = {folders.name};
 
 %% Extract POWER WITH TRIAL INFO
 for subj= 1:length(subjects)
+    try
     datapath = strcat(path,subjects{subj}, '/eeg');
     cd(datapath)
     close all
@@ -200,7 +205,7 @@ for subj= 1:length(subjects)
     %% Save
     cd(datapath)
     save power_nback_trials powload1_trials powload2_trials powload3_trials
-
+    end
 end
 
 %% Setup
@@ -217,6 +222,7 @@ subjects = {folders.name};
 %% Extract FOOOF Power
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
+    try
     datapath = strcat(path,subjects{subj}, '/eeg');
     cd(datapath)
     close all
@@ -250,6 +256,7 @@ for subj = 1:length(subjects)
     %% Save data
     cd(datapath)
     save power_nback_fooof powload1 powload2 powload3
+    end
 end
 
 %% Setup
@@ -266,6 +273,7 @@ subjects = {folders.name};
 %% Extract TFR
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
+    try
     datapath = strcat(path,subjects{subj}, '/eeg');
     cd(datapath)
     close all
@@ -296,4 +304,5 @@ for subj = 1:length(subjects)
     %% Save data
     cd(datapath)
     save tfr_nback load1 load2 load3
+    end
 end

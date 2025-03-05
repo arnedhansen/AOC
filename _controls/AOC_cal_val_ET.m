@@ -18,6 +18,9 @@ for subj = 1:length(subjects)
     datapath = strcat(path, subjects{subj}, '/archive');
     cd(datapath);
 
+    if str2double(subjects{subj}) == 319 || str2double(subjects{subj}) == 320 || str2double(subjects{subj}) == 378 || str2double(subjects{subj}) == 412
+        continue;
+    end
     % Pre-allocate CAL and VAL for the current subject
     CAL{subj} = cell(1, numFiles * 2); % Pre-allocating for both N and S files
     VAL{subj} = cell(1, numFiles * 2); % Pre-allocating for both N and S files
@@ -106,42 +109,42 @@ end
 
 %% FUNCTION
 function [lastValidationOffsets] = parseASCFile(filePath)
-    % Initialize cell arrays to store calibration and validation data
-    calibrationData = {};
-    validationData = {};
-    
-    % Open the file for reading
-    fid = fopen(filePath, 'rt');
-    
-    if fid == -1
-        error('Cannot open file: %s', filePath);
-    end
-    
-    % Read the file line by line
-    line = fgetl(fid);
-    
-    currentCalibration = [];
-    currentValidation = [];
-    
-    while ~contains(line, '!MODE RECORD CR')
-        
-        % Check for validation offset lines
-        if contains(line, 'VALIDATE') && contains(line, 'POINT')
-            tokens = regexp(line, 'OFFSET (\d+\.\d+) deg.', 'tokens');
-            if ~isempty(tokens)
-                offset = str2double(tokens{1}{1});
-                currentValidation = [currentValidation, offset];
-            end
+% Initialize cell arrays to store calibration and validation data
+calibrationData = {};
+validationData = {};
+
+% Open the file for reading
+fid = fopen(filePath, 'rt');
+
+if fid == -1
+    error('Cannot open file: %s', filePath);
+end
+
+% Read the file line by line
+line = fgetl(fid);
+
+currentCalibration = [];
+currentValidation = [];
+
+while ~contains(line, '!MODE RECORD CR')
+
+    % Check for validation offset lines
+    if contains(line, 'VALIDATE') && contains(line, 'POINT')
+        tokens = regexp(line, 'OFFSET (\d+\.\d+) deg.', 'tokens');
+        if ~isempty(tokens)
+            offset = str2double(tokens{1}{1});
+            currentValidation = [currentValidation, offset];
         end
-        
-        % Read the next line
-        line = fgetl(fid);
     end
-    
-    fclose(fid);
-    try
+
+    % Read the next line
+    line = fgetl(fid);
+end
+
+fclose(fid);
+try
     lastValidationOffsets = currentValidation(end-8:end);
-    catch
-        lastValidationOffsets = currentValidation;
-    end
+catch
+    lastValidationOffsets = currentValidation;
+end
 end

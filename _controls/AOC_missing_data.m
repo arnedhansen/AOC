@@ -44,3 +44,75 @@ missingFilesPercentage = size(missingFiles, 2) / (length(subjects)*12)*100;
 fprintf('%.2f%% of files are missing\n', missingFilesPercentage);
 
 %% bei wie vielen fehlt eine condition
+
+%% Heatmap Visualization
+close all
+% Define paths
+data_path = '/Volumes/methlab_data/OCC/AOC/data';
+check_path = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
+
+% Get subject list
+dirs = dir(data_path);
+folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
+subjects = {folders.name};
+
+% Define conditions and blocks
+conditions = {'Sternberg', 'Nback'};
+num_blocks = 6;
+
+% Preallocate matrix for missing files (1 = present, 0 = missing)
+missingMatrix = ones(length(subjects), length(conditions) * num_blocks);
+
+% Check for missing data
+missingFiles = {};
+for subj = 1:length(subjects)
+    for c = 1:length(conditions)
+        for block = 1:num_blocks
+            % Construct expected file path
+            fileName = sprintf('%s_EEG_ET_%s_block%d_merged.mat', subjects{subj}, conditions{c}, block);
+            filePath = fullfile(check_path, subjects{subj}, fileName);
+            
+            % Check file existence
+            if ~isfile(filePath)
+                missingFiles{end+1} = fileName; %#ok<SAGROW>
+                missingMatrix(subj, (c-1)*num_blocks + block) = 0; % Mark as missing
+            end
+        end
+    end
+end
+
+% Compute missing files percentage
+missingPercentage = sum(missingMatrix(:) == 0) / numel(missingMatrix) * 100;
+
+figure('Position', [100, 100, 2000, 1200]); % Large figure
+
+% Create heatmap
+imagesc(missingMatrix);
+colormap([1 0 0; 0 1 0]);
+caxis([0 1]);
+
+% Custom X-tick labels
+xticks(1:length(conditions)*num_blocks);
+xticklabels(arrayfun(@(i) sprintf('%s Block %d', conditions{ceil(i/num_blocks)}, mod(i-1, num_blocks)+1), 1:length(conditions)*num_blocks, 'UniformOutput', false));
+xtickangle(45); 
+
+% Custom Y-tick labels
+yticks(1:length(subjects));
+yticklabels(subjects);
+
+% Labels and title
+xlabel('Condition & Block');
+ylabel('Subjects');
+title(sprintf('Missing Data Heatmap (%.2f%% missing)', missingPercentage), 'FontSize', 50, 'FontWeight', 'bold');
+
+% Add grid lines
+grid on;
+ax = gca;
+ax.GridColor = [0 0 0]; % Black grid lines
+ax.XGrid = 'on';
+ax.YGrid = 'on';
+
+% Enhance figure aesthetics
+set(gca, 'FontSize', 12, 'LineWidth', 1.5, 'Box', 'on');
+
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/data/controls/AOC_missing_data_heatmap.png')

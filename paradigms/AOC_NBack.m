@@ -562,7 +562,7 @@ for trl = 1:exp.nTrials
     elseif trl == 1
         disp('No Response to Trial 1 in N-Back Task');
     elseif COND == 2 && trl == 2
-        disp('No Response to Trial 2 in 3-Back Task');
+        disp('No Response to Trial 2 in 2-Back Task');
     elseif COND == 3 && trl == 2
         disp('No Response to Trial 2 in 3-Back Task');
     elseif COND == 3 && trl == 3

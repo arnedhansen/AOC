@@ -39,7 +39,7 @@ end
 
 % Load powerspctrm data
 for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{length(subjects)}, '/eeg');
+    datapath = strcat(path, subjects{subj}, '/eeg');
     cd(datapath)
     load power_nback
     powl1{subj} = powload1;

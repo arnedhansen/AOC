@@ -16,7 +16,7 @@ subjects = {folders.name};
 tic;
 for subj = 1:length(subjects)
     clearvars -except subjects subj path
-    clear data1 data2 data3
+    clear data dataTFR data1 data2 data3
     datapath = strcat(path,subjects{subj});
     cd(datapath)
     fprintf('Processing Subject %s\n', subjects{subj})

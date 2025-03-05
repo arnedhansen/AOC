@@ -24,6 +24,7 @@ end
 
 %% Plot Euclidean deviations BOXPLOTS
 dataDeviation = [devs1', devs2', devs3'];
+dat
 conditions = {'1-back', '2-back', '3-back'};
 close all
 figure;
@@ -52,7 +53,7 @@ set(gca, 'XLim', [0.5 length(conditions) + 0.5]);
 set(gca, 'YLim', [min(dataDeviation(:)) * 0.85 max(dataDeviation(:)) * 1.15]);
 
 legend(scatterHandles, conditions, 'FontName', 'Arial', 'FontSize', 15, 'Location', 'best');
-title('Sternberg Mean Euclidean Gaze Deviation', 'FontName', 'Arial', 'FontSize', 25);
+title('N-back Mean Euclidean Gaze Deviation', 'FontName', 'Arial', 'FontSize', 25);
 hold off;
 
 % Save the plot

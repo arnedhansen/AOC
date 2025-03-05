@@ -24,7 +24,6 @@ end
 
 %% Plot Euclidean deviations BOXPLOTS
 dataDeviation = [devs1', devs2', devs3'];
-dat
 conditions = {'1-back', '2-back', '3-back'};
 close all
 figure;

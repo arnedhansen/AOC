@@ -8,9 +8,6 @@
 clear
 clc
 close all
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.0');
-eeglab
-close
 path = '/Volumes/methlab/Students/Arne/AOC/data/';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
@@ -22,7 +19,9 @@ screen_height = 600;
 center_x = screen_width/2;
 center_y = screen_height/2;
 
-%% LOAD GAZE DATA
+%% Load all eye movements for all subjects
+load('/Volumes/methlab/Students/Arne/AOC/data/features/gaze_nback.mat') 
+load('/Volumes/methlab/Students/Arne/AOC/data/features/gaze_matrix_nback.mat')
 
 %% Visualize average X position by conditions for ALL TRIALS
 % Get the lengths of all arrays
@@ -71,11 +70,6 @@ title('Average Deviation on X-Axis from Fixation Cross', 'FontName', 'Arial', 'F
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/gaze/deviation/AOC_dev_nback_trials.png');
 
 %% Visualize average X and Y position by conditions for TIMEPOINTS averaged over trials
-% Define the path
-path = '/Volumes/methlab/Students/Arne/MA/data/mergedSIM/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
 
 % Preallocate matrices to hold the average gaze data across all subjects
 conditions = [];
@@ -175,7 +169,7 @@ subplot(2, 1, 1);
 hold on;
 colors = {'b', 'k', 'r'}; 
 for condIdx = 1:length(conditions)
-    shadedErrorBar(timeVec, gaze_x_devs{condIdx}, gaze_x_errors{condIdx}, 'lineprops', {'Color', colors{condIdx}, 'DisplayName', ['Condition ' num2str(conditions(condIdx))]});
+    shadedErrorBar(timeVec, gaze_x_devs{condIdx}, gaze_x_errors{condIdx})  %, 'lineprops', {'Color', colors{condIdx}, 'DisplayName', ['Condition ' num2str(conditions(condIdx))]});
 end
 yline(0, 'Color', [0.5, 0.5, 0.5], 'LineWidth', 0.5, 'LineStyle', '--');
 xline(0, 'Color', [0.5, 0.5, 0.5], 'LineWidth', 0.5, 'LineStyle', '--');

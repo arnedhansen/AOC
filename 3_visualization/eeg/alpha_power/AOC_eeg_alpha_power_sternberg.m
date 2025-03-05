@@ -26,14 +26,7 @@ for i = 1:length(powload2.label)
 end
 channels = occ_channels;
 
-%% Load data 
-alphaRange = [8 14];
-powIAF2 = [];
-powIAF4 = [];
-powIAF6 = [];
-IAF_results = struct();
-eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {});
-
+%% Load data
 % Load power at IAF
 for subj = 1:length(subjects)
     datapath = strcat(path, subjects{subj}, '/eeg');

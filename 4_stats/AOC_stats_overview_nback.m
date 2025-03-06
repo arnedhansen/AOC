@@ -9,13 +9,13 @@ clear
 close all
 data = readtable('/Volumes/methlab/Students/Arne/AOC/data/features/merged_data_nback.csv');
 data.ReactionTime = data.ReactionTime .* 1000;
-data.PupilSize = [];
-variables = {'Accuracy', 'ReactionTime', 'GazeDeviation', 'MSRate', 'Blinks', 'Fixations', 'Saccades', 'AlphaPower', 'IAF'};
+data.GazeStd = (data.GazeStdX + data.GazeStdY) ./ 2;
+variables = {'Accuracy', 'ReactionTime', 'GazeDeviation', 'GazeStd', 'MSRate', 'Fixations', 'Saccades', 'AlphaPower', 'IAF'};
 save_names = {'acc', 'rt', 'gazedev', 'ms', 'blink', 'fix', 'sacc', 'pow', 'iaf'};
 colors = color_def('AOC');
 
 %% BOXPLOTS for each variable
-y_axis_labels = {'Accuracy [%]', 'Reaction Time [ms]', 'Gaze Deviation [px]', 'Gaze STD [px]', 'Microsaccade Rate [ms/s]', 'Blinks', 'Fixations', 'Saccades', 'Alpha Power [dB]', 'IAF [Hz]'};
+y_axis_labels = {'Accuracy [%]', 'Reaction Time [ms]', 'Gaze Deviation [px]', 'Gaze Std [px]', 'Microsaccade Rate [ms/s]', 'Fixations', 'Saccades', 'Alpha Power [dB]', 'IAF [Hz]'};
 
 % Unique subject identifiers
 subjects = unique(data.ID);
@@ -70,14 +70,13 @@ for i = 1:length(variables)
     ax.FontSize = font_size;
 
     % Save individual subplot
-    saveas(gcf, strcat('/Volumes/methlab/Students/Arne/AOC/figures/stats/overview/AOC_stats_boxplots_', save_names{i}, '_nback.png'));
+    saveas(gcf, strcat('/Volumes/methlab/Students/Arne/AOC/figures/stats/overview/boxplots/AOC_stats_boxplots_', save_names{i}, '_nback.png'));
 end
 
 %% BOXPLOTS OVERVIEW
 close all
 figure;
 set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
-y_axis_labels = {'Accuracy [%]', 'Reaction Time [ms]', 'Gaze Deviation [px]', 'Gaze STD [px]', 'Microsaccade Rate [ms/s]', 'Blinks', 'Fixations', 'Saccades', 'Alpha Power [dB]', 'IAF [Hz]'};
 
 % Unique subject identifiers
 subjects = unique(data.ID);
@@ -129,7 +128,7 @@ for i = 1:length(variables)
     ylabel(y_axis_labels{i}, "FontSize", 15);
     hold off;
 end
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/stats/overview/AOC_stats_overview_boxplots_nback.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/stats/overview/boxplots/AOC_stats_overview_boxplots_nback.png');
 
 %% PERCENTAGE CHANGE BARPLOTS for each variable
 close all;
@@ -179,7 +178,7 @@ for i = 1:length(variables)
     hold off;
 
     % Save individual bar plot
-    saveas(gcf, strcat('/Volumes/methlab/Students/Arne/AOC/figures/stats/overview/AOC_stats_barplots_', save_names{i}, '_nback.png'));
+    saveas(gcf, strcat('/Volumes/methlab/Students/Arne/AOC/figures/stats/overview/barplots/AOC_stats_barplots_', save_names{i}, '_nback.png'));
 
     % Close the individual figure to free memory
     close(gcf);
@@ -235,7 +234,7 @@ for i = 1:length(variables)
     hold off;
 end
 sgtitle('Percentage Change (HC - LC)', 'FontSize', 24);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/stats/overview/AOC_stats_overview_barplots_percentage_change_nback.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/stats/overview/barplots/AOC_stats_overview_barplots_percentage_change_nback.png');
 
 %% Plot DIFFERENCES in ALPHA POWER against GAZE METRICS 
 % MICROSACCADES,GAZE DEVIATION and labels by ET (BLINKS, FIXATIONS, SACCADES)

@@ -151,8 +151,8 @@ for subj = 1:length(subjects)
 
     l6 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 6);
     l6gdev = mean([l6.GazeDeviation], 'omitnan');
-    l6gSDx = mean([l2.GazeStdX], 'omitnan');
-    l6gSDy = mean([l2.GazeStdY], 'omitnan');
+    l6gSDx = mean([l6.GazeStdX], 'omitnan');
+    l6gSDy = mean([l6.GazeStdY], 'omitnan');
     l6pups = mean([l6.PupilSize], 'omitnan');
     l6msrate = mean([l6.MSRate], 'omitnan');
 

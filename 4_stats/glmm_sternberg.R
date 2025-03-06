@@ -1,15 +1,15 @@
 # GLMM Stats for AOC Sternberg
 
-# install.packages('lme4')
-# install.packages('nlme')
-# install.packages('emmeans')
-# install.packages("ggplot2")
-# install.packages("pbkrtest")
-# install.packages("lmerTest")
-# install.packages("sjPlot")
-# install.packages("writexl")
-# install.packages("drop1")
-# install.packages("car")
+install.packages('lme4')
+install.packages('nlme')
+install.packages('emmeans')
+install.packages("ggplot2")
+install.packages("pbkrtest")
+install.packages("lmerTest")
+install.packages("sjPlot")
+install.packages("writexl")
+install.packages("drop1")
+install.packages("car")
 library(lme4)
 library(nlme)
 library(emmeans)
@@ -23,7 +23,7 @@ library(drop1)
 library(car)
 
 # Set WD
-setwd('/Volumes/methlab/Students/Arne/AOC/scripts/stats')
+setwd('/Users/Arne/Documents/GitHub/AOC/4_stats')
 
 # no scientific notation, exact p-values
 options(scipen=999) # default = 0
@@ -39,18 +39,18 @@ dat$ID = as.factor(dat$ID)
 dat$Condition = as.factor(dat$Condition)
 
 ######################
-###### Accuracy ######
+##### Behavioral #####
 ######################
 
 # Model for Accuracy
-glmm_accuracy <- glmer(Accuracy ~ Load + (1|Subject), data = dat, REML = TRUE)
+glmm_accuracy <- lmer(dat$Accuracy ~ dat$Condition + (1|dat$ID), data = dat)
 summary(glmm_accuracy)
 
 # Anova
 Anova(glmm_accuracy, type = "II")
 
 # Model for Reaction Time
-glmm_rt <- glmer(ReactionTime ~ Load + (1|Subject), data = dat, REML = TRUE)
+glmm_rt <- lmer(dat$ReactionTime ~ dat$Condition + (1|dat$ID), data = dat)
 summary(glmm_rt)
 
 # Anova
@@ -58,17 +58,18 @@ Anova(glmm_rt, type = "II")
 
 # Extract coefficients
 coeff_accuracy <- summary(glmm_accuracy)[["coefficients"]]
+coeff_accuracy
 coeff_rt <- summary(glmm_rt)[["coefficients"]]
+coeff_rt
 
 # Display models
-tab_model(glmm_accuracy, glmm_rt)
 
 ######################
 ######## Gaze ########
 ######################
 
 # Model
-glmm_gaze <- glmer(GazeDeviation ~ Load + (1|Subject), data = dat, REML = TRUE)
+glmm_gaze <- lmer(dat$GazeDeviation ~ dat$Condition + (1|dat$ID), data = dat)
 summary(glmm_gaze)
 
 # Anova
@@ -76,16 +77,16 @@ Anova(glmm_gaze, type = "II")
 
 # Extract coefficients
 coeff_gaze <- summary(glmm_gaze)[["coefficients"]]
+coeff_gaze
 
 # Display models
-tab_model(glmm_gaze)
 
 ######################
 ####### Alpha ########
 ######################
 
 # Model
-glmm_alpha <- glmer(Alpha ~ GazeDeviation * Load + (1|Subject), data = dat, REML = TRUE)
+glmm_alpha <- lmer(dat$AlphaPower ~ dat$GazeDeviation * dat$Condition + (1|dat$ID), data = dat)
 summary(glmm_alpha)
 
 # Anova

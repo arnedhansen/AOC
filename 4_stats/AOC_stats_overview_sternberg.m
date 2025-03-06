@@ -1,4 +1,4 @@
-%% AOC N-back Stats Overview
+%% AOC Stats Overview
 % Boxplots for all variables
 % Percentage change barplots
 % Alpha Differences vs. Gaze Differences

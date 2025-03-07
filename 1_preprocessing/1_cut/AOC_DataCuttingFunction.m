@@ -1,4 +1,4 @@
-function  cutData(filePath)
+function  AOC_DataCuttingFunction(filePath)
 
 % ANT EEG data comes in 1 file containig all tasks (e.g. Resting, CDA,
 % etc.). This function cuts the data into distinct tasks, saves the tasks

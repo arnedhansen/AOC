@@ -17,7 +17,7 @@ d = dir(strcat('/Volumes/methlab_data/OCC/AOC/data/*/', '*cnt'));
 ids = {};
 for f = 1 : size(d, 1)
     filePath = fullfile( d(f).folder, d(f).name);
-    AOC_cutData(filePath)
+    AOC_DataCuttingFunction(filePath)
     id = strsplit(d(f).name, '_');
     ids{f} = id{1};
     fprintf('Cutting of data for Subject AOC %.3s done \n', ids{f})

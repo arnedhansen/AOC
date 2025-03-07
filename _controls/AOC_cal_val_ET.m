@@ -97,7 +97,7 @@ for subjIdx = 1:numSubjects
         savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/',subjects{subjIdx});
         mkdir(savepath)
         cd(savepath)
-        saveName = [savepath, filesep, num2str(subjects{subjIdx}) '_Validations.png'];
+        saveName = [savepath, filesep, num2str(subjects{subjIdx}) '_validations.png'];
         saveas(gcf, saveName)
     catch
         disp(['Could not create VALIDATION overview for subject ' num2str(subjects{subjIdx})])

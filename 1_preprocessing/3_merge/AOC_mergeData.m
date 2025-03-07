@@ -20,7 +20,7 @@ for subjects = 1 : length(subjectIDs)
     fprintf('Processing Subject %s\n', subjectID)
 
     % Check if subject files have already been merged
-    if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/merged/', char(subjectID), filesep, char(subjectID), '*_merged.mat']))
+    %if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/merged/', char(subjectID), filesep, char(subjectID), '*_merged.mat']))
         % Set up data paths
         filePathET = ['/Volumes/methlab_data/OCC/AOC/data/', char(subjectID)];
         filePathEEG = ['/Volumes/methlab/Students/Arne/AOC/data/automagic/',  char(subjectID)];
@@ -69,10 +69,10 @@ for subjects = 1 : length(subjectIDs)
                 EEG = pop_importeyetracker(EEG, ETfile,[startTrigger endTrigger],[2 3 4],{'L_GAZE_X', 'L_GAZE_Y', 'L_AREA', 'R_GAZE_X', 'R_GAZE_Y', 'R_AREA'},1,1,1,0);
 
                 %% Save merge info as image
-                % savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/',subjectID);
-                % mkdir(savepath)
-                % saveName = [savepath, filesep, num2str(subjectID) '_mergeInfo.png'];
-                % saveas(gcf, saveName);
+                savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/',subjectID);
+                mkdir(savepath)
+                saveName = [savepath, filesep, num2str(subjectID) '_mergeInfo.png'];
+                saveas(gcf, saveName);
 
                 %% Save to disk
                 if strcmp(task, 'Resting') == 1
@@ -95,7 +95,7 @@ for subjects = 1 : length(subjectIDs)
                 disp(['ERROR merging file ' num2str(files) '!'])
             end
         end
-    end
+    %end
 end
 disp('SYNCHRONIZATION COMPLETE')
 toc

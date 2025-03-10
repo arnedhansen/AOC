@@ -29,6 +29,7 @@ for subjects = 1 : length(subjectIDs)
         dEEG = dir([filePathEEG, filesep, '*ip*EEG.mat']);
         dET = dir([filePathET, filesep, '*ET.mat']);
         for files = 1 : size(dEEG, 1)
+            close all
             try
                 ETnameShort = dET(files).name(1:end-7);
                 ETname = dET(files).name;
@@ -66,12 +67,20 @@ for subjects = 1 : length(subjectIDs)
                 end
 
                 %% Merge files
-                EEG = pop_importeyetracker(EEG, ETfile,[startTrigger endTrigger],[2 3 4],{'L_GAZE_X', 'L_GAZE_Y', 'L_AREA', 'R_GAZE_X', 'R_GAZE_Y', 'R_AREA'},1,1,1,0);
+                EEG = pop_importeyetracker(EEG, ETfile,[startTrigger endTrigger],[2 3 4],{'L_GAZE_X', 'L_GAZE_Y', 'L_AREA', 'R_GAZE_X', 'R_GAZE_Y', 'R_AREA'},1,1,1,1);
 
                 %% Save merge info as image
+                set(gcf, "Position", [0 0 1200 800], "Color", "W")
                 savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/',subjectID);
                 mkdir(savepath)
-                saveName = [savepath, filesep, num2str(subjectID) '_mergeInfo.png'];
+                if strcmp(task, 'Resting') == 1
+                    taskName = 'Resting';
+                elseif strcmp(task, 'AOC_Sternberg') == 1
+                    taskName = ['Sternberg_block' num2str(block)];
+                elseif strcmp(task, 'AOC_Nback') == 1
+                    taskName = ['Nback_block' num2str(block)];
+                end
+                saveName = [savepath, filesep, num2str(subjectID) '_mergeInfo_', taskName, '.png'];                
                 saveas(gcf, saveName);
 
                 %% Save to disk

@@ -2,7 +2,7 @@
 %
 % Extracted features:
 %   Power Spectrum
-%   IAF  and Power at IAF
+%   IAF and Power at IAF
 %   FOOOF Power
 %   TFR
 
@@ -12,6 +12,7 @@
 %% Extract POWER
 for subj = 1:length(subjects)
     try
+        % Load data
         datapath = strcat(path,subjects{subj}, '/eeg');
         cd(datapath)
         close all
@@ -19,22 +20,27 @@ for subj = 1:length(subjects)
         load('/Volumes/methlab/Students/Arne/MA/headmodel/ant128lay.mat');
 
         %% Identify indices of trials belonging to conditions
-        ind2=find(data.trialinfo==52);
-        ind4=find(data.trialinfo==54);
-        ind6=find(data.trialinfo==56);
+        ind2 = find(data.trialinfo == 52); % WM load 2
+        ind4 = find(data.trialinfo == 54); % WM load 4
+        ind6 = find(data.trialinfo == 56); % WM load 6
 
         %% Frequency analysis
-        cfg = [];
-        cfg.latency = [1 2];% segment here only for retention interval
-        dat = ft_selectdata(cfg,data);
-        cfg = [];% empty config
-        cfg.output = 'pow';% estimates power only
-        cfg.method = 'mtmfft';% multi taper fft method
-        cfg.taper = 'dpss';% multiple tapers
-        cfg.tapsmofrq = 1;% smoothening frequency around foi
-        cfg.foilim = [3 30];% frequencies of interest (foi)
-        cfg.keeptrials = 'no';
-        cfg.pad = 10;
+        % Select data
+        cfg = [];                      % Empty configuration
+        cfg.latency = [1 2];           % Segmentation for retention interval
+        dat = ft_selectdata(cfg,data); % Select data
+
+        % Analysis settings 
+        cfg = [];                      % Empty configuration
+        cfg.output = 'pow';            % Estimate power only
+        cfg.method = 'mtmfft';         % Multi-taper FFT method
+        cfg.taper = 'dpss';            % Multiple tapers (discrete prolate spheroidal sequences)
+        cfg.tapsmofrq = 1;             % Smoothening frequency around foi
+        cfg.foilim = [3 30];           % Frequencies of interest
+        cfg.keeptrials = 'no';         % Discard trial information
+        cfg.pad = 10;                  % Add zero-padding
+
+        % Conduct frequency analysis for each condition separately
         cfg.trials = ind2;
         powload2 = ft_freqanalysis(cfg,dat);
         cfg.trials = ind4;

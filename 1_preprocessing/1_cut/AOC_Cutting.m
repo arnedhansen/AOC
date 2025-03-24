@@ -34,6 +34,8 @@ for f = 1 : size(d, 1)
 end
 
 %% Load and synchronize EEG & Eyelink
+clc
+disp(upper('Loading and Synchronizing EEG & Eyelink'));
 for id = 1 : length(ids)
     ID = ids{id};
 

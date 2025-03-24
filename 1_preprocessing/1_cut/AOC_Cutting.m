@@ -29,6 +29,7 @@ for f = 1 : size(d, 1)
     AOC_DataCuttingFunction(filePath)
     id = strsplit(d(f).name, '_');
     ids{f} = id{1};
+    clc
     fprintf('Cutting of data for Subject AOC %.3s done \n', ids{f})
 end
 

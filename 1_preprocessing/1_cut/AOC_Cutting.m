@@ -5,8 +5,13 @@
 startup
 clear
 clc
-p = '/Users/Arne/Documents/GitHub/AOC/1_preprocessing/1_cut';
-cd /Volumes/methlab/4marius_bdf/eeglab
+if ispc == 1
+    p = 'C:\Users\dummy\Documents\GitHub\AOC\1_preprocessing\1_cut';
+    cd W:\4marius_bdf\eeglab
+else
+    p = '/Users/Arne/Documents/GitHub/AOC/1_preprocessing/1_cut';
+    cd /Volumes/methlab/4marius_bdf/eeglab
+end
 eeglab
 close()
 cd(p)

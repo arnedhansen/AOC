@@ -1,14 +1,23 @@
 %% Merge ET and EEG data
+%
 % Use data after AUTOMAGIC
 
 %% Setup
 startup
 clear
-addpath /Volumes/methlab/4marius_bdf/eeglab % for pop_importeyetracker (EYE-EEG)
+if ispc == 1
+    addpath W:\4marius_bdf\eeglab
+else
+    addpath /Volumes/methlab/4marius_bdf/eeglab % for pop_importeyetracker (EYE-EEG)
+end
 eeglab
 clc
 close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/automagic/';
+if ispc == 1
+    path = 'W:\Students\Arne\AOC\data\automagic';
+else
+    path = '/Volumes/methlab/Students/Arne/AOC/data/automagic/';
+end
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjectIDs = {folders.name};
@@ -22,9 +31,15 @@ for subjects = 19 : length(subjectIDs) %%% 1 : length(subjectIDs)
     % Check if subject files have already been merged
     %if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/merged/', char(subjectID), filesep, char(subjectID), '*_merged.mat']))
     % Set up data paths
-    filePathET = ['/Volumes/methlab_data/OCC/AOC/data/', char(subjectID)];
-    filePathEEG = ['/Volumes/methlab/Students/Arne/AOC/data/automagic/',  char(subjectID)];
-    resultFolder = ['/Volumes/methlab/Students/Arne/AOC/data/merged/', char(subjectID)];
+    if ispc == 1
+        filePathET = ['V:\OCC\AOC\data\', char(subjectID)];
+        filePathEEG = ['W:\Students\Arne\AOC\data\automagic\',  char(subjectID)];
+        resultFolder = ['W:\Students\Arne\AOC\data\merged\', char(subjectID)];
+    else
+        filePathET = ['/Volumes/methlab_data/OCC/AOC/data/', char(subjectID)];
+        filePathEEG = ['/Volumes/methlab/Students/Arne/AOC/data/automagic/',  char(subjectID)];
+        resultFolder = ['/Volumes/methlab/Students/Arne/AOC/data/merged/', char(subjectID)];
+    end
     mkdir(resultFolder)
     dEEG = dir([filePathEEG, filesep, '*ip*EEG.mat']);
     dET = dir([filePathET, filesep, '*ET.mat']);
@@ -71,7 +86,11 @@ for subjects = 19 : length(subjectIDs) %%% 1 : length(subjectIDs)
 
             %% Save merge info as image
             set(gcf, "Position", [0 0 1200 800], "Color", "W")
-            savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/',subjectID);
+            if ispc == 1
+                savepath = strcat('W:\Students\Arne\AOC\data\controls\', sujectID);
+            else
+                savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/', subjectID);
+            end
             mkdir(savepath)
             if strcmp(task, 'Resting') == 1
                 taskName = 'Resting';

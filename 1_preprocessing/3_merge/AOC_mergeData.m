@@ -24,7 +24,7 @@ subjectIDs = {folders.name};
 
 %% Merge data
 tic;
-for subjects = 19 : length(subjectIDs) %%% 1 : length(subjectIDs)
+for subjects = 1 : length(subjectIDs)
     subjectID = subjectIDs{subjects};
     fprintf('Processing Subject %s\n', subjectID)
 

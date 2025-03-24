@@ -18,7 +18,11 @@ cd(p)
 
 %% Define path, cut data and convert asc to mat files.
 tic
-d = dir(strcat('/Volumes/methlab_data/OCC/AOC/data/*/', '*cnt'));
+if ispc == 1
+    d = dir(strcat('V:\OCC\AOC\data\*\', '*cnt'));
+else
+    d = dir(strcat('/Volumes/methlab_data/OCC/AOC/data/*/', '*cnt'));
+end
 ids = {};
 for f = 1 : size(d, 1)
     filePath = fullfile( d(f).folder, d(f).name);
@@ -32,7 +36,11 @@ end
 for id = 1 : length(ids)
     ID = ids{id};
 
-    filePath = fullfile('/Volumes/methlab_data/OCC/AOC/data', ID);
+    if ispc == 1
+        d = dir(strcat('V:\OCC\AOC\data\', ID));
+    else
+        filePath = fullfile('/Volumes/methlab_data/OCC/AOC/data', ID);
+    end
     d = dir([filePath, filesep, '*.asc']);
 
     if not(isempty(d))

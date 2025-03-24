@@ -42,7 +42,7 @@ for id = 1 : length(ids)
     ID = ids{id};
 
     if ispc == 1
-        d = dir(strcat('V:\OCC\AOC\data\', ID));
+        filePath = fullfile('V:\OCC\AOC\data\', ID);
     else
         filePath = fullfile('/Volumes/methlab_data/OCC/AOC/data', ID);
     end

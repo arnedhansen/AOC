@@ -25,8 +25,6 @@ else
 end
 ids = {};
 for f = 1 : size(d, 1)
-    clc
-    fprintf('Cutting of data for Subject AOC %.3s \n', ids{f})
     filePath = fullfile( d(f).folder, d(f).name);
     AOC_DataCuttingFunction(filePath)
     id = strsplit(d(f).name, '_');

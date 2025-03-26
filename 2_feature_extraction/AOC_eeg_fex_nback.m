@@ -158,7 +158,7 @@ for subj = 1:length(subjects)
         error(['ERROR calculating alpha power and IAF for Subject ' num2str(subjects{subj}) '!'])
     end
 end
-if iscp == 1
+if ispc == 1
     save W:\Students\Arne\AOC\data\features\eeg_matrix_nback eeg_data_nback
 else
     save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_nback eeg_data_nback

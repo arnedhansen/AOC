@@ -7,13 +7,14 @@
 %   TFR
 
 %% Setup
+startup
 [subjects, path] = setup('AOC');
 
 %% Extract POWER
 for subj = 1:length(subjects)
     try
         % Load data
-        datapath = strcat(path,subjects{subj}, '/eeg');
+        datapath = strcat(path, subjects{subj}, '/eeg');
         cd(datapath)
         close all
         load dataEEG_sternberg
@@ -38,7 +39,7 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1;             % Smoothening frequency around foi
         cfg.foilim = [3 30];           % Frequencies of interest
         cfg.keeptrials = 'no';         % Discard trial information
-        cfg.pad = 10;                  % Add zero-padding
+        cfg.pad = 2;                   % Add zero-padding
 
         % Conduct frequency analysis for each condition separately
         cfg.trials = ind2;
@@ -58,6 +59,7 @@ for subj = 1:length(subjects)
 end
 
 %% Setup
+startup
 [subjects, path] = setup('AOC');
 
 %% Define channels
@@ -160,13 +162,14 @@ end
 save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg eeg_data_sternberg
 
 %% Setup
+startup
 [subjects, path] = setup('AOC');
 
 %% Extract POWER WITH TRIAL INFO
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path,subjects{subj}, '/eeg');
+        datapath = strcat(path, subjects{subj}, '/eeg');
         cd(datapath)
         close all
         load dataEEG_sternberg
@@ -206,13 +209,14 @@ for subj = 1:length(subjects)
 end
 
 %% Setup
+startup
 [subjects, path] = setup('AOC');
 
 %% Extract FOOOF Power
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path,subjects{subj}, '/eeg');
+        datapath = strcat(path, subjects{subj}, '/eeg');
         cd(datapath)
         close all
         load dataEEG_sternberg
@@ -252,13 +256,14 @@ for subj = 1:length(subjects)
 end
 
 %% Setup
+startup
 [subjects, path] = setup('AOC');
 
 %% Extract TFR
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path,subjects{subj}, '/eeg');
+        datapath = strcat(path, subjects{subj}, '/eeg');
         cd(datapath)
         close all
         load dataEEG_TFR_sternberg

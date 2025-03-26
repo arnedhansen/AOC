@@ -7,12 +7,14 @@
 %   TFR
 
 %% Setup
+startup
 [subjects, path] = setup('AOC');
 
 %% Extract POWER
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path,subjects{subj}, '/eeg');
+        % Load data
+        datapath = strcat(path, subjects{subj}, '/eeg');
         cd(datapath)
         close all
         load dataEEG_nback
@@ -52,15 +54,8 @@ for subj = 1:length(subjects)
 end
 
 %% Setup
-clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
-eeglab
-clc
-close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+startup
+[subjects, path] = setup('AOC');
 
 %% Define channels
 datapath = strcat(path, subjects{1}, '/eeg');
@@ -162,15 +157,8 @@ end
 save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_nback eeg_data_nback
 
 %% Setup
-clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
-eeglab
-clc
-close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+startup
+[subjects, path] = setup('AOC');
 
 %% Extract POWER WITH TRIAL INFO
 for subj= 1:length(subjects)
@@ -218,15 +206,8 @@ for subj= 1:length(subjects)
 end
 
 %% Setup
-clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
-eeglab
-clc
-close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+startup
+[subjects, path] = setup('AOC');
 
 %% Extract FOOOF Power
 % Read data, segment and convert to FieldTrip data structure
@@ -272,15 +253,8 @@ for subj = 1:length(subjects)
 end
 
 %% Setup
-clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
-eeglab
-clc
-close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+startup
+[subjects, path] = setup('AOC');
 
 %% Extract TFR
 % Read data, segment and convert to FieldTrip data structure

@@ -5,7 +5,7 @@
 %   Reaction Time
 
 %% Setup
-%startup
+startup
 clear
 clc
 close all

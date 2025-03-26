@@ -94,7 +94,7 @@ for subjIdx = 1:numSubjects
         annotation('textbox', [0.665, 0.03, 0.1, 0.05], 'String', 'Sternberg', 'EdgeColor', 'none', 'FontSize', 15);
 
         % Save
-        savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/',subjects{subjIdx});
+        savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/ET_validations/');
         mkdir(savepath)
         cd(savepath)
         saveName = [savepath, filesep, num2str(subjects{subjIdx}) '_validations.png'];

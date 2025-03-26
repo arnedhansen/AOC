@@ -48,7 +48,7 @@ end
 missingFilesPercentage = size(missingFiles, 2) / (length(subjects)*12)*100;
 fprintf('%.2f%% of files are missing\n', missingFilesPercentage);
 
-%% Heatmap Visualization (Using Precomputed Data)
+%% Heatmap Visualization
 close all
 
 % Define paths
@@ -90,27 +90,26 @@ missingPercentage = sum(missingMatrix(:) == 0) / numel(missingMatrix) * 100;
 
 % Heatmap figure
 figure('Position', [100, 100, 2000, 1200], 'Color', 'W');
-imagesc(missingMatrix);
+imagesc(missingMatrix');
 colormap([1 0 0; 0 1 0]); % Red for missing, Green for present
 caxis([0 1]);
 
-% Custom X-tick labels
-xticks(1:length(conditions)*num_blocks);
-xticklabels(arrayfun(@(i) sprintf('%s Block %d', conditions{ceil(i/num_blocks)}, mod(i-1, num_blocks)+1), 1:length(conditions)*num_blocks, 'UniformOutput', false));
-xtickangle(45);
+% Custom X-tick labels (Subjects)
+xticks(1:length(subjects));
+xticklabels(subjects);
 
-% Custom Y-tick labels
-yticks(1:length(subjects));
-yticklabels(subjects);
+% Custom Y-tick labels (Conditions & Blocks)
+yticks(1:length(conditions)*num_blocks);
+yticklabels(arrayfun(@(i) sprintf('%s Block %d', conditions{ceil(i/num_blocks)}, mod(i-1, num_blocks)+1), 1:length(conditions)*num_blocks, 'UniformOutput', false));
 
 % Labels and title
-xlabel('Condition & Block');
-ylabel('Subjects');
+ylabel('Task & Block');
+xlabel('Subjects');
 title(sprintf('AOC Missing Data Heatmap (%.2f%% missing)', missingPercentage), 'FontSize', 50, 'FontWeight', 'bold');
 
 % Add grid lines (grid lines removed and replaced with explicit lines)
 hold on;
-[numRows, numCols] = size(missingMatrix);
+[numRows, numCols] = size(missingMatrix');
 numRows = numRows+1;
 numCols = numCols+1;
 for i = 1:numCols

@@ -35,7 +35,7 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1;% smoothening frequency around foi
         cfg.foilim = [3 30];% frequencies of interest (foi)
         cfg.keeptrials = 'no';% do not keep single trials in output
-        cfg.pad = 2;
+        cfg.pad = 10;
 
         cfg.trials = ind1;
         powload1 = ft_freqanalysis(cfg,dat);

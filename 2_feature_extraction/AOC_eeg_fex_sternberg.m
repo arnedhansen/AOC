@@ -38,7 +38,7 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1;             % Smoothening frequency around foi
         cfg.foilim = [3 30];           % Frequencies of interest
         cfg.keeptrials = 'no';         % Discard trial information
-        cfg.pad = 2;                   % Add zero-padding
+        cfg.pad = 10;                   % Add zero-padding
 
         % Conduct frequency analysis for each condition separately
         cfg.trials = ind2;

@@ -8,17 +8,16 @@
 
 %% Setup
 startup
-[subjects, path] = setup('AOC');
+[subjects, path, ~ , ant128lay] = setup('AOC');
 
 %% Extract POWER
 for subj = 1:length(subjects)
     try
         % Load data
-        datapath = strcat(path, subjects{subj}, '/eeg');
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all
         load dataEEG_nback
-        load('/Volumes/methlab/Students/Arne/MA/headmodel/ant128lay.mat');
 
         %% Identify indices of trials belonging to conditions
         ind1=find(data.trialinfo==21);
@@ -36,7 +35,8 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1;% smoothening frequency around foi
         cfg.foilim = [3 30];% frequencies of interest (foi)
         cfg.keeptrials = 'no';% do not keep single trials in output
-        cfg.pad = 10;
+        cfg.pad = 2;
+
         cfg.trials = ind1;
         powload1 = ft_freqanalysis(cfg,dat);
         cfg.trials = ind2;
@@ -55,10 +55,10 @@ end
 
 %% Setup
 startup
-[subjects, path] = setup('AOC');
+[subjects, path, ~ , ant128lay] = setup('AOC');
 
 %% Define channels
-datapath = strcat(path, subjects{1}, '/eeg');
+datapath = strcat(path, subjects{1}, filesep, 'eeg');
 cd(datapath);
 load('power_nback.mat');
 % Occipital channels
@@ -82,7 +82,7 @@ eeg_data_nback = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {});
 
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path, subjects{subj}, '/eeg');
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath);
         load('power_nback.mat');
 
@@ -140,7 +140,7 @@ for subj = 1:length(subjects)
             'AlphaPower', num2cell([powerIAF1; powerIAF2; powerIAF3]), 'IAF', num2cell([IAF1; IAF2; IAF3]));
 
         %% Save
-        savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/');
+        savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
         mkdir(savepath)
         cd(savepath)
         save eeg_matrix_nback_subj subj_data_eeg
@@ -158,16 +158,15 @@ save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_nback eeg_data_
 
 %% Setup
 startup
-[subjects, path] = setup('AOC');
+[subjects, path, ~ , ant128lay] = setup('AOC');
 
 %% Extract POWER WITH TRIAL INFO
 for subj= 1:length(subjects)
     try
-        datapath = strcat(path,subjects{subj}, '/eeg');
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all
         load dataEEG_nback
-        load('/Volumes/methlab/Students/Arne/MA/headmodel/ant128lay.mat');
 
         %% Identify indices of trials belonging to conditions
         ind1=find(data.trialinfo==21);
@@ -207,17 +206,16 @@ end
 
 %% Setup
 startup
-[subjects, path] = setup('AOC');
+[subjects, path, ~ , ant128lay] = setup('AOC');
 
 %% Extract FOOOF Power
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path,subjects{subj}, '/eeg');
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all
         load dataEEG_nback
-        load('/Volumes/methlab/Students/Arne/MA/headmodel/ant128lay.mat');
 
         %% Identify indices of trials belonging to conditions
         ind1=find(data.trialinfo==21);
@@ -254,17 +252,16 @@ end
 
 %% Setup
 startup
-[subjects, path] = setup('AOC');
+[subjects, path, ~ , ant128lay] = setup('AOC');
 
 %% Extract TFR
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path,subjects{subj}, '/eeg');
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all
         load dataEEG_TFR_nback
-        load('/Volumes/methlab/Students/Arne/MA/headmodel/ant128lay.mat');
 
         %% Identify indices of trials belonging to conditions
         ind1 = find(dataTFR.trialinfo==21);

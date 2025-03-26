@@ -8,17 +8,16 @@
 
 %% Setup
 startup
-[subjects, path] = setup('AOC');
+[subjects, path, ~ , ant128lay] = setup('AOC');
 
 %% Extract POWER
 for subj = 1:length(subjects)
     try
         % Load data
-        datapath = strcat(path, subjects{subj}, '/eeg');
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all
         load dataEEG_sternberg
-        load('/Volumes/methlab/Students/Arne/MA/headmodel/ant128lay.mat');
 
         %% Identify indices of trials belonging to conditions
         ind2 = find(data.trialinfo == 52); % WM load 2
@@ -31,7 +30,7 @@ for subj = 1:length(subjects)
         cfg.latency = [1 2];           % Segmentation for retention interval
         dat = ft_selectdata(cfg,data); % Select data
 
-        % Analysis settings 
+        % Analysis settings
         cfg = [];                      % Empty configuration
         cfg.output = 'pow';            % Estimate power only
         cfg.method = 'mtmfft';         % Multi-taper FFT method
@@ -60,11 +59,11 @@ end
 
 %% Setup
 startup
-[subjects, path] = setup('AOC');
+[subjects, path, ~ , ant128lay] = setup('AOC');
 
 %% Define channels
 subj = 1;
-datapath = strcat(path, subjects{subj}, '/eeg');
+datapath = strcat(path, subjects{subj}, filesep, 'eeg');
 cd(datapath);
 load('power_stern.mat');
 % Occipital channels
@@ -87,7 +86,7 @@ eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', 
 
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path, subjects{subj}, '/eeg');
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath);
         load('power_stern.mat');
 
@@ -145,7 +144,7 @@ for subj = 1:length(subjects)
             'AlphaPower', num2cell([powerIAF2; powerIAF4; powerIAF6]), 'IAF', num2cell([IAF2; IAF4; IAF6]));
 
         %% Save
-        savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/');
+        savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
         mkdir(savepath)
         cd(savepath)
         save eeg_matrix_sternberg_subj subj_data_eeg
@@ -163,17 +162,16 @@ save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg eeg_d
 
 %% Setup
 startup
-[subjects, path] = setup('AOC');
+[subjects, path, ~ , ant128lay] = setup('AOC');
 
 %% Extract POWER WITH TRIAL INFO
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path, subjects{subj}, '/eeg');
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all
         load dataEEG_sternberg
-        load('/Volumes/methlab/Students/Arne/MA/headmodel/ant128lay.mat');
 
         %% Identify indices of trials belonging to conditions
         ind2=find(data.trialinfo==52);
@@ -210,17 +208,16 @@ end
 
 %% Setup
 startup
-[subjects, path] = setup('AOC');
+[subjects, path, ~ , ant128lay] = setup('AOC');
 
 %% Extract FOOOF Power
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path, subjects{subj}, '/eeg');
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all
         load dataEEG_sternberg
-        load('/Volumes/methlab/Students/Arne/MA/headmodel/ant128lay.mat');
 
         %% Identify indices of trials belonging to conditions
         ind2=find(data.trialinfo==52);
@@ -257,17 +254,16 @@ end
 
 %% Setup
 startup
-[subjects, path] = setup('AOC');
+[subjects, path, ~ , ant128lay] = setup('AOC');
 
 %% Extract TFR
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path, subjects{subj}, '/eeg');
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all
         load dataEEG_TFR_sternberg
-        load('/Volumes/methlab/Students/Arne/MA/headmodel/ant128lay.mat');
 
         %% Identify indices of trials belonging to conditions
         ind2 = find(dataTFR.trialinfo == 52);

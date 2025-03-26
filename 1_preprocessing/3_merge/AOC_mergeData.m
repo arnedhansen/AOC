@@ -87,7 +87,7 @@ for subjects = 1 : length(subjectIDs)
                 %% Save merge info as image
                 set(gcf, "Position", [0 0 1200 800], "Color", "W")
                 if ispc == 1
-                    savepath = strcat('W:\Students\Arne\AOC\data\controls\mergeInfo\', sujectID);
+                    savepath = strcat('W:\Students\Arne\AOC\data\controls\mergeInfo\', subjectID);
                 else
                     savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/mergeInfo/', subjectID);
                 end

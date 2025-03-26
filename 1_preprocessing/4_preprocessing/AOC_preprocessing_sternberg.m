@@ -3,11 +3,12 @@
 %% Setup
 startup
 clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
-eeglab
-clc
-close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
+addEEGLab
+if ispc == 1
+    path = 'W:\Students\Arne\AOC\data\merged\';
+else
+    path = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
+end
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
@@ -20,7 +21,13 @@ for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj});
     cd(datapath)
 
-    if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/dataEEG_sternberg.mat']))
+    % Only process unmerged data
+    if ispc == 1
+        mergedFolder = dir(['W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\dataEEG_sternberg.mat']);
+    else
+        mergedFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_sternberg.mat']);
+    end
+    if isempty(mergedFolder)
         clear alleeg
         %% Read blocks
         for block = 1:6
@@ -210,7 +217,7 @@ for subj = 1:length(subjects)
         cfg.reref   = 'yes';
         cfg.refchannel = 'all';
         data = ft_preprocessing(cfg,data);
-        data.trialinfo = trialinfo; 
+        data.trialinfo = trialinfo;
 
         %% Compute gaze metric data
         % WM load 2 gaze metrics average across trials
@@ -229,12 +236,20 @@ for subj = 1:length(subjects)
         blinks_l6 = sum(blink_l6(:)) / sum(trl_l6(:));
 
         %% Save data
-        savepathEEG = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/');
+        if ispc == 1
+            savepathEEG = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\');
+        else
+            savepathEEG = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
+        end
         mkdir(savepathEEG)
         cd(savepathEEG)
         save dataEEG_sternberg data
         save dataEEG_TFR_sternberg dataTFR
-        savepathET = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/gaze/');
+        if ispc == 1
+            savepathET = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\gaze\');
+        else
+            savepathET = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
+        end
         mkdir(savepathET)
         cd(savepathET)
         save dataET_sternberg dataet

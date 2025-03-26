@@ -288,6 +288,8 @@ for subj = 1:length(subjects)
         else
             disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. Loading next subject...'])
         end
+    else
+        disp(['Subject ', num2str(subjects{subj}), ' already done. SKIPPING...'])
     end
 end
 toc

@@ -140,7 +140,11 @@ for subj = 1:length(subjects)
             'AlphaPower', num2cell([powerIAF1; powerIAF2; powerIAF3]), 'IAF', num2cell([IAF1; IAF2; IAF3]));
 
         %% Save
-        savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
+        if ispc == 1
+            savepath = strcat('W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\');
+        else
+            savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
+        end
         mkdir(savepath)
         cd(savepath)
         save eeg_matrix_nback_subj subj_data_eeg
@@ -154,7 +158,11 @@ for subj = 1:length(subjects)
         error(['ERROR calculating alpha power and IAF for Subject ' num2str(subjects{subj}) '!'])
     end
 end
-save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_nback eeg_data_nback
+if iscp == 1
+    save W:\Students\Arne\AOC\data\features\eeg_matrix_nback eeg_data_nback
+else
+    save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_nback eeg_data_nback
+end
 
 %% Setup
 startup

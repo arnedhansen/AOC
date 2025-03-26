@@ -21,13 +21,13 @@ for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj});
     cd(datapath)
 
-    % Only process unmerged data
+    % Only process new data
     if ispc == 1
-        mergedFolder = dir(['W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\dataEEG_sternberg.mat']);
+        newDataFolder = dir(['W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\dataEEG_sternberg.mat']);
     else
-        mergedFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_sternberg.mat']);
+        newDataFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_sternberg.mat']);
     end
-    if isempty(mergedFolder)
+    if isempty(newDataFolder)
         clear alleeg
         %% Read blocks
         for block = 1:6

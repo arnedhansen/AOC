@@ -156,7 +156,7 @@ centerX = 800 / 2;
 centerY = 600 / 2;
 mycolormap = customcolormap_preset('red-white-blue');
 maxval = max([max(l2(:)), max(l4(:)), max(l6(:))]);
-Clim = [-maxval maxval];
+Clim = [0 maxval];
 
 % Plot WM load 2 heatmap
 freq.powspctrm(1,:,:) = squeeze(l2)';

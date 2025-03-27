@@ -277,7 +277,7 @@ for i = 1:n_metrics
     xline(0, '--', 'Color', [0.3, 0.3, 0.3], 'LineWidth', 0.5, 'Alpha', 0.25);
     yline(0, '--', 'Color', [0.3, 0.3, 0.3], 'LineWidth', 0.5, 'Alpha', 0.25);
     title(['Alpha vs ', metrics{i, 1}], 'FontSize', 18);
-    %lsline()
+    lsline()
     hold off;
 end
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/stats/overview/AOC_stats_overview_associations_pow_sternberg.png');

@@ -36,7 +36,7 @@ for i = 1:length(variables)
     set(gca, 'FontSize', 30); 
 
     % Define jitter
-    jitterAmount = 0.1; % Adjust jitter if needed
+    jitterAmount = 0.25; % Adjust jitter if needed
     for cond = 1:3
         cond_data = data(data.Condition == cond, :);
         x_jittered{cond} = cond_data.Condition + (rand(size(cond_data.(variables{i}))) - 0.5) * jitterAmount;
@@ -110,7 +110,7 @@ for i = 1:length(variables)
     end
 
     % Scatter individual data points with jitter
-    jitterAmount = 0.001;  % Amount of jitter in the x-direction
+    jitterAmount = 0.25;  % Amount of jitter in the x-direction
     for cond = 1:3  % Two conditions (Low Contrast = 1, High Contrast = 2)
         % Filter data based on condition
         cond_data = data(data.Condition == cond, :);
@@ -156,7 +156,7 @@ for i = 1:length(variables)
     % Create a new figure for the individual variable
     figure;
     set(gcf, 'Position', [100, 200, 1000, 800], 'Color', 'w'); % Adjust size for individual plots
-    set(gca, 'FontSize', 20); 
+    set(gca, 'FontSize', 15); 
     hold on;
 
     % Bar plot for each participant
@@ -273,7 +273,7 @@ for i = 1:n_metrics
     xline(0, '--', 'Color', [0.3, 0.3, 0.3], 'LineWidth', 0.5, 'Alpha', 0.25);
     yline(0, '--', 'Color', [0.3, 0.3, 0.3], 'LineWidth', 0.5, 'Alpha', 0.25);
     title(['Alpha vs ', metrics{i, 1}], 'FontSize', 18);
-    %lsline()
+    lsline()
     hold off;
 end
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/stats/overview/AOC_stats_overview_associations_pow_nback.png');

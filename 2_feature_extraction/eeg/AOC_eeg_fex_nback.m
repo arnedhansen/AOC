@@ -1,16 +1,16 @@
 %% AOC EEG Feature Extraction N-back
 %
 % Extracted features:
-%   Power Spectrum
+%   Power Spectrum (Raw and Baseline)
 %   IAF  and Power at IAF
 %   FOOOF Power
 %   TFR
 
-%% Setup
+%% POWER Spectrum (Raw and Baseline)
+% Setup
 startup
 [subjects, path, ~ , ant128lay] = setup('AOC');
 
-%% POWER Spectrum
 for subj = 1:length(subjects)
     try
         % Load data
@@ -19,15 +19,17 @@ for subj = 1:length(subjects)
         close all
         load dataEEG_nback
 
-        %% Identify indices of trials belonging to conditions
-        ind1=find(data.trialinfo==21);
-        ind2=find(data.trialinfo==22);
-        ind3=find(data.trialinfo==23);
+        % Identify indices of trials belonging to conditions
+        ind1=find(data.trialinfo == 21);
+        ind2=find(data.trialinfo == 22);
+        ind3=find(data.trialinfo == 23);
 
-        %% Frequency analysis
+        % Select data
         cfg = [];
         cfg.latency = [0 2]; % Segment from 0 to 2 [seconds]
         dat = ft_selectdata(cfg,data);
+
+        % Frequency analysis settings
         cfg = [];% empty config
         cfg.output = 'pow';% estimates power only
         cfg.method = 'mtmfft';% multi taper fft method
@@ -37,6 +39,7 @@ for subj = 1:length(subjects)
         cfg.keeptrials = 'no';% do not keep single trials in output
         cfg.pad = 10;
 
+        % Frequency analysis settings
         cfg.trials = ind1;
         powload1 = ft_freqanalysis(cfg,dat);
         cfg.trials = ind2;
@@ -44,9 +47,22 @@ for subj = 1:length(subjects)
         cfg.trials = ind3;
         powload3 = ft_freqanalysis(cfg,dat);
 
-        %% Save
+        % Save raw power spectra
         cd(datapath)
         save power_nback powload1 powload2 powload3
+
+        % Baselined frequency analysis settings
+        cfg                              = [];
+        cfg.baseline                     = [-1.5 -0.5];
+        cfg.baselinetype                 = 'db';
+        powload1_bl                      = ft_freqbaseline(cfg, powload1);
+        powload2_bl                      = ft_freqbaseline(cfg, powload2);
+        powload3_bl                      = ft_freqbaseline(cfg, powload3);
+
+        % Save baselined power spectra
+        cd(datapath)
+        save power_nback_bl powload1_bl powload2_bl powload3_bl
+
     catch ME
         ME.message
         error(['ERROR extracting power for Subject ' num2str(subjects{subj}) '!'])

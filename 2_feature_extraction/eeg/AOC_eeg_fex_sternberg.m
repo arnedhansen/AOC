@@ -6,7 +6,7 @@
 %   FOOOF Power
 %   TFR
 
-%% POWER Spectrum
+%% POWER Spectrum (Raw and Baseline)
 % Setup
 startup
 [subjects, path, ~ , ant128lay] = setup('AOC');
@@ -19,12 +19,12 @@ for subj = 1:length(subjects)
         close all
         load dataEEG_sternberg
 
-        %% Identify indices of trials belonging to conditions
+        % Identify indices of trials belonging to conditions
         ind2 = find(data.trialinfo == 52); % WM load 2
         ind4 = find(data.trialinfo == 54); % WM load 4
         ind6 = find(data.trialinfo == 56); % WM load 6
 
-        %% Frequency analysis
+        % Frequency analysis
         % Select data
         cfg = [];                      % Empty configuration
         cfg.latency = [1 2];           % Segmentation for retention interval
@@ -48,9 +48,22 @@ for subj = 1:length(subjects)
         cfg.trials = ind6;
         powload6 = ft_freqanalysis(cfg,dat);
 
-        %% Save data
+        % Save data
         cd(datapath)
         save power_stern powload2 powload4 powload6
+
+        % Baselined frequency analysis settings
+        cfg                              = [];
+        cfg.baseline                     = [-1.5 -0.5];
+        cfg.baselinetype                 = 'db';
+        powload2_bl                      = ft_freqbaseline(cfg, powload2);
+        powload4_bl                      = ft_freqbaseline(cfg, powload4);
+        powload6_bl                      = ft_freqbaseline(cfg, powload6);
+
+        % Save baselined power spectra
+        cd(datapath)
+        save power_stern_bl powload2_bl powload4_bl powload6_bl
+
     catch ME
         ME.message
         error(['ERROR extracting power for Subject ' num2str(subjects{subj}) '!'])

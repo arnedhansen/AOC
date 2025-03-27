@@ -35,7 +35,7 @@ variables <- c("Accuracy", "ReactionTime", "GazeDeviation", "GazeStd", "MSRate",
 titles <- c("Accuracy", "Reaction Time", "Gaze Deviation", "Gaze Standard Deviation",
             "Microsaccade Rate", "Fixations", "Saccades", "Alpha Power", "IAF")
 y_labels  <- c("Accuracy [%]", "Reaction Time [ms]", "Gaze Deviation [px]", "Gaze Std [px]",
-               "Microsaccade Rate [ms/s]", "Fixations", "Saccades", "Alpha Power [dB]", "IAF [Hz]")
+               "Microsaccade Rate [ms/s]", "Fixations", "Saccades", "Alpha Power [\u03BCV²/Hz]", "IAF [Hz]")
 save_names <- c("acc", "rt", "gazedev", "ms", "blink", "fix", "sacc", "pow", "iaf")
 
 # Remove outliers using the IQR method (1.5 * IQR rule)

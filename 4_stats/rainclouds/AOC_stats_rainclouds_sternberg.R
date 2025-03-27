@@ -36,10 +36,10 @@ dat$Condition <- factor(dat$Condition, levels = c(1, 2, 3), labels = c("WM load 
 # Define the list of variables, y-axis labels and save names (to be used in file naming)
 variables <- c("Accuracy", "ReactionTime", "GazeDeviation", "GazeStd", "MSRate", "Fixations", "Saccades", "AlphaPower", "IAF")
 titles <- c("Accuracy", "Reaction Time", "Gaze Deviation", "Gaze Standard Deviation",
-                     "Microsaccade Rate", "Fixations", "Saccades", "Alpha Power", "IAF")
+                     "Microsaccade Rate", "Fixations", "Saccades", "Alpha Power", "Individual Alpha Frequency")
 y_labels  <- c("Accuracy [%]", "Reaction Time [ms]", "Gaze Deviation [px]", "Gaze Std [px]",
                "Microsaccade Rate [ms/s]", "Fixations", "Saccades", "Alpha Power [\u03BCV²/Hz]", "IAF [Hz]")
-save_names <- c("acc", "rt", "gazedev", "ms", "blink", "fix", "sacc", "pow", "iaf")
+save_names <- c("acc", "rt", "gazedev", "gazestd", "ms", "fix", "sacc", "pow", "iaf")
 
 # Remove outliers using the IQR method (1.5 * IQR rule)
 dat <- dat %>%
@@ -159,13 +159,34 @@ for(i in seq_along(variables)) {
     )
   
   # Adjust the y-axis
-  # if(var == "AlphaPower") {
-  #   p <- p + scale_y_continuous(
-  #     limits = c(0.0, 0.5),
-  #     breaks = seq(0.00, 0.5, by = 0.1),
-  #     expand = c(0.001, 0.001)
-  #   ) 
-  # }
+  if(var == "Accuracy") {
+    p <- p + scale_y_continuous(
+      limits = c(60, 100),
+      breaks = seq(65, 100, by = 5),
+      expand = c(0.001, 0.001)
+    ) 
+  }
+  if(var == "ReactionTime") {
+    p <- p + scale_y_continuous(
+      limits = c(550, 1200),
+      breaks = seq(600, 1200, by = 200),
+      expand = c(0.001, 0.001)
+    ) 
+  }
+  if(var == "MSRate") {
+    p <- p + scale_y_continuous(
+      limits = c(0, 4),
+      breaks = seq(0, 4, by = 1),
+      expand = c(0.001, 0.001)
+    ) 
+  }
+  if(var == "IAF") {
+    p <- p + scale_y_continuous(
+      limits = c(8.5, 13),
+      breaks = seq(9, 13, by = 1),
+      expand = c(0.001, 0.001)
+    ) 
+  }
   
   # Save the plot as a PNG file
   ggsave(filename = file.path(output_dir, paste0("AOC_stats_rainclouds_", save_name, "_sternberg.png")),

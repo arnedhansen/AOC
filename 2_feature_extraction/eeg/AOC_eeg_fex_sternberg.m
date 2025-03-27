@@ -5,6 +5,7 @@
 %   IAF and Power at IAF
 %   FOOOF Power
 %   TFR
+%   Baselined Power Spectrum
 
 %% POWER Spectrum (Raw and Baseline)
 % Setup
@@ -56,13 +57,13 @@ for subj = 1:length(subjects)
         cfg                              = [];
         cfg.baseline                     = [-1.5 -0.5];
         cfg.baselinetype                 = 'db';
-        powload2_bl                      = ft_freqbaseline(cfg, powload2);
+        powload4_bl                      = ft_freqbaseline(cfg, powload2);
         powload4_bl                      = ft_freqbaseline(cfg, powload4);
         powload6_bl                      = ft_freqbaseline(cfg, powload6);
 
         % Save baselined power spectra
         cd(datapath)
-        save power_stern_bl powload2_bl powload4_bl powload6_bl
+        save power_stern_bl powload4_bl powload4_bl powload6_bl
 
     catch ME
         ME.message
@@ -342,4 +343,41 @@ for subj = 1:length(subjects)
         ME.message
         error(['ERROR extracting TFR for Subject ' num2str(subjects{subj}) '!'])
     end
+end
+
+%% BASELINED POWER Spectrum
+% Concert TFR data to POWSPCTRM (channels x frequency)
+% Setup
+startup
+[subjects, path, ~ , ant128lay] = setup('AOC');
+
+% Baselined power spectra analysis
+analysis_period = [1 2]; % N-back analysis window
+freq_range = [8 14];
+for subj = 1 : length(subjects)
+    try
+        % Load data
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        cd(datapath);
+        load('tfr_stern.mat');
+
+        % Power spectra calculations
+        powload2_bl = select_data(analysis_period, freq_range, tfr2_bl);
+        powload4_bl = select_data(analysis_period, freq_range, tfr4_bl);
+        powload6_bl = select_data(analysis_period, freq_range, tfr6_bl);
+
+        % Remove time dimension for POWSCPTRM (channels x frequency)
+        powload2_bl = remove_time_dimension(powload2_bl);
+        powload4_bl = remove_time_dimension(powload4_bl);
+        powload6_bl = remove_time_dimension(powload6_bl);
+
+        % Save baselined power spectra
+        cd(datapath)
+        save power_stern_bl powload2_bl powload4_bl powload6_bl
+
+    catch ME
+        ME.message
+        error(['ERROR extracting baselined power for Subject ' num2str(subjects{subj}) '!'])
+    end
+
 end

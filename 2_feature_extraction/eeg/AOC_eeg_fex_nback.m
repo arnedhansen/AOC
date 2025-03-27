@@ -2,10 +2,10 @@
 %
 % Extracted features:
 %   Power Spectrum
-%   Baselined Power Spectrum
 %   IAF  and Power at IAF
 %   FOOOF Power
 %   TFR
+%   Baselined Power Spectrum
 
 %% POWER Spectrum
 % Setup
@@ -57,67 +57,6 @@ for subj = 1:length(subjects)
         error(['ERROR extracting power for Subject ' num2str(subjects{subj}) '!'])
     end
 end
-
-%% BASELINED POWER Spectrum
-% % Setup
-% startup
-% [subjects, path, ~ , ant128lay] = setup('AOC');
-% 
-% for subj = 1:length(subjects)
-%     try
-%         % Load data
-%         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
-%         cd(datapath)
-%         close all
-%         load dataEEG_nback
-% 
-%         % Identify indices of trials belonging to conditions
-%         ind1=find(data.trialinfo == 21);
-%         ind2=find(data.trialinfo == 22);
-%         ind3=find(data.trialinfo == 23);
-% 
-%         % Select data
-%         cfg = [];
-%         cfg.latency = [-1.5 2]; % FOR BASELINE: Segment from -1.5 to 2 [seconds]
-%         dat = ft_selectdata(cfg,data);
-% 
-%         % Frequency analysis settings
-%         cfg = [];
-%         cfg.method      = 'mtmconvol';
-%         cfg.output      = 'pow';
-%         cfg.taper       = 'dpss';
-%         cfg.foi         = 3:1:30;              % frequencies of interest
-%         cfg.t_ftimwin   = 4./cfg.foi;          % time window length: 4 cycles per frequency
-%         cfg.toi         = -1.5:0.05:2;         % time points of interest
-%         cfg.tapsmofrq   = 1;                   % smoothing frequency
-%         cfg.keeptrials  = 'no';
-%         cfg.pad         = 10;
-% 
-%         % Frequency analysis settings
-%         cfg.trials = ind1;
-%         powload1 = ft_freqanalysis(cfg,dat);
-%         cfg.trials = ind2;
-%         powload2 = ft_freqanalysis(cfg,dat);
-%         cfg.trials = ind3;
-%         powload3 = ft_freqanalysis(cfg,dat);
-% 
-%         % Baselined frequency analysis settings
-%         cfg                              = [];
-%         cfg.baseline                     = [-1.5 -0.5];
-%         cfg.baselinetype                 = 'db';
-%         powload1_bl                      = ft_freqbaseline(cfg, powload1);
-%         powload2_bl                      = ft_freqbaseline(cfg, powload2);
-%         powload3_bl                      = ft_freqbaseline(cfg, powload3);
-% 
-%         % Save baselined power spectra
-%         cd(datapath)
-%         save power_nback_bl powload1_bl powload2_bl powload3_bl
-% 
-%     catch ME
-%         ME.message
-%         error(['ERROR extracting power for Subject ' num2str(subjects{subj}) '!'])
-%     end
-% end
 
 %% ALPHA POWER and IAF
 % Setup
@@ -392,4 +331,41 @@ for subj = 1:length(subjects)
         ME.message
         error(['ERROR extracting TFR for Subject ' num2str(subjects{subj}) '!'])
     end
+end
+
+%% BASELINED POWER Spectrum
+% Concert TFR data to POWSPCTRM (channels x frequency)
+% Setup
+startup
+[subjects, path, ~ , ant128lay] = setup('AOC');
+
+% Baselined power spectra analysis
+analysis_period = [0 2]; % N-back analysis window
+freq_range = [8 14];
+for subj = 1 : length(subjects)
+    try
+        % Load data
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        cd(datapath);
+        load('tfr_nback.mat');
+
+        % Power spectra calculations
+        powload1_bl = select_data(analysis_period, freq_range, tfr1_bl);
+        powload2_bl = select_data(analysis_period, freq_range, tfr2_bl);
+        powload3_bl = select_data(analysis_period, freq_range, tfr3_bl);
+
+        % Remove time dimension for POWSCPTRM (channels x frequency)
+        powload1_bl = remove_time_dimension(powload1_bl);
+        powload2_bl = remove_time_dimension(powload2_bl);
+        powload3_bl = remove_time_dimension(powload3_bl);
+
+        % Save baselined power spectra
+        cd(datapath)
+        save power_nback_bl powload1_bl powload2_bl powload3_bl
+
+    catch ME
+        ME.message
+        error(['ERROR extracting baselined power for Subject ' num2str(subjects{subj}) '!'])
+    end
+
 end

@@ -46,46 +46,6 @@ gapow1 = ft_freqgrandaverage([],powl1{:});
 gapow2 = ft_freqgrandaverage([],powl2{:});
 gapow3 = ft_freqgrandaverage([],powl3{:});
 
-%% Plot alpha power BOXPLOT
-close all
-
-% Collect data into a matrix for plotting
-dataAlphaPower = [powIAF1; powIAF2; powIAF3]';
-
-% Plot
-figure;
-set(gcf, 'Position', [0, 0, 1200, 900], 'Color', 'w');
-colors = {'b', 'g', 'r'};
-conditions = {'1-back', '2-back', '3-back'};
-numSubjects = length(subjects);
-
-% Boxplot
-hold on;
-boxplot(dataAlphaPower, 'Colors', 'k', 'Symbol', '', 'Widths', 0.5);
-for numSubjects = 1:numSubjects
-    plot(1:length(conditions), dataAlphaPower(numSubjects, :), '-o', 'Color', [0.5, 0.5, 0.5], 'MarkerFaceColor', 'w');
-end
-
-% Scatter plot for individual points
-scatterHandles = gobjects(1, length(conditions));
-for condIdx = 1:length(conditions)
-    scatterHandles(condIdx) = scatter(repelem(condIdx, numSubjects), dataAlphaPower(:, condIdx), 100, colors{condIdx}, 'filled', 'MarkerEdgeColor', 'k');
-end
-
-% Adjust plot
-xlabel('Conditions', 'FontName', 'Arial', 'FontSize', 25);
-ylabel('Alpha Power at IAF [\muV^2/Hz]', 'FontName', 'Arial', 'FontSize', 25);
-set(gca, 'XTick', 1:length(conditions), 'XTickLabel', conditions, 'FontSize', 20);
-set(gca, 'LineWidth', 1.5);
-legend(scatterHandles, conditions, 'FontName', 'Arial', 'FontSize', 20, 'Location', 'northeast');
-set(gca, 'XLim', [0.5 3.5]);
-set(gca, 'YLim', [0 max(dataAlphaPower(:))*1.15]);
-title('N-back Alpha Power at IAF', 'FontName', 'Arial', 'FontSize', 30);
-hold off;
-
-% Save
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/boxplot/AOC_alpha_power_nback_boxplot.png');
-
 %% Plot alpha power grand average POWERSPECTRUM
 close all
 figure;

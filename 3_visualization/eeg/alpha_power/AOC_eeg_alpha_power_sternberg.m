@@ -44,40 +44,6 @@ gapow2 = ft_freqgrandaverage([],powl2{:});
 gapow4 = ft_freqgrandaverage([],powl4{:});
 gapow6 = ft_freqgrandaverage([],powl6{:});
 
-%% Plot alpha power BOXPLOT
-close all
-figure;
-set(gcf, 'Position', [0, 0, 1200, 900], 'Color', 'w');
-conditions = {'WM load 2', 'WM load 4', 'WM load 6'};
-numSubjects = length(subjects);
-
-% Collect data into a matrix for plotting
-dataAlphaPower = [powIAF2; powIAF4; powIAF6]';
-
-% Plot for alpha power
-hold on;
-% Boxplots
-boxplot(dataAlphaPower, 'Colors', 'k', 'Symbol', '', 'Widths', 0.5);
-for subj = 1:numSubjects
-    plot(1:length(conditions), dataAlphaPower(subj, :), '-o', 'Color', [0.5, 0.5, 0.5], 'MarkerFaceColor', 'w');
-end
-% Scatter plot for individual points
-scatterHandles = gobjects(1, length(conditions));
-for condIdx = 1:length(conditions)
-    scatterHandles(condIdx) = scatter(repelem(condIdx, numSubjects), dataAlphaPower(:, condIdx), 100, colors{condIdx}, 'filled', 'MarkerEdgeColor', 'k');
-end
-xlabel('Condition', 'FontName', 'Arial', 'FontSize', 25);
-ylabel('Alpha Power at IAF [\muV^2/Hz]', 'FontName', 'Arial', 'FontSize', 25);
-set(gca, 'XTick', 1:length(conditions), 'XTickLabel', conditions, 'FontSize', 20);
-set(gca, 'LineWidth', 1.5);
-legend(scatterHandles, conditions, 'FontName', 'Arial', 'FontSize', 20, 'Location', 'best');
-title('Sternberg Alpha Power at IAF', 'FontName', 'Arial', 'FontSize', 30);
-set(gca, 'XLim', [0.5 3.5]);
-hold off;
-
-% Save
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/boxplot/AOC_alpha_power_sternberg_boxplot.png');
-
 %% Plot alpha power grand average POWERSPECTRUM
 close all
 figure;

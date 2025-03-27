@@ -1,4 +1,4 @@
-# Raincloud plots for AOC N-back data
+# Raincloud plots for AOC Sternberg data
 
 # Load necessary libraries
 library(ggplot2)
@@ -19,7 +19,10 @@ add_sample <- function(x) {
 }
 
 # Read in the data (adjust the file path if needed)
-dat <- read.csv("/Volumes/methlab/Students/Arne/AOC/data/features/merged_data_nback.csv")
+dat <- read.csv("/Volumes/methlab/Students/Arne/AOC/data/features/merged_data_sternberg.csv")
+
+# Change condition from 2, 4, 6 to 1, 2, 4
+dat$Condition <- dat$Condition / 2
 
 # Transform reaction times to milliseconds
 dat$ReactionTime <- dat$ReactionTime * 1000
@@ -28,12 +31,12 @@ dat$ReactionTime <- dat$ReactionTime * 1000
 dat$GazeStd <- (dat$GazeStdX + dat$GazeStdY) / 2
 
 # Convert Condition to a factor with labels "1-back", "2-back", "3-back"
-dat$Condition <- factor(dat$Condition, levels = c(1, 2, 3), labels = c("1-back", "2-back", "3-back"))
+dat$Condition <- factor(dat$Condition, levels = c(1, 2, 3), labels = c("WM load 2", "WM load 4", "WM load 6"))
 
 # Define the list of variables, y-axis labels and save names (to be used in file naming)
 variables <- c("Accuracy", "ReactionTime", "GazeDeviation", "GazeStd", "MSRate", "Fixations", "Saccades", "AlphaPower", "IAF")
 titles <- c("Accuracy", "Reaction Time", "Gaze Deviation", "Gaze Standard Deviation",
-            "Microsaccade Rate", "Fixations", "Saccades", "Alpha Power", "IAF")
+                     "Microsaccade Rate", "Fixations", "Saccades", "Alpha Power", "IAF")
 y_labels  <- c("Accuracy [%]", "Reaction Time [ms]", "Gaze Deviation [px]", "Gaze Std [px]",
                "Microsaccade Rate [ms/s]", "Fixations", "Saccades", "Alpha Power [dB]", "IAF [Hz]")
 save_names <- c("acc", "rt", "gazedev", "ms", "blink", "fix", "sacc", "pow", "iaf")
@@ -135,7 +138,7 @@ for(i in seq_along(variables)) {
       x = "Condition",
       y = y_lab,
       title = titles[i],
-      subtitle = paste("N-back", titles[i], "by Condition")
+      subtitle = paste("Sternberg", titles[i], "by Condition")
     ) +
     
     theme_minimal(base_family = "Zilla Slab", base_size = 15) +
@@ -165,6 +168,6 @@ for(i in seq_along(variables)) {
   # }
   
   # Save the plot as a PNG file
-  ggsave(filename = file.path(output_dir, paste0("AOC_stats_rainclouds_", save_name, "_nback.png")),
+  ggsave(filename = file.path(output_dir, paste0("AOC_stats_rainclouds_", save_name, "_sternberg.png")),
          plot = p, width = 8, height = 6, dpi = 300)
 }

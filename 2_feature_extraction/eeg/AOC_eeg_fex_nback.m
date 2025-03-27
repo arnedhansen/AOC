@@ -10,7 +10,7 @@
 startup
 [subjects, path, ~ , ant128lay] = setup('AOC');
 
-%% Extract POWER
+%% POWER Spectrum
 for subj = 1:length(subjects)
     try
         % Load data
@@ -53,11 +53,12 @@ for subj = 1:length(subjects)
     end
 end
 
-%% Setup
+%% ALPHA POWER and IAF
+% Setup
 startup
 [subjects, path, ~ , ant128lay] = setup('AOC');
 
-%% Define channels
+% Define channels
 datapath = strcat(path, subjects{1}, filesep, 'eeg');
 cd(datapath);
 load('power_nback.mat');
@@ -71,7 +72,7 @@ for i = 1:length(powload2.label)
 end
 channels = occ_channels;
 
-%% Load data and calculate alpha power and IAF
+% Load data and calculate power and IAF
 close all
 alphaRange = [8 14];
 powerIAF1 = [];
@@ -99,22 +100,22 @@ for subj = 1:length(subjects)
 
         % Calculate IAF for 1-back
         alphaPower1 = powspctrm1(alphaIndices);
-        [pks,locs] = findpeaks(alphaPower1);
-        [~, ind] = max(pks);
+        [pks1,locs] = findpeaks(alphaPower1);
+        [~, ind] = max(pks1);
         IAF1 = powload1.freq(alphaIndices(locs(ind)));
         IAF_range1 = find(powload1.freq > (IAF1-4) & powload1.freq < (IAF1+2));
 
         % Calculate IAF for 2-back
         alphaPower2 = powspctrm2(alphaIndices);
-        [pks,locs] = findpeaks(alphaPower2);
-        [~, ind] = max(pks);
+        [pks2,locs] = findpeaks(alphaPower2);
+        [~, ind] = max(pks2);
         IAF2 = powload2.freq(alphaIndices(locs(ind)));
         IAF_range2 = find(powload2.freq > (IAF2-4) & powload2.freq < (IAF2+2));
 
         % Calculate IAF for 3-back
         alphaPower3 = powspctrm3(alphaIndices);
-        [pks,locs] = findpeaks(alphaPower3);
-        [~, ind] = max(pks);
+        [pks3,locs] = findpeaks(alphaPower3);
+        [~, ind] = max(pks3);
         IAF3 = powload3.freq(alphaIndices(locs(ind)));
         IAF_range3 = find(powload3.freq > (IAF3-4) & powload3.freq < (IAF3+2));
 
@@ -123,23 +124,42 @@ for subj = 1:length(subjects)
         powerIAF2 = mean(powspctrm2(IAF_range2));
         powerIAF3 = mean(powspctrm3(IAF_range3));
 
+        % Do not extract alpha peak if there is no clear peak
         % Check if any IAF is 8 or 14 and set the corresponding power to NaN
-        if IAF1 == 8 || IAF1 == 14
+        if IAF1 == alphaRange(1) || IAF1 == alphaRange(2)
             powerIAF1 = NaN;
+            IAF1 = NaN;
         end
-        if IAF2 == 8 || IAF2 == 14
+        if IAF2 == alphaRange(1) || IAF2 == alphaRange(2)
             powerIAF2 = NaN;
+            IAF2 = NaN;
         end
-        if IAF3 == 8 || IAF3 == 14
+        if IAF3 == alphaRange(1) || IAF3 == alphaRange(2)
             powerIAF3 = NaN;
+            IAF3 = NaN;
         end
 
-        %% Create a structure array for this subject
+        % Check if the averaged power at IAF -4/+2 Hz is more than the peak
+        % of power. If so, set power to NaN
+        if powerIAF1 > max(pks1)
+            powerIAF1 = NaN;
+            IAF1 = NaN;
+        end
+        if powerIAF2 > max(pks2)
+            powerIAF2 = NaN;
+            IAF2 = NaN;
+        end
+        if powerIAF3 > max(pks3)
+            powerIAF3 = NaN;
+            IAF3 = NaN;
+        end
+
+        % Create a structure array for this subject
         subID = str2num(subjects{subj});
         subj_data_eeg = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell([1; 2; 3]), ...
             'AlphaPower', num2cell([powerIAF1; powerIAF2; powerIAF3]), 'IAF', num2cell([IAF1; IAF2; IAF3]));
 
-        %% Save
+        % Save
         if ispc == 1
             savepath = strcat('W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\');
         else
@@ -164,12 +184,12 @@ else
     save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_nback eeg_data_nback
 end
 
-%% Setup
+%% POWER WITH TRIAL INFO
+% Setup
 startup
 [subjects, path, ~ , ant128lay] = setup('AOC');
 
-%% Extract POWER WITH TRIAL INFO
-for subj= 1:length(subjects)
+for subj = 1:length(subjects)
     try
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
@@ -211,12 +231,11 @@ for subj= 1:length(subjects)
         error(['ERROR extracting trial-by-trial power for Subject ' num2str(subjects{subj}) '!'])
     end
 end
-
-%% Setup
+%% FOOOF Power
+% Setup
 startup
 [subjects, path, ~ , ant128lay] = setup('AOC');
 
-%% Extract FOOOF Power
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     try
@@ -258,11 +277,11 @@ for subj = 1:length(subjects)
     end
 end
 
-%% Setup
+%% TFR
+% Setup
 startup
 [subjects, path, ~ , ant128lay] = setup('AOC');
 
-%% Extract TFR
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     try

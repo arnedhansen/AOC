@@ -189,7 +189,7 @@ for subj = 1:length(subjects)
     xlim([5 30]);
     xlabel('Frequency [Hz]');
     ylabel('Power [a.u.]');
-    legend([eb1.mainLine, eb2.mainLine eb3.mainLine], {'WM Load 2', 'WM Load 4', 'WM Load 6'}, 'FontName', 'Arial', 'FontSize', 20);
+    legend([eb1.mainLine, eb2.mainLine eb3.mainLine], {'1-back', '2-back', '3-back'}, 'FontName', 'Arial', 'FontSize', 20);
     title(sprintf('Subject %s: Power Spectrum', subjects{subj}), 'FontSize', 30);
     hold off;
 
@@ -261,7 +261,7 @@ for subj = 1:num_subj
     xlabel('Frequency [Hz]');
     ylabel('Power [a.u.]');
     if subj == 1
-        legend([eb1.mainLine, eb2.mainLine eb3.mainLine], {'WM Load 2', 'WM Load 4', 'WM Load 6'}, 'FontName', 'Arial', 'FontSize', 15, 'Location', 'best');
+        legend([eb1.mainLine, eb2.mainLine eb3.mainLine], {'1-back', '2-back', '3-back'}, 'FontName', 'Arial', 'FontSize', 15, 'Location', 'best');
     end
     title(sprintf('Subject %s', subjects{subj}), 'FontSize', 14);
     hold off;

@@ -6,11 +6,11 @@
 %   FOOOF Power
 %   TFR
 
-%% Setup
+%% POWER Spectrum
+% Setup
 startup
 [subjects, path, ~ , ant128lay] = setup('AOC');
 
-%% Extract POWER
 for subj = 1:length(subjects)
     try
         % Load data
@@ -57,11 +57,12 @@ for subj = 1:length(subjects)
     end
 end
 
-%% Setup
+%% ALPHA POWER and IAF
+% Setup
 startup
 [subjects, path, ~ , ant128lay] = setup('AOC');
 
-%% Define channels
+% Define channels
 subj = 1;
 datapath = strcat(path, subjects{subj}, filesep, 'eeg');
 cd(datapath);
@@ -76,7 +77,7 @@ for i = 1:length(powload2.label)
 end
 channels = occ_channels;
 
-%% Load data and calculate alpha power and IAF
+% Load data and calculate alpha power and IAF
 alphaRange = [8 14];
 powerIAF2 = [];
 powerIAF4 = [];
@@ -103,22 +104,22 @@ for subj = 1:length(subjects)
 
         % Calculate IAF for WM load 2
         alphaPower2 = powspctrm2(alphaIndices);
-        [pks,locs] = findpeaks(alphaPower2);
-        [~, ind] = max(pks);
+        [pks2,locs] = findpeaks(alphaPower2);
+        [~, ind] = max(pks2);
         IAF2 = powload2.freq(alphaIndices(locs(ind)));
         IAF_range2 = find(powload2.freq > (IAF2-4) & powload2.freq < (IAF2+2));
 
         % Calculate IAF for WM load 4
         alphaPower4 = powspctrm4(alphaIndices);
-        [pks,locs] = findpeaks(alphaPower4);
-        [~, ind] = max(pks);
+        [pks4,locs] = findpeaks(alphaPower4);
+        [~, ind] = max(pks4);
         IAF4 = powload4.freq(alphaIndices(locs(ind)));
         IAF_range4 = find(powload4.freq > (IAF4-4) & powload4.freq < (IAF4+2));
 
         % Calculate IAF for WM load 6
         alphaPower6 = powspctrm6(alphaIndices);
-        [pks,locs] = findpeaks(alphaPower6);
-        [~, ind] = max(pks);
+        [pks6,locs] = findpeaks(alphaPower6);
+        [~, ind] = max(pks6);
         IAF6 = powload6.freq(alphaIndices(locs(ind)));
         IAF_range6 = find(powload6.freq > (IAF6-4) & powload6.freq < (IAF6+2));
 
@@ -127,23 +128,42 @@ for subj = 1:length(subjects)
         powerIAF4 = mean(powspctrm4(IAF_range4));
         powerIAF6 = mean(powspctrm6(IAF_range6));
 
+        % Do not extract alpha peak if there is no clear peak
         % Check if any IAF is 8 or 14 and set the corresponding power to NaN
-        if IAF2 == 8 || IAF2 == 14
+        if IAF2 == alphaRange(1) || IAF2 == alphaRange(2)
             powerIAF2 = NaN;
+            IAF2 = NaN;
         end
-        if IAF4 == 8 || IAF4 == 14
+        if IAF4 == alphaRange(1) || IAF4 == alphaRange(2)
             powerIAF4 = NaN;
+            IAF4 = NaN;
         end
-        if IAF6 == 8 || IAF6 == 14
+        if IAF6 == alphaRange(1) || IAF6 == alphaRange(2)
             powerIAF6 = NaN;
+            IAF6 = NaN;
         end
 
-        %% Create a structure array for this subject
+        % Check if the averaged power at IAF -4/+2 Hz is more than the peak
+        % of power. If so, set power to NaN
+        if powerIAF2 > max(pks2)
+            powerIAF2 = NaN;
+            IAF2 = NaN;
+        end
+        if powerIAF4 > max(pks4)
+            powerIAF4 = NaN;
+            IAF4 = NaN;
+        end
+        if powerIAF6 > max(pks6)
+            powerIAF6 = NaN;
+            IAF6 = NaN;
+        end
+
+        % Create a structure array for this subject
         subID = str2num(subjects{subj});
         subj_data_eeg = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell([2; 4; 6]), ...
             'AlphaPower', num2cell([powerIAF2; powerIAF4; powerIAF6]), 'IAF', num2cell([IAF2; IAF4; IAF6]));
 
-        %% Save
+        % Save
         if ispc == 1
             savepath = strcat('W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\');
         else
@@ -156,7 +176,7 @@ for subj = 1:length(subjects)
         save IAF_sternberg IAF2 IAF4 IAF6
         eeg_data_sternberg = [eeg_data_sternberg; subj_data_eeg];
         clc
-        fprintf('Subject %s IAF: load2: %f Hz (Power: %f), load4: %f Hz (Power: %f), load6: %f Hz (Power: %f) \n', subjects{subj}, IAF2, powerIAF2, IAF4, powerIAF4, IAF6, powerIAF6);
+        fprintf('Subject %s IAF: WM2: %f Hz (Power: %f), WM4: %f Hz (Power: %f), WM6: %f Hz (Power: %f) \n', subjects{subj}, IAF2, powerIAF2, IAF4, powerIAF4, IAF6, powerIAF6);
     catch ME
         ME.message
         error(['ERROR calculating alpha power and IAF for Subject ' num2str(subjects{subj}) '!'])
@@ -168,11 +188,11 @@ else
     save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg eeg_data_sternberg
 end
 
-%% Setup
+%% POWER WITH TRIAL INFO
+% Setup
 startup
 [subjects, path, ~ , ant128lay] = setup('AOC');
 
-%% Extract POWER WITH TRIAL INFO
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     try
@@ -214,11 +234,11 @@ for subj = 1:length(subjects)
     end
 end
 
-%% Setup
+%% FOOOF Power
+% Setup
 startup
 [subjects, path, ~ , ant128lay] = setup('AOC');
 
-%% Extract FOOOF Power
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     try
@@ -260,11 +280,11 @@ for subj = 1:length(subjects)
     end
 end
 
-%% Setup
+%% TFR
+% Setup
 startup
 [subjects, path, ~ , ant128lay] = setup('AOC');
 
-%% Extract TFR
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     try

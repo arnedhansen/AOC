@@ -20,7 +20,7 @@ end
 channels = occ_channels;
 
 %% Load data
-% Load power at IAF
+% Load power at IAF and IAF data
 for subj = 1:length(subjects)
     datapath = strcat(path, subjects{subj}, '/eeg');
     cd(datapath);
@@ -30,7 +30,7 @@ for subj = 1:length(subjects)
     powIAF3(subj) = powerIAF3;
 end
 
-% Load powerspctrm data
+% Load powspctrm data
 for subj = 1:length(subjects)
     datapath = strcat(path, subjects{subj}, '/eeg');
     cd(datapath)
@@ -38,6 +38,16 @@ for subj = 1:length(subjects)
     powl1{subj} = powload1;
     powl2{subj} = powload2;
     powl3{subj} = powload3;
+end
+
+% Load baselined powspctrm data
+for subj = 1:length(subjects)
+    datapath = strcat(path, subjects{subj}, '/eeg');
+    cd(datapath)
+    load power_nback_bl
+    powl1_bl{subj} = powload1_bl;
+    powl2_bl{subj} = powload2_bl;
+    powl3_bl{subj} = powload3_bl;
 end
 
 % Compute grand avg

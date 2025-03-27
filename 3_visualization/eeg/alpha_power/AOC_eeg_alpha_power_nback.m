@@ -1,15 +1,8 @@
 %% AOC Alpha Power N-back
 
 %% Setup
-clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.2');
-eeglab
-clc
-close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+startup
+[subjects, path, colors, ~] = setup('AOC');
 
 %% Define channels
 subj = 1;
@@ -97,7 +90,6 @@ saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/boxplot/
 close all
 figure;
 set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
-colors = color_def('AOC');
 conditions = {'1-back', '2-back', '3-back'};
 numSubjects = length(subjects);
 
@@ -156,7 +148,6 @@ saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctr
 %% Plot INDIVIDUAL power spectra
 close all
 output_dir = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
-colors = color_def('AOC');
 for subj = 1:length(subjects)
     clear pow1 pow2 pow3
     close all;
@@ -224,7 +215,6 @@ end
 %% Plot SUBPLOT of INDIVIDUAL powerspectra
 close all;
 output_dir = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
-colors = color_def('AOC');
 num_subj = length(subjects);
 
 % Determine subplot grid size

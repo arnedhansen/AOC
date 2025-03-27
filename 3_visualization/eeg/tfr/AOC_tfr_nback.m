@@ -1,7 +1,8 @@
 %% Alpha Power Time Frequency Analysis for AOC Nback data
 
 %% Setup
-[subjects, path] = setup('AOC');
+startup
+[subjects, path, ~, ~] = setup('AOC');
 
 %% Compute grand average time and frequency data GATFR
 for subj= 1:length(subjects)

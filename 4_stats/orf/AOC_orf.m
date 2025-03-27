@@ -12,6 +12,7 @@ if ispc
     base_data_path     = 'W:\Students\Arne\AOC\data\merged\';
     base_features_path = 'W:\Students\Arne\AOC\data\features\';
     base_figures_path  = 'W:\Students\Arne\AOC\figures\orf\';
+    addpath(genpath('W:\Students\Arne\toolboxes\mTRF-Toolbox-master'))
 else
     base_data_path     = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
     base_features_path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
@@ -22,7 +23,7 @@ end
 all_TRF_gazeX = [];
 all_TRF_gazeY = [];
 all_TRF_pupil = [];
-subject_count = 0; 
+subject_count = 0;  % count successfully processed subjects
 
 % Loop over subjects
 for s = 1:length(subjects)
@@ -30,11 +31,11 @@ for s = 1:length(subjects)
     try
         % Load subject data using the appropriate base path
         datapath = fullfile(base_data_path, subjectID, [subjectID '_EEG_ET_RestingEO_merged.mat']);
-        load(datapath);  
+        load(datapath);  % Expects EEG variable in the file
         disp(['Data loaded for Subject ' subjectID]);
     catch ME
         warning(['Skipping Subject ' subjectID ': ' ME.message]);
-        continue;
+        continue;  % Skip to the next subject if an error occurs
     end
     
     %% Identify Ocular Channels
@@ -60,10 +61,8 @@ for s = 1:length(subjects)
     direction = 1;        % Forward model: stimulus (ocular) -> EEG
     
     nChannels = size(EEG_brain,1);
-    % Preallocate model structure arrays for each ocular regressor
-    modelTRF_gazeX = repmat(struct('w',[],'t',[]), nChannels, 1);
-    modelTRF_gazeY = repmat(struct('w',[],'t',[]), nChannels, 1);
-    modelTRF_pupil = repmat(struct('w',[],'t',[]), nChannels, 1);
+    % Initialise empty arrays for storing the TRF models
+    clear modelTRF_gazeX modelTRF_gazeY modelTRF_pupil
     
     for chan = 1:nChannels
         modelTRF_gazeX(chan) = mTRFtrain(stim_gazeX, EEG_brain(chan, :), fs, direction, tmin, tmax, lambda);

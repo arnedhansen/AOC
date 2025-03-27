@@ -2,7 +2,7 @@
 library(ggplot2)
 library(ggdist)
 library(dplyr)
-library(scales)  # for lighten() and darken()
+library(colorspace)  # provides darken(), lighten(), desaturate()
 
 # Define colour palette
 pal <- c("#FF8C00", "#A034F0", "#159090")
@@ -32,7 +32,7 @@ x_labels  <- c("Accuracy [%]", "Reaction Time [ms]", "Gaze Deviation [px]", "Gaz
 save_names <- c("acc", "rt", "gazedev", "ms", "blink", "fix", "sacc", "pow", "iaf")
 
 # Define the output directory and create it if it doesn't exist
-output_dir <- "/Users/Arne/Documents/GitHub/AOC/4_stats/rainclouds"
+output_dir <- "/Volumes/methlab/Students/Arne/AOC/figures/stats/rainclouds"
 if (!dir.exists(output_dir)) {
   dir.create(output_dir, recursive = TRUE)
 }
@@ -50,7 +50,7 @@ for(i in seq_along(variables)) {
     # Raincloud (half-eye) plot
     ggdist::stat_halfeye(
       aes(color = Condition,
-          fill = after_scale(lighten(color, 0.5))),
+          fill = after_scale(colorspace::lighten(color, 0.5))),
       adjust = 0.5,
       width = 0.5,
       height = 0.6,
@@ -60,14 +60,14 @@ for(i in seq_along(variables)) {
     ) +
     # Boxplot layer
     geom_boxplot(
-      aes(color = after_scale(darken(color, 0.1, space = "HLS")),
-          fill = after_scale(desaturate(lighten(color, 0.8), 0.4))),
+      aes(color = after_scale(colorspace::darken(color, 0.1, space = "HLS")),
+          fill = after_scale(colorspace::desaturate(colorspace::lighten(color, 0.8), 0.4))),
       width = 0.35, 
       outlier.shape = NA
     ) +
     # Display data points with jitter on the y-axis
     geom_point(
-      aes(color = after_scale(darken(color, 0.1, space = "HLS"))),
+      aes(color = after_scale(colorspace::darken(color, 0.1, space = "HLS"))),
       fill = "white",
       shape = 21,
       stroke = 0.4,
@@ -89,7 +89,7 @@ for(i in seq_along(variables)) {
       geom = "text",
       fun = "median",
       aes(label = round(after_stat(x), 2),
-          color = after_scale(darken(color, 0.1, space = "HLS"))),
+          color = after_scale(colorspace::darken(color, 0.1, space = "HLS"))),
       family = "Roboto Mono",
       fontface = "bold",
       size = 4.5,
@@ -100,7 +100,7 @@ for(i in seq_along(variables)) {
       geom = "text",
       fun.data = add_sample,
       aes(label = paste("n =", after_stat(label)),
-          color = after_scale(darken(color, 0.1, space = "HLS"))),
+          color = after_scale(colorspace::darken(color, 0.1, space = "HLS"))),
       family = "Roboto Mono",
       size = 4,
       hjust = -0.5
@@ -123,7 +123,7 @@ for(i in seq_along(variables)) {
       axis.ticks = element_blank(),
       axis.text.x = element_text(family = "Roboto Mono"),
       axis.text.y = element_text(
-        colour = darken(pal, 0.1, space = "HLS"), 
+        colour = colorspace::darken(pal, 0.1, space = "HLS"), 
         size = 15
       ),
       axis.title.x = element_text(margin = margin(t = 10), size = 16),

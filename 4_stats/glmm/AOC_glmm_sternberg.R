@@ -1,15 +1,15 @@
 # GLMM Stats for AOC Sternberg
 
-install.packages('lme4')
-install.packages('nlme')
-install.packages('emmeans')
-install.packages("ggplot2")
-install.packages("pbkrtest")
-install.packages("lmerTest")
-install.packages("sjPlot")
-install.packages("writexl")
-install.packages("drop1")
-install.packages("car")
+#install.packages('lme4')
+#install.packages('nlme')
+#install.packages('emmeans')
+#install.packages("ggplot2")
+#install.packages("pbkrtest")
+#install.packages("lmerTest")
+#install.packages("sjPlot")
+#install.packages("writexl")
+#install.packages("drop1")
+#install.packages("car")
 library(lme4)
 library(nlme)
 library(emmeans)
@@ -19,7 +19,7 @@ library(lmerTest)
 library(sjPlot)
 library("writexl")
 library("lm.beta") 
-library(drop1)
+#library(drop1)
 library(car)
 
 # Set WD
@@ -33,6 +33,7 @@ options(scipen=0)
 
 # load data 
 dat = read.csv('/Volumes/methlab/Students/Arne/AOC/data/features/merged_data_sternberg.csv')
+dat = na.omit(dat)
 
 # make sure, the vars are factors
 dat$ID = as.factor(dat$ID)

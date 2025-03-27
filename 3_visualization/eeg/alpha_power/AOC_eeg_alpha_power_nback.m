@@ -19,7 +19,7 @@ for i = 1:length(powload2.label)
 end
 channels = occ_channels;
 
-%% Load data 
+%% Load data
 % Load power at IAF
 for subj = 1:length(subjects)
     datapath = strcat(path, subjects{subj}, '/eeg');
@@ -86,14 +86,14 @@ hold off;
 % Save
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/boxplot/AOC_alpha_power_nback_boxplot.png');
 
-%% Plot alpha power POWERSPECTRUM
+%% Plot alpha power grand average POWERSPECTRUM
 close all
 figure;
 set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
 conditions = {'1-back', '2-back', '3-back'};
 numSubjects = length(subjects);
 
-% Plot 
+% Plot
 cfg = [];
 cfg.channel = channels;
 cfg.figure = 'gcf';
@@ -148,6 +148,8 @@ saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctr
 %% Plot INDIVIDUAL power spectra
 close all
 output_dir = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
+load('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_nback.mat')
+
 for subj = 1:length(subjects)
     clear pow1 pow2 pow3
     close all;
@@ -196,6 +198,30 @@ for subj = 1:length(subjects)
     set(eb2.patch, 'FaceAlpha', 0.5);
     set(eb3.patch, 'FaceAlpha', 0.5);
 
+    % Add lines for IAF and AlphaPower for each condition
+    currentSubj = str2double(subjects{subj});
+    C1 = eeg_data_nback([eeg_data_nback.ID] == currentSubj & [eeg_data_nback.Condition] == 1);
+    if ~isempty(C1)
+        xIAF = C1.IAF;
+        yAlpha = C1.AlphaPower;
+        line([xIAF, xIAF], [0, yAlpha], 'LineStyle', '--', 'Color', colors(1, :), 'LineWidth', 2);
+        line([5, xIAF], [yAlpha, yAlpha], 'LineStyle', '--', 'Color', colors(1, :), 'LineWidth', 2);
+    end
+    C2 = eeg_data_nback([eeg_data_nback.ID] == currentSubj & [eeg_data_nback.Condition] == 2);
+    if ~isempty(C2)
+        xIAF = C2.IAF;
+        yAlpha = C2.AlphaPower;
+        line([xIAF, xIAF], [0, yAlpha], 'LineStyle', '--', 'Color', colors(2, :), 'LineWidth', 2);
+        line([5, xIAF], [yAlpha, yAlpha], 'LineStyle', '--', 'Color', colors(2, :), 'LineWidth', 2);
+    end
+    C3 = eeg_data_nback([eeg_data_nback.ID] == currentSubj & [eeg_data_nback.Condition] == 3);
+    if ~isempty(C3)
+        xIAF = C3.IAF;
+        yAlpha = C3.AlphaPower;
+        line([xIAF, xIAF], [0, yAlpha], 'LineStyle', '--', 'Color', colors(3, :), 'LineWidth', 2);
+        line([5, xIAF], [yAlpha, yAlpha], 'LineStyle', '--', 'Color', colors(3, :), 'LineWidth', 2);
+    end
+
     % Adjust plot aesthetics
     set(gca, 'FontSize', 20);
     max_spctrm = max([max(max(pow1.powspctrm(channels_seb, :))), max(max(pow2.powspctrm(channels_seb, :))), max(max(pow3.powspctrm(channels_seb, :)))]);
@@ -231,20 +257,20 @@ for subj = 1:num_subj
     pow1 = powl1{subj};
     pow2 = powl2{subj};
     pow3 = powl3{subj};
-    
+
     % Select subplot position
     subplot(nrows, ncols, subj);
     hold on;
-    
+
     % Figure common config
     cfg = [];
     cfg.channel = channels;
     cfg.figure = 'gcf';
     cfg.linewidth = 1;
-    
+
     % Plot power spectrum for low and high contrast
     ft_singleplotER(cfg, pow1, pow2, pow3);
-    
+
     % Add shaded error bars
     channels_seb = ismember(pow1.label, cfg.channel);
     eb1 = shadedErrorBar(pow1.freq, mean(pow1.powspctrm(channels_seb, :), 1), ...
@@ -253,7 +279,7 @@ for subj = 1:num_subj
         std(pow2.powspctrm(channels_seb, :)) / sqrt(size(pow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
     eb3 = shadedErrorBar(pow3.freq, mean(pow3.powspctrm(channels_seb, :), 1), ...
         std(pow3.powspctrm(channels_seb, :)) / sqrt(size(pow3.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-    
+
     eb1.mainLine.Color = colors(1, :);
     eb2.mainLine.Color = colors(2, :);
     eb3.mainLine.Color = colors(3, :);
@@ -266,7 +292,7 @@ for subj = 1:num_subj
     set(eb1.patch, 'FaceAlpha', 0.5);
     set(eb2.patch, 'FaceAlpha', 0.5);
     set(eb3.patch, 'FaceAlpha', 0.5);
-    
+
     % Adjust plot aesthetics
     set(gca, 'FontSize', 12);
     max_spctrm = max([max(max(pow1.powspctrm(channels_seb, :))), max(max(pow2.powspctrm(channels_seb, :))), max(max(pow3.powspctrm(channels_seb, :))) ]);
@@ -314,38 +340,38 @@ freq_idx = find(gapow1.freq >= 8 & gapow1.freq <= 14);
 max_spctrm = max([mean(gapow1.powspctrm(channel_idx, freq_idx), 2); mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow3.powspctrm(channel_idx, freq_idx), 2)]);
 cfg.zlim = [0 max_spctrm];
 
-% Plot 1-back 
+% Plot 1-back
 figure('Color', 'w');
-set(gcf, 'Position', [0, 300, 800, 600]); 
-ft_topoplotER(cfg, gapow1); 
+set(gcf, 'Position', [0, 300, 800, 600]);
+ft_topoplotER(cfg, gapow1);
 title('');
-cb = colorbar; 
+cb = colorbar;
 set(cb, 'FontSize', 20);
-ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25); 
+ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('1-back', 'FontSize', 40);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_nback_topo1.png'); 
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_nback_topo1.png');
 
-% Plot 2-back 
-figure('Color', 'w'); 
-set(gcf, 'Position', [300, 300, 800, 600]); 
-ft_topoplotER(cfg, gapow2); 
+% Plot 2-back
+figure('Color', 'w');
+set(gcf, 'Position', [300, 300, 800, 600]);
+ft_topoplotER(cfg, gapow2);
 title('');
 cb = colorbar;
-set(cb, 'FontSize', 20); 
-ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25); 
+set(cb, 'FontSize', 20);
+ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('2-back', 'FontSize', 40);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_nback_topo2.png'); 
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_nback_topo2.png');
 
-% Plot 3-back 
-figure('Color', 'w'); 
+% Plot 3-back
+figure('Color', 'w');
 set(gcf, 'Position', [600, 300, 800, 600]);
-ft_topoplotER(cfg, gapow3); 
+ft_topoplotER(cfg, gapow3);
 title('');
 cb = colorbar;
-set(cb, 'FontSize', 20); 
-ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25); 
+set(cb, 'FontSize', 20);
+ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('3-back', 'FontSize', 40);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_nback_topo3.png'); 
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_nback_topo3.png');
 
 %% Plot alpha power TOPOS DIFFERENCE
 close all
@@ -382,8 +408,8 @@ cfg.gridscale = 300;
 cfg.comment = 'no';
 cfg.xlim = [8 14];
 cfg.zlim = 'maxabs';
-set(cb, 'FontSize', 20); 
-ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25); 
+set(cb, 'FontSize', 20);
+ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
 title('N-back Alpha Power Difference (3-back - 1-back)', 'FontSize', 25);
 ft_topoplotER(cfg, ga_diff);
 

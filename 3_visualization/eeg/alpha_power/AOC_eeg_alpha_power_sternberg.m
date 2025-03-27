@@ -48,7 +48,6 @@ gapow6 = ft_freqgrandaverage([],powl6{:});
 close all
 figure;
 set(gcf, 'Position', [0, 0, 1200, 900], 'Color', 'w');
-colors = {'b', 'k', 'r'};
 conditions = {'WM load 2', 'WM load 4', 'WM load 6'};
 numSubjects = length(subjects);
 
@@ -141,6 +140,8 @@ saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctr
 %% Plot INDIVIDUAL power spectra
 close all
 output_dir = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
+load('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg.mat')
+
 for subj = 1:length(subjects)
     close all;
     figure;
@@ -187,6 +188,30 @@ for subj = 1:length(subjects)
     set(eb2.patch, 'FaceAlpha', 0.5);
     set(eb4.patch, 'FaceAlpha', 0.5);
     set(eb6.patch, 'FaceAlpha', 0.5);
+
+    % Add lines for IAF and AlphaPower for each condition
+    currentSubj = str2double(subjects{subj});
+    C1 = eeg_data_sternberg([eeg_data_sternberg.ID] == currentSubj & [eeg_data_sternberg.Condition] == 2);
+    if ~isempty(C1)
+        xIAF = C1.IAF;
+        yAlpha = C1.AlphaPower;
+        line([xIAF, xIAF], [0, yAlpha], 'LineStyle', '--', 'Color', colors(1, :), 'LineWidth', 2);
+        line([5, xIAF], [yAlpha, yAlpha], 'LineStyle', '--', 'Color', colors(1, :), 'LineWidth', 2);
+    end
+    C2 = eeg_data_sternberg([eeg_data_sternberg.ID] == currentSubj & [eeg_data_sternberg.Condition] == 4);
+    if ~isempty(C2)
+        xIAF = C2.IAF;
+        yAlpha = C2.AlphaPower;
+        line([xIAF, xIAF], [0, yAlpha], 'LineStyle', '--', 'Color', colors(2, :), 'LineWidth', 2);
+        line([5, xIAF], [yAlpha, yAlpha], 'LineStyle', '--', 'Color', colors(2, :), 'LineWidth', 2);
+    end
+    C3 = eeg_data_sternberg([eeg_data_sternberg.ID] == currentSubj & [eeg_data_sternberg.Condition] == 6);
+    if ~isempty(C3)
+        xIAF = C3.IAF;
+        yAlpha = C3.AlphaPower;
+        line([xIAF, xIAF], [0, yAlpha], 'LineStyle', '--', 'Color', colors(3, :), 'LineWidth', 2);
+        line([5, xIAF], [yAlpha, yAlpha], 'LineStyle', '--', 'Color', colors(3, :), 'LineWidth', 2);
+    end
 
     % Adjust plot aesthetics
     set(gca, 'FontSize', 20);

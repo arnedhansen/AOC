@@ -4,9 +4,11 @@ library(ggdist)
 library(dplyr)
 library(colorspace)  # provides darken(), lighten(), desaturate()
 
-# Define AOC colour palette
-pal <- c("#FF8C00", "#A034F0", "#159090")
-pal <- c("#ADD9E6", "#99CC99", "#FFB3BF")
+# Define colour palette
+pal <- c("#FF8C00", "#A034F0", "#159090") # DataViz workshop colors
+pal <- c("#ADD9E6", "#99CC99", "#FFB3BF") # Light AOC pastel colors
+pal <- c("#7998A1", "#6B8F6B", "#B37D86") # Dark AOC pastel colors
+pal <- c("#93B8C4", "#82AD82", "#D998A2") # Perfect AOC pastel colors
 
 # Function to add sample size as text (offset adjusted by a fraction of the range)
 add_sample <- function(x) {
@@ -31,6 +33,16 @@ variables <- c("Accuracy", "ReactionTime", "GazeDeviation", "GazeStd", "MSRate",
 y_labels  <- c("Accuracy [%]", "Reaction Time [ms]", "Gaze Deviation [px]", "Gaze Std [px]",
                "Microsaccade Rate [ms/s]", "Fixations", "Saccades", "Alpha Power [dB]", "IAF [Hz]")
 save_names <- c("acc", "rt", "gazedev", "ms", "blink", "fix", "sacc", "pow", "iaf")
+
+# Remove outliers using the IQR method (1.5 * IQR rule)
+dat <- dat %>%
+  group_by(Condition) %>%
+  mutate(across(all_of(variables), ~{
+    lower <- quantile(.x, 0.25, na.rm = TRUE) - 1.5 * IQR(.x, na.rm = TRUE)
+    upper <- quantile(.x, 0.75, na.rm = TRUE) + 1.5 * IQR(.x, na.rm = TRUE)
+    replace(.x, .x < lower | .x > upper, NA)
+  })) %>%
+  ungroup()
 
 # Define the output directory and create it if it doesn't exist
 output_dir <- "/Volumes/methlab/Students/Arne/AOC/figures/stats/rainclouds"
@@ -74,30 +86,30 @@ for(i in seq_along(variables)) {
           fill = after_scale(lighten(color, 0.5))),
       shape = 21,
       stroke = 0.4,
-      size = 2.5,
+      size = 3,
       position = position_jitter(seed = 1, width = 0.125),
-      alpha = 0.4
+      alpha = 0.65
     ) +
     geom_point(
       aes(fill = Condition),
       color = "transparent",
       shape = 21,
       stroke = 0.4,
-      size = 2.0,
-      alpha = 0.1,
+      size = .25,
+      alpha = 0.4,
       position = position_jitter(seed = 1, width = 0.125)
     ) +
     
     # Add median value as text, nudged to the right of the boxplot
-    stat_summary(
-      geom = "text",
-      fun = "median",
-      aes(label = round(after_stat(y), 2), color = Condition),
-      family = "Roboto Mono",
-      fontface = "bold",
-      size = 4.5,
-      nudge_y = 12.3
-    ) +
+    # stat_summary(
+    #   geom = "text",
+    #   fun = "median",
+    #   aes(label = round(after_stat(y), 2), color = Condition),
+    #   family = "Roboto Mono",
+    #   fontface = "bold",
+    #   size = 4.5,
+    #   nudge_y = 12.3
+    # ) +
     
     # Commenting out sample size addition
     # stat_summary(
@@ -139,13 +151,13 @@ for(i in seq_along(variables)) {
     )
   
   # Adjust the y-axis
-  if(var == "ReactionTime") {
-    p <- p + scale_y_continuous(
-      limits = c(200, 2250),
-      breaks = seq(250, 2000, by = 250),
-      expand = c(0.001, 0.001)
-    )
-  }
+  # if(var == "AlphaPower") {
+  #   p <- p + scale_y_continuous(
+  #     limits = c(0.0, 0.5),
+  #     breaks = seq(0.00, 0.5, by = 0.1),
+  #     expand = c(0.001, 0.001)
+  #   ) 
+  # }
   
   # Save the plot as a PNG file
   ggsave(filename = file.path(output_dir, paste0("AOC_stats_rainclouds_", save_name, "_nback.png")),

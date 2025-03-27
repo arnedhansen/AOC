@@ -59,7 +59,7 @@ for i = 1:length(variables)
     for cond = 1:3 
         cond_data = data(data.Condition == cond, :);
         scatter(x_jittered{cond}, cond_data.(variables{i}), 300, 'MarkerEdgeColor', 'k', ...
-            'MarkerFaceColor', colors(cond, :), 'jitter', 'off', 'SizeData', 300);
+            'MarkerFaceColor', colors(cond, :), 'MarkerFaceAlpha', 0.85, 'jitter', 'off', 'SizeData', 300);
     end
     
     % Add title and labels

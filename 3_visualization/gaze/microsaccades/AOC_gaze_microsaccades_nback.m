@@ -4,13 +4,8 @@
 %   Boxplots of microsaccade rate
 
 %% Setup
-clear
-clc
-close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+startup
+[subjects, path, ~, ~] = setup('AOC');
 
 %% Load gaze data
 for subj = 1:length(subjects)

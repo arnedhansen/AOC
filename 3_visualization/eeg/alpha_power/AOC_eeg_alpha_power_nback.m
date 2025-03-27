@@ -6,7 +6,7 @@ startup
 
 %% Define channels
 subj = 1;
-datapath = strcat(path, subjects{subj}, '/eeg');
+datapath = strcat(path, subjects{subj}, filesep, 'eeg');
 cd(datapath);
 load('power_nback.mat');
 % Occipital channels
@@ -22,7 +22,7 @@ channels = occ_channels;
 %% Load data
 % Load power at IAF and IAF data
 for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj}, '/eeg');
+    datapath = strcat(path, subjects{subj}, filesep, 'eeg');
     cd(datapath);
     load('alpha_power_nback.mat');
     powIAF1(subj) = powerIAF1;
@@ -32,7 +32,7 @@ end
 
 % Load powspctrm data
 for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj}, '/eeg');
+    datapath = strcat(path, subjects{subj}, filesep, 'eeg');
     cd(datapath)
     load power_nback
     powl1{subj} = powload1;
@@ -40,9 +40,14 @@ for subj = 1:length(subjects)
     powl3{subj} = powload3;
 end
 
+% Compute grand avg of raw powspctrm data
+gapow1_raw = ft_freqgrandaverage([],powl1{:});
+gapow2_raw = ft_freqgrandaverage([],powl2{:});
+gapow3_raw = ft_freqgrandaverage([],powl3{:});
+
 % Load baselined powspctrm data
 for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj}, '/eeg');
+    datapath = strcat(path, subjects{subj}, filesep, 'eeg');
     cd(datapath)
     load power_nback_bl
     powl1_bl{subj} = powload1_bl;
@@ -50,70 +55,91 @@ for subj = 1:length(subjects)
     powl3_bl{subj} = powload3_bl;
 end
 
-% Compute grand avg
-load('/Volumes/methlab/Students/Arne/toolboxes/headmodel/layANThead.mat');
-gapow1 = ft_freqgrandaverage([],powl1{:});
-gapow2 = ft_freqgrandaverage([],powl2{:});
-gapow3 = ft_freqgrandaverage([],powl3{:});
+% Compute grand avg of baselined powspctrm data
+gapow1_bl = ft_freqgrandaverage([], powl1_bl{:});
+gapow2_bl = ft_freqgrandaverage([], powl2_bl{:});
+gapow3_bl = ft_freqgrandaverage([], powl3_bl{:});
 
 %% Plot alpha power grand average POWERSPECTRUM
-close all
-figure;
-set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
-conditions = {'1-back', '2-back', '3-back'};
-numSubjects = length(subjects);
+% Loop over analysis conditions
+analysis_conditions = {'raw', 'bl'};
 
-% Plot
-cfg = [];
-cfg.channel = channels;
-cfg.figure = 'gcf';
-cfg.linewidth = 1;
-ft_singleplotER(cfg,gapow1,gapow2,gapow3);
-hold on;
+for i = 1:length(analysis_conditions)
+    switch analysis_conditions{i}
+        case 'raw'
+            gapow1 = gapow1_raw;
+            gapow2 = gapow2_raw;
+            gapow3 = gapow3_raw;
+            yLabel = 'Power [\muV^2/Hz]';
+            figTitle = 'N-back Power Spectrum';
+            savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/AOC_alpha_power_nback_powspctrm_raw.png';
+        % case 'bl'
+        %     gapow1 = gapow1_bl;
+        %     gapow2 = gapow2_bl;
+        %     gapow3 = gapow3_bl;
+        %     yLabel = 'Power [dB]';
+        %     figTitle = 'Baselined N-back Power Spectrum';
+        %     savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/AOC_alpha_power_nback_powspctrm_bl.png';
+    end
 
-% Add shadedErrorBar
-channels_seb = ismember(gapow1.label, cfg.channel);
-eb1 = shadedErrorBar(gapow1.freq, mean(gapow1.powspctrm(channels_seb, :), 1), ...
-    std(gapow1.powspctrm(channels_seb, :)) / sqrt(size(gapow1.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-eb2 = shadedErrorBar(gapow2.freq, mean(gapow2.powspctrm(channels_seb, :), 1), ...
-    std(gapow2.powspctrm(channels_seb, :)) / sqrt(size(gapow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-eb3 = shadedErrorBar(gapow3.freq, mean(gapow3.powspctrm(channels_seb, :), 1), ...
-    std(gapow3.powspctrm(channels_seb, :)) / sqrt(size(gapow3.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-eb1.mainLine.Color = colors(1, :);
-eb2.mainLine.Color = colors(2, :);
-eb3.mainLine.Color = colors(3, :);
-eb1.patch.FaceColor = colors(1, :);
-eb2.patch.FaceColor = colors(2, :);
-eb3.patch.FaceColor = colors(3, :);
-set(eb1.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
-set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
-set(eb3.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
-set(eb1.edge(1), 'Color', colors(1, :));
-set(eb1.edge(2), 'Color', colors(1, :));
-set(eb2.edge(1), 'Color', colors(2, :));
-set(eb2.edge(2), 'Color', colors(2, :));
-set(eb3.edge(1), 'Color', colors(3, :));
-set(eb3.edge(2), 'Color', colors(3, :));
-set(eb1.patch, 'FaceAlpha', 0.5);
-set(eb2.patch, 'FaceAlpha', 0.5);
-set(eb3.patch, 'FaceAlpha', 0.5);
+    % Create figure
+    close all
+    figure;
+    set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
+    conditions = {'1-back', '2-back', '3-back'};
 
-% Adjust plotting
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-[~, channel_idx] = ismember(channels, gapow1.label);
-freq_idx = find(gapow1.freq >= 8 & gapow1.freq <= 14);
-max_spctrm = max([mean(gapow1.powspctrm(channel_idx, freq_idx), 2); mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow3.powspctrm(channel_idx, freq_idx), 2)]);
-ylim([0 max_spctrm*1.25])
-box on
-xlabel('Frequency [Hz]');
-ylabel('Power [\muV^2/Hz]');
-legend([eb1.mainLine, eb2.mainLine, eb3.mainLine], {'1 back', '2 back', '3 back'}, 'FontName', 'Arial', 'FontSize', 20);
-title('N-back Power Spectrum', 'FontSize', 30)
-hold off;
+    % Plot
+    cfg = [];
+    cfg.channel = channels;
+    cfg.figure = 'gcf';
+    cfg.linewidth = 1;
+    ft_singleplotER(cfg, gapow1, gapow2, gapow3);
+    hold on;
 
-% Save
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/AOC_alpha_power_nback_powspctrm.png');
+    % Add shadedErrorBar
+    channels_seb = ismember(gapow1.label, cfg.channel);
+    eb1 = shadedErrorBar(gapow1.freq, mean(gapow1.powspctrm(channels_seb, :), 1), ...
+        std(gapow1.powspctrm(channels_seb, :)) / sqrt(size(gapow1.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+    eb2 = shadedErrorBar(gapow2.freq, mean(gapow2.powspctrm(channels_seb, :), 1), ...
+        std(gapow2.powspctrm(channels_seb, :)) / sqrt(size(gapow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+    eb3 = shadedErrorBar(gapow3.freq, mean(gapow3.powspctrm(channels_seb, :), 1), ...
+        std(gapow3.powspctrm(channels_seb, :)) / sqrt(size(gapow3.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+    eb1.mainLine.Color = colors(1, :);
+    eb2.mainLine.Color = colors(2, :);
+    eb3.mainLine.Color = colors(3, :);
+    eb1.patch.FaceColor = colors(1, :);
+    eb2.patch.FaceColor = colors(2, :);
+    eb3.patch.FaceColor = colors(3, :);
+    set(eb1.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
+    set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
+    set(eb3.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
+    set(eb1.edge(1), 'Color', colors(1, :));
+    set(eb1.edge(2), 'Color', colors(1, :));
+    set(eb2.edge(1), 'Color', colors(2, :));
+    set(eb2.edge(2), 'Color', colors(2, :));
+    set(eb3.edge(1), 'Color', colors(3, :));
+    set(eb3.edge(2), 'Color', colors(3, :));
+    set(eb1.patch, 'FaceAlpha', 0.5);
+    set(eb2.patch, 'FaceAlpha', 0.5);
+    set(eb3.patch, 'FaceAlpha', 0.5);
+
+    % Adjust plotting
+    set(gcf,'color','w');
+    set(gca,'Fontsize',20);
+    [~, channel_idx] = ismember(channels, gapow1.label);
+    freq_idx = find(gapow1.freq >= 8 & gapow1.freq <= 14);
+    max_spctrm = max([mean(gapow1.powspctrm(channel_idx, freq_idx), 2); mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow3.powspctrm(channel_idx, freq_idx), 2)]);
+    ylim([0 max_spctrm*1.25])
+    box on
+    xlabel('Frequency [Hz]');
+    ylabel(yLabel);
+    legend([eb1.mainLine, eb2.mainLine, eb3.mainLine], {'1 back', '2 back', '3 back'}, 'FontName', 'Arial', 'FontSize', 20);
+    title(figTitle, 'FontSize', 30)
+    hold off;
+
+    % Save
+    saveas(gcf, savePath);
+end
 
 %% Plot INDIVIDUAL power spectra
 close all

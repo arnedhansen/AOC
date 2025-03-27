@@ -6,7 +6,7 @@ startup
 
 %% Define channels
 subj = 1;
-datapath = strcat(path, subjects{subj}, '/eeg');
+datapath = strcat(path, subjects{subj}, filesep, 'eeg');
 cd(datapath);
 load('power_stern.mat');
 % Occipital channels
@@ -22,7 +22,7 @@ channels = occ_channels;
 %% Load data
 % Load power at IAF
 for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj}, '/eeg');
+    datapath = strcat(path, subjects{subj}, filesep, 'eeg');
     cd(datapath);
     load('alpha_power_sternberg.mat');
     powIAF2(subj) = powerIAF2;
@@ -32,24 +32,39 @@ end
 
 % Load powerspctrm data
 for subj = 1:length(subjects)
-    datapath = strcat(path,subjects{subj}, '/eeg');
+    datapath = strcat(path,subjects{subj}, filesep, 'eeg');
     cd(datapath)
     load power_stern
     powl2{subj} = powload2;
     powl4{subj} = powload4;
     powl6{subj} = powload6;
 end
-% Compute grand avg
-gapow2 = ft_freqgrandaverage([],powl2{:});
-gapow4 = ft_freqgrandaverage([],powl4{:});
-gapow6 = ft_freqgrandaverage([],powl6{:});
+
+% Compute grand avg of raw powspctrm data
+gapow2_raw = ft_freqgrandaverage([],powl2{:});
+gapow4_raw = ft_freqgrandaverage([],powl4{:});
+gapow6_raw = ft_freqgrandaverage([],powl6{:});
+
+% Load baselined powerspctrm data
+for subj = 1:length(subjects)
+    datapath = strcat(path,subjects{subj}, filesep, 'eeg');
+    cd(datapath)
+    load power_stern_bl
+    powl2_bl{subj} = powload2_bl;
+    powl4_bl{subj} = powload4_bl;
+    powl6_bl{subj} = powload6_bl;
+end
+
+% Compute grand avg of baselined powspctrm data
+gapow2_bl = ft_freqgrandaverage([], powl2_bl{:});
+gapow4_bl = ft_freqgrandaverage([], powl4_bl{:});
+gapow6_bl = ft_freqgrandaverage([], powl6_bl{:});
 
 %% Plot alpha power grand average POWERSPECTRUM
 close all
 figure;
 set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
 conditions = {'WM load 2', 'WM load 4', 'WM load 6'};
-numSubjects = length(subjects);
 
 % Plot
 cfg = [];

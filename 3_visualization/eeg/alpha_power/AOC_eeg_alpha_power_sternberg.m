@@ -86,32 +86,48 @@ hold off;
 % Save
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/boxplot/AOC_alpha_power_sternberg_boxplot.png');
 
-%% Plot alpha power POWERSPECTRUM
+%% Plot alpha power grand average POWERSPECTRUM
 close all
 figure;
 set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
-colors = {'b', 'r', 'k'};
+colors = color_def('AOC');
 conditions = {'WM load 2', 'WM load 4', 'WM load 6'};
 numSubjects = length(subjects);
 
-% Plot 
+% Plot
 cfg = [];
 cfg.channel = channels;
 cfg.figure = 'gcf';
-cfg.linecolor = 'brk';
 cfg.linewidth = 1;
-ft_singleplotER(cfg,gapow2,gapow4,gapow6);
+ft_singleplotER(cfg, gapow2, gapow4, gapow6);
 hold on;
 
 % Add shadedErrorBar
 channels_seb = ismember(gapow2.label, cfg.channel);
-l2ebar = shadedErrorBar(gapow2.freq, mean(gapow2.powspctrm(channels_seb, :), 1), std(gapow2.powspctrm(channels_seb, :))/sqrt(size(gapow2.powspctrm(channels_seb, :), 1)), {'b', 'markerfacecolor', 'b'});
-l4ebar = shadedErrorBar(gapow4.freq, mean(gapow4.powspctrm(channels_seb, :), 1), std(gapow4.powspctrm(channels_seb, :))/sqrt(size(gapow4.powspctrm(channels_seb, :), 1)), {'g', 'markerfacecolor', 'g'});
-l6ebar = shadedErrorBar(gapow6.freq, mean(gapow6.powspctrm(channels_seb, :), 1), std(gapow6.powspctrm(channels_seb, :))/sqrt(size(gapow6.powspctrm(channels_seb, :), 1)), {'r', 'markerfacecolor', 'r'});
-transparency = 0.25;
-set(l2ebar.patch, 'FaceAlpha', transparency);
-set(l4ebar.patch, 'FaceAlpha', transparency);
-set(l6ebar.patch, 'FaceAlpha', transparency);
+eb2 = shadedErrorBar(gapow2.freq, mean(gapow2.powspctrm(channels_seb, :), 1), ...
+    std(gapow2.powspctrm(channels_seb, :)) / sqrt(size(gapow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+eb4 = shadedErrorBar(gapow4.freq, mean(gapow4.powspctrm(channels_seb, :), 1), ...
+    std(gapow4.powspctrm(channels_seb, :)) / sqrt(size(gapow4.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+eb6 = shadedErrorBar(gapow6.freq, mean(gapow6.powspctrm(channels_seb, :), 1), ...
+    std(gapow6.powspctrm(channels_seb, :)) / sqrt(size(gapow6.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+eb2.mainLine.Color = colors(1, :);
+eb4.mainLine.Color = colors(2, :);
+eb6.mainLine.Color = colors(3, :);
+eb2.patch.FaceColor = colors(1, :);
+eb4.patch.FaceColor = colors(2, :);
+eb6.patch.FaceColor = colors(3, :);
+set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
+set(eb4.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
+set(eb6.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
+set(eb2.edge(1), 'Color', colors(1, :));
+set(eb2.edge(2), 'Color', colors(1, :));
+set(eb4.edge(1), 'Color', colors(2, :));
+set(eb4.edge(2), 'Color', colors(2, :));
+set(eb6.edge(1), 'Color', colors(3, :));
+set(eb6.edge(2), 'Color', colors(3, :));
+set(eb2.patch, 'FaceAlpha', 0.25);
+set(eb4.patch, 'FaceAlpha', 0.25);
+set(eb6.patch, 'FaceAlpha', 0.25);
 
 % Adjust plotting
 set(gcf,'color','w');
@@ -123,7 +139,7 @@ ylim([0 max_spctrm*1.4])
 box on
 xlabel('Frequency [Hz]');
 ylabel('Power [\muV^2/Hz]');
-legend([l2ebar.mainLine, l4ebar.mainLine, l6ebar.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, 'FontName', 'Arial', 'FontSize', 20);
+legend([eb2.mainLine, eb4.mainLine, eb6.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, 'FontName', 'Arial', 'FontSize', 20);
 title('Sternberg Power Spectrum', 'FontSize', 30);
 hold off;
 
@@ -217,20 +233,20 @@ for subj = 1:num_subj
     pow2 = powl2{subj};
     pow4 = powl4{subj};
     pow6 = powl6{subj};
-    
+
     % Select subplot position
     subplot(nrows, ncols, subj);
     hold on;
-    
+
     % Figure common config
     cfg = [];
     cfg.channel = channels;
     cfg.figure = 'gcf';
     cfg.linewidth = 1;
-    
+
     % Plot power spectrum for low and high contrast
     ft_singleplotER(cfg, pow2, pow4, pow6);
-    
+
     % Add shaded error bars
     channels_seb = ismember(pow2.label, cfg.channel);
     eb2 = shadedErrorBar(pow2.freq, mean(pow2.powspctrm(channels_seb, :), 1), ...
@@ -239,7 +255,7 @@ for subj = 1:num_subj
         std(pow4.powspctrm(channels_seb, :)) / sqrt(size(pow4.powspctrm(channels_seb, :), 1)), {'-'}, 0);
     eb6 = shadedErrorBar(pow6.freq, mean(pow6.powspctrm(channels_seb, :), 1), ...
         std(pow6.powspctrm(channels_seb, :)) / sqrt(size(pow6.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-    
+
     eb2.mainLine.Color = colors(1, :);
     eb4.mainLine.Color = colors(2, :);
     eb6.mainLine.Color = colors(3, :);
@@ -252,7 +268,7 @@ for subj = 1:num_subj
     set(eb2.patch, 'FaceAlpha', 0.5);
     set(eb4.patch, 'FaceAlpha', 0.5);
     set(eb6.patch, 'FaceAlpha', 0.5);
-    
+
     % Adjust plot aesthetics
     set(gca, 'FontSize', 12);
     max_spctrm = max([max(max(pow2.powspctrm(channels_seb, :))), max(max(pow4.powspctrm(channels_seb, :))), max(max(pow6.powspctrm(channels_seb, :))) ]);
@@ -302,33 +318,33 @@ cfg.zlim = [0 max_spctrm];
 
 % Plot WM load 2
 figure('Color', 'w');
-set(gcf, 'Position', [0, 300, 800, 600]); 
-ft_topoplotER(cfg, gapow2); 
+set(gcf, 'Position', [0, 300, 800, 600]);
+ft_topoplotER(cfg, gapow2);
 title('');
-cb = colorbar; 
+cb = colorbar;
 set(cb, 'FontSize', 20);
 ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('WM load 2', 'FontSize', 40);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_sternberg_topo2.png');
 
-% Plot WM load 4 
-figure('Color', 'w'); 
-set(gcf, 'Position', [700, 300, 800, 600]); 
-ft_topoplotER(cfg, gapow4); 
+% Plot WM load 4
+figure('Color', 'w');
+set(gcf, 'Position', [700, 300, 800, 600]);
+ft_topoplotER(cfg, gapow4);
 title('');
 cb = colorbar;
-set(cb, 'FontSize', 20); 
-ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25); 
+set(cb, 'FontSize', 20);
+ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('WM load 4', 'FontSize', 40);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_sternberg_topo4.png'); 
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_sternberg_topo4.png');
 
-% Plot WM load 6 
-figure('Color', 'w'); 
+% Plot WM load 6
+figure('Color', 'w');
 set(gcf, 'Position', [0, 0, 800, 600]);
-ft_topoplotER(cfg, gapow6); 
+ft_topoplotER(cfg, gapow6);
 title('');
 cb = colorbar;
-set(cb, 'FontSize', 20); 
+set(cb, 'FontSize', 20);
 ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('WM load 6', 'FontSize', 40);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_sternberg_topo6.png');
@@ -368,8 +384,8 @@ cfg.gridscale = 300;
 cfg.comment = 'no';
 cfg.xlim = [8 14];
 cfg.zlim = 'maxabs';
-set(cb, 'FontSize', 20); 
-ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25); 
+set(cb, 'FontSize', 20);
+ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
 title('Sternberg Task Alpha Power Difference (WM load 6 - WM load 2)', 'FontSize', 25);
 ft_topoplotER(cfg, ga_diff);
 

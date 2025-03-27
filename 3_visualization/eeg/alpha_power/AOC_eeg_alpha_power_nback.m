@@ -97,7 +97,7 @@ saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/boxplot/
 close all
 figure;
 set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
-colors = {'b', 'g', 'r'};
+colors = color_def('AOC');
 conditions = {'1-back', '2-back', '3-back'};
 numSubjects = length(subjects);
 
@@ -105,21 +105,36 @@ numSubjects = length(subjects);
 cfg = [];
 cfg.channel = channels;
 cfg.figure = 'gcf';
-cfg.linecolor = 'bgr';
 cfg.linewidth = 1;
 ft_singleplotER(cfg,gapow1,gapow2,gapow3);
 hold on;
 
 % Add shadedErrorBar
-addpath('/Volumes/methlab/Students/Arne/toolboxes')
 channels_seb = ismember(gapow1.label, cfg.channel);
-l1ebar = shadedErrorBar(gapow1.freq, mean(gapow1.powspctrm(channels_seb, :), 1), std(gapow1.powspctrm(channels_seb, :))/sqrt(size(gapow1.powspctrm(channels_seb, :), 1)), {'b', 'markerfacecolor', 'b'});
-l2ebar = shadedErrorBar(gapow2.freq, mean(gapow2.powspctrm(channels_seb, :), 1), std(gapow2.powspctrm(channels_seb, :))/sqrt(size(gapow2.powspctrm(channels_seb, :), 1)), {'g', 'markerfacecolor', 'g'});
-l3ebar = shadedErrorBar(gapow3.freq, mean(gapow3.powspctrm(channels_seb, :), 1), std(gapow3.powspctrm(channels_seb, :))/sqrt(size(gapow3.powspctrm(channels_seb, :), 1)), {'r', 'markerfacecolor', 'r'});
-transparency = 0.5;
-set(l1ebar.patch, 'FaceAlpha', transparency);
-set(l2ebar.patch, 'FaceAlpha', transparency);
-set(l3ebar.patch, 'FaceAlpha', transparency);
+eb1 = shadedErrorBar(gapow1.freq, mean(gapow1.powspctrm(channels_seb, :), 1), ...
+    std(gapow1.powspctrm(channels_seb, :)) / sqrt(size(gapow1.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+eb2 = shadedErrorBar(gapow2.freq, mean(gapow2.powspctrm(channels_seb, :), 1), ...
+    std(gapow2.powspctrm(channels_seb, :)) / sqrt(size(gapow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+eb3 = shadedErrorBar(gapow3.freq, mean(gapow3.powspctrm(channels_seb, :), 1), ...
+    std(gapow3.powspctrm(channels_seb, :)) / sqrt(size(gapow3.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+eb1.mainLine.Color = colors(1, :);
+eb2.mainLine.Color = colors(2, :);
+eb3.mainLine.Color = colors(3, :);
+eb1.patch.FaceColor = colors(1, :);
+eb2.patch.FaceColor = colors(2, :);
+eb3.patch.FaceColor = colors(3, :);
+set(eb1.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
+set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
+set(eb3.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
+set(eb1.edge(1), 'Color', colors(1, :));
+set(eb1.edge(2), 'Color', colors(1, :));
+set(eb2.edge(1), 'Color', colors(2, :));
+set(eb2.edge(2), 'Color', colors(2, :));
+set(eb3.edge(1), 'Color', colors(3, :));
+set(eb3.edge(2), 'Color', colors(3, :));
+set(eb1.patch, 'FaceAlpha', 0.5);
+set(eb2.patch, 'FaceAlpha', 0.5);
+set(eb3.patch, 'FaceAlpha', 0.5);
 
 % Adjust plotting
 set(gcf,'color','w');
@@ -131,7 +146,7 @@ ylim([0 max_spctrm*1.25])
 box on
 xlabel('Frequency [Hz]');
 ylabel('Power [\muV^2/Hz]');
-legend([l1ebar.mainLine, l2ebar.mainLine, l3ebar.mainLine], {'1 back', '2 back', '3 back'}, 'FontName', 'Arial', 'FontSize', 20);
+legend([eb1.mainLine, eb2.mainLine, eb3.mainLine], {'1 back', '2 back', '3 back'}, 'FontName', 'Arial', 'FontSize', 20);
 title('N-back Power Spectrum', 'FontSize', 30)
 hold off;
 
@@ -165,30 +180,30 @@ for subj = 1:length(subjects)
 
     % Add shaded error bars
     channels_seb = ismember(pow1.label, cfg.channel);
-    eb2 = shadedErrorBar(pow1.freq, mean(pow1.powspctrm(channels_seb, :), 1), ...
+    eb1 = shadedErrorBar(pow1.freq, mean(pow1.powspctrm(channels_seb, :), 1), ...
         std(pow1.powspctrm(channels_seb, :)) / sqrt(size(pow1.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-    eb4 = shadedErrorBar(pow2.freq, mean(pow2.powspctrm(channels_seb, :), 1), ...
+    eb2 = shadedErrorBar(pow2.freq, mean(pow2.powspctrm(channels_seb, :), 1), ...
         std(pow2.powspctrm(channels_seb, :)) / sqrt(size(pow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-    eb6 = shadedErrorBar(pow3.freq, mean(pow3.powspctrm(channels_seb, :), 1), ...
+    eb3 = shadedErrorBar(pow3.freq, mean(pow3.powspctrm(channels_seb, :), 1), ...
         std(pow3.powspctrm(channels_seb, :)) / sqrt(size(pow3.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-    eb2.mainLine.Color = colors(1, :);
-    eb4.mainLine.Color = colors(2, :);
-    eb6.mainLine.Color = colors(3, :);
-    eb2.patch.FaceColor = colors(1, :);
-    eb4.patch.FaceColor = colors(2, :);
-    eb6.patch.FaceColor = colors(3, :);
-    set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
-    set(eb4.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
-    set(eb6.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
-    set(eb2.edge(1), 'Color', colors(1, :));
-    set(eb2.edge(2), 'Color', colors(1, :));
-    set(eb4.edge(1), 'Color', colors(2, :));
-    set(eb4.edge(2), 'Color', colors(2, :));
-    set(eb6.edge(1), 'Color', colors(3, :));
-    set(eb6.edge(2), 'Color', colors(3, :));
+    eb1.mainLine.Color = colors(1, :);
+    eb2.mainLine.Color = colors(2, :);
+    eb3.mainLine.Color = colors(3, :);
+    eb1.patch.FaceColor = colors(1, :);
+    eb2.patch.FaceColor = colors(2, :);
+    eb3.patch.FaceColor = colors(3, :);
+    set(eb1.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
+    set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
+    set(eb3.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
+    set(eb1.edge(1), 'Color', colors(1, :));
+    set(eb1.edge(2), 'Color', colors(1, :));
+    set(eb2.edge(1), 'Color', colors(2, :));
+    set(eb2.edge(2), 'Color', colors(2, :));
+    set(eb3.edge(1), 'Color', colors(3, :));
+    set(eb3.edge(2), 'Color', colors(3, :));
+    set(eb1.patch, 'FaceAlpha', 0.5);
     set(eb2.patch, 'FaceAlpha', 0.5);
-    set(eb4.patch, 'FaceAlpha', 0.5);
-    set(eb6.patch, 'FaceAlpha', 0.5);
+    set(eb3.patch, 'FaceAlpha', 0.5);
 
     % Adjust plot aesthetics
     set(gca, 'FontSize', 20);
@@ -197,7 +212,7 @@ for subj = 1:length(subjects)
     xlim([5 30]);
     xlabel('Frequency [Hz]');
     ylabel('Power [a.u.]');
-    legend([eb2.mainLine, eb4.mainLine eb6.mainLine], {'WM Load 2', 'WM Load 4', 'WM Load 6'}, 'FontName', 'Arial', 'FontSize', 20);
+    legend([eb1.mainLine, eb2.mainLine eb3.mainLine], {'WM Load 2', 'WM Load 4', 'WM Load 6'}, 'FontName', 'Arial', 'FontSize', 20);
     title(sprintf('Subject %s: Power Spectrum', subjects{subj}), 'FontSize', 30);
     hold off;
 
@@ -242,25 +257,25 @@ for subj = 1:num_subj
     
     % Add shaded error bars
     channels_seb = ismember(pow1.label, cfg.channel);
-    eb2 = shadedErrorBar(pow1.freq, mean(pow1.powspctrm(channels_seb, :), 1), ...
+    eb1 = shadedErrorBar(pow1.freq, mean(pow1.powspctrm(channels_seb, :), 1), ...
         std(pow1.powspctrm(channels_seb, :)) / sqrt(size(pow1.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-    eb4 = shadedErrorBar(pow2.freq, mean(pow2.powspctrm(channels_seb, :), 1), ...
+    eb2 = shadedErrorBar(pow2.freq, mean(pow2.powspctrm(channels_seb, :), 1), ...
         std(pow2.powspctrm(channels_seb, :)) / sqrt(size(pow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-    eb6 = shadedErrorBar(pow3.freq, mean(pow3.powspctrm(channels_seb, :), 1), ...
+    eb3 = shadedErrorBar(pow3.freq, mean(pow3.powspctrm(channels_seb, :), 1), ...
         std(pow3.powspctrm(channels_seb, :)) / sqrt(size(pow3.powspctrm(channels_seb, :), 1)), {'-'}, 0);
     
-    eb2.mainLine.Color = colors(1, :);
-    eb4.mainLine.Color = colors(2, :);
-    eb6.mainLine.Color = colors(3, :);
-    eb2.patch.FaceColor = colors(1, :);
-    eb4.patch.FaceColor = colors(2, :);
-    eb6.patch.FaceColor = colors(3, :);
-    set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
-    set(eb4.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
-    set(eb6.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
+    eb1.mainLine.Color = colors(1, :);
+    eb2.mainLine.Color = colors(2, :);
+    eb3.mainLine.Color = colors(3, :);
+    eb1.patch.FaceColor = colors(1, :);
+    eb2.patch.FaceColor = colors(2, :);
+    eb3.patch.FaceColor = colors(3, :);
+    set(eb1.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
+    set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
+    set(eb3.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
+    set(eb1.patch, 'FaceAlpha', 0.5);
     set(eb2.patch, 'FaceAlpha', 0.5);
-    set(eb4.patch, 'FaceAlpha', 0.5);
-    set(eb6.patch, 'FaceAlpha', 0.5);
+    set(eb3.patch, 'FaceAlpha', 0.5);
     
     % Adjust plot aesthetics
     set(gca, 'FontSize', 12);
@@ -270,7 +285,7 @@ for subj = 1:num_subj
     xlabel('Frequency [Hz]');
     ylabel('Power [a.u.]');
     if subj == 1
-        legend([eb2.mainLine, eb4.mainLine eb6.mainLine], {'WM Load 2', 'WM Load 4', 'WM Load 6'}, 'FontName', 'Arial', 'FontSize', 15, 'Location', 'best');
+        legend([eb1.mainLine, eb2.mainLine eb3.mainLine], {'WM Load 2', 'WM Load 4', 'WM Load 6'}, 'FontName', 'Arial', 'FontSize', 15, 'Location', 'best');
     end
     title(sprintf('Subject %s', subjects{subj}), 'FontSize', 14);
     hold off;

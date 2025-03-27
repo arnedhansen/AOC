@@ -12,7 +12,7 @@ for subj= 1:length(subjects)
     l1{subj} = tfr1_bl;
     l2{subj} = tfr2_bl;
     l3{subj} = tfr3_bl;
-    disp(['Subject ' num2str(subjects{subj}) ' TFR loaded.'])
+    disp(['Subject ' num2str(subjects{subj}) ' TFR data loaded.'])
 end
 
 % Compute grand average

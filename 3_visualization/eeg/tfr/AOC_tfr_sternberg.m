@@ -12,7 +12,7 @@ for subj = 1:length(subjects)
     tfr2_all{subj} = tfr2_bl;
     tfr4_all{subj} = tfr4_bl;
     tfr6_all{subj} = tfr6_bl;
-    disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' TFR loaded.'])
+    disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' TFR data loaded.'])
 end
 
 % Compute grand average
@@ -47,7 +47,7 @@ cfg.layout = layANThead; % your specific layout
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
 
 % Find maximum deviation across conditions
-[~, channel_idx] = ismember(channels, gatfr1.label);
+[~, channel_idx] = ismember(channels, gatfr2.label);
 max_spctrm = max([
     max(abs(gatfr2.powspctrm(channel_idx, :, :)), [], 'all'), ...
     max(abs(gatfr4.powspctrm(channel_idx, :, :)), [], 'all'), ...
@@ -114,7 +114,7 @@ color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red divergi
 % Find maximum deviation
 [~, channel_idx] = ismember(channels, gatfr2.label);
 max_spctrm = max(abs(diff.powspctrm(channel_idx, :, :)), [], 'all');
-clim = double([-1 1]);
+clim = double([-max_spctrm max_spctrm]);
 
 % Plot: Difference Time-Frequency Response
 figure;

@@ -113,7 +113,7 @@ for s = 1:length(subjects)
     %% Compute Decoding Model for Euclidean Gaze
     % Decoding model: EEG -> stimulus (euclidean gaze metric)
     % Note: For decoding, we use the entire EEG_brain data matrix.
-    modelTRF_euclidean_dec = mTRFtrain(EEG_brain, stim_euclidean, fs, -1, tmin, tmax, lambda);
+    modelTRF_euclidean_dec = mTRFtrain(EEG_brain', stim_euclidean', fs, -1, tmin, tmax, lambda);
     TRF_euclidean_dec = modelTRF_euclidean_dec.w;  % Decoding TRF weights
 
     %% Save the computed TRF models for this subject

@@ -23,6 +23,8 @@ end
 all_TRF_gazeX = [];
 all_TRF_gazeY = [];
 all_TRF_pupil = [];
+all_TRF_euclidean_enc = [];  % Euclidean gaze metric (encoding)
+all_TRF_euclidean_dec = [];  % Euclidean gaze metric (decoding)
 subject_count = 0;  % count successfully processed subjects
 
 % Loop over subjects
@@ -49,11 +51,16 @@ for s = 1:length(subjects)
     stim_gazeY = EEG.data(idx_gazeY, :);
     stim_pupil = EEG.data(idx_pupil, :);
 
+    %% Compute Euclidean Gaze Metric (Euclidean distance from screen centre)
+    centerX = 400;  % Screen centre X (800/2)
+    centerY = 300;  % Screen centre Y (600/2)
+    stim_euclidean = sqrt((stim_gazeX - centerX).^2 + (stim_gazeY - centerY).^2);
+
     %% Define EEG Channels (excluding ocular channels)
     EEG_channels = 1:(size(EEG.data,1)-3);
     EEG_brain = EEG.data(EEG_channels, :);
 
-    %% Compute TRFs Using the mTRF Toolbox
+    %% Compute TRFs Using the mTRF Toolbox (Encoding Models)
     fs = EEG.srate;       % Sampling rate (Hz)
     tmin = -100;          % Start lag in ms
     tmax = 400;           % End lag in ms
@@ -62,12 +69,13 @@ for s = 1:length(subjects)
 
     nChannels = size(EEG_brain,1);
     % Initialise empty arrays for storing the TRF models
-    clear modelTRF_gazeX modelTRF_gazeY modelTRF_pupil
+    clear modelTRF_gazeX modelTRF_gazeY modelTRF_pupil modelTRF_euclidean_enc
 
     for chan = 1:nChannels
         modelTRF_gazeX(chan) = mTRFtrain(stim_gazeX, EEG_brain(chan, :), fs, direction, tmin, tmax, lambda);
         modelTRF_gazeY(chan) = mTRFtrain(stim_gazeY, EEG_brain(chan, :), fs, direction, tmin, tmax, lambda);
         modelTRF_pupil(chan) = mTRFtrain(stim_pupil, EEG_brain(chan, :), fs, direction, tmin, tmax, lambda);
+        modelTRF_euclidean_enc(chan) = mTRFtrain(stim_euclidean, EEG_brain(chan, :), fs, direction, tmin, tmax, lambda);
         disp(['Computed TRF for channel ' num2str(chan) ' of ' num2str(nChannels) ' for subject ' subjectID '.']);
     end
 
@@ -95,17 +103,31 @@ for s = 1:length(subjects)
     end
     TRF_pupil_avg = mean(all_w_pupil, 2);
 
+    % For Euclidean Gaze (Encoding):
+    all_w_euclidean_enc = zeros(nLags, nChannels);
+    for i = 1:nChannels
+        all_w_euclidean_enc(:, i) = modelTRF_euclidean_enc(i).w;
+    end
+    TRF_euclidean_enc_avg = mean(all_w_euclidean_enc, 2);
+
+    %% Compute Decoding Model for Euclidean Gaze
+    % Decoding model: EEG -> stimulus (euclidean gaze metric)
+    % Note: For decoding, we use the entire EEG_brain data matrix.
+    modelTRF_euclidean_dec = mTRFtrain(EEG_brain, stim_euclidean, fs, -1, tmin, tmax, lambda);
+    TRF_euclidean_dec = modelTRF_euclidean_dec.w;  % Decoding TRF weights
+
     %% Save the computed TRF models for this subject
     models_folder = fullfile(base_features_path, subjectID, 'orf');
     if ~exist(models_folder, 'dir')
         mkdir(models_folder);
     end
     save(fullfile(models_folder, 'TRF_models.mat'), 'modelTRF_gazeX', 'modelTRF_gazeY', 'modelTRF_pupil');
+    save(fullfile(models_folder, 'TRF_models_euclidean.mat'), 'modelTRF_euclidean_enc', 'modelTRF_euclidean_dec');
 
     %% Plot the averaged TRFs for this subject
     time_lags = modelTRF_gazeX(1).t;  % Time vector for the TRF lags
     figure;
-
+    
     subplot(1,3,1);
     plot(time_lags, TRF_gazeX_avg, 'LineWidth', 2);
     title(['Temporal Response Function for Gaze X - Subject ' subjectID]);
@@ -124,11 +146,29 @@ for s = 1:length(subjects)
     xlabel('Lag [ms]');
     ylabel('Amplitude');
 
-    %% Save the figure for this subject
+    %% Save the figure for ocular regressors
     if ~exist(base_figures_path, 'dir')
         mkdir(base_figures_path);
     end
     saveas(gcf, fullfile(base_figures_path, ['AOC_orf_' subjectID '.png']));
+    close(gcf);
+
+    %% Plot the Euclidean Gaze TRFs (Encoding and Decoding) for this subject
+    figure;
+    subplot(1,2,1);
+    plot(time_lags, TRF_euclidean_enc_avg, 'LineWidth', 2);
+    title(['Temporal Response Function (Encoding) for Euclidean Gaze - Subject ' subjectID]);
+    xlabel('Lag [ms]');
+    ylabel('Amplitude');
+
+    subplot(1,2,2);
+    plot(time_lags, TRF_euclidean_dec, 'LineWidth', 2);
+    title(['Temporal Response Function (Decoding) for Euclidean Gaze - Subject ' subjectID]);
+    xlabel('Lag [ms]');
+    ylabel('Amplitude');
+
+    %% Save the figure for euclidean gaze metric
+    saveas(gcf, fullfile(base_figures_path, ['AOC_orf_euclidean_' subjectID '.png']));
     close(gcf);
 
     %% Accumulate the subject's averaged TRFs for the grand average computation
@@ -136,6 +176,8 @@ for s = 1:length(subjects)
     all_TRF_gazeX(:, subject_count) = TRF_gazeX_avg;
     all_TRF_gazeY(:, subject_count) = TRF_gazeY_avg;
     all_TRF_pupil(:, subject_count) = TRF_pupil_avg;
+    all_TRF_euclidean_enc(:, subject_count) = TRF_euclidean_enc_avg;
+    all_TRF_euclidean_dec(:, subject_count) = TRF_euclidean_dec;
 end
 
 %% Load subject TRFs
@@ -165,10 +207,22 @@ for subs = 1:length(subjects)
         end
         TRF_pupil_avg = mean(all_w_pupil, 2);
 
+        % Load euclidean gaze models for encoding/decoding
+        datapath_euclidean = fullfile(models_folder, 'TRF_models_euclidean.mat');
+        load(datapath_euclidean);
+        all_w_euclidean_enc = zeros(nLags, nChannels);
+        for i = 1:nChannels
+            all_w_euclidean_enc(:, i) = modelTRF_euclidean_enc(i).w;
+        end
+        TRF_euclidean_enc_avg = mean(all_w_euclidean_enc, 2);
+        TRF_euclidean_dec = modelTRF_euclidean_dec.w;
+
         % Accumulate subject data
         all_TRF_gazeX(:, subs) = TRF_gazeX_avg;
         all_TRF_gazeY(:, subs) = TRF_gazeY_avg;
         all_TRF_pupil(:, subs) = TRF_pupil_avg;
+        all_TRF_euclidean_enc(:, subs) = TRF_euclidean_enc_avg;
+        all_TRF_euclidean_dec(:, subs) = TRF_euclidean_dec;
 
         disp(['TRF models loaded for Subject ' subjectID]);
     catch ME
@@ -184,13 +238,17 @@ close all
 grand_TRF_gazeX = mean(all_TRF_gazeX, 2, 'omitnan');
 grand_TRF_gazeY = mean(all_TRF_gazeY, 2, 'omitnan');
 grand_TRF_pupil = mean(all_TRF_pupil, 2, 'omitnan');
+grand_TRF_euclidean_enc = mean(all_TRF_euclidean_enc, 2, 'omitnan');
+grand_TRF_euclidean_dec = mean(all_TRF_euclidean_dec, 2, 'omitnan');
 
 % Smooth using a Gaussian window of width 5 samples
 grand_TRF_gazeX = smoothdata(grand_TRF_gazeX, 'gaussian', 50);
 grand_TRF_gazeY = smoothdata(grand_TRF_gazeY, 'gaussian', 50);
 grand_TRF_pupil = smoothdata(grand_TRF_pupil, 'gaussian', 25);
+grand_TRF_euclidean_enc = smoothdata(grand_TRF_euclidean_enc, 'gaussian', 50);
+grand_TRF_euclidean_dec = smoothdata(grand_TRF_euclidean_dec, 'gaussian', 50);
 
-% Plot
+% Plot Grand Average for Gaze X and Gaze Y
 figure;
 set(gcf, 'Position', [0 0 2000 1000])
 time_lags = modelTRF_gazeX(1).t;  % Time vector for the TRF lags
@@ -215,5 +273,29 @@ yline(0, '--');
 set(gca, "YLim", [-0.03 0.03])
 set(gca, 'FontSize', 15)
 
-% Save the grand average figure
+% Save the grand average figure for gaze regressors
 saveas(gcf, fullfile(base_figures_path, 'AOC_orf_all.png'));
+
+% Plot Grand Average for Euclidean Gaze (Encoding and Decoding)
+figure;
+set(gcf, 'Position', [0 0 2000 1000])
+subplot(1,2,1);
+plot(time_lags, grand_TRF_euclidean_enc, 'LineWidth', 2);
+title('Grand Average Temporal Response Function (Encoding) for Euclidean Gaze');
+xlabel('Lag [ms]');
+ylabel('Amplitude');
+xline(0, 'r', 'LineWidth', 1);
+yline(0, '--');
+set(gca, 'FontSize', 15)
+
+subplot(1,2,2);
+plot(time_lags, grand_TRF_euclidean_dec, 'LineWidth', 2);
+title('Grand Average Temporal Response Function (Decoding) for Euclidean Gaze');
+xlabel('Lag [ms]');
+ylabel('Amplitude');
+xline(0, 'r', 'LineWidth', 1);
+yline(0, '--');
+set(gca, 'FontSize', 15)
+
+% Save the grand average figure for euclidean gaze metric
+saveas(gcf, fullfile(base_figures_path, 'AOC_orf_all_euclidean.png'));

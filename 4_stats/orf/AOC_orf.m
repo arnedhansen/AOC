@@ -141,62 +141,79 @@ end
 %% Load subject TRFs
 nChannels = 129;
 for subs = 1:length(subjects)
-    subjectID = subjects{subs};
-    models_folder = fullfile(base_features_path, subjectID, 'orf');
-    datapath = fullfile(models_folder, 'TRF_models.mat');
-    load(datapath);
+    try
+        subjectID = subjects{subs};
+        models_folder = fullfile(base_features_path, subjectID, 'orf');
+        datapath = fullfile(models_folder, 'TRF_models.mat');
+        load(datapath);
 
-    % Compute the average TRF across channels for each ocular regressor for this subject
-    nLags = length(modelTRF_gazeX(1).w);
-    all_w_gazeX = zeros(nLags, nChannels);
-    for i = 1:nChannels
-        all_w_gazeX(:, i) = modelTRF_gazeX(i).w;
-    end
-    TRF_gazeX_avg = mean(all_w_gazeX, 2);
-    all_w_gazeY = zeros(nLags, nChannels);
-    for i = 1:nChannels
-        all_w_gazeY(:, i) = modelTRF_gazeY(i).w;
-    end
-    TRF_gazeY_avg = mean(all_w_gazeY, 2);
-    all_w_pupil = zeros(nLags, nChannels);
-    for i = 1:nChannels
-        all_w_pupil(:, i) = modelTRF_pupil(i).w;
-    end
-    TRF_pupil_avg = mean(all_w_pupil, 2);
+        % Compute the average TRF across channels for each ocular regressor for this subject
+        nLags = length(modelTRF_gazeX(1).w);
+        all_w_gazeX = zeros(nLags, nChannels);
+        for i = 1:nChannels
+            all_w_gazeX(:, i) = modelTRF_gazeX(i).w;
+        end
+        TRF_gazeX_avg = mean(all_w_gazeX, 2);
+        all_w_gazeY = zeros(nLags, nChannels);
+        for i = 1:nChannels
+            all_w_gazeY(:, i) = modelTRF_gazeY(i).w;
+        end
+        TRF_gazeY_avg = mean(all_w_gazeY, 2);
+        all_w_pupil = zeros(nLags, nChannels);
+        for i = 1:nChannels
+            all_w_pupil(:, i) = modelTRF_pupil(i).w;
+        end
+        TRF_pupil_avg = mean(all_w_pupil, 2);
 
-    % Accumulate subject data
-    subject_count = subject_count + 1;
-    all_TRF_gazeX(:, subject_count) = TRF_gazeX_avg;
-    all_TRF_gazeY(:, subject_count) = TRF_gazeY_avg;
-    all_TRF_pupil(:, subject_count) = TRF_pupil_avg;
+        % Accumulate subject data
+        all_TRF_gazeX(:, subs) = TRF_gazeX_avg;
+        all_TRF_gazeY(:, subs) = TRF_gazeY_avg;
+        all_TRF_pupil(:, subs) = TRF_pupil_avg;
+
+        disp(['TRF models loaded for Subject ' subjectID]);
+    catch ME
+        warning(['Skipping Subject ' subjectID ': ' ME.message]);
+        continue;  % Skip to the next subject if an error occurs
+    end
 end
 
+%% Compute and Plot the Grand Average TRF across Subjects
+close all
 
+% Get average for all models
+grand_TRF_gazeX = mean(all_TRF_gazeX, 2, 'omitnan');
+grand_TRF_gazeY = mean(all_TRF_gazeY, 2, 'omitnan');
+grand_TRF_pupil = mean(all_TRF_pupil, 2, 'omitnan');
 
-%% Compute and Plot the Grand Average TRF Across Subjects
-grand_TRF_gazeX = mean(all_TRF_gazeX, 2);
-grand_TRF_gazeY = mean(all_TRF_gazeY, 2);
-grand_TRF_pupil = mean(all_TRF_pupil, 2);
+% Smooth using a Gaussian window of width 5 samples
+grand_TRF_gazeX = smoothdata(grand_TRF_gazeX, 'gaussian', 50);
+grand_TRF_gazeY = smoothdata(grand_TRF_gazeY, 'gaussian', 50);
+grand_TRF_pupil = smoothdata(grand_TRF_pupil, 'gaussian', 25);
 
+% Plot
 figure;
-subplot(1,3,1);
+set(gcf, 'Position', [0 0 2000 1000])
+time_lags = modelTRF_gazeX(1).t;  % Time vector for the TRF lags
+
+subplot(1,2,1);
 plot(time_lags, grand_TRF_gazeX, 'LineWidth', 2);
 title('Grand Average Temporal Response Function for Gaze X');
 xlabel('Lag [ms]');
 ylabel('Amplitude');
+xline(0, 'r', 'LineWidth', 1);
+yline(0, '--');
+set(gca, "YLim", [-0.05 0.05])
+set(gca, 'FontSize', 15)
 
-subplot(1,3,2);
+subplot(1,2,2);
 plot(time_lags, grand_TRF_gazeY, 'LineWidth', 2);
 title('Grand Average Temporal Response Function for Gaze Y');
 xlabel('Lag [ms]');
 ylabel('Amplitude');
-
-subplot(1,3,3);
-plot(time_lags, grand_TRF_pupil, 'LineWidth', 2);
-title('Grand Average Temporal Response Function for Pupil Size');
-xlabel('Lag [ms]');
-ylabel('Amplitude');
+xline(0, 'r', 'LineWidth', 1);
+yline(0, '--');
+set(gca, "YLim", [-0.03 0.03])
+set(gca, 'FontSize', 15)
 
 % Save the grand average figure
 saveas(gcf, fullfile(base_figures_path, 'AOC_orf_all.png'));
-close(gcf);

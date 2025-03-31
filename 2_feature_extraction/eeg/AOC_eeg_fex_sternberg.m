@@ -85,7 +85,7 @@ load('power_stern.mat');
 occ_channels = {};
 for i = 1:length(powload2.label)
     label = powload2.label{i};
-    if contains(label, {'O'})
+    if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
 end

@@ -87,6 +87,10 @@ coeff_gaze
 ######################
 
 # Model
+glmm_ONLYalpha <- lmer(dat$AlphaPower ~ dat$Condition + (1|dat$ID), data = dat)
+summary(glmm_ONLYalpha)
+
+# Model
 glmm_alpha <- lmer(dat$AlphaPower ~ dat$GazeDeviation * dat$Condition + (1|dat$ID), data = dat)
 summary(glmm_alpha)
 

@@ -21,9 +21,9 @@ for subj = 1:length(subjects)
         load dataEEG_nback
 
         % Identify indices of trials belonging to conditions
-        ind1=find(data.trialinfo == 21);
-        ind2=find(data.trialinfo == 22);
-        ind3=find(data.trialinfo == 23);
+        ind1 = find(data.trialinfo == 21);
+        ind2 = find(data.trialinfo == 22);
+        ind3 = find(data.trialinfo == 23);
 
         % Select data
         cfg = [];
@@ -305,7 +305,7 @@ for subj = 1:length(subjects)
         cfg.output       = 'pow';
         cfg.method       = 'mtmconvol';
         cfg.taper        = 'hanning';
-        cfg.foi          = 2:2:40;                         % analysis 2 to 40 Hz in steps of 2 Hz
+        cfg.foi          = 2:1:40;                         % analysis 2 to 40 Hz in steps of 1 Hz
         cfg.t_ftimwin    = ones(length(cfg.foi),1).*0.5;   % length of time window = 0.5 sec
         cfg.toi          = -1:0.05:2;
         cfg.keeptrials = 'no';

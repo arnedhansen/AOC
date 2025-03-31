@@ -61,62 +61,80 @@ gapow4_bl = ft_freqgrandaverage([], powl4_bl{:});
 gapow6_bl = ft_freqgrandaverage([], powl6_bl{:});
 
 %% Plot alpha power grand average POWERSPECTRUM
-close all
-figure;
-set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
-conditions = {'WM load 2', 'WM load 4', 'WM load 6'};
+gapow2 = gapow2_raw;
+gapow4 = gapow4_raw;
+gapow6 = gapow6_raw;
 
-% Plot
-cfg = [];
-cfg.channel = channels;
-cfg.figure = 'gcf';
-cfg.linewidth = 1;
-ft_singleplotER(cfg, gapow2, gapow4, gapow6);
-hold on;
+for electrodes = {'occ_cluster', 'Pz'}
+    close all
+    figure;
+    set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
+    conditions = {'WM load 2', 'WM load 4', 'WM load 6'};
 
-% Add shadedErrorBar
-channels_seb = ismember(gapow2.label, cfg.channel);
-eb2 = shadedErrorBar(gapow2.freq, mean(gapow2.powspctrm(channels_seb, :), 1), ...
-    std(gapow2.powspctrm(channels_seb, :)) / sqrt(size(gapow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-eb4 = shadedErrorBar(gapow4.freq, mean(gapow4.powspctrm(channels_seb, :), 1), ...
-    std(gapow4.powspctrm(channels_seb, :)) / sqrt(size(gapow4.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-eb6 = shadedErrorBar(gapow6.freq, mean(gapow6.powspctrm(channels_seb, :), 1), ...
-    std(gapow6.powspctrm(channels_seb, :)) / sqrt(size(gapow6.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-eb2.mainLine.Color = colors(1, :);
-eb4.mainLine.Color = colors(2, :);
-eb6.mainLine.Color = colors(3, :);
-eb2.patch.FaceColor = colors(1, :);
-eb4.patch.FaceColor = colors(2, :);
-eb6.patch.FaceColor = colors(3, :);
-set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
-set(eb4.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
-set(eb6.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
-set(eb2.edge(1), 'Color', colors(1, :));
-set(eb2.edge(2), 'Color', colors(1, :));
-set(eb4.edge(1), 'Color', colors(2, :));
-set(eb4.edge(2), 'Color', colors(2, :));
-set(eb6.edge(1), 'Color', colors(3, :));
-set(eb6.edge(2), 'Color', colors(3, :));
-set(eb2.patch, 'FaceAlpha', 0.25);
-set(eb4.patch, 'FaceAlpha', 0.25);
-set(eb6.patch, 'FaceAlpha', 0.25);
+    % Plot
+    cfg = [];
+    if strcmp(electrodes, 'occ_cluster')
+        cfg.channel = channels;
+    elseif strcmp(electrodes, 'Pz')
+        cfg.channel = {'Pz'};
+    end
+    cfg.figure = 'gcf';
+    cfg.linewidth = 1;
+    ft_singleplotER(cfg, gapow2, gapow4, gapow6);
+    hold on;
 
-% Adjust plotting
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-[~, channel_idx] = ismember(channels, gapow2.label);
-freq_idx = find(gapow2.freq >= 8 & gapow2.freq <= 14);
-max_spctrm = max([mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow4.powspctrm(channel_idx, freq_idx), 2); mean(gapow6.powspctrm(channel_idx, freq_idx), 2)]);
-ylim([0 max_spctrm*1.4])
-box on
-xlabel('Frequency [Hz]');
-ylabel('Power [\muV^2/Hz]');
-legend([eb2.mainLine, eb4.mainLine, eb6.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, 'FontName', 'Arial', 'FontSize', 20);
-title('Sternberg Power Spectrum', 'FontSize', 30);
-hold off;
+    % Add shadedErrorBar
+    channels_seb = ismember(gapow2.label, cfg.channel);
+    eb2 = shadedErrorBar(gapow2.freq, mean(gapow2.powspctrm(channels_seb, :), 1), ...
+        std(gapow2.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+    eb4 = shadedErrorBar(gapow4.freq, mean(gapow4.powspctrm(channels_seb, :), 1), ...
+        std(gapow4.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow4.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+    eb6 = shadedErrorBar(gapow6.freq, mean(gapow6.powspctrm(channels_seb, :), 1), ...
+        std(gapow6.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow6.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+    eb2.mainLine.Color = colors(1, :);
+    eb4.mainLine.Color = colors(2, :);
+    eb6.mainLine.Color = colors(3, :);
+    eb2.patch.FaceColor = colors(1, :);
+    eb4.patch.FaceColor = colors(2, :);
+    eb6.patch.FaceColor = colors(3, :);
+    set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
+    set(eb4.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
+    set(eb6.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
+    set(eb2.edge(1), 'Color', colors(1, :));
+    set(eb2.edge(2), 'Color', colors(1, :));
+    set(eb4.edge(1), 'Color', colors(2, :));
+    set(eb4.edge(2), 'Color', colors(2, :));
+    set(eb6.edge(1), 'Color', colors(3, :));
+    set(eb6.edge(2), 'Color', colors(3, :));
+    set(eb2.patch, 'FaceAlpha', 0.25);
+    set(eb4.patch, 'FaceAlpha', 0.25);
+    set(eb6.patch, 'FaceAlpha', 0.25);
 
-% Save
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/AOC_alpha_power_sternberg_powspctrm.png');
+    % Adjust plotting
+    set(gcf,'color','w');
+    set(gca,'Fontsize',20);
+    [~, channel_idx] = ismember(cfg.channel, gapow2.label);
+    freq_idx = find(gapow2.freq >= 8 & gapow2.freq <= 14);
+    max_spctrm = max([mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow4.powspctrm(channel_idx, freq_idx), 2); mean(gapow6.powspctrm(channel_idx, freq_idx), 2)]);
+    if strcmp(electrodes, 'Pz')
+        ylim([0 0.6])
+    else
+        ylim([0 max_spctrm*1.4])
+    end
+    box on
+    xlabel('Frequency [Hz]');
+    ylabel('Power [\muV^2/Hz]');
+    legend([eb2.mainLine, eb4.mainLine, eb6.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, 'FontName', 'Arial', 'FontSize', 20);
+    title('Sternberg Power Spectrum', 'FontSize', 30);
+    hold off;
+
+    % Save
+    if strcmp(electrodes, 'occ_cluster')
+        saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_sternberg_powspctrm.png');
+    elseif strcmp(electrodes, 'Pz')
+        saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_sternberg_powspctrm_elecPz.png');
+    end
+end
 
 %% Plot INDIVIDUAL power spectra
 close all

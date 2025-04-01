@@ -222,6 +222,8 @@ for subj = 1:length(subjects)
         cfg = [];
         cfg.channel = {'L-GAZE-X'  'L-GAZE-Y' 'L-AREA', 'R-GAZE-X'  'R-GAZE-Y' 'R-AREA'};
         dataet = ft_selectdata(cfg,data);
+        dataETlong = dataet;
+        dataETlong.trialinfo = trialinfo;
 
         %% Get EEG data (excl. ET and EOG data)
         cfg = [];
@@ -278,7 +280,7 @@ for subj = 1:length(subjects)
         end
         mkdir(savepathET)
         cd(savepathET)
-        save dataET_nback dataet
+        save dataET_nback dataet dataETlong
         save gaze_metrics_nback saccades_1back fixations_1back blinks_1back ...
             saccades_2back fixations_2back blinks_2back ...
             saccades_3back fixations_3back blinks_3back

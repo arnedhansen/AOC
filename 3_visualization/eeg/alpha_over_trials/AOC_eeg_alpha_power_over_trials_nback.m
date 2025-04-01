@@ -24,6 +24,7 @@ subjects = {folders.name};
 subjects = exclude_subjects(subjects, 'AOC');  % Exclude unwanted subjects
 
 for subs = 1:length(subjects)
+    close all
     subjectID = subjects{subs};  % Change index if you wish to analyse a different subject
 
     %% Define conditions and corresponding triggers
@@ -188,6 +189,10 @@ for subs = 1:length(subjects)
     set(gca, 'FontSize', 25)
 
     % Save
-    saveas(gcf, ['/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_over_trials/AOC_alpha_power_over_trials_nback_sub', subjectID, '.png'])
+    if ispc == 1
+        saveas(gcf, ['W:\Students\Arne\AOC\figures\eeg\alpha_over_trials\AOC_alpha_power_over_trials_nback_sub', subjectID, '.png'])
+    else
+        saveas(gcf, ['/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_over_trials/AOC_alpha_power_over_trials_nback_sub', subjectID, '.png'])
+    end
     fprintf('Subject %s done. \n', subjectID);
 end

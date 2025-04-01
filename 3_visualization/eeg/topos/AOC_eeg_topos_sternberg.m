@@ -153,6 +153,7 @@ cfg.highlightsymbol = '.';
 cfg.highlightsize = 10;
 cfg.figure = 'gcf';
 cfg.marker = 'off';
+% cfg.marker = 'labels';
 cmap = cbrewer('div', 'RdBu', 100);
 cmap = max(min(cmap, 1), 0);
 cmap = flipud(cmap);

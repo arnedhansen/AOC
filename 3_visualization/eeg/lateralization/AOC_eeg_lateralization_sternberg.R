@@ -1,4 +1,4 @@
-# AOC N-back EEG Alpha Power Lateralization
+# AOC Sternberg EEG Alpha Power Lateralization
 
 # Load necessary libraries
 library(ggplot2)
@@ -10,14 +10,14 @@ library(colorspace)  # provides darken(), lighten(), desaturate()
 pal <- c("#93B8C4", "#82AD82", "#D998A2") 
 
 # Read in the data
-dat <- read.csv("/Volumes/methlab/Students/Arne/AOC/data/features/merged_data_nback.csv")
+dat <- read.csv("/Volumes/methlab/Students/Arne/AOC/data/features/merged_data_sternberg.csv")
 
 # Remove outliers by setting any points over 0.55 or -0.55 in dat$Lateralization to NA
 dat$Lateralization[dat$Lateralization > 0.55 | dat$Lateralization < -0.55] <- NA
 
-# Convert Condition to a factor with labels "1-back", "2-back", "3-back"
-dat$Condition <- factor(dat$Condition, levels = c(1, 2, 3), 
-                        labels = c("1-back", "2-back", "3-back"))
+# Convert Condition to a factor with labels 
+dat$Condition <- dat$Condition / 2
+dat$Condition <- factor(dat$Condition, levels = c(1, 2, 3), labels = c("WM load 2", "WM load 4", "WM load 6"))
 
 # Set variables for lateralisation visualisation
 var <- "Lateralization"
@@ -94,7 +94,7 @@ p <- dat %>%
     x = x_lab,
     y = y_lab,
     title = title,
-    subtitle = paste("N-back", title, "by Condition")
+    subtitle = paste("Sternberg", title, "by Condition")
   ) +
   
   theme_minimal(base_family = "Zilla Slab", base_size = 15) +
@@ -122,5 +122,5 @@ p <- p + scale_x_continuous(
 ) 
 
 # Save the plot as a PNG file
-ggsave(filename = file.path(output_dir, paste0("AOC_stats_rainclouds_", save_name, "_nback.png")),
+ggsave(filename = file.path(output_dir, paste0("AOC_stats_rainclouds_", save_name, "_sternberg.png")),
        plot = p, width = 8, height = 6, dpi = 300)

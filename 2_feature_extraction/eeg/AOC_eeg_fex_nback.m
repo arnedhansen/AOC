@@ -181,6 +181,7 @@ for subj = 1:length(subjects)
         end
 
         % Compute lateralization index
+        % as done in Stroganova et al., 2007
         powloads = {powload1, powload2, powload3};
         for i = 1:3
             curr_load = powloads{i};

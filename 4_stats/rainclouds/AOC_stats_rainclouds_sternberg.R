@@ -30,7 +30,7 @@ dat$ReactionTime <- dat$ReactionTime * 1000
 # Create the GazeStd column as the average of GazeStdX and GazeStdY
 dat$GazeStd <- (dat$GazeStdX + dat$GazeStdY) / 2
 
-# Convert Condition to a factor with labels "1-back", "2-back", "3-back"
+# Convert Condition to a factor with labels 
 dat$Condition <- factor(dat$Condition, levels = c(1, 2, 3), labels = c("WM load 2", "WM load 4", "WM load 6"))
 
 # Define the list of variables, y-axis labels and save names (to be used in file naming)

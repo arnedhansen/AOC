@@ -192,7 +192,8 @@ for subj = 1:length(subjects)
             IAF6 = NaN;
         end
 
-         % Compute lateralization index
+        % Compute lateralization index
+        % as done in Stroganova et al., 2007
         powloads = {powload2, powload4, powload6};
         for i = 1:3
             curr_load = powloads{i};

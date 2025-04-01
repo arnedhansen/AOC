@@ -113,7 +113,9 @@ color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red divergi
 
 % Find maximum deviation
 [~, channel_idx] = ismember(channels, gatfr2.label);
-max_spctrm = max(abs(diff.powspctrm(channel_idx, :, :)), [], 'all');
+time_idx = find(diff.time >= -0.5 & diff.time <= 2);
+max_spctrm = max(abs(diff.powspctrm(channel_idx, :, time_idx)), [], 'all');
+max_spctrm = 0.5
 clim = double([-max_spctrm max_spctrm]);
 
 % Plot: Difference Time-Frequency Response

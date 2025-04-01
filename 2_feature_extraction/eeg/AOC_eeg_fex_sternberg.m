@@ -2,7 +2,7 @@
 %
 % Extracted features:
 %   Power Spectrum
-%   IAF and Power at IAF
+%   IAF, Power at IAF, and Lateralization Index
 %   FOOOF Power
 %   TFR
 %   Baselined Power Spectrum
@@ -71,7 +71,7 @@ for subj = 1:length(subjects)
     end
 end
 
-%% ALPHA POWER and IAF
+%% ALPHA POWER, IAF and LATERALIZATION INDEX
 % Setup
 startup
 [subjects, path, ~ , ant128lay] = setup('AOC');
@@ -90,6 +90,26 @@ for i = 1:length(powload2.label)
     end
 end
 channels = occ_channels;
+% Left and right channels
+left_channels = {};
+right_channels = {};
+for i = 1:length(channels)
+    try
+        ch = channels{i};
+        % Find the first numeric part in the channel name
+        numStr = regexp(ch, '\d+', 'match');
+        % Convert the first numerical token to a number
+        numVal = str2double(numStr{1});
+        if mod(numVal, 2) == 1
+            left_channels{end+1} = ch;
+        else
+            right_channels{end+1} = ch;
+        end
+    catch ME
+        ME.message
+        disp(['Midline channel: ', ch])
+    end
+end
 
 % Load data and calculate alpha power and IAF
 alphaRange = [8 14];
@@ -97,7 +117,7 @@ powerIAF2 = [];
 powerIAF4 = [];
 powerIAF6 = [];
 IAF_results = struct();
-eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {});
+eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {}, 'Lateralization', {});
 
 for subj = 1:length(subjects)
     try
@@ -172,10 +192,26 @@ for subj = 1:length(subjects)
             IAF6 = NaN;
         end
 
+         % Compute lateralization index
+        powloads = {powload2, powload4, powload6};
+        for i = 1:3
+            curr_load = powloads{i};
+            left_idx = find(ismember(curr_load.label, left_channels));
+            right_idx = find(ismember(curr_load.label, right_channels));
+            alpha_idx = find(curr_load.freq >= alphaRange(1) & curr_load.freq <= alphaRange(2));
+            left_alpha_power = mean(mean(curr_load.powspctrm(left_idx, alpha_idx), 2));
+            right_alpha_power = mean(mean(curr_load.powspctrm(right_idx, alpha_idx), 2));
+            LatIdx(i) = (right_alpha_power - left_alpha_power) / (right_alpha_power + left_alpha_power);
+        end
+        LatIdx2 = LatIdx(1);
+        LatIdx4 = LatIdx(2);
+        LatIdx6 = LatIdx(3);
+
         % Create a structure array for this subject
         subID = str2num(subjects{subj});
         subj_data_eeg = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell([2; 4; 6]), ...
-            'AlphaPower', num2cell([powerIAF2; powerIAF4; powerIAF6]), 'IAF', num2cell([IAF2; IAF4; IAF6]));
+            'AlphaPower', num2cell([powerIAF2; powerIAF4; powerIAF6]), 'IAF', num2cell([IAF2; IAF4; IAF6]), ...
+            'Lateralization', num2cell([LatIdx2; LatIdx4; LatIdx6]));
 
         % Save
         if ispc == 1
@@ -188,9 +224,12 @@ for subj = 1:length(subjects)
         save eeg_matrix_sternberg_subj subj_data_eeg
         save alpha_power_sternberg powerIAF2 powerIAF4 powerIAF6
         save IAF_sternberg IAF2 IAF4 IAF6
+        save lateralization_sternberg LatIdx2 LatIdx4 LatIdx6
         eeg_data_sternberg = [eeg_data_sternberg; subj_data_eeg];
         clc
-        fprintf('Subject %s IAF: WM2: %f Hz (Power: %f), WM4: %f Hz (Power: %f), WM6: %f Hz (Power: %f) \n', subjects{subj}, IAF2, powerIAF2, IAF4, powerIAF4, IAF6, powerIAF6);
+        fprintf(['Subject %s IAF: WM2: %f Hz (Power: %f), WM4: %f Hz (Power: %f), ' ...
+            'WM6: %f Hz (Power: %f) | Lateralization: %f %f %f \n'], subjects{subj}, ...
+            IAF2, powerIAF2, IAF4, powerIAF4, IAF6, powerIAF6, LatIdx2, LatIdx4, LatIdx6);
     catch ME
         ME.message
         error(['ERROR calculating alpha power and IAF for Subject ' num2str(subjects{subj}) '!'])

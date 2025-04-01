@@ -2,7 +2,7 @@
 %
 % Extracted features:
 %   Power Spectrum
-%   IAF  and Power at IAF
+%   IAF, Power at IAF, and Lateralization Index
 %   FOOOF Power
 %   TFR
 %   Baselined Power Spectrum
@@ -58,7 +58,7 @@ for subj = 1:length(subjects)
     end
 end
 
-%% ALPHA POWER and IAF
+%% ALPHA POWER, IAF and LATERALIZATION INDEX
 % Setup
 startup
 [subjects, path, ~ , ant128lay] = setup('AOC');
@@ -77,14 +77,35 @@ for i = 1:length(powload2.label)
 end
 channels = occ_channels;
 
-% Load data and calculate power and IAF
+% Left and right channels
+left_channels = {};
+right_channels = {};
+for i = 1:length(channels)
+    try
+        ch = channels{i};
+        % Find the first numeric part in the channel name
+        numStr = regexp(ch, '\d+', 'match');
+        % Convert the first numerical token to a number
+        numVal = str2double(numStr{1});
+        if mod(numVal, 2) == 1
+            left_channels{end+1} = ch;
+        else
+            right_channels{end+1} = ch;
+        end
+    catch ME
+        ME.message
+        disp(['Midline channel: ', ch])
+    end
+end
+
+% Load data and calculate power, IAF and lateralization index
 close all
 alphaRange = [8 14];
 powerIAF1 = [];
 powerIAF2 = [];
 powerIAF3 = [];
 IAF_results = struct();
-eeg_data_nback = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {});
+eeg_data_nback = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {}, 'Lateralization', {});
 
 for subj = 1:length(subjects)
     try
@@ -159,10 +180,25 @@ for subj = 1:length(subjects)
             IAF3 = NaN;
         end
 
+        % Compute lateralization index
+        powloads = {powload1, powload2, powload3};
+        for i = 1:3
+            curr_load = powloads{i};
+            left_idx = find(ismember(curr_load.label, left_channels));
+            right_idx = find(ismember(curr_load.label, right_channels));
+            alpha_idx = find(curr_load.freq >= alphaRange(1) & curr_load.freq <= alphaRange(2));
+            left_alpha_power = mean(mean(curr_load.powspctrm(left_idx, alpha_idx), 2));
+            right_alpha_power = mean(mean(curr_load.powspctrm(right_idx, alpha_idx), 2));
+            LatIdx(i) = (right_alpha_power - left_alpha_power) / (right_alpha_power + left_alpha_power);
+        end
+        LatIdx1 = LatIdx(1);
+        LatIdx2 = LatIdx(2);
+        LatIdx3 = LatIdx(3);
+
         % Create a structure array for this subject
         subID = str2num(subjects{subj});
         subj_data_eeg = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell([1; 2; 3]), ...
-            'AlphaPower', num2cell([powerIAF1; powerIAF2; powerIAF3]), 'IAF', num2cell([IAF1; IAF2; IAF3]));
+            'AlphaPower', num2cell([powerIAF1; powerIAF2; powerIAF3]), 'IAF', num2cell([IAF1; IAF2; IAF3]), 'Lateralization', num2cell([LatIdx1; LatIdx2; LatIdx3]));
 
         % Save
         if ispc == 1
@@ -175,9 +211,12 @@ for subj = 1:length(subjects)
         save eeg_matrix_nback_subj subj_data_eeg
         save alpha_power_nback powerIAF1 powerIAF2 powerIAF3
         save IAF_nback IAF1 IAF2 IAF3
+        save lateralization_nback LatIdx1 LatIdx2 LatIdx3
         eeg_data_nback = [eeg_data_nback; subj_data_eeg];
         clc
-        fprintf('Subject %s IAF: 1-back: %f Hz (Power: %f), 2-back: %f Hz (Power: %f), 3-back: %f Hz (Power: %f)\n', subjects{subj}, IAF1, powerIAF1, IAF2, powerIAF2, IAF3, powerIAF3);
+        fprintf(['Subject %s IAF: 1-back: %f Hz (Power: %f), 2-back: %f Hz (Power: %f), ' ...
+            '3-back: %f Hz (Power: %f) | Lateralization: %f %f %f \n'], subjects{subj}, IAF1, ...
+            powerIAF1, IAF2, powerIAF2, IAF3, powerIAF3, LatIdx1, LatIdx2, LatIdx3);
     catch ME
         ME.message
         error(['ERROR calculating alpha power and IAF for Subject ' num2str(subjects{subj}) '!'])

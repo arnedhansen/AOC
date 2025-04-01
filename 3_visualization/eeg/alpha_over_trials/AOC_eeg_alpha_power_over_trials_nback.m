@@ -1,143 +1,193 @@
-%% AOC Alpha Power change over trials N-back
+%% Analyse Alpha Power Changes Over Trials Within Each Block (All Conditions Mixed)
+% This script loads each block's EEG data for the N‑back task, extracts epochs
+% for all conditions (1‑back: trigger '21', 2‑back: '22', 3‑back: '23'), combines
+% them for each block (while retaining the trial's condition label), computes the
+% alpha (8–14 Hz) power for each trial averaged over occipital channels, and finally
+% plots a bar graph with a bar for each trial (grouped by block) and bars coloured
+% by condition.
 
-%% Setup
-startup
-clear
+startup;
+close all; clear; clc;
 addEEGLab
-if ispc == 1
-    path = 'W:\Students\Arne\AOC\data\merged\';
+
+%% Set data path based on operating system
+if ispc
+    basePath = 'W:\Students\Arne\AOC\data\merged\';
 else
-    path = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
+    basePath = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
 end
-dirs = dir(path);
+
+%% List subjects and choose one subject for analysis
+dirs = dir(basePath);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
-subjects = exclude_subjects(subjects, 'AOC');
+subjects = exclude_subjects(subjects, 'AOC');  % Exclude unwanted subjects
 
-%% Define channels
-subj = 1;
-datapath = strcat(path, subjects{subj}, filesep, 'eeg');
-cd(datapath);
-load('power_nback_trials.mat');
-% Occipital channels
-occ_channels = {};
-for i = 1:length(powload1_trials.label)
-    label = powload1_trials.label{i};
-    if contains(label, {'O'}) || contains(label, {'I'})
-        occ_channels{end+1} = label;
-    end
-end
-channels = occ_channels;
+for subs = 1:length(subjects)
+    subjectID = subjects{subs};  % Change index if you wish to analyse a different subject
 
-%% Load data
-for subj = 1:length(subjects)
-    try
-        % Load data
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
-        cd(datapath)
-        close all
-        load dataEEG_nback
+    %% Define conditions and corresponding triggers
+    conds = {'21', '22', '23'};   % Triggers for 1‑back, 2‑back, 3‑back respectively
+    condLabels = [1, 2, 3];        % Numeric labels (can later be mapped to condition names)
 
-        % Identify indices of trials belonging to conditions
-        ind1 = find(data.trialinfo == 21);
-        ind2 = find(data.trialinfo == 22);
-        ind3 = find(data.trialinfo == 23);
+    nBlocks = 6;  % Number of blocks
 
-        % Select data
+    % Preallocate a cell array to store results for each block
+    blockAlpha = cell(1, nBlocks);
+
+    %% Loop over each block
+    for block = 1:nBlocks
+        clc
+        fprintf('Processing Block %d for Subject %s...\n', block, subjectID);
+        datapath = fullfile(basePath, subjectID);
+        cd(datapath);
+
+        % Load the block's EEG file
+        try
+            fileName = sprintf('%s_EEG_ET_Nback_block%d_merged.mat', subjectID, block);
+            load(fileName);  % Loads variable EEG
+            EEG_block = EEG;
+        catch ME
+            warning('Could not load block %d: %s', block, ME.message);
+            continue;
+        end
+
+        % Container for FieldTrip data from each condition in this block
+        ftDataAll = {};
+
+        % Loop over each condition (trigger)
+        for c = 1:length(conds)
+            trig = conds{c};
+            epoch_window = [-1.5 2.5];  % Time window (in seconds)
+            try
+                EEG_epoch = pop_epoch(EEG_block, {trig}, epoch_window);
+                % Exclude trials with motor responses (trigger '4')
+                matching_trials = find(strcmp({EEG_epoch.event.type}, '4'));
+                if ~isempty(matching_trials)
+                    exclude_epochs = unique([EEG_epoch.event(matching_trials).epoch]);
+                    EEG_epoch = pop_select(EEG_epoch, 'notrial', exclude_epochs);
+                end
+            catch ME
+                warning('Epoching error for condition %s in block %d: %s', trig, block, ME.message);
+                continue;
+            end
+
+            % Convert to FieldTrip format
+            try
+                ftData = eeglab2fieldtrip(EEG_epoch, 'raw');
+            catch ME
+                warning('Conversion to FieldTrip failed for condition %s in block %d: %s', trig, block, ME.message);
+                continue;
+            end
+
+            % Save the condition label (1 for 1‑back, 2 for 2‑back, 3 for 3‑back)
+            nTrials = numel(ftData.trial);
+            ftData.trialinfo = repmat(condLabels(c), nTrials, 1);
+
+            ftDataAll{end+1} = ftData;
+        end
+
+        % If no data was collected for this block, skip it
+        if isempty(ftDataAll)
+            warning('No valid data for block %d.', block);
+            continue;
+        end
+
+        % Combine data from all conditions for this block
         cfg = [];
-        cfg.latency = [0 2]; % Segment from 0 to 2 [seconds]
-        dat = ft_selectdata(cfg,data);
+        cfg.keepsampleinfo = 'no';
+        try
+            dataCombined = ft_appenddata(cfg, ftDataAll{:});
+        catch ME
+            warning('Data combination failed for block %d: %s', block, ME.message);
+            continue;
+        end
 
-        % Frequency analysis settings
-        cfg = [];% empty config
-        cfg.output = 'pow';% estimates power only
-        cfg.method = 'mtmfft';% multi taper fft method
-        cfg.taper = 'dpss';% multiple tapers
-        cfg.tapsmofrq = 1;% smoothening frequency around foi
-        cfg.foilim = [3 30];% frequencies of interest (foi)
-        cfg.keeptrials = 'no';% do not keep single trials in output
-        cfg.pad = 10;
+        % Perform frequency analysis to compute power in the alpha band (8–14 Hz)
+        cfg = [];
+        cfg.output     = 'pow';
+        cfg.method     = 'mtmfft';
+        cfg.taper      = 'dpss';
+        cfg.tapsmofrq  = 1;          % Smoothing frequency (Hz)
+        cfg.foilim     = [8 14];     % Alpha band range
+        cfg.keeptrials = 'yes';
+        cfg.pad        = 10;
+        try
+            freqData = ft_freqanalysis(cfg, dataCombined);
+        catch ME
+            warning('Frequency analysis failed for block %d: %s', block, ME.message);
+            continue;
+        end
 
-        % Frequency analysis settings
-        cfg.trials = ind1;
-        powload1 = ft_freqanalysis(cfg,dat);
-        cfg.trials = ind2;
-        powload2 = ft_freqanalysis(cfg,dat);
-        cfg.trials = ind3;
-        powload3 = ft_freqanalysis(cfg,dat);
+        % Identify occipital channels (assumes labels contain 'O' or 'I')
+        occIdx = find(~cellfun(@isempty, regexp(freqData.label, 'O|I', 'once')));
+        if isempty(occIdx)
+            warning('No occipital channels found in block %d.', block);
+            continue;
+        end
 
-        % Save raw power spectra
-        cd(datapath)
-        save power_nback powload1 powload2 powload3
+        % Compute mean alpha power for each trial (averaging over occipital channels and frequency bins)
+        % Dimensions of freqData.powspctrm: trials x channels x frequency bins
+        trialAlpha = squeeze(mean(mean(freqData.powspctrm(:, occIdx, :), 3), 2));
 
-    catch ME
-        ME.message
-        error(['ERROR extracting power for Subject ' num2str(subjects{subj}) '!'])
+        % Save the results for this block: alpha power and the trial's condition label
+        blockAlpha{block}.alpha   = trialAlpha;
+        blockAlpha{block}.cond    = dataCombined.trialinfo;  % Numeric condition labels (1, 2, 3)
+        blockAlpha{block}.nTrials = numel(trialAlpha);
+
+        fprintf('Block %d processed: %d trials.\n', block, numel(trialAlpha));
     end
+
+    %% Plotting the results
+    % Create a bar plot of alpha power over trials (grouped by block), colouring bars
+    % according to the condition.
+    figure;
+    set(gcf, 'Position', [0 0 1800 1200], 'Color', 'W')
+    hold on;
+    % Define colours for the conditions (blue for 1‑back, green for 2‑back, red for 3‑back)
+    colors = color_def('AOC');
+    condColors = [colors(1, :); colors(2, :); colors(3, :)];
+    xTickPositions = [];
+    xTickLabels = {};
+    xPos = 0;  % Initialise x position
+
+    for block = 1:nBlocks
+        if isempty(blockAlpha{block})
+            continue;
+        end
+        nTrials = blockAlpha{block}.nTrials;
+        alphaVals = blockAlpha{block}.alpha;
+        condVals  = blockAlpha{block}.cond;  % Condition for each trial (1, 2 or 3)
+        % Determine x positions for the current block's trials
+        xBlock = xPos + (1:nTrials);
+
+        % Plot each trial as an individual bar
+        for t = 1:nTrials
+            thisCond = condVals(t);  % Numeric condition label
+            bar(xBlock(t), alphaVals(t), 0.8, 'FaceColor', condColors(thisCond, :), 'EdgeColor', 'none');
+        end
+
+        % Store x-tick position (centre of the current block)
+        xTickPositions = [xTickPositions, xPos + nTrials/2];
+        xTickLabels{end+1} = sprintf('Block %d', block);
+        % Advance xPos for the next block (adding a gap of 2 units)
+        xPos = xBlock(end) + 2;
+    end
+
+    xlabel('Trial & Block');
+    ylabel('Alpha Power');
+    title(sprintf('N-back Alpha Power over Trials for Subject %s', subjectID));
+    set(gca, 'XTick', xTickPositions, 'XTickLabel', xTickLabels);
+    grid on;
+
+    % Create a legend for the condition colours
+    h1 = bar(nan, nan, 0.8, 'FaceColor', condColors(1, :));
+    h2 = bar(nan, nan, 0.8, 'FaceColor', condColors(2, :));
+    h3 = bar(nan, nan, 0.8, 'FaceColor', condColors(3, :));
+    legend([h1, h2, h3], {'1-back', '2-back', '3-back'}, 'Location', 'northeast');
+    set(gca, 'FontSize', 25)
+
+    % Save
+    saveas(gcf, ['/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_over_trials/AOC_alpha_power_over_trials_nback_sub', subjectID, '.png'])
+    fprintf('Subject %s done. \n', subjectID);
 end
-
-
-%% Load data
-% Load powspctrm data
-for subj = 10%1:3%%%%%%%%%%length(subjects)
-    datapath = strcat(path, subjects{subj}, filesep, 'eeg');
-    cd(datapath)
-    load power_nback_trials
-    
-    % Compute power over time from ft_freqanalysis structure
-    cfg = [];
-    cfg.keeptrials = 'yes';
-    cfg.channel = channels;
-    cfg.frequency = [8 14];
-    % powload1_trials in form: trials x electrodes x frequency bins
-    alphapowl1{subj} = ft_freqdescriptives(cfg, powload1_trials);
-    alphapowl2{subj} = ft_freqdescriptives(cfg, powload2_trials);
-    alphapowl3{subj} = ft_freqdescriptives(cfg, powload3_trials);
-    disp(['Subject ', num2str(subjects{subj}), ' loaded.'])
-end
-
-%% Plot INDIVIDUAL alpha power over time
-
-
-
-
-%%%%%%%%%% PUT PLOTS AFTER ANOTHER LIKE PSF in Condition colors from
-%%%%%%%%%% colors(1, :)
-
-
-
-
-
-% Compute alpha powers over trials
-alphapow1 = mean(alphapowl1{1, subj}.powspctrm, 3);
-alphapow1 = mean(alphapow1, 2);
-alphapow2 = mean(alphapowl2{1, subj}.powspctrm, 3);
-alphapow2 = mean(alphapow2, 2);
-alphapow3 = mean(alphapowl3{1, subj}.powspctrm, 3);
-alphapow3 = mean(alphapow3, 2);
-
-% Plot
-figure;
-sgtitle('Alpha Power over ')
-set(gcf, 'Position', [0 0 600 1000], 'Color', 'W');
-subplot(3, 1, 1)
-bar(alphapow1, 'b')
-legend('1-back');
-xlabel('Trials');
-ylabel('Alpha Power (8-14 Hz)');
-title('1-back Grand Average Alpha Power over Trials');
-
-subplot(3, 1, 2)
-bar(alphapow2, 'g')
-legend('2-back');
-xlabel('Trials');
-ylabel('Alpha Power (8-14 Hz)');
-title('2-back Grand Average Alpha Power over Trials');
-
-subplot(3, 1, 3)
-bar(alphapow3, 'r')
-legend('3-back');
-xlabel('Trials');
-ylabel('Alpha Power (8-14 Hz)');
-title('3-back Grand Average Alpha Power over Trials');
-

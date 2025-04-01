@@ -1,6 +1,7 @@
 %% Computation of EyeLink CALIBRATION and VALIDATION data
 
 %% Setup
+startup
 clear
 clc
 close all
@@ -46,6 +47,10 @@ for subj = 1:length(subjects)
     end
 end
 
+%% Load VL data
+vlTbl = readtable('/Volumes/methlab_vp/AOC/AOC_VPs.xlsx');
+vlTbl = vlTbl(1:125, ["ID", "VL1", "VL2"]);
+
 %% VISUALIZE for each subject
 numSubjects = numel(VAL);
 for subjIdx = 1:numSubjects
@@ -85,13 +90,26 @@ for subjIdx = 1:numSubjects
         % Set the y-axis ticks
         yticks(0:0.1:10);
 
-        % Add a title
-        title(['Validation Data for Subject ' num2str(subjects{subjIdx})], 'FontSize', 20);
+        % Add a title and VL info
+        subjID = str2double(subjects{subjIdx});
+        rowIdx = find(vlTbl.ID == subjID);
+        vl1 = vlTbl.VL1{rowIdx};
+        vl2 = vlTbl.VL2{rowIdx};
+        if isempty(vl2)
+        title(['Validation Data for Subject ' num2str(subjects{subjIdx}), ' (', vl1, ')'], 'FontSize', 20);
+        else
+        title(['Validation Data for Subject ' num2str(subjects{subjIdx}), ' (', vl1, ' & ', vl2, ')'], 'FontSize', 20);
+        end
         hold off;
 
         % Add subtitles
         annotation('textbox', [0.3, 0.03, 0.1, 0.05], 'String', 'N-back', 'EdgeColor', 'none', 'FontSize', 15);
         annotation('textbox', [0.665, 0.03, 0.1, 0.05], 'String', 'Sternberg', 'EdgeColor', 'none', 'FontSize', 15);
+
+        % Add VL info
+        
+        annotation('textbox', [0.8, 0.73, 0.5, 0.45], 'String', [vl1, ' ', vl2], ...
+            'EdgeColor', 'none', 'FontSize', 15);
 
         % Save
         savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/ET_validations/');

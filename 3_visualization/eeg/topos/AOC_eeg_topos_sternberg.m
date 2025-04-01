@@ -275,4 +275,3 @@ for subj = 1:length(subjects)
     ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
     saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_sternberg_topo_diff_%s.png', subjectID))); 
 end
-

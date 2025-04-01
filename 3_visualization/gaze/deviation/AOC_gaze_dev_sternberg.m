@@ -18,20 +18,20 @@ for subj = 1:numSubjects
     gazePath = fullfile(path, subjects{subj}, 'gaze');
     load(fullfile(gazePath, 'dataET_sternberg.mat'));
 
-    numTrials = length(dataet.trial);
+    numTrials = length(dataETlong.trial);
     % Preallocate cell arrays for each trial’s gaze data
     lGazeX = cell(1, numTrials);
     lGazeY = cell(1, numTrials);
 
     for i = 1:numTrials
-        lGazeX{i} = dataet.trial{i}(1, :);
-        lGazeY{i} = dataet.trial{i}(2, :);
+        lGazeX{i} = dataETlong.trial{i}(1, :);
+        lGazeY{i} = dataETlong.trial{i}(2, :);
     end
 
     % Get unique conditions (adjust as needed)
-    conditions = unique(dataet.trialinfo);
+    conditions = unique(dataETlong.trialinfo);
     conditions = (conditions-50)/2;
-    timePoints = length(dataet.time{1});
+    timePoints = length(dataETlong.time{1});
 
     subjectAverageGazeX = cell(1, length(conditions));
     subjectAverageGazeY = cell(1, length(conditions));
@@ -41,7 +41,7 @@ for subj = 1:numSubjects
     for condIdx = 1:length(conditions)
         cond = conditions(condIdx);
         cond = (cond*2)+50;
-        condTrialsIdx = find(dataet.trialinfo == cond);
+        condTrialsIdx = find(dataETlong.trialinfo == cond);
 
         condGazeX = zeros(length(condTrialsIdx), timePoints);
         condGazeY = zeros(length(condTrialsIdx), timePoints);
@@ -101,10 +101,10 @@ grandErrorGazeY = cellfun(@(y) (y / 300) * 100, grandErrorGazeY, 'UniformOutput'
 
 % Define sliding window parameters
 windowLength = 0.05; % 100 ms
-dt = dataet.time{1}(2) - dataet.time{1}(1);
+dt = dataETlong.time{1}(2) - dataETlong.time{1}(1);
 windowPoints = round(windowLength / dt);
 moving_average = @(data, win_length) movmean(data, win_length, 2);
-timeVec = dataet.time{1};
+timeVec = dataETlong.time{1};
 
 %% Grand Average
 close all
@@ -134,16 +134,18 @@ end
 
 % Adjust plot aesthetics
 yline(0, 'Color', [0.5, 0.5, 0.5], 'LineStyle', '--');
-title('N-back Grand Average X Deviation', 'FontSize', 18);
+xline(0, 'Color', 'r', 'LineStyle', '--', 'LineWidth', 2);
+title('Sternberg Grand Average X Deviation', 'FontSize', 18);
 xlabel('Time [s]');
 ylabel('X Gaze Deviation [%]');
-ylim([-30 30]);
-text(0.05, -5, 'LEFT', 'FontSize', 20, 'FontWeight', 'bold');
-text(0.05, 5, 'RIGHT', 'FontSize', 20, 'FontWeight', 'bold');
+ylim([-35 35]);
+xlim([-0.25 2]);
+text(-0.2, -5, 'LEFT', 'FontSize', 20, 'FontWeight', 'bold');
+text(-0.2, 5, 'RIGHT', 'FontSize', 20, 'FontWeight', 'bold');
 set(gca, 'FontSize', 20)
 
 % Construct legend using only the three main lines
-legend([eb_x{1}.mainLine, eb_x{2}.mainLine, eb_x{3}.mainLine], {'1 back', '2 back', '3 back'}, ...
+legend([eb_x{1}.mainLine, eb_x{2}.mainLine, eb_x{3}.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
     'FontName', 'Arial', 'FontSize', 20);
 hold off;
 
@@ -170,16 +172,18 @@ end
 
 % Adjust plot aesthetics
 yline(0, 'Color', [0.5, 0.5, 0.5], 'LineStyle', '--');
-title('N-back Grand Average Y Deviation', 'FontSize', 18);
+xline(0, 'Color', 'r', 'LineStyle', '--', 'LineWidth', 2);
+title('Sternberg Grand Average Y Deviation', 'FontSize', 18);
 xlabel('Time [s]');
 ylabel('Y Deviation [%]');
-ylim([-20 20]);
-text(0.05, -5, 'DOWN', 'FontSize', 20, 'FontWeight', 'bold');
-text(0.05, 5, 'UP', 'FontSize', 20, 'FontWeight', 'bold');
+ylim([-25 25]);
+xlim([-0.25 2]);
+text(-0.2, -5, 'DOWN', 'FontSize', 20, 'FontWeight', 'bold');
+text(-0.2, 5, 'UP', 'FontSize', 20, 'FontWeight', 'bold');
 set(gca, 'FontSize', 20)
 
 % Construct legend using only the three main lines
-legend([eb_y{1}.mainLine, eb_y{2}.mainLine, eb_y{3}.mainLine], {'1 back', '2 back', '3 back'}, ...
+legend([eb_y{1}.mainLine, eb_y{2}.mainLine, eb_y{3}.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
     'FontName', 'Arial', 'FontSize', 20);
 
 hold off;
@@ -219,7 +223,7 @@ for subj = 1:numSubjects
     text(0.05, -5, 'LEFT', 'FontSize', 20, 'FontWeight', 'bold');
     text(0.05, 5, 'RIGHT', 'FontSize', 20, 'FontWeight', 'bold');
     set(gca, 'FontSize', 20)
-    legend([eb{1}.mainLine, eb{2}.mainLine, eb{3}.mainLine], {'1 back', '2 back', '3 back'}, ...
+    legend([eb{1}.mainLine, eb{2}.mainLine, eb{3}.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
         'FontName', 'Arial', 'FontSize', 20);
     hold off;
 
@@ -245,7 +249,7 @@ for subj = 1:numSubjects
     text(0.05, -5, 'DOWN', 'FontSize', 20, 'FontWeight', 'bold');
     text(0.05, 5, 'UP', 'FontSize', 20, 'FontWeight', 'bold');
     set(gca, 'FontSize', 20)
-    legend([eb{1}.mainLine, eb{2}.mainLine, eb{3}.mainLine], {'1 back', '2 back', '3 back'}, ...
+    legend([eb{1}.mainLine, eb{2}.mainLine, eb{3}.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
         'FontName', 'Arial', 'FontSize', 20);
     hold off;
 

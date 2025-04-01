@@ -196,3 +196,73 @@ for subs = 1:length(subjects)
     end
     fprintf('Subject %s done. \n', subjectID);
 end
+
+%% Compute and Visualise Grand Average Across Subjects
+% Each blockAlpha{block} is a structure with fields:
+%   .alpha   : vector of alpha power values for each trial in that block
+%   .cond    : numeric condition labels (1 for 1‐back, 2 for 2‐back, 3 for 3‐back)
+%   .nTrials : number of trials in the block
+
+nSubjects = length(allSubjBlockAlpha);  % Total number of subjects processed
+nBlocks   = 6;    % Number of blocks (as in your original script)
+nConds    = 3;    % Three conditions: 1‑back, 2‑back, 3‑back
+
+% Preallocate a 3D array to store the mean alpha power per subject, block and condition.
+% Dimensions: subjects x blocks x conditions
+meanAlphaPerSubj = nan(nSubjects, nBlocks, nConds);
+
+% Loop over subjects and blocks to compute the mean alpha power per condition
+for s = 1:nSubjects
+    blockAlpha = allSubjBlockAlpha{s};
+    for block = 1:nBlocks
+        if ~isempty(blockAlpha{block})
+            alphaVals = blockAlpha{block}.alpha;
+            condVals  = blockAlpha{block}.cond;
+            for cond = 1:nConds
+                idx = find(condVals == cond);
+                if ~isempty(idx)
+                    meanAlphaPerSubj(s, block, cond) = mean(alphaVals(idx));
+                end
+            end
+        end
+    end
+end
+
+% Compute the grand average and standard error (SEM) across subjects for each block and condition
+grandMean = squeeze(nanmean(meanAlphaPerSubj, 1));  % Size: nBlocks x nConds
+grandSEM  = nan(nBlocks, nConds);
+for block = 1:nBlocks
+    for cond = 1:nConds
+        data = squeeze(meanAlphaPerSubj(:, block, cond));
+        data = data(~isnan(data));  % Exclude subjects missing data for this block/condition
+        if ~isempty(data)
+            grandSEM(block, cond) = std(data) / sqrt(length(data));
+        end
+    end
+end
+
+% Visualise Grand Average
+figure;
+b = bar(grandMean);  % Grouped bar plot (each group = a block, each bar = a condition)
+hold on;
+
+% Determine the number of groups (blocks) and number of bars per group (conditions)
+ngroups = size(grandMean, 1);
+nbars   = size(grandMean, 2);
+groupwidth = min(0.8, nbars/(nbars+1.5));
+
+% Add error bars to each bar
+for i = 1:nbars
+    % Calculate centre of each bar within the group
+    x = (1:ngroups) - groupwidth/2 + (2*i-1) * groupwidth / (2*nbars);
+    errorbar(x, grandMean(:, i), grandSEM(:, i), 'k', 'linestyle', 'none', 'LineWidth', 1.5);
+end
+
+set(gca, 'XTick', 1:nBlocks, 'XTickLabel', arrayfun(@(x) sprintf('Block %d', x), 1:nBlocks, 'UniformOutput', false));
+xlabel('Block');
+ylabel('Mean Alpha Power');
+title('Grand Average Alpha Power by Block and Condition');
+legend({'1-back', '2-back', '3-back'}, 'Location', 'northeast');
+set(gca, 'FontSize', 14);
+grid on;
+

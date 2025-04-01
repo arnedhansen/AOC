@@ -18,6 +18,26 @@ for i = 1:length(powload2.label)
     end
 end
 channels = occ_channels;
+% Left and right channels
+left_channels = {};
+right_channels = {};
+for i = 1:length(channels)
+    try
+        ch = channels{i};
+        % Find the first numeric part in the channel name
+        numStr = regexp(ch, '\d+', 'match');
+        % Convert the first numerical token to a number
+        numVal = str2double(numStr{1});
+        if mod(numVal, 2) == 1
+            left_channels{end+1} = ch;
+        else
+            right_channels{end+1} = ch;
+        end
+    catch ME
+        ME.message
+        disp(['Midline channel: ', ch])
+    end
+end
 
 %% Load data
 % Load power at IAF
@@ -65,7 +85,7 @@ gapow2 = gapow2_raw;
 gapow4 = gapow4_raw;
 gapow6 = gapow6_raw;
 
-for electrodes = {'occ_cluster', 'POz'}
+for electrodes = {'occ_cluster', 'POz', 'right_hemisphere'}
     close all
     figure;
     set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
@@ -76,7 +96,9 @@ for electrodes = {'occ_cluster', 'POz'}
     if strcmp(electrodes, 'occ_cluster')
         cfg.channel = channels;
     elseif strcmp(electrodes, 'POz')
-        cfg.channel = {'POz'};
+        cfg.channel = 'POz';
+    elseif strcmp(electrodes, 'right_hemisphere')
+        cfg.channel = right_channels;
     end
     cfg.figure = 'gcf';
     cfg.linewidth = 1;
@@ -116,9 +138,10 @@ for electrodes = {'occ_cluster', 'POz'}
     [~, channel_idx] = ismember(cfg.channel, gapow2.label);
     freq_idx = find(gapow2.freq >= 8 & gapow2.freq <= 14);
     max_spctrm = max([mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow4.powspctrm(channel_idx, freq_idx), 2); mean(gapow6.powspctrm(channel_idx, freq_idx), 2)]);
-    if strcmp(electrodes, 'occ_cluster')
-        ylim([0 max_spctrm*1.4])
-    elseif strcmp(electrodes, 'POz')
+    ylim([0 max_spctrm*1.4])
+    if strcmp(electrodes, 'POz')
+        ylim([0 1])
+    elseif strcmp(electrodes, 'right_hemisphere')
         ylim([0 1])
     end
     box on
@@ -126,7 +149,7 @@ for electrodes = {'occ_cluster', 'POz'}
     ylabel('Power [\muV^2/Hz]');
     legend([eb2.mainLine, eb4.mainLine, eb6.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, 'FontName', 'Arial', 'FontSize', 20);
     title('Sternberg Power Spectrum', 'FontSize', 30);
-    if strcmp(electrodes, 'POz')
+    if ~strcmp(electrodes, 'occ_cluster')
         text(25, max_spctrm*1.5, ['Electrodes: ', electrodes]);
     end
     hold off;
@@ -136,6 +159,8 @@ for electrodes = {'occ_cluster', 'POz'}
         saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_sternberg_powspctrm.png');
     elseif strcmp(electrodes, 'POz')
         saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_sternberg_powspctrm_elecPOz.png');
+    elseif strcmp(electrodes, 'right_hemisphere')
+        saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_sternberg_powspctrm_elecRH.png');
     end
 end
 

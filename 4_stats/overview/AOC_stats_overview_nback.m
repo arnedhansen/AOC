@@ -13,14 +13,12 @@ data.GazeStd = (data.GazeStdX + data.GazeStdY) ./ 2;
 variables = {'Accuracy', 'ReactionTime', 'GazeDeviation', 'GazeStd', 'MSRate', 'Fixations', 'Saccades', 'AlphaPower', 'IAF'};
 save_names = {'acc', 'rt', 'gazedev', 'ms', 'blink', 'fix', 'sacc', 'pow', 'iaf'};
 colors = color_def('AOC');
+subjects = unique(data.ID);
 
 %% BOXPLOTS for each variable
 y_axis_labels = {'Accuracy [%]', 'Reaction Time [ms]', 'Gaze Deviation [px]', 'Gaze Std [px]', 'Microsaccade Rate [ms/s]', 'Fixations', 'Saccades', 'Alpha Power [dB]', 'IAF [Hz]'};
 
-% Unique subject identifiers
-subjects = unique(data.ID);
 font_size = 20;
-
 for i = 1:length(variables)
     close all
     figure;
@@ -236,7 +234,51 @@ end
 sgtitle('Percentage Change (HC - LC)', 'FontSize', 24);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/stats/overview/barplots/AOC_stats_overview_barplots_percentage_change_nback.png');
 
-%% Plot DIFFERENCES in ALPHA POWER against GAZE METRICS 
+%% Plot DIFFERENCES in ALPHA POWER against GAZE METRICS
+% MICROSACCADES,GAZE DEVIATION and labels by ET (BLINKS, FIXATIONS, SACCADES)
+close all
+% Define the gaze metrics and their labels
+gaze_metrics = {'GazeDeviation', 'MSRate', 'Fixations', 'Saccades'};
+gaze_metric_labels = {'Gaze Deviation [px]', 'Microsaccade Rate [ms/s]', 'Fixations', 'Saccades'};
+
+% Loop through each condition (assuming conditions are 1, 2 and 3)
+for cond = 1:3
+    % Extract data for the current condition
+    cond_data = data(data.Condition == cond, :);
+    
+    % Create a new figure for the current condition
+    figure;
+    set(gcf, 'Position', [100, 100, 1200, 800], 'Color', 'w');
+    
+    % Number of gaze metrics to plot
+    n_metrics = numel(gaze_metrics);
+    
+    % Create a 2x2 subplot for each gaze metric
+    for m = 1:n_metrics
+        subplot(2, 2, m);
+        hold on;
+        
+        % Scatter plot: x-axis is the gaze metric, y-axis is Alpha Power
+        scatter(cond_data.(gaze_metrics{m}), cond_data.AlphaPower, 36, 'MarkerEdgeColor', [0, 0, 0], 'MarkerFaceColor', [0, 0, 0]);
+        
+        % Label axes and title the subplot
+        xlabel(gaze_metric_labels{m}, 'FontSize', 15);
+        ylabel('Alpha Power [dB]', 'FontSize', 15);
+        title([num2str(cond) '-back : Alpha Power vs ' gaze_metric_labels{m}], 'FontSize', 18);
+        
+        % Add a least-squares fit line
+        lsline;
+        hold off;
+    end
+    
+    % Add a super-title for the figure
+    sgtitle([num2str(cond) '-back: Association between Alpha Power and Gaze Metrics'], 'FontSize', 20);
+    
+    % Save the figure (adjust the save path as necessary)
+    saveas(gcf, ['/Volumes/methlab/Students/Arne/AOC/figures/stats/overview/AOC_stats_overview_associations_pow_' num2str(cond) 'back.png']);
+end
+
+%% Plot DIFFERENCES in ALPHA POWER against GAZE METRICS - PERCENTAGE CHANGE
 % MICROSACCADES,GAZE DEVIATION and labels by ET (BLINKS, FIXATIONS, SACCADES)
 close all
 %variables = {'Accuracy', 'ReactionTime', 'GazeDeviation', 'MSRate', 'Blinks', 'Fixations', 'Saccades', 'AlphaPower', 'IAF'};
@@ -276,7 +318,7 @@ for i = 1:n_metrics
     lsline()
     hold off;
 end
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/stats/overview/AOC_stats_overview_associations_pow_nback.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/stats/overview/AOC_stats_overview_associations_pow_percentage_nback.png');
 
 %% CORRELATION matrix
 close all

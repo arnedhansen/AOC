@@ -179,7 +179,6 @@ for subs = 1:length(subjects)
     ylabel('Alpha Power');
     title(sprintf('N-back Alpha Power over Trials for Subject %s', subjectID));
     set(gca, 'XTick', xTickPositions, 'XTickLabel', xTickLabels);
-    grid on;
 
     % Create a legend for the condition colours
     h1 = bar(nan, nan, 0.8, 'FaceColor', condColors(1, :));
@@ -189,6 +188,7 @@ for subs = 1:length(subjects)
     set(gca, 'FontSize', 25)
 
     % Save
+    allSubjBlockAlpha{subs} = blockAlpha;
     if ispc == 1
         saveas(gcf, ['W:\Students\Arne\AOC\figures\eeg\alpha_over_trials\AOC_alpha_power_over_trials_nback_sub', subjectID, '.png'])
     else
@@ -264,5 +264,8 @@ ylabel('Mean Alpha Power');
 title('Grand Average Alpha Power by Block and Condition');
 legend({'1-back', '2-back', '3-back'}, 'Location', 'northeast');
 set(gca, 'FontSize', 14);
-grid on;
-
+if ispc == 1
+    saveas(gcf, 'W:\Students\Arne\AOC\figures\eeg\alpha_over_trials\AOC_alpha_power_over_trials_allsubs_nback.png')
+else
+    saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_over_trials/AOC_alpha_power_over_trials_allsubs_nback.png')
+end

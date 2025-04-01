@@ -70,8 +70,8 @@ for subj = 1:length(subjects)
         y_coords = gaze_y{subj, trl};
 
         % Calculate Euclidean distances
-        dx = x_coords - 400 - nanmean(x_coords - 400); % Distance from mean (to get rid of impact of gaze shifts)
-        dy = y_coords - 300 - nanmean(y_coords - 300); % Distance from mean (to get rid of impact of gaze shifts)
+        dx = x_coords - 400; % Distance from center of the screen
+        dy = y_coords - 300; % Distance from center of the screen
         gaze_euclidean_dev = sqrt(dx.^2 + dy.^2);
 
         % Calculate the mean Euclidean distance

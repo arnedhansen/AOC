@@ -151,6 +151,9 @@ for i = 1:length(analysis_conditions)
         ylabel(yLabel);
         legend([eb1.mainLine, eb2.mainLine, eb3.mainLine], {'1 back', '2 back', '3 back'}, 'FontName', 'Arial', 'FontSize', 20);
         title(figTitle, 'FontSize', 30)
+        if strcmp(electrodes, 'POz')
+            text(25, max_spctrm*1.5, ['Electrodes: ', electrodes]);
+        end
         hold off;
 
         % Save

@@ -116,16 +116,19 @@ for electrodes = {'occ_cluster', 'POz'}
     [~, channel_idx] = ismember(cfg.channel, gapow2.label);
     freq_idx = find(gapow2.freq >= 8 & gapow2.freq <= 14);
     max_spctrm = max([mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow4.powspctrm(channel_idx, freq_idx), 2); mean(gapow6.powspctrm(channel_idx, freq_idx), 2)]);
-    if strcmp(electrodes, 'POz')
-        ylim([0 1])
-    else
+    if strcmp(electrodes, 'occ_cluster')
         ylim([0 max_spctrm*1.4])
+    elseif strcmp(electrodes, 'POz')
+        ylim([0 1])
     end
     box on
     xlabel('Frequency [Hz]');
     ylabel('Power [\muV^2/Hz]');
     legend([eb2.mainLine, eb4.mainLine, eb6.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, 'FontName', 'Arial', 'FontSize', 20);
     title('Sternberg Power Spectrum', 'FontSize', 30);
+    if strcmp(electrodes, 'POz')
+        text(25, max_spctrm*1.5, ['Electrodes: ', electrodes]);
+    end
     hold off;
 
     % Save

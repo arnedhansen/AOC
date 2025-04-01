@@ -65,7 +65,7 @@ gapow3_bl = ft_freqgrandaverage([], powl3_bl{:});
 analysis_conditions = {'raw', 'bl'};
 
 for i = 1:length(analysis_conditions)
-    for electrodes = {'occ_cluster', 'Pz'}
+    for electrodes = {'occ_cluster', 'POz'}
         switch analysis_conditions{i}
             case 'raw'
                 gapow1 = gapow1_raw;
@@ -75,16 +75,20 @@ for i = 1:length(analysis_conditions)
                 figTitle = 'N-back Power Spectrum';
                 if strcmp(electrodes, 'occ_cluster')
                     savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_nback_powspctrm_raw.png';
-                elseif strcmp(electrodes, 'Pz')
-                    savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_nback_powspctrm_raw_elecPz.png';
+                elseif strcmp(electrodes, 'POz')
+                    savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_nback_powspctrm_raw_elecPOz.png';
                 end
-                % case 'bl'
-                %     gapow1 = gapow1_bl;
-                %     gapow2 = gapow2_bl;
-                %     gapow3 = gapow3_bl;
-                %     yLabel = 'Power [dB]';
-                %     figTitle = 'Baselined N-back Power Spectrum';
-                %     savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_nback_powspctrm_bl.png';
+            % case 'bl'
+            %     gapow1 = gapow1_bl;
+            %     gapow2 = gapow2_bl;
+            %     gapow3 = gapow3_bl;
+            %     yLabel = 'Power [dB]';
+            %     figTitle = 'Baselined N-back Power Spectrum';
+            %     if strcmp(electrodes, 'occ_cluster')
+            %         savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_nback_powspctrm_bl.png';
+            %     elseif strcmp(electrodes, 'POz')
+            %         savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_nback_powspctrm_bl_elecPOz.png';
+            %     end
         end
         % Create figure
         close all
@@ -96,8 +100,8 @@ for i = 1:length(analysis_conditions)
         cfg = [];
         if strcmp(electrodes, 'occ_cluster')
             cfg.channel = channels;
-        elseif strcmp(electrodes, 'Pz')
-            cfg.channel = {'Pz'};
+        elseif strcmp(electrodes, 'POz')
+            cfg.channel = 'POz';
         end
         cfg.figure = 'gcf';
         cfg.linewidth = 1;
@@ -134,10 +138,14 @@ for i = 1:length(analysis_conditions)
         % Adjust plotting
         set(gcf,'color','w');
         set(gca,'Fontsize',20);
-        [~, channel_idx] = ismember(channels, gapow1.label);
+        [~, channel_idx] = ismember(cfg.channel, gapow1.label);
         freq_idx = find(gapow1.freq >= 8 & gapow1.freq <= 14);
         max_spctrm = max([mean(gapow1.powspctrm(channel_idx, freq_idx), 2); mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow3.powspctrm(channel_idx, freq_idx), 2)]);
-        ylim([0 max_spctrm*1.25])
+        if strcmp(electrodes, 'occ_cluster')
+            ylim([0 max_spctrm*1.25])
+        elseif strcmp(electrodes, 'POz')
+            ylim([0 0.45])
+        end
         box on
         xlabel('Frequency [Hz]');
         ylabel(yLabel);
@@ -148,7 +156,7 @@ for i = 1:length(analysis_conditions)
         % Save
         if strcmp(electrodes, 'occ_cluster')
             saveas(gcf, savePath);
-        elseif strcmp(electrodes, 'Pz')
+        elseif strcmp(electrodes, 'POz')
             saveas(gcf, savePath);
         end
     end

@@ -65,7 +65,7 @@ gapow2 = gapow2_raw;
 gapow4 = gapow4_raw;
 gapow6 = gapow6_raw;
 
-for electrodes = {'occ_cluster', 'Pz'}
+for electrodes = {'occ_cluster', 'POz'}
     close all
     figure;
     set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
@@ -75,8 +75,8 @@ for electrodes = {'occ_cluster', 'Pz'}
     cfg = [];
     if strcmp(electrodes, 'occ_cluster')
         cfg.channel = channels;
-    elseif strcmp(electrodes, 'Pz')
-        cfg.channel = {'Pz'};
+    elseif strcmp(electrodes, 'POz')
+        cfg.channel = {'POz'};
     end
     cfg.figure = 'gcf';
     cfg.linewidth = 1;
@@ -116,8 +116,8 @@ for electrodes = {'occ_cluster', 'Pz'}
     [~, channel_idx] = ismember(cfg.channel, gapow2.label);
     freq_idx = find(gapow2.freq >= 8 & gapow2.freq <= 14);
     max_spctrm = max([mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow4.powspctrm(channel_idx, freq_idx), 2); mean(gapow6.powspctrm(channel_idx, freq_idx), 2)]);
-    if strcmp(electrodes, 'Pz')
-        ylim([0 0.6])
+    if strcmp(electrodes, 'POz')
+        ylim([0 1])
     else
         ylim([0 max_spctrm*1.4])
     end
@@ -131,8 +131,8 @@ for electrodes = {'occ_cluster', 'Pz'}
     % Save
     if strcmp(electrodes, 'occ_cluster')
         saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_sternberg_powspctrm.png');
-    elseif strcmp(electrodes, 'Pz')
-        saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_sternberg_powspctrm_elecPz.png');
+    elseif strcmp(electrodes, 'POz')
+        saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_sternberg_powspctrm_elecPOz.png');
     end
 end
 

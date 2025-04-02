@@ -19,7 +19,7 @@ for subj = 1:numSubjects
     load(fullfile(gazePath, 'dataET_sternberg.mat'));
 
     numTrials = length(dataETlong.trial);
-    % Preallocate cell arrays for each trial’s gaze data
+    % Preallocate cell arrays for each trial�s gaze data
     lGazeX = cell(1, numTrials);
     lGazeY = cell(1, numTrials);
 
@@ -196,8 +196,8 @@ else
 end
 
 %% INDIVIDUAL PLOTS
-close all
 for subj = 1:numSubjects
+    close all
     figure;
     set(gcf, 'Position', [100, 100, 1800, 1000], 'Color', 'W');
 

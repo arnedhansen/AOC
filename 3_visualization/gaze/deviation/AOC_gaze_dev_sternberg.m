@@ -189,8 +189,11 @@ legend([eb_y{1}.mainLine, eb_y{2}.mainLine, eb_y{3}.mainLine], {'WM load 2', 'WM
 hold off;
 
 % Save
-saveas(gcf, fullfile('/Volumes/methlab/Students/Arne/AOC/figures/gaze/deviation/', ...
-    'AOC_dev_sternberg_all.png'));
+if ispc == 1
+    saveas(gcf, fullfile('W:\Students\Arne\AOC\figures\gaze\deviation\AOC_dev_sternberg_all.png'));
+else
+    saveas(gcf, fullfile('/Volumes/methlab/Students/Arne/AOC/figures/gaze/deviation/AOC_dev_sternberg_all.png'));
+end
 
 %% INDIVIDUAL PLOTS
 close all
@@ -254,6 +257,9 @@ for subj = 1:numSubjects
     hold off;
 
     % Save
-    saveas(gcf, fullfile('/Volumes/methlab/Students/Arne/AOC/figures/gaze/deviation/', ...
-        ['AOC_dev_sternberg_subj' subjects{subj} '.png']));
+    if ispc == 1
+        saveas(gcf, fullfile('W:\Students\Arne\AOC\figures\gaze\deviation\', ['AOC_dev_sternberg_subj' subjects{subj} '.png']));
+    else
+        saveas(gcf, fullfile('/Volumes/methlab/Students/Arne/AOC/figures/gaze/deviation/', ['AOC_dev_sternberg_subj' subjects{subj} '.png']));
+    end
 end

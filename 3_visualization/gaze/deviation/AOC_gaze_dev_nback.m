@@ -19,7 +19,7 @@ for subj = 1:numSubjects
     load(fullfile(gazePath, 'dataET_nback.mat')); % Load dataet variable
 
     numTrials = length(dataet.trial);
-    % Preallocate cell arrays for each trial’s gaze data
+    % Preallocate cell arrays for each trial�s gaze data
     lGazeX = cell(1, numTrials);
     lGazeY = cell(1, numTrials);
 
@@ -183,8 +183,7 @@ legend([eb_y{1}.mainLine, eb_y{2}.mainLine, eb_y{3}.mainLine], {'1 back', '2 bac
 hold off;
 
 % Save
-saveas(gcf, fullfile('/Volumes/methlab/Students/Arne/AOC/figures/gaze/deviation/', ...
-    'AOC_dev_nback_all.png'));
+saveas(gcf, fullfile('/Volumes/methlab/Students/Arne/AOC/figures/gaze/deviation/AOC_dev_nback_all.png'));
 
 %% INDIVIDUAL PLOTS
 close all

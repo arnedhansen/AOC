@@ -116,6 +116,7 @@ color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red divergi
 % Find maximum deviation
 [~, channel_idx] = ismember(channels, gatfr1.label);
 max_spctrm = max(abs(diff.powspctrm(channel_idx, :, :)), [], 'all');
+max_spctrm = 0.75
 clim = double([-max_spctrm, max_spctrm]);
 
 % Plot: Difference (Condition 3 minus Condition 1) - Time-Frequency Response
@@ -125,6 +126,8 @@ ft_singleplotTFR(cfg, diff);
 colormap(color_map);
 set(gca, 'CLim', clim); 
 colorbar;
+line([0 0], [2 2], 'LineWidth', 5, 'LineStyle', '-', 'Color', 'r');
+%line(14, 'LineWidth', 5, 'LineStyle', '-', 'Color', 'r');
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
 title('N-back TFR Difference (3-back minus 1-back)', 'FontName', 'Arial', 'FontSize', 30);

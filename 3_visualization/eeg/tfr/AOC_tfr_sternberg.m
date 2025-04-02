@@ -26,7 +26,7 @@ load('tfr_stern.mat');
 occ_channels = {};
 for i = 1:length(tfr2.label)
     label = tfr2.label{i};
-    if contains(label, {'O'})
+    if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
 end
@@ -115,7 +115,7 @@ color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red divergi
 [~, channel_idx] = ismember(channels, gatfr2.label);
 time_idx = find(diff.time >= -0.5 & diff.time <= 2);
 max_spctrm = max(abs(diff.powspctrm(channel_idx, :, time_idx)), [], 'all');
-max_spctrm = 0.5
+max_spctrm = 0.55
 clim = double([-max_spctrm max_spctrm]);
 
 % Plot: Difference Time-Frequency Response

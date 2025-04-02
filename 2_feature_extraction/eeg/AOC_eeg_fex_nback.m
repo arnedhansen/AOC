@@ -372,6 +372,7 @@ for subj = 1:length(subjects)
         error(['ERROR extracting TFR for Subject ' num2str(subjects{subj}) '!'])
     end
 end
+disp('TFR COMPUTED...');
 
 %% BASELINED POWER Spectrum
 % Concert TFR data to POWSPCTRM (channels x frequency)

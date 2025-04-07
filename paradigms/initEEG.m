@@ -15,6 +15,7 @@ stayup = 0;
 
 % start recording EEG by sending trigger 1:
 trigger = 1;
+
 sendtrigger(trigger,port,SITE,stayup)
 
 % Wait for EEG recording to start. It takes ca 10 s. 

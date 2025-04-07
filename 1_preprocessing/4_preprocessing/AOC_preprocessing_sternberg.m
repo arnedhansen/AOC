@@ -191,7 +191,30 @@ for subj = 1:length(subjects)
         data = ft_appenddata(cfg,data2, data4, data6);
         trialinfo = [data2.trialinfo; data4.trialinfo; data6.trialinfo];
         data.trialinfo = trialinfo;
-        data.cfg = [];
+
+          %% Pre-stim fixation check
+        preStimWindow = [-0.5 0];
+        fixThresh = 0.8; % 80% of trials should be within fixation box
+        distOK = 30;     % 1 degree (dva) from the center
+        [trialsToKeep, excludedTrialIdx] = fixCheck(data, preStimWindow, fixThresh, distOK);
+
+        % Save excluded trials info
+        preStimFixInfo.subject = subjects{subj};
+        preStimFixInfo.excludedTrials = find(~trialsToKeep);
+        preStimFixInfo.totalTrials = numel(trialsToKeep);
+        preStimFixInfo.keptTrials = find(trialsToKeep);
+        if ispc == 1
+            savepathControlsFix = (['W:\Students\Arne\AOC\data\controls\preStimFixation\', subjects{subj}]);
+            mkdir(savepathControlsFix)
+            save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_sternberg'], "preStimFixInfo");
+        else
+            savepathControlsFix = ['/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/', subjects{subj}];
+            mkdir(savepathControlsFix)
+            save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_sternberg'], "preStimFixInfo");
+        end
+
+        % Continue analyses with correct fix trials
+        data = ft_selectdata(struct('trials', trialsToKeep), data);
 
         %% Get EyeTracking data
         cfg = [];

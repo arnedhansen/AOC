@@ -39,7 +39,6 @@ for subj = 1:length(subjects)
                 clear EEG
                 fprintf('Subject %s (%.3d/%.3d): Block %.1d loaded \n', subjects{subj}, subj, length(subjects), block)
             catch ME
-                ME.message
                 disp(['ERROR loading Block ' num2str(block) '!'])
             end
         end
@@ -179,12 +178,6 @@ for subj = 1:length(subjects)
             end
         end
 
-        % Skip subject if there is no N-back data for each condition
-        % if isempty(data1) || isempty(data2) || isempty(data3)
-        %     fprintf('No N-back data for each condition... SKIPPING processing of Subject %s\n....', subjects{subj})
-        %     continue;
-        % end
-
         %% Remove empty blocks
         data1 = data1(~cellfun(@(x) isempty(fieldnames(x)), data1));
         data2 = data2(~cellfun(@(x) isempty(fieldnames(x)), data2));
@@ -213,31 +206,54 @@ for subj = 1:length(subjects)
         %% Append all data into single data file with appropriate trialinfo
         cfg = [];
         cfg.keepsampleinfo = 'no';
-        data = ft_appenddata(cfg,data1,data2,data3);
+        data = ft_appenddata(cfg, data1, data2, data3);
         trialinfo = [data1.trialinfo; data2.trialinfo; data3.trialinfo];
         data.trialinfo = trialinfo;
-        data.cfg = [];
+
+        %% Pre-stim fixation check
+        preStimWindow = [-0.5 0];
+        fixThresh = 0.8; % 80% of trials should be within fixation box
+        distOK = 30;     % 1 degree (dva) from the center
+        [trialsToKeep, excludedTrialIdx] = fixCheck(data, preStimWindow, fixThresh, distOK);
+
+        % Save excluded trials info
+        preStimFixInfo.subject = subjects{subj};
+        preStimFixInfo.excludedTrials = find(~trialsToKeep);
+        preStimFixInfo.totalTrials = numel(trialsToKeep);
+        preStimFixInfo.keptTrials = find(trialsToKeep);
+        if ispc == 1
+            savepathControlsFix = (['W:\Students\Arne\AOC\data\controls\preStimFixation\', subjects{subj}]);
+            mkdir(savepathControlsFix)
+            save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_nback'], "preStimFixInfo");
+        else
+            savepathControlsFix = ['/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/', subjects{subj}];
+            mkdir(savepathControlsFix)
+            save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_nback'], "preStimFixInfo");
+        end
+
+        % Continue analyses with correct fix trials
+        data = ft_selectdata(struct('trials', trialsToKeep), data);
 
         %% Get EyeTracking data
         cfg = [];
         cfg.channel = {'L-GAZE-X'  'L-GAZE-Y' 'L-AREA', 'R-GAZE-X'  'R-GAZE-Y' 'R-AREA'};
-        dataet = ft_selectdata(cfg,data);
+        dataet = ft_selectdata(cfg, data);
         dataETlong = dataet;
         dataETlong.trialinfo = trialinfo;
 
         %% Get EEG data (excl. ET and EOG data)
         cfg = [];
         cfg.channel = {'all' '-B*' '-HEOGR' '-HEOGL', '-VEOGU', '-VEOGL' ,'-L-GAZE-X' , '-L-GAZE-Y' , '-L-AREA', '-R-GAZE-X'  '-R-GAZE-Y' '-R-AREA'};
-        data = ft_selectdata(cfg,data);
+        data = ft_selectdata(cfg, data);
 
         %% Resegment data to avoid filter ringing
         cfg = [];
-        dataTFR = ft_selectdata(cfg,data); % TRF data long
+        dataTFR = ft_selectdata(cfg, data); % TRF data long
         dataTFR.trialinfo = trialinfo;
         cfg = [];
         cfg.latency = [0 2]; % Time window for N-back task
-        data = ft_selectdata(cfg,data);
-        dataet = ft_selectdata(cfg,dataet);
+        data = ft_selectdata(cfg, data);
+        dataet = ft_selectdata(cfg, dataet);
         dataet.trialinfo = trialinfo;
 
         %% Re-reference data to average or common reference

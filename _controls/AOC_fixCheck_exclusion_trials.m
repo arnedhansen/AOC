@@ -7,7 +7,7 @@ subjects = {folders.name};
 
 %%
 close all
-excludedCounts = zeros(2, numel(subjects));  % Row 1 = nback, Row 2 = sternberg
+excludedCounts = zeros(2, numel(subjects));
 keptCounts = zeros(2, numel(subjects));
 totalCounts = zeros(2, numel(subjects));
 
@@ -34,12 +34,22 @@ tasks = {'N-back', 'Sternberg'};
 
 for t = 1:2
     figure;
+    if t == 1
+        set(gcf, "Position", [0 0 750 1000])
+    else
+        set(gcf, "Position", [750 0 750 1000])
+    end
     b = bar(categorical(subjects), [excludedCounts(t, :); keptCounts(t, :)]', 'stacked');
     b(1).FaceColor = [1 0 0];   % Red for excluded
     b(2).FaceColor = [0 1 0];   % Green for kept
     ylabel('Number of Trials');
-    title([tasks{t}, ': Excluded vs Kept Trials per Participant']);
-    legend({'Excluded', 'Kept'}, 'Location', 'northoutside', 'Orientation', 'horizontal');
+    title([tasks{t}, ': Excluded vs Kept Trials'], 'FontSize', 20);
+    legend({'Excluded', 'Kept'}, 'Location', 'northoutside', 'Orientation', 'horizontal', 'FontSize', 15);
     xtickangle(45);
-    grid on;
+    if t == 1
+        ylim([0 305])
+        saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/AOC_preStimFixation_nback.png')
+    else
+        saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/AOC_preStimFixation_sternberg.png')
+    end
 end

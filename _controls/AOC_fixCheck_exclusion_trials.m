@@ -1,32 +1,45 @@
 % Define participants
-subjects = {'subj1', 'subj2', 'subj3', ... }; % <-- replace with your actual subject IDs
-excludedCounts = zeros(1, numel(subjects));
-keptCounts = zeros(1, numel(subjects));
-totalCounts = zeros(1, numel(subjects));
+startup
+clear
+dirs = dir('/Volumes/methlab/Students/Arne/AOC/data/merged/');
+folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
+subjects = {folders.name};
+
+%%
+close all
+excludedCounts = zeros(2, numel(subjects));  % Row 1 = nback, Row 2 = sternberg
+keptCounts = zeros(2, numel(subjects));
+totalCounts = zeros(2, numel(subjects));
 
 % Loop through each subject and load data
 for subj = 1:numel(subjects)
-    % Set the correct path depending on OS
-    if ispc
-        loadPath = fullfile('W:\Students\Arne\AOC\data\controls\preStimFixation\', subjects{subj});
-    else
-        loadPath = fullfile('/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/', subjects{subj});
+    try
+        % Load nback data
+        loadPathNback = fullfile('/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/', subjects{subj});
+        load(fullfile(loadPathNback, ['AOC_preStimFixation_', subjects{subj}, '_nback.mat']), 'preStimFixInfo');
+        excludedCounts(1, subj) = numel(preStimFixInfo.excludedTrials);
+        keptCounts(1, subj) = numel(preStimFixInfo.keptTrials);
+        totalCounts(1, subj) = preStimFixInfo.totalTrials;
+
+        % Load sternberg data
+        load(fullfile(loadPathNback, ['AOC_preStimFixation_', subjects{subj}, '_sternberg.mat']), 'preStimFixInfo');
+        excludedCounts(2, subj) = numel(preStimFixInfo.excludedTrials);
+        keptCounts(2, subj) = numel(preStimFixInfo.keptTrials);
+        totalCounts(2, subj) = preStimFixInfo.totalTrials;
     end
-
-    % Load the file
-    load(fullfile(loadPath, ['AOC_preStimFixation_', subjects{subj}, '_nback.mat']), 'preStimFixInfo');
-
-    % Store counts
-    excludedCounts(subj) = numel(preStimFixInfo.excludedTrials);
-    keptCounts(subj) = numel(preStimFixInfo.keptTrials);
-    totalCounts(subj) = preStimFixInfo.totalTrials;
 end
 
-% Visualise
-figure;
-bar(categorical(subjects), [excludedCounts; keptCounts]', 'stacked');
-ylabel('Number of Trials');
-title('Excluded vs Kept Trials per Participant');
-legend({'Excluded', 'Kept'}, 'Location', 'northoutside', 'Orientation', 'horizontal');
-xtickangle(45);
-grid on;
+% Plotting
+tasks = {'N-back', 'Sternberg'};
+
+for t = 1:2
+    figure;
+    b = bar(categorical(subjects), [excludedCounts(t, :); keptCounts(t, :)]', 'stacked');
+    b(1).FaceColor = [1 0 0];   % Red for excluded
+    b(2).FaceColor = [0 1 0];   % Green for kept
+    ylabel('Number of Trials');
+    title([tasks{t}, ': Excluded vs Kept Trials per Participant']);
+    legend({'Excluded', 'Kept'}, 'Location', 'northoutside', 'Orientation', 'horizontal');
+    xtickangle(45);
+    grid on;
+end

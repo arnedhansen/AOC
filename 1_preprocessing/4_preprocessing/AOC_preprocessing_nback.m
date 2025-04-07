@@ -213,7 +213,7 @@ for subj = 1:length(subjects)
         %% Pre-stim fixation check
         preStimWindow = [-0.5 0];
         fixThresh = 0.8; % 80% of trials should be within fixation box
-        distOK = 30;     % 1 degree (dva) from the center
+        distOK = 45;     % 1 degree (dva) from the center
         [trialsToKeep, excludedTrialIdx] = fixCheck(data, preStimWindow, fixThresh, distOK);
 
         % Save excluded trials info

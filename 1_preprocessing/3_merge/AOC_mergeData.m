@@ -127,3 +127,4 @@ for subjects = 1 : length(subjectIDs)
 end
 disp('SYNCHRONIZATION COMPLETE')
 toc
+finishedScriptMail

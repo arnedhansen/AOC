@@ -27,7 +27,7 @@ for subj = 1:length(subjects)
     else
         newDataFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_sternberg.mat']);
     end
-    if isempty(newDataFolder)
+    if ~isempty(newDataFolder)
         clear alleeg
         %% Read blocks
         for block = 1:6
@@ -196,13 +196,15 @@ for subj = 1:length(subjects)
         preStimWindow = [-0.5 0];
         fixThresh = 0.8; % 80% of trials should be within fixation box
         distOK = 45;     % 1 degree (dva) from the center
-        [trialsToKeep, excludedTrialIdx] = fixCheck(data, preStimWindow, fixThresh, distOK);
+        [trialsToKeep, excludedTrialIdx, distL, invalidTrials] = fixCheck(data, preStimWindow, fixThresh, distOK);
 
         % Save excluded trials info
         preStimFixInfo.subject = subjects{subj};
         preStimFixInfo.excludedTrials = find(~trialsToKeep);
+        preStimFixInfo.invalidTrials = invalidTrials;
         preStimFixInfo.totalTrials = numel(trialsToKeep);
         preStimFixInfo.keptTrials = find(trialsToKeep);
+        preStimFixInfo.distL = distL;
         if ispc == 1
             savepathControlsFix = (['W:\Students\Arne\AOC\data\controls\preStimFixation\', subjects{subj}]);
             mkdir(savepathControlsFix)
@@ -292,3 +294,4 @@ for subj = 1:length(subjects)
     end
 end
 toc;
+finishedScriptMail;

@@ -43,7 +43,7 @@ for subjects = 1 : length(subjectIDs)
         mkdir(resultFolder)
         dEEG = dir([filePathEEG, filesep, '*ip*EEG.mat']);
         dET = dir([filePathET, filesep, '*ET.mat']);
-        for files = [size(dEEG, 1), 1 : size(dEEG, 1)-1] %1 : size(dEEG, 1)
+        for files = [size(dEEG, 1), 1 : size(dEEG, 1)-1]
             close all
             try
                 ETnameShort = dET(files).name(1:end-7);

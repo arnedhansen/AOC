@@ -29,7 +29,7 @@ for subj = 1:length(subjects)
     else
         newDataFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_nback.mat']);
     end
-    if ~isempty(newDataFolder)
+    if isempty(newDataFolder)
         clear alleeg
         %% Read blocks
         for block = 1:6
@@ -313,4 +313,4 @@ for subj = 1:length(subjects)
     end
 end
 toc;
-finishedScriptMail;
+%finishedScriptMail;

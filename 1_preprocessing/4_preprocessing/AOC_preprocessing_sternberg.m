@@ -294,4 +294,4 @@ for subj = 1:length(subjects)
     end
 end
 toc;
-finishedScriptMail;
+%finishedScriptMail;

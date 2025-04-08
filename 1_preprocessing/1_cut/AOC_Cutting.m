@@ -104,4 +104,4 @@ for id = 1 : length(ids)
 end
 disp('SYNCHRONIZATION COMPLETE')
 toc;
-finishedScriptMail;
+%finishedScriptMail;

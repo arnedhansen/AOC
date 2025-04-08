@@ -43,7 +43,7 @@ for subjects = 1 : length(subjectIDs)
         mkdir(resultFolder)
         dEEG = dir([filePathEEG, filesep, '*ip*EEG.mat']);
         dET = dir([filePathET, filesep, '*ET.mat']);
-        for files = 1 : size(dEEG, 1)
+        for files = [size(dEEG, 1), 1 : size(dEEG, 1)-1] %1 : size(dEEG, 1)
             close all
             try
                 ETnameShort = dET(files).name(1:end-7);
@@ -71,7 +71,7 @@ for subjects = 1 : length(subjectIDs)
                 if strcmp(task, 'Resting')
                     startTrigger = 10;
                     endTrigger = 90;
-                    % Sternberg & Nback
+                % Sternberg & Nback
                 else
                     startTriggers = [31:38, 61:66];
                     endTriggers = [41:48, 71:76];
@@ -82,7 +82,7 @@ for subjects = 1 : length(subjectIDs)
                 end
 
                 %% Merge files
-                EEG = pop_importeyetracker(EEG, ETfile,[startTrigger endTrigger],[2 3 4],{'L_GAZE_X', 'L_GAZE_Y', 'L_AREA', 'R_GAZE_X', 'R_GAZE_Y', 'R_AREA'},1,1,1,1);
+                EEG = pop_importeyetracker(EEG, ETfile,[startTrigger endTrigger],[2 3 4 5 6 7],{'L_GAZE_X', 'L_GAZE_Y', 'L_AREA', 'R_GAZE_X', 'R_GAZE_Y', 'R_AREA'},1,1,1,1);
 
                 %% Save merge info as image
                 set(gcf, "Position", [0 0 1200 800], "Color", "W")

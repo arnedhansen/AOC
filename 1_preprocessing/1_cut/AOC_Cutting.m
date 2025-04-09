@@ -15,6 +15,7 @@ end
 eeglab
 close()
 cd(p)
+clc
 
 %% Define path, cut data and convert asc to mat files.
 tic

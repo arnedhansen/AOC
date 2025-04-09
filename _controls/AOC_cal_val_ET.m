@@ -16,6 +16,8 @@ numFiles = 6;
 
 % Loop through each subject
 for subj = 1:length(subjects)
+    clc
+    fprintf('Processing Subject AOC %.3s \n', subjects{subj});
     datapath = strcat(path, subjects{subj}, '/archive');
     cd(datapath);
 
@@ -32,17 +34,19 @@ for subj = 1:length(subjects)
     % Loop through all 'N' and 'S' files
     for type = {'Ntk', 'Stk'}
         for fileNum = 1:numFiles
-            % Create filename
-            filePath = sprintf('%s_%d%s.asc', subjects{subj}, fileNum, type{1});
+            try
+                % Create filename
+                filePath = sprintf('%s_%d%s.asc', subjects{subj}, fileNum, type{1});
 
-            % Load data file
-            [lastValidationOffsets] = parseASCFile(filePath);
+                % Load data file
+                [lastValidationOffsets] = parseASCFile(filePath);
 
-            % Save positions
-            VAL{subj}{fileCounter} = lastValidationOffsets;
+                % Save positions
+                VAL{subj}{fileCounter} = lastValidationOffsets;
 
-            % Increment file counter
-            fileCounter = fileCounter + 1;
+                % Increment file counter
+                fileCounter = fileCounter + 1;
+            end
         end
     end
 end
@@ -96,9 +100,9 @@ for subjIdx = 1:numSubjects
         vl1 = vlTbl.VL1{rowIdx};
         vl2 = vlTbl.VL2{rowIdx};
         if isempty(vl2)
-        title(['Validation Data for Subject ' num2str(subjects{subjIdx}), ' (', vl1, ')'], 'FontSize', 20);
+            title(['Validation Data for Subject ' num2str(subjects{subjIdx}), ' (', vl1, ')'], 'FontSize', 20);
         else
-        title(['Validation Data for Subject ' num2str(subjects{subjIdx}), ' (', vl1, ' & ', vl2, ')'], 'FontSize', 20);
+            title(['Validation Data for Subject ' num2str(subjects{subjIdx}), ' (', vl1, ' & ', vl2, ')'], 'FontSize', 20);
         end
         hold off;
 
@@ -107,7 +111,7 @@ for subjIdx = 1:numSubjects
         annotation('textbox', [0.665, 0.03, 0.1, 0.05], 'String', 'Sternberg', 'EdgeColor', 'none', 'FontSize', 15);
 
         % Add VL info
-        
+
         annotation('textbox', [0.8, 0.73, 0.5, 0.45], 'String', [vl1, ' ', vl2], ...
             'EdgeColor', 'none', 'FontSize', 15);
 

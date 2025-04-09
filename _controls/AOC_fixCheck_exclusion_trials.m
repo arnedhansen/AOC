@@ -54,7 +54,7 @@ for t = 1:2
     ylabel('Number of Trials');
     title([tasks{t}, ': Excluded vs Kept vs Invalid Trials'], 'FontSize', 20);
     legend({'Excluded', 'Kept', 'Invalid'}, 'Location', 'northoutside', 'Orientation', 'horizontal', 'FontSize', 15);
-    xtickangle(45);
+    xtickangle(90);
     
     if t == 1
         ylim([0 305])

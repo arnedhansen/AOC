@@ -2,7 +2,11 @@
 %
 % AOC 319 - only Sternberg block 1
 % AOC 320 - only N-back block 1-4; NO ET DATA
+% AOC 347 - no Sternberg data (triggers bug)
+% AOC 358 - no data (triggers bug)
+% AOC 362 - no Sternberg data (triggers bug)
 % AOC 378 - all N-back data, only Sternberg block 1
+% AOC 405 - (triggers bug)
 % AOC 412 - only N-back block 1-3
 
 %% Setup

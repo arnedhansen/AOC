@@ -10,14 +10,14 @@
 %       1_preprocessing/4_preprocessing/AOC_preprocessing_sternberg.m
 %
 %   Feature Extraction:
-%       2_feature_extraction/AOC_master_matrix_nback.m
-%       2_feature_extraction/AOC_master_matrix_sternberg.m
 %       2_feature_extraction/behavioral/AOC_behavioral_fex_nback.m
 %       2_feature_extraction/behavioral/AOC_behavioral_fex_sternberg.m
 %       2_feature_extraction/eeg/AOC_eeg_fex_nback.m
 %       2_feature_extraction/eeg/AOC_eeg_fex_sternberg.m
 %       2_feature_extraction/gaze/AOC_gaze_fex_nback.m
 %       2_feature_extraction/gaze/AOC_gaze_fex_sternberg.m
+%       2_feature_extraction/AOC_master_matrix_nback.m
+%       2_feature_extraction/AOC_master_matrix_sternberg.m
 %
 %   Visualizations:   
 %       3_visualization/behavioral/AOC_behav_dev_nback.m
@@ -82,6 +82,9 @@ for i = 1:length(dirList)
 
     % Sort files alphabetically
     mFileNames = sort({mFiles.name});
+    if strcmp(mFileNames, 'AOC_MASTER_ANALYSIS.m')
+        continue;
+    end
 
     for j = 1:length(mFileNames)
         scriptPath = fullfile(currentDir, mFileNames{j});
@@ -94,14 +97,31 @@ for i = 1:length(dirList)
         oldPath = pwd;
         cd(currentDir);
 
-        % try
-            % run(scriptName);  % Execute the script
-        % catch ME
-            % warning('Error while running %s: %s', scriptName, ME.message);
-        % end
-
+        try
+            run(scriptName);  % Execute the script
+        catch ME
+            warning('Error while running %s: %s', scriptName, ME.message);
+            errorLog{end+1, 1} = scriptPath;
+            errorLog{end, 2} = ME.message;
+        end
         cd(oldPath);  % Return to previous directory
     end
 end
+if ispc
+    run('C:\Users\dummy\Documents\GitHub\AOC\2_feature_extraction\AOC_master_matrix_nback.m');
+    run('C:\Users\dummy\Documents\GitHub\AOC\2_feature_extraction\AOC_master_matrix_sternberg.m');
+else
+    run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/AOC_master_matrix_nback.m');
+    run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/AOC_master_matrix_sternberg.m');
+end
+disp(upper('All AOC analysis scripts executed!'));
 
-disp('All scripts executed.');
+%% Display error summary
+if ~isempty(errorLog)
+    fprintf('\n===== ERROR SUMMARY =====\n');
+    for i = 1:size(errorLog, 1)
+        fprintf('Script: %s\nError: %s\n\n', errorLog{i,1}, errorLog{i,2});
+    end
+else
+    disp('No errors occurred during execution.');
+end

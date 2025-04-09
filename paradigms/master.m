@@ -15,11 +15,13 @@ clear;
 close all;
 clc;
 
+% Clear parallel port
+ppdev_mex('CloseAll');
+
 % Define paths
 PPDEV_PATH = '/home/methlab/Documents/MATLAB/ppdev-mex-master'; % For sending EEG triggers
 DATA_PATH = '/home/methlab/Desktop/AOC_data'; % Folder to save data
 FUNS_PATH = '/home/methlab/Desktop/AOC' ; % Folder with all functions
-
 addpath(FUNS_PATH) % Add path to folder with functions
 screenSettings % Manage screens
 
@@ -30,9 +32,9 @@ dialogID;
 ListenChar(2);
 
 %% Resting state EEG
-if ~isfile([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_Resting.mat'])
-    Resting_EEG;
-end
+% if ~isfile([DATA_PATH, '/', num2str(subjectID), '/', num2str(subjectID), '_Resting.mat'])
+%     Resting_EEG;
+% end
 
 %% Randomize order of Sternberg Task and NBack Task
 % Check if the conversion was successful

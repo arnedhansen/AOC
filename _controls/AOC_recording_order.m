@@ -16,5 +16,5 @@ sorted_IDs = T_sorted.ID;
 disp(sorted_IDs);
 
 % Save
-T_sorted = T_sorted(:, ["x_", "ID", "Vorname", "Nachname", "DateTime"]);
+T_sorted = T_sorted(1:125, ["x_", "ID", "Vorname", "Nachname", "DateTime"]);
 writetable(T_sorted, '/Volumes/methlab/Students/Arne/AOC/data/controls/dataAcquisitionOrder/AOC_sorted_table.xlsx');

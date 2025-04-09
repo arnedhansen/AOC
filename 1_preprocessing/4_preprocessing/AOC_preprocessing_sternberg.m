@@ -35,7 +35,7 @@ for subj = 1:length(subjects)
                 load(strcat(subjects{subj}, '_EEG_ET_Sternberg_block',num2str(block),'_merged.mat'))
                 alleeg{block} = EEG;
                 clear EEG
-                fprintf('Subject %.3d/%.3d: Block %.1d loaded \n', subj, length(subjects), block)
+                fprintf('Subject %s: Block %.1d loaded \n', subjects{subj}, block)
             catch ME
                 ME.message
                 disp(['ERROR loading Block ' num2str(block) '!'])

@@ -29,7 +29,7 @@ for subj = 1:length(subjects)
     else
         newDataFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_nback.mat']);
     end
-    if isempty(newDataFolder)
+    %if isempty(newDataFolder)
         clear alleeg
         %% Read blocks
         for block = 1:6
@@ -37,7 +37,7 @@ for subj = 1:length(subjects)
                 load(strcat(subjects{subj}, '_EEG_ET_Nback_block',num2str(block),'_merged.mat'))
                 alleeg{block} = EEG;
                 clear EEG
-                fprintf('Subject %s: Block %.1d loaded \n', subjects{subj}, block)
+                fprintf('Block %.1d loaded \n', block)
             catch ME
                 disp(['ERROR loading Block ' num2str(block) '!'])
             end
@@ -188,6 +188,14 @@ for subj = 1:length(subjects)
         update_labels(data2);
         update_labels(data3);
 
+        % Fix labels for subjects with only left eye recording (AOC419)
+        if strcmp(subjects{subj}, '419')
+            data2{1}.label = data2{2}.label; % Reduce to 132 electrodes
+            for i = 1:length(data2{1}.trial) % Reduce to 132 electrodes
+                data2{1}.trial{i} = data2{1}.trial{i}(1:132, :);
+            end
+        end
+
         %% Append data for conditions
         cfg = [];
         cfg.keepsampleinfo = 'no';
@@ -235,6 +243,7 @@ for subj = 1:length(subjects)
 
         % Continue analyses with correct fix trials
         data = ft_selectdata(struct('trials', trialsToKeep), data);
+        trialinfo = data.trialinfo; 
 
         %% Get EyeTracking data
         cfg = [];
@@ -308,9 +317,9 @@ for subj = 1:length(subjects)
         else
             disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. Loading next subject...'])
         end
-    else
-        disp(['Subject ', num2str(subjects{subj}), ' already done. SKIPPING...'])
-    end
+    %else
+    %    disp(['Subject ', num2str(subjects{subj}), ' already done. SKIPPING...'])
+    %end
 end
 toc;
 %finishedScriptMail;

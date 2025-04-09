@@ -27,7 +27,7 @@ for subj = 1:length(subjects)
     else
         newDataFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_sternberg.mat']);
     end
-    if ~isempty(newDataFolder)
+    %if isempty(newDataFolder)
         clear alleeg
         %% Read blocks
         for block = 1:6
@@ -35,7 +35,7 @@ for subj = 1:length(subjects)
                 load(strcat(subjects{subj}, '_EEG_ET_Sternberg_block',num2str(block),'_merged.mat'))
                 alleeg{block} = EEG;
                 clear EEG
-                fprintf('Subject %s: Block %.1d loaded \n', subjects{subj}, block)
+                fprintf('Block %.1d loaded \n', block)
             catch ME
                 ME.message
                 disp(['ERROR loading Block ' num2str(block) '!'])
@@ -217,6 +217,7 @@ for subj = 1:length(subjects)
 
         % Continue analyses with correct fix trials
         data = ft_selectdata(struct('trials', trialsToKeep), data);
+        trialinfo = data.trialinfo;
 
         %% Get EyeTracking data
         cfg = [];
@@ -289,9 +290,9 @@ for subj = 1:length(subjects)
         else
             disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. Loading next subject...'])
         end
-    else
-        disp(['Subject ', num2str(subjects{subj}), ' already done. SKIPPING...'])
-    end
+    %else
+    %    disp(['Subject ', num2str(subjects{subj}), ' already done. SKIPPING...'])
+    %end
 end
 toc;
 %finishedScriptMail;

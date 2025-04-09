@@ -98,7 +98,7 @@ for i = 1:length(dirList)
         cd(currentDir);
 
         try
-            run(scriptName);  % Execute the script
+            runInFunction(scriptName);  % Execute the script
         catch ME
             warning('Error while running %s: %s', scriptName, ME.message);
             errorLog{end+1, 1} = scriptPath;

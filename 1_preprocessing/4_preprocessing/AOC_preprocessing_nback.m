@@ -29,7 +29,7 @@ for subj = 1:length(subjects)
     else
         newDataFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_nback.mat']);
     end
-    %if isempty(newDataFolder)
+    if isempty(newDataFolder)
         clear alleeg
         %% Read blocks
         for block = 1:6
@@ -190,10 +190,23 @@ for subj = 1:length(subjects)
 
         % Fix labels for subjects with only left eye recording (AOC419)
         if strcmp(subjects{subj}, '419')
-            data2{1}.label = data2{2}.label; % Reduce to 132 electrodes
-            for i = 1:length(data2{1}.trial) % Reduce to 132 electrodes
-                data2{1}.trial{i} = data2{1}.trial{i}(1:132, :);
+            % Reduce to 132 electrodes
+            label_132 = data2{2}.label;
+            data_structs = {data1, data2, data3};
+
+            for datastrct = 1:numel(data_structs)
+                for conds = 1:2
+                data_structs{datastrct}{conds}.label = label_132;
+                for i = 1:length(data_structs{datastrct}{conds}.trial)
+                    data_structs{datastrct}{conds}.trial{i} = data_structs{datastrct}{conds}.trial{i}(1:132, :);
+                end
+                end
             end
+
+            % Assign modified blocks back
+            data1 = data_structs{1};
+            data2 = data_structs{2};
+            data3 = data_structs{3};
         end
 
         %% Append data for conditions
@@ -205,11 +218,8 @@ for subj = 1:length(subjects)
 
         %% Add trialinfo
         data1.trialinfo = zeros(numel(data1.trial), 1) + 21;
-        disp(['Adding trialinfo 1-back in Block ' num2str(block) '!']);
         data2.trialinfo = zeros(numel(data2.trial), 1) + 22;
-        disp(['Adding trialinfo 2-back in Block ' num2str(block) '!']);
         data3.trialinfo = zeros(numel(data3.trial), 1) + 23;
-        disp(['Adding trialinfo 3-back in Block ' num2str(block) '!']);
 
         %% Append all data into single data file with appropriate trialinfo
         cfg = [];
@@ -317,9 +327,9 @@ for subj = 1:length(subjects)
         else
             disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. Loading next subject...'])
         end
-    %else
-    %    disp(['Subject ', num2str(subjects{subj}), ' already done. SKIPPING...'])
-    %end
+    else
+        disp(['Subject ', num2str(subjects{subj}), ' already done. SKIPPING...'])
+    end
 end
 toc;
 %finishedScriptMail;

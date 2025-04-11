@@ -19,7 +19,7 @@ for subj = 1:numSubjects
     load(fullfile(gazePath, 'dataET_sternberg.mat'));
 
     numTrials = length(dataETlong.trial);
-    % Preallocate cell arrays for each trial�s gaze data
+    % Preallocate cell arrays for each trial gaze data
     lGazeX = cell(1, numTrials);
     lGazeY = cell(1, numTrials);
 
@@ -84,7 +84,7 @@ for condIdx = 1:length(conditions)
     grandErrorGazeY{condIdx} = std(allSubjectGazeY, 0, 1) / sqrt(numSubjects);
 end
 
-% Optionally convert gaze positions to percentage deviation from centre (400,300)
+% Convert gaze positions to percentage deviation from centre (400,300)
 for subj = 1:numSubjects
     for condIdx = 1:length(conditions)
         allGazeX{subj}{condIdx} = ((allGazeX{subj}{condIdx} / 400) - 1) * 100;
@@ -100,7 +100,7 @@ grandErrorGazeX = cellfun(@(x) (x / 400) * 100, grandErrorGazeX, 'UniformOutput'
 grandErrorGazeY = cellfun(@(y) (y / 300) * 100, grandErrorGazeY, 'UniformOutput', false);
 
 % Define sliding window parameters
-windowLength = 0.05; % 100 ms
+windowLength = 0.005; % 100 ms
 dt = dataETlong.time{1}(2) - dataETlong.time{1}(1);
 windowPoints = round(windowLength / dt);
 moving_average = @(data, win_length) movmean(data, win_length, 2);

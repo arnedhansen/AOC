@@ -9,6 +9,7 @@
 % AOC 412 - only N-back block 1-3
 
 %% Setup
+startup
 clear
 clc
 close all

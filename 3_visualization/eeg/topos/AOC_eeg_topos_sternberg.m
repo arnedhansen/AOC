@@ -83,7 +83,6 @@ cfg.highlightsymbol = '.';
 cfg.highlightsize = 10;
 cfg.figure = 'gcf';
 cfg.marker = 'off';
-addpath('/Users/Arne/Documents/matlabtools/customcolormap/')
 cmap = customcolormap([0 0.5 1], [0.8 0 0; 1 0.5 0; 1 1 1]);
 cfg.colormap = cmap;
 cfg.gridscale = 300;

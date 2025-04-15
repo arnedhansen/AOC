@@ -370,7 +370,7 @@ for subj = 1:length(subjects)
 
         %% Baseline
         cfg                              = [];
-        cfg.baseline                     = [-1.5 -.5];
+        cfg.baseline                     = [-1.5 -0.5];
         cfg.baselinetype                 = 'db';
         tfr2_bl                          = ft_freqbaseline(cfg, tfr2);
         tfr4_bl                          = ft_freqbaseline(cfg, tfr4);

@@ -63,6 +63,7 @@ set(gca, 'CLim', clim);
 colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
+rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 set(gca, 'FontSize', 25);
 title('Sternberg WM load 2 TFR');
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_ga_sternberg_2.png');
@@ -76,6 +77,7 @@ set(gca, 'CLim', clim);
 colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
+rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 set(gca, 'FontSize', 25);
 title('Sternberg WM load 4 TFR');
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_ga_sternberg_4.png');
@@ -89,6 +91,7 @@ set(gca, 'CLim', clim);
 colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
+rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 set(gca, 'FontSize', 25);
 title('Sternberg WM load 6 TFR');
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_ga_sternberg_6.png');
@@ -115,7 +118,7 @@ color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red divergi
 [~, channel_idx] = ismember(channels, gatfr2.label);
 time_idx = find(diff.time >= -0.5 & diff.time <= 2);
 max_spctrm = max(abs(diff.powspctrm(channel_idx, :, time_idx)), [], 'all');
-max_spctrm = 0.55
+max_spctrm = 0.5
 clim = double([-max_spctrm max_spctrm]);
 
 % Plot: Difference Time-Frequency Response
@@ -127,6 +130,7 @@ set(gca, 'CLim', clim);
 colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
+rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 title('Sternberg TFR Difference (WM load 6 minus WM load 2)', 'FontName', 'Arial', 'FontSize', 30);
 set(gca, 'FontSize', 25);
 

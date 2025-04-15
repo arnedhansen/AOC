@@ -34,8 +34,8 @@ for i = 1:length(channels)
             right_channels{end+1} = ch;
         end
     catch ME
-        ME.message
-        disp(['Midline channel: ', ch])
+       ME.message
+       disp(['Midline channel: ', ch])
     end
 end
 

@@ -26,7 +26,7 @@ load('power_nback.mat');
 occ_channels = {};
 for i = 1:length(powload2.label)
     label = powload2.label{i};
-    if contains(label, 'O')
+    if contains(label, 'O') || contains(label, 'I')
         occ_channels{end+1} = label;
     end
 end
@@ -63,6 +63,7 @@ set(gca, 'CLim', clim);
 colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
+rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 set(gca, 'FontSize', 25);
 title('1-back TFR', 'FontSize', 30);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_ga_1back.png');

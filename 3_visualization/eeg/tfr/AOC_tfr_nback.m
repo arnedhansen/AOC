@@ -42,7 +42,7 @@ cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
 cfg.xlim = [-.5 2]; % Time axis limits in secon
 cfg.ylim = [4 20];
-load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
+% load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
 cfg.layout = layANThead; % your specific layout
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
 
@@ -77,6 +77,7 @@ set(gca, 'CLim', clim);
 colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
+rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 title('2-back TFR', 'FontSize', 30);
 set(gca, 'FontSize', 25);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_ga_2back.png');
@@ -90,10 +91,10 @@ set(gca, 'CLim', clim);
 colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
+rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 title('3-back TFR', 'FontSize', 30);
 set(gca, 'FontSize', 25);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_ga_3back.png');
-
 
 %% Compute the difference between condition 3 and condition 1
 close all
@@ -117,7 +118,7 @@ color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red divergi
 % Find maximum deviation
 [~, channel_idx] = ismember(channels, gatfr1.label);
 max_spctrm = max(abs(diff.powspctrm(channel_idx, :, :)), [], 'all');
-max_spctrm = 0.75
+max_spctrm = 0.65
 clim = double([-max_spctrm, max_spctrm]);
 
 % Plot: Difference (Condition 3 minus Condition 1) - Time-Frequency Response
@@ -131,6 +132,8 @@ line([0 0], [2 2], 'LineWidth', 5, 'LineStyle', '-', 'Color', 'r');
 %line(14, 'LineWidth', 5, 'LineStyle', '-', 'Color', 'r');
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
+ylim([4 20]);
+rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 title('N-back TFR Difference (3-back minus 1-back)', 'FontName', 'Arial', 'FontSize', 30);
 set(gca, 'FontSize', 25);
 

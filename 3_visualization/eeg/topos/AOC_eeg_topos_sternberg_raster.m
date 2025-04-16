@@ -36,53 +36,79 @@ gatfr4 = ft_freqgrandaverage([],tfr4_all{:});
 gatfr6 = ft_freqgrandaverage([],tfr6_all{:});
 
 %% Plot alpha power TOPOS
+close all
+
 % Set up frequency bands and timepoints
 freq_bands = {
     'Theta', [4 8];
     'Alpha', [8 14];
     'Beta', [14 30];
-    'Gamma', [30 90];
-};
+    };
+freqs = size(freq_bands, 1);
+timepoints = 0:0.25:2;
+timepnts = length(timepoints)-1;
 
-% Define timepoints every 200 ms starting from 0
-timepoints = 0:0.2:0.4 %%%2;
+% Plot
+figure('Color', 'w', 'Position', [100, 100, 2000, 1200]);
+title('Sternberg WM load 6 Theta, Alpha, and Beta Topolots over Time', 'FontSize', 25)
+for f = 1:freqs
+    freqband_name = freq_bands{f, 1};
+    freqband_range = freq_bands{f, 2};
 
-% Loop over frequency bands and timepoints
-figure('Color', 'w', 'Position', [100, 100, 300 * length(timepoints), 300 * size(freq_bands, 1)]);
-nRows = size(freq_bands, 1);
-nCols = length(timepoints);
-fig = figure('Color', 'w', 'Position', [100, 100, 300 * nCols, 300 * nRows]);
-t = tiledlayout(nRows, nCols, 'Padding', 'compact', 'TileSpacing', 'compact');
+    for tp = 1:timepnts
+        ax = subplot(freqs, timepnts, (f-1)*timepnts + tp);
+        fig = ax;
 
-for f = 1:nRows
-    band_name = freq_bands{f, 1};
-    band_range = freq_bands{f, 2};
-    
-    for tp = 1:nCols
-        nexttile;
+        % Set up configuration
         cfg = [];
-        cfg.layout = ant128lay;
+        cfg.layout = headmodel.layANThead;
+        allchannels = cfg.layout.label;
+        cfg.figure = ax;
+
+        %cfg.figure = 'no';
+        cfg.channel = allchannels(1:125);
+        cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M2'));
+        cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M1'));
         cfg.highlight = 'on';
         cfg.highlightchannel = channels;
         cfg.highlightsymbol = '.';
-        cfg.highlightsize = 10;
+        cfg.highlightsize = 5;
         cfg.marker = 'off';
         cfg.comment = 'no';
-        cmap = customcolormap([0 0.5 1], [0.8 0 0; 1 0.5 0; 1 1 1]);
+        %cmap = customcolormap([0 0.5 1], [0.8 0 0; 1 0.5 0; 1 1 1]);
+        cmap = flipud(cbrewer('div', 'RdBu', 64));
         cfg.colormap = cmap;
         cfg.gridscale = 300;
-        cfg.ylim = band_range;
-        cfg.zlim = 'maxabs';
-        startTmpnt = find(gatfr6.time == timepoints(tp-1))
-        endTmpnt = find(gatfr6.time == timepoints(tp))
-        cfg.xlim = gatfr6.time(startTmpnt:endTmpnt) 
+        cfg.ylim = freqband_range;
+        if mod((f-1)*timepnts + tp, 8) == 0
+            cb = colorbar;
+             set(cb, 'FontSize', 15);
+             % ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 15);
+             ylabel(cb, 'Power [dB]', 'FontSize', 15);
+        end
 
-        % Make FieldTrip plot into current tile
+        % Set time window
+        startTmpnt = find(gatfr6.time == timepoints(tp));
+        endTmpnt = find(gatfr6.time == timepoints(tp+1));
+        cfg.xlim = [gatfr6.time(startTmpnt) gatfr6.time(endTmpnt)];
+
+        % Find max power value for frequency band
+        freq_idx = find(gatfr6.freq >= freqband_range(1) & gatfr6.freq <= freqband_range(2));
+        timepnts_idx = find(gatfr6.time == 0) : find(gatfr6.time == 2); % Timepoints over entire interval
+        max_spctrm = abs(mean(gatfr6.powspctrm(:, freq_idx, timepnts_idx), 'all', 'omitnan'));
+        cfg.zlim = [-max_spctrm max_spctrm];
+
+        % Create Topoplot
         ft_topoplotTFR(cfg, gatfr6);
-        title(sprintf('%.1f s', timepoints(tp)), 'FontSize', 10);
-        
+        title(sprintf('%.1f - %.1f s', timepoints(tp), timepoints(tp+1)), 'FontSize', 15);
+
+        tp
         if tp == 1
-            ylabel(band_name, 'FontSize', 14, 'FontWeight', 'bold');
+            text(-10, 4.25, freqband_name, 'FontSize', 30, 'FontWeight', 'bold', 'Rotation', 90);
+        elseif tp == 9
+            text(-10, 2.25, freqband_name, 'FontSize', 30, 'FontWeight', 'bold', 'Rotation', 90);
+        elseif tp == 17
+            text(-10, 0, freqband_name, 'FontSize', 30, 'FontWeight', 'bold', 'Rotation', 90);
         end
     end
 end

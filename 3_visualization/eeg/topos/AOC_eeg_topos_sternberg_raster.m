@@ -66,7 +66,7 @@ for f = 1:freqs
         cfg.figure = ax;
 
         %cfg.figure = 'no';
-        cfg.channel = allchannels(1:125);
+        cfg.channel = allchannels(1:end-2);
         cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M2'));
         cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M1'));
         cfg.highlight = 'on';
@@ -75,17 +75,15 @@ for f = 1:freqs
         cfg.highlightsize = 5;
         cfg.marker = 'off';
         cfg.comment = 'no';
-        %cmap = customcolormap([0 0.5 1], [0.8 0 0; 1 0.5 0; 1 1 1]);
         cmap = flipud(cbrewer('div', 'RdBu', 64));
         cfg.colormap = cmap;
         cfg.gridscale = 300;
         cfg.ylim = freqband_range;
-        if mod((f-1)*timepnts + tp, 8) == 0
+        %if mod((f-1)*timepnts + tp, 8) == 0
             cb = colorbar;
-             set(cb, 'FontSize', 15);
-             % ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 15);
-             ylabel(cb, 'Power [dB]', 'FontSize', 15);
-        end
+        %    set(cb, 'FontSize', 15);
+        %    ylabel(cb, 'Power [dB]', 'FontSize', 15);
+        %end
 
         % Set time window
         startTmpnt = find(gatfr6.time == timepoints(tp));
@@ -95,23 +93,20 @@ for f = 1:freqs
         % Find max power value for frequency band
         freq_idx = find(gatfr6.freq >= freqband_range(1) & gatfr6.freq <= freqband_range(2));
         timepnts_idx = find(gatfr6.time == 0) : find(gatfr6.time == 2); % Timepoints over entire interval
-        max_spctrm = abs(mean(gatfr6.powspctrm(:, freq_idx, timepnts_idx), 'all', 'omitnan'));
-        cfg.zlim = [-max_spctrm max_spctrm];
+        submat = gatfr6.powspctrm(1:end-3, freq_idx, timepnts_idx); % [chan x freq x time]
+        max_spctrm = max(submat(:), [], 'omitnan');
+        max_spctrm = 1.2      %abs(max_spctrm);
+        %cfg.zlim = [-max_spctrm max_spctrm];
 
         % Create Topoplot
         ft_topoplotTFR(cfg, gatfr6);
-        title(sprintf('%.1f - %.1f s', timepoints(tp), timepoints(tp+1)), 'FontSize', 15);
+        title(sprintf('%.0f - %.0f ms', 1000*timepoints(tp), 1000*timepoints(tp+1)), 'FontSize', 15);
 
-        tp
-        if tp == 1
-            text(-10, 4.25, freqband_name, 'FontSize', 30, 'FontWeight', 'bold', 'Rotation', 90);
-        elseif tp == 9
-            text(-10, 2.25, freqband_name, 'FontSize', 30, 'FontWeight', 'bold', 'Rotation', 90);
-        elseif tp == 17
-            text(-10, 0, freqband_name, 'FontSize', 30, 'FontWeight', 'bold', 'Rotation', 90);
-        end
     end
 end
+text(-10, 3.75, "Theta (4-8Hz)", 'FontSize', 30, 'FontWeight', 'bold', 'Rotation', 90);
+text(-10, 1.5, "Alpha (8-14Hz)", 'FontSize', 30, 'FontWeight', 'bold', 'Rotation', 90);
+text(-10, -0.75, "Beta (14-30Hz)", 'FontSize', 30, 'FontWeight', 'bold', 'Rotation', 90);
 
 % Save figure
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_sternberg_rasterplot_WM6.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/raster/AOC_alpha_power_sternberg_rasterplot_WM6.png');

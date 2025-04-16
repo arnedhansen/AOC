@@ -102,7 +102,7 @@ cb = colorbar;
 set(cb, 'FontSize', 20);
 ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('WM load 2', 'FontSize', 40);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_sternberg_topo2.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_sternberg_topo2_nobaseline.png');
 
 % Plot WM load 4
 figure('Color', 'w');
@@ -113,7 +113,7 @@ cb = colorbar;
 set(cb, 'FontSize', 20);
 ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('WM load 4', 'FontSize', 40);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_sternberg_topo4.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_sternberg_topo4_nobaseline.png');
 
 % Plot WM load 6
 figure('Color', 'w');
@@ -124,7 +124,7 @@ cb = colorbar;
 set(cb, 'FontSize', 20);
 ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('WM load 6', 'FontSize', 40);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_sternberg_topo6.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_sternberg_topo6_nobaseline.png');
 
 %% Plot alpha power TOPOS DIFFERENCE
 close all
@@ -168,7 +168,7 @@ title('Sternberg Task Alpha Power Difference (WM load 6 - WM load 2)', 'FontSize
 ft_topoplotER(cfg, ga_diff);
 
 % Save
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_sternberg_topo_diff.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_sternberg_topo_diff_nobaseline.png');
 
 %% INDIVIDUAL alpha power TOPOS
 for subj = 1:length(subjects)
@@ -221,7 +221,7 @@ for subj = 1:length(subjects)
     cb = colorbar;
     set(cb, 'FontSize', 20);
     ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
-    saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_sternberg_topo_WM2_%s.png', subjectID)));
+    saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_sternberg_topo_WM2_%s_nobaseline.png', subjectID)));
     
     % 2-back
     figure('Color', 'w');
@@ -231,7 +231,7 @@ for subj = 1:length(subjects)
     cb = colorbar;
     set(cb, 'FontSize', 20);
     ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
-    saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_sternberg_topo_WM4_%s.png', subjectID)));
+    saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_sternberg_topo_WM4_%s_nobaseline.png', subjectID)));
     
     % 3-back
     figure('Color', 'w');
@@ -241,7 +241,7 @@ for subj = 1:length(subjects)
     cb = colorbar;
     set(cb, 'FontSize', 20);
     ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
-    saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_sternberg_topo_WM6_%s.png', subjectID)));
+    saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_sternberg_topo_WM6_%s_nobaseline.png', subjectID)));
 
     % Difference topo
     cfg = [];
@@ -273,5 +273,5 @@ for subj = 1:length(subjects)
     cb = colorbar;
     set(cb, 'FontSize', 20);
     ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
-    saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_sternberg_topo_diff_%s.png', subjectID))); 
+    saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_sternberg_topo_diff_%s_nobaseline.png', subjectID))); 
 end

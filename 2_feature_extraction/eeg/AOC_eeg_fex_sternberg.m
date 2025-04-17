@@ -1,13 +1,13 @@
 %% AOC EEG Feature Extraction Sternberg
 %
 % Extracted features:
-%   Power Spectrum
+%   Power Spectrum (Retention)
+%   Power Spectrum (Baseline)
 %   IAF, Power at IAF, and Lateralization Index
 %   FOOOF Power
 %   TFR
-%   Baselined Power Spectrum
 
-%% POWER Spectrum (Raw and Baseline)
+%% POWSPCTRM (Retention)
 % Setup
 startup
 [subjects, path, ~ , ~] = setup('AOC');
@@ -21,15 +21,15 @@ for subj = 1:length(subjects)
         load dataEEG_sternberg
 
         % Identify indices of trials belonging to conditions
-        ind2 = find(data.trialinfo == 52); % WM load 2
-        ind4 = find(data.trialinfo == 54); % WM load 4
-        ind6 = find(data.trialinfo == 56); % WM load 6
+        ind2 = find(dataEEG.trialinfo == 52); % WM load 2
+        ind4 = find(dataEEG.trialinfo == 54); % WM load 4
+        ind6 = find(dataEEG.trialinfo == 56); % WM load 6
 
         % Frequency analysis
         % Select data
         cfg = [];                      % Empty configuration
         cfg.latency = [1 2];           % Segmentation for retention interval
-        dat = ft_selectdata(cfg,data); % Select data
+        dat = ft_selectdata(cfg,dataEEG); % Select data
 
         % Analysis settings
         cfg = [];                      % Empty configuration
@@ -52,6 +52,58 @@ for subj = 1:length(subjects)
         % Save data
         cd(datapath)
         save power_stern powload2 powload4 powload6
+
+    catch ME
+        ME.message
+        error(['ERROR extracting power for Subject ' num2str(subjects{subj}) '!'])
+    end
+end
+
+%% POWSPCTRM (Baseline)
+% Setup
+startup
+[subjects, path, ~ , ~] = setup('AOC');
+
+for subj = 1:length(subjects)
+    try
+        % Load data
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        cd(datapath)
+        close all
+        load dataEEG_sternberg
+
+        % Identify indices of trials belonging to conditions
+        ind2 = find(dataEEGlong.trialinfo == 52); % WM load 2
+        ind4 = find(dataEEGlong.trialinfo == 54); % WM load 4
+        ind6 = find(dataEEGlong.trialinfo == 56); % WM load 6
+
+        % Frequency analysis
+        % Select data
+        cfg = [];                      % Empty configuration
+        cfg.latency = [-1.5 -0.5];     % Segmentation for retention interval
+        datalong = ft_selectdata(cfg, dataEEGlong);
+
+        % Analysis settings
+        cfg = [];                      % Empty configuration
+        cfg.output = 'pow';            % Estimate power only
+        cfg.method = 'mtmfft';         % Multi-taper FFT method
+        cfg.taper = 'dpss';            % Multiple tapers (discrete prolate spheroidal sequences)
+        cfg.tapsmofrq = 1;             % Smoothening frequency around foi
+        cfg.foilim = [3 30];           % Frequencies of interest
+        cfg.keeptrials = 'no';         % Discard trial information
+        cfg.pad = 10;                  % Add zero-padding
+
+        % Conduct frequency analysis for each condition separately
+        cfg.trials = ind2;
+        powload2_baseline_period = ft_freqanalysis(cfg, datalong);
+        cfg.trials = ind4;
+        powload4_baseline_period = ft_freqanalysis(cfg, datalong);
+        cfg.trials = ind6;
+        powload6_baseline_period = ft_freqanalysis(cfg, datalong);
+
+        % Save baselined power spectra
+        cd(datapath)
+        save power_stern_baseline_period powload2_baseline_period powload4_baseline_period powload6_baseline_period
 
     catch ME
         ME.message
@@ -244,14 +296,14 @@ for subj = 1:length(subjects)
         load dataEEG_sternberg
 
         %% Identify indices of trials belonging to conditions
-        ind2=find(data.trialinfo==52);
-        ind4=find(data.trialinfo==54);
-        ind6=find(data.trialinfo==56);
+        ind2=find(dataEEG.trialinfo==52);
+        ind4=find(dataEEG.trialinfo==54);
+        ind6=find(dataEEG.trialinfo==56);
 
         %% Frequency analysis
         cfg = [];
         cfg.latency = [1 2];% segment here only for retention interval
-        dat = ft_selectdata(cfg,data);
+        dat = ft_selectdata(cfg,dataEEG);
         cfg = [];% empty config
         cfg.output = 'pow';% estimates power only
         cfg.method = 'mtmfft';% multi taper fft method
@@ -290,14 +342,14 @@ for subj = 1:length(subjects)
         load dataEEG_sternberg
 
         %% Identify indices of trials belonging to conditions
-        ind2=find(data.trialinfo==52);
-        ind4=find(data.trialinfo==54);
-        ind6=find(data.trialinfo==56);
+        ind2=find(dataEEG.trialinfo==52);
+        ind4=find(dataEEG.trialinfo==54);
+        ind6=find(dataEEG.trialinfo==56);
 
         %% Frequency analysis
         cfg = [];
         cfg.latency =[1 2]; % segment here only for retention interval
-        dat = ft_selectdata(cfg,data);
+        dat = ft_selectdata(cfg,dataEEG);
         cfg = []; % empty config
         cfg.output = 'fooof_peaks'; % 1/f
         cfg.method = 'mtmfft'; % multi taper fft method
@@ -322,7 +374,7 @@ for subj = 1:length(subjects)
     end
 end
 
-%% TFR & BASELINE PERIOD POWSPCTRM
+%% TFR
 % Setup
 startup
 [subjects, path, ~ , ~] = setup('AOC');
@@ -368,72 +420,9 @@ for subj = 1:length(subjects)
         cd(datapath)
         save tfr_stern tfr2 tfr4 tfr6 tfr2_bl tfr4_bl tfr6_bl
 
-        %% Baseline period POWERSCPTRM  frequency analysis
-        cfg = [];                      
-        cfg.latency = [-1.5 -0.5];     % Segmentation for baseline period
-        datalong = ft_selectdata(cfg, dataTFR);
-
-        % Frequency analysis settings
-        cfg = [];                      % Empty configuration
-        cfg.output = 'pow';            % Estimate power only
-        cfg.method = 'mtmfft';         % Multi-taper FFT method
-        cfg.taper = 'dpss';            % Multiple tapers (discrete prolate spheroidal sequences)
-        cfg.tapsmofrq = 1;             % Smoothening frequency around foi
-        cfg.foilim = [3 30];           % Frequencies of interest
-        cfg.keeptrials = 'no';         % Discard trial information
-        cfg.pad = 10;                  % Add zero-padding
-
-        cfg.trials = ind2;
-        powload2_baseline_period = ft_freqanalysis(cfg, datalong);
-        cfg.trials = ind4;
-        powload4_baseline_period = ft_freqanalysis(cfg, datalong);
-        cfg.trials = ind6;
-        powload6_baseline_period = ft_freqanalysis(cfg, datalong);
-
-        % Save baselined power spectra
-        cd(datapath)
-        save power_stern_baseline_period powload2_baseline_period powload4_baseline_period powload6_baseline_period
-
     catch ME
         ME.message
         error(['ERROR extracting TFR for Subject ' num2str(subjects{subj}) '!'])
     end
 end
-disp('TFR & BASELINE PERIOD POWSPCTRM COMPUTED...');
-
-%% BASELINED POWER Spectrum
-% Convert TFR data to POWSPCTRM (channels x frequency)
-% Setup
-startup
-[subjects, path, ~ , ~] = setup('AOC');
-
-% Baselined power spectra analysis
-analysis_period = [1 2];
-freq_range = [4 40];
-for subj = 1 : length(subjects)
-    try
-        % Load data
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
-        cd(datapath);
-        load('tfr_stern.mat');
-
-        % Power spectra calculations
-        powload2_bl = select_data(analysis_period, freq_range, tfr2_bl);
-        powload4_bl = select_data(analysis_period, freq_range, tfr4_bl);
-        powload6_bl = select_data(analysis_period, freq_range, tfr6_bl);
-
-        % Remove time dimension for POWSCPTRM (channels x frequency)
-        powload2_bl = remove_time_dimension(powload2_bl);
-        powload4_bl = remove_time_dimension(powload4_bl);
-        powload6_bl = remove_time_dimension(powload6_bl);
-
-        % Save baselined power spectra
-        cd(datapath)
-        save power_stern_bl_tfr powload2_bl powload4_bl powload6_bl
-
-    catch ME
-        ME.message
-        error(['ERROR extracting baselined power for Subject ' num2str(subjects{subj}) '!'])
-    end
-
-end
+disp('TFR COMPUTED...');

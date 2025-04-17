@@ -10,7 +10,7 @@
 %% POWER Spectrum (Raw and Baseline)
 % Setup
 startup
-[subjects, path, ~ , ant128lay] = setup('AOC');
+[subjects, path, ~ , ~] = setup('AOC');
 
 for subj = 1:length(subjects)
     try
@@ -39,7 +39,7 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1;             % Smoothening frequency around foi
         cfg.foilim = [3 30];           % Frequencies of interest
         cfg.keeptrials = 'no';         % Discard trial information
-        cfg.pad = 10;                   % Add zero-padding
+        cfg.pad = 10;                  % Add zero-padding
 
         % Conduct frequency analysis for each condition separately
         cfg.trials = ind2;
@@ -53,18 +53,6 @@ for subj = 1:length(subjects)
         cd(datapath)
         save power_stern powload2 powload4 powload6
 
-        % Baselined frequency analysis settings
-        cfg                              = [];
-        cfg.baseline                     = [-1.5 -0.5];
-        cfg.baselinetype                 = 'db';
-        powload4_bl                      = ft_freqbaseline(cfg, powload2);
-        powload4_bl                      = ft_freqbaseline(cfg, powload4);
-        powload6_bl                      = ft_freqbaseline(cfg, powload6);
-
-        % Save baselined power spectra
-        cd(datapath)
-        save power_stern_bl powload4_bl powload4_bl powload6_bl
-
     catch ME
         ME.message
         error(['ERROR extracting power for Subject ' num2str(subjects{subj}) '!'])
@@ -74,7 +62,7 @@ end
 %% ALPHA POWER, IAF and LATERALIZATION INDEX
 % Setup
 startup
-[subjects, path, ~ , ant128lay] = setup('AOC');
+[subjects, path, ~ , ~] = setup('AOC');
 
 % Define channels
 subj = 1;
@@ -245,7 +233,7 @@ end
 %% POWER WITH TRIAL INFO
 % Setup
 startup
-[subjects, path, ~ , ant128lay] = setup('AOC');
+[subjects, path, ~ , ~] = setup('AOC');
 
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
@@ -291,7 +279,7 @@ end
 %% FOOOF Power
 % Setup
 startup
-[subjects, path, ~ , ant128lay] = setup('AOC');
+[subjects, path, ~ , ~] = setup('AOC');
 
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
@@ -334,10 +322,10 @@ for subj = 1:length(subjects)
     end
 end
 
-%% TFR
+%% TFR & BASELINE PERIOD POWSPCTRM
 % Setup
 startup
-[subjects, path, ~ , ant128lay] = setup('AOC');
+[subjects, path, ~ , ~] = setup('AOC');
 
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
@@ -362,13 +350,13 @@ for subj = 1:length(subjects)
         cfg.toi          = -3:0.05:3;
         cfg.keeptrials = 'no';
         cfg.trials = ind2;
-        tfr2 = ft_freqanalysis(cfg,dataTFR);
+        tfr2 = ft_freqanalysis(cfg, dataTFR);
         cfg.trials = ind4;
-        tfr4 = ft_freqanalysis(cfg,dataTFR);
+        tfr4 = ft_freqanalysis(cfg, dataTFR);
         cfg.trials = ind6;
-        tfr6 = ft_freqanalysis(cfg,dataTFR);
+        tfr6 = ft_freqanalysis(cfg, dataTFR);
 
-        %% Baseline
+        %% Baselined TFR
         cfg                              = [];
         cfg.baseline                     = [-1.5 -0.5];
         cfg.baselinetype                 = 'db';
@@ -376,25 +364,52 @@ for subj = 1:length(subjects)
         tfr4_bl                          = ft_freqbaseline(cfg, tfr4);
         tfr6_bl                          = ft_freqbaseline(cfg, tfr6);
 
-        %% Save data
+        % Save data
         cd(datapath)
         save tfr_stern tfr2 tfr4 tfr6 tfr2_bl tfr4_bl tfr6_bl
+
+        %% Baseline period POWERSCPTRM  frequency analysis
+        cfg = [];                      
+        cfg.latency = [-1.5 -0.5];     % Segmentation for baseline period
+        datalong = ft_selectdata(cfg, dataTFR);
+
+        % Frequency analysis settings
+        cfg = [];                      % Empty configuration
+        cfg.output = 'pow';            % Estimate power only
+        cfg.method = 'mtmfft';         % Multi-taper FFT method
+        cfg.taper = 'dpss';            % Multiple tapers (discrete prolate spheroidal sequences)
+        cfg.tapsmofrq = 1;             % Smoothening frequency around foi
+        cfg.foilim = [3 30];           % Frequencies of interest
+        cfg.keeptrials = 'no';         % Discard trial information
+        cfg.pad = 10;                  % Add zero-padding
+
+        cfg.trials = ind2;
+        powload2_baseline_period = ft_freqanalysis(cfg, datalong);
+        cfg.trials = ind4;
+        powload4_baseline_period = ft_freqanalysis(cfg, datalong);
+        cfg.trials = ind6;
+        powload6_baseline_period = ft_freqanalysis(cfg, datalong);
+
+        % Save baselined power spectra
+        cd(datapath)
+        save power_stern_baseline_period powload2_baseline_period powload4_baseline_period powload6_baseline_period
+
     catch ME
         ME.message
         error(['ERROR extracting TFR for Subject ' num2str(subjects{subj}) '!'])
     end
 end
-disp('TFR COMPUTED...');
+disp('TFR & BASELINE PERIOD POWSPCTRM COMPUTED...');
 
 %% BASELINED POWER Spectrum
 % Convert TFR data to POWSPCTRM (channels x frequency)
 % Setup
 startup
-[subjects, path, ~ , ant128lay] = setup('AOC');
+[subjects, path, ~ , ~] = setup('AOC');
 
 % Baselined power spectra analysis
-analysis_period = [1 2]; % N-back analysis window
-freq_range = [8 14];
+analysis_period = [1 2];
+freq_range = [4 40];
 for subj = 1 : length(subjects)
     try
         % Load data
@@ -414,7 +429,7 @@ for subj = 1 : length(subjects)
 
         % Save baselined power spectra
         cd(datapath)
-        save power_stern_bl powload2_bl powload4_bl powload6_bl
+        save power_stern_bl_tfr powload2_bl powload4_bl powload6_bl
 
     catch ME
         ME.message

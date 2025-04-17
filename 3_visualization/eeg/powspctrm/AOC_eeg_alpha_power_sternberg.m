@@ -81,12 +81,16 @@ gapow4_bl = ft_freqgrandaverage([], powl4_bl{:});
 gapow6_bl = ft_freqgrandaverage([], powl6_bl{:});
 
 %% Plot alpha power grand average POWERSPECTRUM
-gapow2 = gapow2_raw;
-gapow4 = gapow4_raw;
-gapow6 = gapow6_raw;
+% gapow2 = gapow2_raw;
+% gapow4 = gapow4_raw;
+% gapow6 = gapow6_raw;
+gapow2 = powload2_bl;
+gapow4 = powload4_bl;
+gapow6 = powload6_bl;
 
-for electrodes = {'occ_cluster', 'POz', 'right_hemisphere'}
+for electrodes = {'occ_cluster'} %%%%%%%%%%, 'POz', 'right_hemisphere'}
     close all
+    cfg = [];
     figure;
     set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
     conditions = {'WM load 2', 'WM load 4', 'WM load 6'};
@@ -138,7 +142,9 @@ for electrodes = {'occ_cluster', 'POz', 'right_hemisphere'}
     [~, channel_idx] = ismember(cfg.channel, gapow2.label);
     freq_idx = find(gapow2.freq >= 8 & gapow2.freq <= 14);
     max_spctrm = max([mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow4.powspctrm(channel_idx, freq_idx), 2); mean(gapow6.powspctrm(channel_idx, freq_idx), 2)]);
-    ylim([0 max_spctrm*1.4])
+    %ylim([0 max_spctrm*1.4])
+    ylim([-2.5 2.5])
+    xlim([4 40])
     if strcmp(electrodes, 'POz')
         ylim([0 1])
     elseif strcmp(electrodes, 'right_hemisphere')

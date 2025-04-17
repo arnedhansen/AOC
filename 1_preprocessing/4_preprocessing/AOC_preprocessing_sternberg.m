@@ -222,36 +222,38 @@ for subj = 1:length(subjects)
         %% Get EyeTracking data
         cfg = [];
         cfg.channel = {'L-GAZE-X'  'L-GAZE-Y' 'L-AREA', 'R-GAZE-X'  'R-GAZE-Y' 'R-AREA'};
-        dataet = ft_selectdata(cfg,data);
+        dataet = ft_selectdata(cfg, data);
         dataETlong = dataet;
         dataETlong.trialinfo = trialinfo;
 
         %% Get EEG data (excl. ET and EOG data)
         cfg = [];
         cfg.channel = {'all' '-B*' '-HEOGR' '-HEOGL', '-VEOGU', '-VEOGL' ,'-L-GAZE-X' , '-L-GAZE-Y' , '-L-AREA'};
-        data = ft_selectdata(cfg,data);
+        dataEEG = ft_selectdata(cfg, data);
 
         %% Resegment data to avoid filter ringing
         % TRF data
         cfg = [];
-        dataTFR = ft_selectdata(cfg,data); 
-        % EEG & ET data for Sternberg retention interval
-        cfg = [];
-        cfg.latency = [1 2]; % Time window for Sternberg task
-        data = ft_selectdata(cfg,data); % EEG data
-        dataet = ft_selectdata(cfg,dataet); % ET data
-        dataet.trialinfo = trialinfo;
+        dataTFR = ft_selectdata(cfg, dataEEG); 
+
         % EEG data for baseline
         cfg = [];
         cfg.latency = [-1.5 -0.5]; % Time window for baseline
-        dataEEGlong = ft_selectdata(cfg,data); % EEG data
+        dataEEGlong = ft_selectdata(cfg, dataEEG); % EEG data
+
+        % EEG & ET data for Sternberg retention interval
+        cfg = [];
+        cfg.latency = [1 2]; % Time window for Sternberg task
+        dataEEG = ft_selectdata(cfg, dataEEG); % EEG data
+        dataet = ft_selectdata(cfg,dataet); % ET data
+        dataet.trialinfo = trialinfo;
 
         %% Re-reference data to average or common reference
         cfg = [];
         cfg.reref   = 'yes';
         cfg.refchannel = 'all';
-        data = ft_preprocessing(cfg,data);
-        data.trialinfo = trialinfo;
+        dataEEG = ft_preprocessing(cfg,dataEEG);
+        dataEEG.trialinfo = trialinfo;
         dataEEGlong = ft_preprocessing(cfg,dataEEGlong);
         dataEEGlong.trialinfo = trialinfo;
 
@@ -279,7 +281,7 @@ for subj = 1:length(subjects)
         end
         mkdir(savepathEEG)
         cd(savepathEEG)
-        save dataEEG_sternberg data dataEEGlong
+        save dataEEG_sternberg dataEEG dataEEGlong
         save dataEEG_TFR_sternberg dataTFR
         if ispc == 1
             savepathET = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\gaze\');

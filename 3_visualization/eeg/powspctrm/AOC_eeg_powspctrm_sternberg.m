@@ -1,8 +1,13 @@
-%% AOC Alpha Power Sternberg
+%% AOC POWSPCTRM Sternberg
 
 %% Setup
 startup
 [subjects, path, colors, ~] = setup('AOC');
+
+
+
+subjects = subjects(1:15)
+
 
 %% Define channels
 subj = 1;
@@ -65,28 +70,41 @@ gapow2_raw = ft_freqgrandaverage([],powl2{:});
 gapow4_raw = ft_freqgrandaverage([],powl4{:});
 gapow6_raw = ft_freqgrandaverage([],powl6{:});
 
-% Load baselined powerspctrm data
+% Load baseline period powerspctrm data
 for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj}, filesep, 'eeg');
     cd(datapath)
-    load power_stern_bl
-    powl2_bl{subj} = powload2_bl;
-    powl4_bl{subj} = powload4_bl;
-    powl6_bl{subj} = powload6_bl;
+    load power_stern_baseline_period
+    powl2_blperiod{subj} = powload2_baseline_period;
+    powl4_blperiod{subj} = powload4_baseline_period;
+    powl6_blperiod{subj} = powload6_baseline_period;
 end
 
-% Compute grand avg of baselined powspctrm data
-gapow2_bl = ft_freqgrandaverage([], powl2_bl{:});
-gapow4_bl = ft_freqgrandaverage([], powl4_bl{:});
-gapow6_bl = ft_freqgrandaverage([], powl6_bl{:});
+%% Compute baseline-corrected POWERSPECTRUM
+for subj = 1:length(subjects)
+    % Compute baseline correction as relative change: (retention - baseline) / baseline
+    pow2_bl{subj} = powload2;
+    pow2_bl{subj}.powspctrm = (powl2{subj}.powspctrm - powl2_blperiod{subj}.powspctrm) ./ powl2_blperiod{subj}.powspctrm;
+
+    pow4_bl{subj} = powload4;
+    pow4_bl{subj}.powspctrm = (powl4{subj}.powspctrm - powl4_blperiod{subj}.powspctrm) ./ powl4_blperiod{subj}.powspctrm;
+
+    pow6_bl{subj} = powload6;
+    pow6_bl{subj}.powspctrm = (powl6{subj}.powspctrm - powl6_blperiod{subj}.powspctrm) ./ powl6_blperiod{subj}.powspctrm;
+end
+
+% Compute grand average of baseline-corrected power spectra
+gapow2_bl = ft_freqgrandaverage([], pow2_bl{:});
+gapow4_bl = ft_freqgrandaverage([], pow4_bl{:});
+gapow6_bl = ft_freqgrandaverage([], pow6_bl{:});
 
 %% Plot alpha power grand average POWERSPECTRUM
 % gapow2 = gapow2_raw;
 % gapow4 = gapow4_raw;
 % gapow6 = gapow6_raw;
-gapow2 = powload2_bl;
-gapow4 = powload4_bl;
-gapow6 = powload6_bl;
+gapow2 = gapow2_bl;
+gapow4 = gapow4_bl;
+gapow6 = gapow6_bl;
 
 for electrodes = {'occ_cluster'} %%%%%%%%%%, 'POz', 'right_hemisphere'}
     close all
@@ -143,14 +161,15 @@ for electrodes = {'occ_cluster'} %%%%%%%%%%, 'POz', 'right_hemisphere'}
     freq_idx = find(gapow2.freq >= 8 & gapow2.freq <= 14);
     max_spctrm = max([mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow4.powspctrm(channel_idx, freq_idx), 2); mean(gapow6.powspctrm(channel_idx, freq_idx), 2)]);
     %ylim([0 max_spctrm*1.4])
-    ylim([-2.5 2.5])
-    xlim([4 40])
+    %ylim([-2.5 2.5])
+    xlim([4 30])
     if strcmp(electrodes, 'POz')
         ylim([0 1])
     elseif strcmp(electrodes, 'right_hemisphere')
         ylim([0 1])
     end
     box on
+    yline(0, '--')
     xlabel('Frequency [Hz]');
     ylabel('Power [\muV^2/Hz]');
     legend([eb2.mainLine, eb4.mainLine, eb6.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, 'FontName', 'Arial', 'FontSize', 20);

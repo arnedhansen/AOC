@@ -35,53 +35,57 @@ gatfr2 = ft_freqgrandaverage([],tfr2_all{:});
 gatfr4 = ft_freqgrandaverage([],tfr4_all{:});
 gatfr6 = ft_freqgrandaverage([],tfr6_all{:});
 
-%% Plot alpha power TOPOS
+%% Plot BASELINED alpha power TOPOS
 close all
 alpha_range = [8 14];
+conds = 1;
+for gatfr = {gatfr2, gatfr4, gatfr6}
+    gatfr = gatfr{1};
 
-% Plot
-fig = figure('Color', 'w', 'Position', [100, 100, 2000, 1200]);
-title('Sternberg WM load 6', 'FontSize', 25)
+    % Plot
+    fig = figure('Color', 'w', 'Position', [100, 100, 1200, 1200]);
+    title(['Sternberg WM load ', num2str(conds*2)], 'FontSize', 25)
 
-% Set up configuration
-cfg = [];
-cfg.layout = headmodel.layANThead;
-allchannels = cfg.layout.label;
-cfg.figure = fig;
+    % Set up configuration
+    cfg = [];
+    cfg.layout = headmodel.layANThead;
+    allchannels = cfg.layout.label;
+    cfg.figure = fig;
+    cfg.channel = allchannels(1:end-2);
+    cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M2'));
+    cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M1'));
+    cfg.highlight = 'on';
+    cfg.highlightchannel = channels;
+    cfg.highlightsymbol = '.';
+    cfg.highlightsize = 5;
+    cfg.marker = 'off';
+    cfg.comment = 'no';
+    cmap = flipud(cbrewer('div', 'RdBu', 64));
+    cfg.colormap = cmap;
+    cfg.gridscale = 300;
+    cfg.ylim = alpha_range;
+    cb = colorbar;
+    set(cb, 'FontSize', 20);
+    ylabel(cb, 'Power [dB]', 'FontSize', 25);
 
-%cfg.figure = 'no';
-cfg.channel = allchannels(1:end-2);
-cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M2'));
-cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M1'));
-cfg.highlight = 'on';
-cfg.highlightchannel = channels;
-cfg.highlightsymbol = '.';
-cfg.highlightsize = 5;
-cfg.marker = 'off';
-cfg.comment = 'no';
-cmap = flipud(cbrewer('div', 'RdBu', 64));
-cfg.colormap = cmap;
-cfg.gridscale = 300;
-cfg.ylim = alpha_range;
-cb = colorbar;
-set(cb, 'FontSize', 15);
-ylabel(cb, 'Power [dB]', 'FontSize', 15);
+    % Set time window
+    startTmpnt = find(gatfr.time == 1);
+    endTmpnt = find(gatfr.time == 2);
+    cfg.xlim = [gatfr.time(startTmpnt) gatfr.time(endTmpnt)];
 
-% Set time window
-startTmpnt = find(gatfr6.time == 1);
-endTmpnt = find(gatfr6.time == 2);
-cfg.xlim = [gatfr6.time(startTmpnt) gatfr6.time(endTmpnt)];
+    % Find max power value for frequency band
+    freq_idx = find(gatfr.freq >= alpha_range(1) & gatfr.freq <= alpha_range(2));
+    timepnts_idx = find(gatfr.time == 0) : find(gatfr.time == 2); % Timepoints over entire interval
+    mat.powspctrm = gatfr.powspctrm(1:end-3, freq_idx, timepnts_idx); % [chan x freq x time]
+    max_spctrm = max(mat.powspctrm(:), [], 'omitnan');
+    max_spctrm = abs(max_spctrm);
+    max_spctrm = 0.575
+    cfg.zlim = [-max_spctrm max_spctrm];
 
-% Find max power value for frequency band
-freq_idx = find(gatfr6.freq >= alpha_range(1) & gatfr6.freq <= alpha_range(2));
-timepnts_idx = find(gatfr6.time == 0) : find(gatfr6.time == 2); % Timepoints over entire interval
-mat.powspctrm = gatfr6.powspctrm(1:end-3, freq_idx, timepnts_idx); % [chan x freq x time]
-max_spctrm = max(mat.powspctrm(:), [], 'omitnan');
-abs(max_spctrm);
-%cfg.zlim = [-max_spctrm max_spctrm];
+    % Create Topoplot
+    ft_topoplotTFR(cfg, gatfr);
 
-% Create Topoplot
-ft_topoplotTFR(cfg, gatfr6);
-
-% Save figure
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/raster/AOC_alpha_power_sternberg_topo6_bl.png');
+    % Save figure
+    saveas(gcf, ['/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/baseline/AOC_alpha_power_sternberg_topo', num2str(conds*2) '_bl.png']);
+    conds = conds+1;
+end

@@ -252,10 +252,12 @@ for subj = 1:length(subjects)
         cfg = [];
         cfg.reref   = 'yes';
         cfg.refchannel = 'all';
-        dataEEG = ft_preprocessing(cfg,dataEEG);
-        dataEEG.trialinfo = trialinfo;
+        dataTFR = ft_preprocessing(cfg,dataTFR);
+        dataTFR.trialinfo = trialinfo;
         dataEEGlong = ft_preprocessing(cfg,dataEEGlong);
         dataEEGlong.trialinfo = trialinfo;
+        dataEEG = ft_preprocessing(cfg,dataEEG);
+        dataEEG.trialinfo = trialinfo;
 
         %% Compute gaze metric data
         % WM load 2 gaze metrics average across trials

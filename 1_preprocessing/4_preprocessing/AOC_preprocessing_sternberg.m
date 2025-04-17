@@ -232,13 +232,19 @@ for subj = 1:length(subjects)
         data = ft_selectdata(cfg,data);
 
         %% Resegment data to avoid filter ringing
+        % TRF data
         cfg = [];
-        dataTFR = ft_selectdata(cfg,data); % TRF data long
+        dataTFR = ft_selectdata(cfg,data); 
+        % EEG & ET data for Sternberg retention interval
         cfg = [];
         cfg.latency = [1 2]; % Time window for Sternberg task
         data = ft_selectdata(cfg,data); % EEG data
         dataet = ft_selectdata(cfg,dataet); % ET data
         dataet.trialinfo = trialinfo;
+        % EEG data for baseline
+        cfg = [];
+        cfg.latency = [-1.5 -0.5]; % Time window for baseline
+        dataEEGlong = ft_selectdata(cfg,data); % EEG data
 
         %% Re-reference data to average or common reference
         cfg = [];
@@ -246,6 +252,8 @@ for subj = 1:length(subjects)
         cfg.refchannel = 'all';
         data = ft_preprocessing(cfg,data);
         data.trialinfo = trialinfo;
+        dataEEGlong = ft_preprocessing(cfg,dataEEGlong);
+        dataEEGlong.trialinfo = trialinfo;
 
         %% Compute gaze metric data
         % WM load 2 gaze metrics average across trials
@@ -271,7 +279,7 @@ for subj = 1:length(subjects)
         end
         mkdir(savepathEEG)
         cd(savepathEEG)
-        save dataEEG_sternberg data
+        save dataEEG_sternberg data dataEEGlong
         save dataEEG_TFR_sternberg dataTFR
         if ispc == 1
             savepathET = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\gaze\');

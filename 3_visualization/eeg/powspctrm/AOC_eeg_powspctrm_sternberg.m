@@ -81,16 +81,14 @@ for subj = 1:length(subjects)
 end
 
 %% Compute baseline-corrected POWERSPECTRUM
+% Relative change: (retention - baseline) / baseline
 for subj = 1:length(subjects)
-    % Compute baseline correction as relative change: (retention - baseline) / baseline
-    pow2_bl{subj} = powload2;
-    pow2_bl{subj}.powspctrm = (powl2{subj}.powspctrm - powl2_blperiod{subj}.powspctrm) ./ powl2_blperiod{subj}.powspctrm;
-
-    pow4_bl{subj} = powload4;
-    pow4_bl{subj}.powspctrm = (powl4{subj}.powspctrm - powl4_blperiod{subj}.powspctrm) ./ powl4_blperiod{subj}.powspctrm;
-
-    pow6_bl{subj} = powload6;
-    pow6_bl{subj}.powspctrm = (powl6{subj}.powspctrm - powl6_blperiod{subj}.powspctrm) ./ powl6_blperiod{subj}.powspctrm;
+    pow2_bl{subj} = powl2{subj};
+    pow2_bl{subj}.powspctrm = 100 * (powl2{subj}.powspctrm - powl2_blperiod{subj}.powspctrm) ./ powl2_blperiod{subj}.powspctrm;
+    pow4_bl{subj} = powl4{subj};
+    pow4_bl{subj}.powspctrm = 100 * (powl4{subj}.powspctrm - powl4_blperiod{subj}.powspctrm) ./ powl4_blperiod{subj}.powspctrm;
+    pow6_bl{subj} = powl6{subj};
+    pow6_bl{subj}.powspctrm = 100 * (powl6{subj}.powspctrm - powl6_blperiod{subj}.powspctrm) ./ powl6_blperiod{subj}.powspctrm;
 end
 
 % Compute grand average of baseline-corrected power spectra
@@ -105,6 +103,11 @@ gapow6_bl = ft_freqgrandaverage([], pow6_bl{:});
 gapow2 = gapow2_bl;
 gapow4 = gapow4_bl;
 gapow6 = gapow6_bl;
+
+
+%%%%%
+%channels = {'POz'}
+%%%%%
 
 for electrodes = {'occ_cluster'} %%%%%%%%%%, 'POz', 'right_hemisphere'}
     close all
@@ -158,11 +161,11 @@ for electrodes = {'occ_cluster'} %%%%%%%%%%, 'POz', 'right_hemisphere'}
     set(gcf,'color','w');
     set(gca,'Fontsize',20);
     [~, channel_idx] = ismember(cfg.channel, gapow2.label);
-    freq_idx = find(gapow2.freq >= 8 & gapow2.freq <= 14);
+    freq_idx = find(gapow2.freq >= 4 & gapow2.freq <= 30);
     max_spctrm = max([mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow4.powspctrm(channel_idx, freq_idx), 2); mean(gapow6.powspctrm(channel_idx, freq_idx), 2)]);
-    %ylim([0 max_spctrm*1.4])
-    %ylim([-2.5 2.5])
-    xlim([4 30])
+    %ylim([0 max_spctrm*1.25])
+    ylim([-200 200])
+    xlim([7 30])
     if strcmp(electrodes, 'POz')
         ylim([0 1])
     elseif strcmp(electrodes, 'right_hemisphere')
@@ -171,7 +174,8 @@ for electrodes = {'occ_cluster'} %%%%%%%%%%, 'POz', 'right_hemisphere'}
     box on
     yline(0, '--')
     xlabel('Frequency [Hz]');
-    ylabel('Power [\muV^2/Hz]');
+    ylabel('Relative Change [%]');
+    %ylabel('Power [\muV^2/Hz]');
     legend([eb2.mainLine, eb4.mainLine, eb6.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, 'FontName', 'Arial', 'FontSize', 20);
     title('Sternberg Power Spectrum', 'FontSize', 30);
     if ~strcmp(electrodes, 'occ_cluster')

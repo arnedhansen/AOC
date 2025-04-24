@@ -5,9 +5,9 @@ startup
 clear
 addEEGLab
 if ispc == 1
-    path = 'W:\Students\Arne\AOC\data\merged\';
+    path = 'W:\Students\Arne\AOC\data\merged_no_opticat\';
 else
-    path = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
+    path = '/Volumes/methlab/Students/Arne/AOC/data/merged_no_opticat/';
 end
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));

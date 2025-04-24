@@ -48,6 +48,7 @@ for id = 1 : length(ids)
     d = dir([filePath, filesep, '*.asc']);
 
     if not(isempty(d))
+        fprintf('Synchronizing data for Subject AOC %.3s \n', ID)
         for f = 1 : size(d, 1)
 
             % Convert ET asc to mat

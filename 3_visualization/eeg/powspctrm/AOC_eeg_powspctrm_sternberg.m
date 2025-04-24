@@ -4,11 +4,6 @@
 startup
 [subjects, path, colors, ~] = setup('AOC');
 
-
-
-subjects = subjects(1:15)
-
-
 %% Define channels
 subj = 1;
 datapath = strcat(path, subjects{subj}, filesep, 'eeg');

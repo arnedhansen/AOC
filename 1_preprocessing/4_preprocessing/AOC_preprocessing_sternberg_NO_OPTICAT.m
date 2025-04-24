@@ -193,31 +193,31 @@ for subj = 1:length(subjects)
         data.trialinfo = trialinfo;
 
         %% Pre-stim fixation check
-        % preStimWindow = [-0.5 0];
-        % fixThresh = 0.8; % 80% of trials should be within fixation box
-        % distOK = 45;     % 1 degree (dva) from the center
-        % [trialsToKeep, excludedTrialIdx, distL, invalidTrials] = fixCheck(data, preStimWindow, fixThresh, distOK);
-        % 
-        % % Save excluded trials info
-        % preStimFixInfo.subject = subjects{subj};
-        % preStimFixInfo.excludedTrials = find(~trialsToKeep);
-        % preStimFixInfo.invalidTrials = invalidTrials;
-        % preStimFixInfo.totalTrials = numel(trialsToKeep);
-        % preStimFixInfo.keptTrials = find(trialsToKeep);
-        % preStimFixInfo.distL = distL;
-        % if ispc == 1
-        %     savepathControlsFix = (['W:\Students\Arne\AOC\data\controls\preStimFixation\', subjects{subj}]);
-        %     mkdir(savepathControlsFix)
-        %     save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_sternberg'], "preStimFixInfo");
-        % else
-        %     savepathControlsFix = ['/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/', subjects{subj}];
-        %     mkdir(savepathControlsFix)
-        %     save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_sternberg'], "preStimFixInfo");
-        % end
-        % 
-        % % Continue analyses with correct fix trials
-        % data = ft_selectdata(struct('trials', trialsToKeep), data);
-        % trialinfo = data.trialinfo;
+        preStimWindow = [-0.5 0];
+        fixThresh = 0.8; % 80% of trials should be within fixation box
+        distOK = 45;     % 1 degree (dva) from the center
+        [trialsToKeep, excludedTrialIdx, distL, invalidTrials] = fixCheck(data, preStimWindow, fixThresh, distOK);
+
+        % Save excluded trials info
+        preStimFixInfo.subject = subjects{subj};
+        preStimFixInfo.excludedTrials = find(~trialsToKeep);
+        preStimFixInfo.invalidTrials = invalidTrials;
+        preStimFixInfo.totalTrials = numel(trialsToKeep);
+        preStimFixInfo.keptTrials = find(trialsToKeep);
+        preStimFixInfo.distL = distL;
+        if ispc == 1
+            savepathControlsFix = (['W:\Students\Arne\AOC\data\controls\preStimFixation\', subjects{subj}]);
+            mkdir(savepathControlsFix)
+            save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_sternberg'], "preStimFixInfo");
+        else
+            savepathControlsFix = ['/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/', subjects{subj}];
+            mkdir(savepathControlsFix)
+            save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_sternberg'], "preStimFixInfo");
+        end
+
+        % Continue analyses with correct fix trials
+        data = ft_selectdata(struct('trials', trialsToKeep), data);
+        trialinfo = data.trialinfo;
 
         %% Get EyeTracking data
         cfg = [];

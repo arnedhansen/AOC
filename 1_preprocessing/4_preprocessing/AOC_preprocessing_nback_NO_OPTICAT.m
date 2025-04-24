@@ -5,9 +5,9 @@ startup
 clear
 addEEGLab
 if ispc == 1
-    path = 'W:\Students\Arne\AOC\data\merged\';
+    path = 'W:\Students\Arne\AOC\data\merged_no_opticat\';
 else
-    path = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
+    path = '/Volumes/methlab/Students/Arne/AOC/data/merged_no_opticat/';
 end
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
@@ -25,16 +25,16 @@ for subj = 1:length(subjects)
 
     % Only process new data
     if ispc == 1
-        newDataFolder = dir(['W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\dataEEG_nback.mat']);
+        newDataFolder = dir(['W:\Students\Arne\AOC\data\features_no_opticat\' , subjects{subj}, '\eeg\dataEEG_nback_no_opticat.mat']);
     else
-        newDataFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_nback.mat']);
+        newDataFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features_no_opticat/', subjects{subj}, '/eeg/dataEEG_nback_no_opticat.mat']);
     end
     if isempty(newDataFolder)
         clear alleeg
         %% Read blocks
         for block = 1:6
             try % Do not load emtpy blocks
-                load(strcat(subjects{subj}, '_EEG_ET_Nback_block',num2str(block),'_merged.mat'))
+                load(strcat(subjects{subj}, '_EEG_ET_Nback_block',num2str(block),'_merged_no_opticat.mat'))
                 alleeg{block} = EEG;
                 clear EEG
                 fprintf('Block %.1d loaded \n', block)
@@ -302,23 +302,23 @@ for subj = 1:length(subjects)
 
         %% Save data
         if ispc == 1
-            savepathEEG = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\');
+            savepathEEG = strcat('W:\Students\Arne\AOC\data\features_no_opticat\' , subjects{subj}, '\eeg\');
         else
-            savepathEEG = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
+            savepathEEG = strcat('/Volumes/methlab/Students/Arne/AOC/data/features_no_opticat/', subjects{subj}, '/eeg/');
         end
         mkdir(savepathEEG)
         cd(savepathEEG)
-        save dataEEG_nback data
-        save dataEEG_TFR_nback dataTFR
+        save dataEEG_nback_no_opticat data
+        save dataEEG_TFR_nback_no_opticat dataTFR
         if ispc == 1
-            savepathET = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\gaze\');
+            savepathET = strcat('W:\Students\Arne\AOC\data\features_no_opticat\' , subjects{subj}, '\gaze\');
         else
-            savepathET = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
+            savepathET = strcat('/Volumes/methlab/Students/Arne/AOC/data/features_no_opticat/', subjects{subj}, '/gaze/');
         end
         mkdir(savepathET)
         cd(savepathET)
-        save dataET_nback dataet dataETlong
-        save gaze_metrics_nback saccades_1back fixations_1back blinks_1back ...
+        save dataET_nback_no_opticat dataet dataETlong
+        save gaze_metrics_nback_no_opticat saccades_1back fixations_1back blinks_1back ...
             saccades_2back fixations_2back blinks_2back ...
             saccades_3back fixations_3back blinks_3back
         clc

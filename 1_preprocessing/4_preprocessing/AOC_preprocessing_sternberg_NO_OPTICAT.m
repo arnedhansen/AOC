@@ -23,16 +23,16 @@ for subj = 1:length(subjects)
 
     % Only process new data
     if ispc == 1
-        newDataFolder = dir(['W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\dataEEG_sternberg.mat']);
+        newDataFolder = dir(['W:\Students\Arne\AOC\data\features_no_opticat\' , subjects{subj}, '\eeg\dataEEG_sternberg_no_opticat.mat']);
     else
-        newDataFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_sternberg.mat']);
+        newDataFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features_no_opticat/', subjects{subj}, '/eeg/dataEEG_sternberg_no_opticat.mat']);
     end
     %if isempty(newDataFolder)
         clear alleeg
         %% Read blocks
         for block = 1:6
             try % Do not load emtpy blocks
-                load(strcat(subjects{subj}, '_EEG_ET_Sternberg_block',num2str(block),'_merged.mat'))
+                load(strcat(subjects{subj}, '_EEG_ET_Sternberg_block',num2str(block),'_merged_no_opticat.mat'))
                 alleeg{block} = EEG;
                 clear EEG
                 fprintf('Block %.1d loaded \n', block)
@@ -193,31 +193,31 @@ for subj = 1:length(subjects)
         data.trialinfo = trialinfo;
 
         %% Pre-stim fixation check
-        preStimWindow = [-0.5 0];
-        fixThresh = 0.8; % 80% of trials should be within fixation box
-        distOK = 45;     % 1 degree (dva) from the center
-        [trialsToKeep, excludedTrialIdx, distL, invalidTrials] = fixCheck(data, preStimWindow, fixThresh, distOK);
-
-        % Save excluded trials info
-        preStimFixInfo.subject = subjects{subj};
-        preStimFixInfo.excludedTrials = find(~trialsToKeep);
-        preStimFixInfo.invalidTrials = invalidTrials;
-        preStimFixInfo.totalTrials = numel(trialsToKeep);
-        preStimFixInfo.keptTrials = find(trialsToKeep);
-        preStimFixInfo.distL = distL;
-        if ispc == 1
-            savepathControlsFix = (['W:\Students\Arne\AOC\data\controls\preStimFixation\', subjects{subj}]);
-            mkdir(savepathControlsFix)
-            save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_sternberg'], "preStimFixInfo");
-        else
-            savepathControlsFix = ['/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/', subjects{subj}];
-            mkdir(savepathControlsFix)
-            save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_sternberg'], "preStimFixInfo");
-        end
-
-        % Continue analyses with correct fix trials
-        data = ft_selectdata(struct('trials', trialsToKeep), data);
-        trialinfo = data.trialinfo;
+        % preStimWindow = [-0.5 0];
+        % fixThresh = 0.8; % 80% of trials should be within fixation box
+        % distOK = 45;     % 1 degree (dva) from the center
+        % [trialsToKeep, excludedTrialIdx, distL, invalidTrials] = fixCheck(data, preStimWindow, fixThresh, distOK);
+        % 
+        % % Save excluded trials info
+        % preStimFixInfo.subject = subjects{subj};
+        % preStimFixInfo.excludedTrials = find(~trialsToKeep);
+        % preStimFixInfo.invalidTrials = invalidTrials;
+        % preStimFixInfo.totalTrials = numel(trialsToKeep);
+        % preStimFixInfo.keptTrials = find(trialsToKeep);
+        % preStimFixInfo.distL = distL;
+        % if ispc == 1
+        %     savepathControlsFix = (['W:\Students\Arne\AOC\data\controls\preStimFixation\', subjects{subj}]);
+        %     mkdir(savepathControlsFix)
+        %     save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_sternberg'], "preStimFixInfo");
+        % else
+        %     savepathControlsFix = ['/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/', subjects{subj}];
+        %     mkdir(savepathControlsFix)
+        %     save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_sternberg'], "preStimFixInfo");
+        % end
+        % 
+        % % Continue analyses with correct fix trials
+        % data = ft_selectdata(struct('trials', trialsToKeep), data);
+        % trialinfo = data.trialinfo;
 
         %% Get EyeTracking data
         cfg = [];
@@ -277,23 +277,23 @@ for subj = 1:length(subjects)
 
         %% Save data
         if ispc == 1
-            savepathEEG = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\');
+            savepathEEG = strcat('W:\Students\Arne\AOC\data\features_no_opticat\' , subjects{subj}, '\eeg\');
         else
-            savepathEEG = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
+            savepathEEG = strcat('/Volumes/methlab/Students/Arne/AOC/data/features_no_opticat/', subjects{subj}, '/eeg/');
         end
         mkdir(savepathEEG)
         cd(savepathEEG)
-        save dataEEG_sternberg dataEEG dataEEGlong
-        save dataEEG_TFR_sternberg dataTFR
+        save dataEEG_sternberg_no_opticat dataEEG dataEEGlong
+        save dataEEG_TFR_sternberg_no_opticat dataTFR
         if ispc == 1
-            savepathET = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\gaze\');
+            savepathET = strcat('W:\Students\Arne\AOC\data\features_no_opticat\' , subjects{subj}, '\gaze\');
         else
-            savepathET = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
+            savepathET = strcat('/Volumes/methlab/Students/Arne/AOC/data/features_no_opticat/', subjects{subj}, '/gaze/');
         end
         mkdir(savepathET)
         cd(savepathET)
-        save dataET_sternberg dataet dataETlong
-        save gaze_metrics_sternberg saccades_l2 fixations_l2 blinks_l2 ...
+        save dataET_sternberg_no_opticat dataet dataETlong
+        save gaze_metrics_sternberg_no_opticat saccades_l2 fixations_l2 blinks_l2 ...
             saccades_l4 fixations_l4 blinks_l4 ...
             saccades_l6 fixations_l6 blinks_l6
         clc

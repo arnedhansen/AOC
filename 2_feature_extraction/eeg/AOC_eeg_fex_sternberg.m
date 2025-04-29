@@ -14,6 +14,9 @@ startup
 
 for subj = 1:length(subjects)
     try
+        clc
+        disp(['Processinng Subject AOC ', num2str(subjects{subj})])
+
         % Load data
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
@@ -21,9 +24,9 @@ for subj = 1:length(subjects)
         load dataEEG_sternberg
 
         % Identify indices of trials belonging to conditions
-        ind2 = find(dataEEG.trialinfo == 52); % WM load 2
-        ind4 = find(dataEEG.trialinfo == 54); % WM load 4
-        ind6 = find(dataEEG.trialinfo == 56); % WM load 6
+        ind2 = find(dataEEG.trialinfo == 22); % WM load 2
+        ind4 = find(dataEEG.trialinfo == 24); % WM load 4
+        ind6 = find(dataEEG.trialinfo == 26); % WM load 6
 
         % Frequency analysis
         % Select data
@@ -66,6 +69,9 @@ startup
 
 for subj = 1:length(subjects)
     try
+        clc
+        disp(['Processinng Subject AOC ', num2str(subjects{subj})])
+
         % Load data
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
@@ -73,9 +79,9 @@ for subj = 1:length(subjects)
         load dataEEG_sternberg
 
         % Identify indices of trials belonging to conditions
-        ind2 = find(dataEEGlong.trialinfo == 52); % WM load 2
-        ind4 = find(dataEEGlong.trialinfo == 54); % WM load 4
-        ind6 = find(dataEEGlong.trialinfo == 56); % WM load 6
+        ind2 = find(dataEEGlong.trialinfo == 22); % WM load 2
+        ind4 = find(dataEEGlong.trialinfo == 24); % WM load 4
+        ind6 = find(dataEEGlong.trialinfo == 26); % WM load 6
 
         % Frequency analysis
         % Select data
@@ -161,6 +167,9 @@ eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', 
 
 for subj = 1:length(subjects)
     try
+        clc
+        disp(['Processinng Subject AOC ', num2str(subjects{subj})])
+
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath);
         load('power_stern.mat');
@@ -296,9 +305,9 @@ for subj = 1:length(subjects)
         load dataEEG_sternberg
 
         %% Identify indices of trials belonging to conditions
-        ind2=find(dataEEG.trialinfo==52);
-        ind4=find(dataEEG.trialinfo==54);
-        ind6=find(dataEEG.trialinfo==56);
+        ind2=find(dataEEG.trialinfo == 22);
+        ind4=find(dataEEG.trialinfo == 24);
+        ind6=find(dataEEG.trialinfo == 26);
 
         %% Frequency analysis
         cfg = [];
@@ -342,9 +351,9 @@ for subj = 1:length(subjects)
         load dataEEG_sternberg
 
         %% Identify indices of trials belonging to conditions
-        ind2=find(dataEEG.trialinfo==52);
-        ind4=find(dataEEG.trialinfo==54);
-        ind6=find(dataEEG.trialinfo==56);
+        ind2=find(dataEEG.trialinfo == 22);
+        ind4=find(dataEEG.trialinfo == 24);
+        ind6=find(dataEEG.trialinfo == 26);
 
         %% Frequency analysis
         cfg = [];
@@ -388,9 +397,9 @@ for subj = 1:length(subjects)
         load dataEEG_TFR_sternberg
 
         %% Identify indices of trials belonging to conditions
-        ind2 = find(dataTFR.trialinfo == 52);
-        ind4 = find(dataTFR.trialinfo == 54);
-        ind6 = find(dataTFR.trialinfo == 56);
+        ind2 = find(dataTFR.trialinfo == 22);
+        ind4 = find(dataTFR.trialinfo == 24);
+        ind6 = find(dataTFR.trialinfo == 26);
 
         %% Time frequency analysis
         cfg              = [];

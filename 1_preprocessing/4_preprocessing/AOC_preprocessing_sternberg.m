@@ -16,7 +16,7 @@ subjects = exclude_subjects(subjects, 'AOC');
 
 %% Read data, segment and convert to FieldTrip data structure
 tic;
-for subj = 1:length(subjects)
+for subj = 23:length(subjects)%%%%%%%%%%%%
     clearvars -except subjects subj path
     datapath = strcat(path,subjects{subj});
     cd(datapath)
@@ -59,11 +59,11 @@ for subj = 1:length(subjects)
 
             %% Segment WM load 2 data
             try
-                EEGload2 = pop_epoch(alleeg{block}, {'52'}, epoch_window);
+                EEGload2 = pop_epoch(alleeg{block}, {'22'}, epoch_window);
                 data2{block} = eeglab2fieldtrip(EEGload2, 'raw');
 
                 % WM load 2 gaze metrics extraction
-                gaze_metrics_l2 = pop_epoch(alleeg{block}, {'52'}, analysis_window);
+                gaze_metrics_l2 = pop_epoch(alleeg{block}, {'22'}, analysis_window);
                 trl_l2(block) = gaze_metrics_l2.trials;
                 % Extract blink timepoints
                 blink_times = [gaze_metrics_l2.event(strcmp({gaze_metrics_l2.event.type}, 'L_blink') | strcmp({gaze_metrics_l2.event.type}, 'R_blink')).latency];
@@ -94,11 +94,11 @@ for subj = 1:length(subjects)
 
             %% Segment WM load 4 data
             try
-                EEGload4 = pop_epoch(alleeg{block}, {'54'}, epoch_window);
+                EEGload4 = pop_epoch(alleeg{block}, {'24'}, epoch_window);
                 data4{block} = eeglab2fieldtrip(EEGload4, 'raw');
 
                 % WM load 4 gaze metrics extraction
-                gaze_metrics_l4 = pop_epoch(alleeg{block}, {'54'}, analysis_window);
+                gaze_metrics_l4 = pop_epoch(alleeg{block}, {'24'}, analysis_window);
                 trl_l4(block) = gaze_metrics_l4.trials;
                 % Extract blink timepoints
                 blink_times = [gaze_metrics_l4.event(strcmp({gaze_metrics_l4.event.type}, 'L_blink') | strcmp({gaze_metrics_l4.event.type}, 'R_blink')).latency];
@@ -129,11 +129,11 @@ for subj = 1:length(subjects)
 
             %% Segment WM load 6 data
             try
-                EEGload6 = pop_epoch(alleeg{block}, {'56'}, epoch_window);
+                EEGload6 = pop_epoch(alleeg{block}, {'26'}, epoch_window);
                 data6{block} = eeglab2fieldtrip(EEGload6, 'raw');
 
                 % WM load 6 gaze metrics extraction
-                gaze_metrics_l6 = pop_epoch(alleeg{block}, {'56'}, analysis_window);
+                gaze_metrics_l6 = pop_epoch(alleeg{block}, {'26'}, analysis_window);
                 trl_l6(block) = gaze_metrics_l6.trials;
                 % Extract blink timepoints
                 blink_times = [gaze_metrics_l6.event(strcmp({gaze_metrics_l6.event.type}, 'L_blink') | strcmp({gaze_metrics_l6.event.type}, 'R_blink')).latency];
@@ -181,9 +181,9 @@ for subj = 1:length(subjects)
         data6 = ft_appenddata(cfg,data6{:});
 
         %% Add trialinfo
-        data2.trialinfo = zeros(numel(data2.trial), 1) + 52;
-        data4.trialinfo = zeros(numel(data4.trial), 1) + 54;
-        data6.trialinfo = zeros(numel(data6.trial), 1) + 56;
+        data2.trialinfo = zeros(numel(data2.trial), 1) + 22;
+        data4.trialinfo = zeros(numel(data4.trial), 1) + 24;
+        data6.trialinfo = zeros(numel(data6.trial), 1) + 26;
 
         %% Append all data into single data file with appropriate trialinfo
         cfg = [];

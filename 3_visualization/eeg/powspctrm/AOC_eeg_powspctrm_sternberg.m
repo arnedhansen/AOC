@@ -92,17 +92,12 @@ gapow4_bl = ft_freqgrandaverage([], pow4_bl{:});
 gapow6_bl = ft_freqgrandaverage([], pow6_bl{:});
 
 %% Plot alpha power grand average POWERSPECTRUM
-% gapow2 = gapow2_raw;
-% gapow4 = gapow4_raw;
-% gapow6 = gapow6_raw;
-gapow2 = gapow2_bl;
-gapow4 = gapow4_bl;
-gapow6 = gapow6_bl;
-
-
-%%%%%
-%channels = {'POz'}
-%%%%%
+gapow2 = gapow2_raw;
+gapow4 = gapow4_raw;
+gapow6 = gapow6_raw;
+% gapow2 = gapow2_bl;
+% gapow4 = gapow4_bl;
+% gapow6 = gapow6_bl;
 
 for electrodes = {'occ_cluster'} %%%%%%%%%%, 'POz', 'right_hemisphere'}
     close all
@@ -159,8 +154,9 @@ for electrodes = {'occ_cluster'} %%%%%%%%%%, 'POz', 'right_hemisphere'}
     freq_idx = find(gapow2.freq >= 4 & gapow2.freq <= 30);
     max_spctrm = max([mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow4.powspctrm(channel_idx, freq_idx), 2); mean(gapow6.powspctrm(channel_idx, freq_idx), 2)]);
     %ylim([0 max_spctrm*1.25])
-    ylim([-200 200])
-    xlim([7 30])
+    %ylim([-200 200])
+    ylim([0 0.6])
+    xlim([4 30])
     if strcmp(electrodes, 'POz')
         ylim([0 1])
     elseif strcmp(electrodes, 'right_hemisphere')
@@ -169,8 +165,8 @@ for electrodes = {'occ_cluster'} %%%%%%%%%%, 'POz', 'right_hemisphere'}
     box on
     yline(0, '--')
     xlabel('Frequency [Hz]');
-    ylabel('Relative Change [%]');
-    %ylabel('Power [\muV^2/Hz]');
+    %ylabel('Relative Change [%]');
+    ylabel('Power [\muV^2/Hz]');
     legend([eb2.mainLine, eb4.mainLine, eb6.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, 'FontName', 'Arial', 'FontSize', 20);
     title('Sternberg Power Spectrum', 'FontSize', 30);
     if ~strcmp(electrodes, 'occ_cluster')

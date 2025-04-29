@@ -24,6 +24,7 @@ if ispc == 1
 else
     d = dir(strcat('/Volumes/methlab_data/OCC/AOC/data/*/', '*cnt'));
 end
+disp(upper([num2str(size(d, 1)), ' subjects to compute']))
 ids = {};
 for f = 1 : size(d, 1)
     filePath = fullfile( d(f).folder, d(f).name);

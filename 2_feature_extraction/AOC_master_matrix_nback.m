@@ -4,18 +4,43 @@
 clear
 clc
 close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/';
+path = '/Volumes/methlab/Students/Arne/AOC/data/automagic_nohp';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
 %% Load data
+% Demographics from methlab_vp
+demog_data_nback = readtable('/Volumes/methlab_vp/AOC/AOC_VPs.xlsx');
+demog_data_nback = demog_data_nback(:, {'ID', 'Gender', 'Alter', 'H_ndigkeit', 'OcularDominance'});
+demog_data_nback = table2struct(demog_data_nback(1:120, :));
+
+% Behavioral
 load('/Volumes/methlab/Students/Arne/AOC/data/features/behavioral_matrix_nback.mat');
+
+% EEG
 load('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_nback.mat');
+
+% Gaze
 load('/Volumes/methlab/Students/Arne/AOC/data/features/gaze_matrix_nback.mat');
 
 %% Merge structures
-merged_data_nback = struct('ID', {behav_data_nback.ID}, ...
+demoIDs = [demog_data_nback.ID];
+for i = 1:numel(behav_data_nback)
+    idx = find(demoIDs == behav_data_nback(i).ID, 1);
+    behav_data_nback(i).Gender           = demog_data_nback(idx).Gender;
+    behav_data_nback(i).Alter            = demog_data_nback(idx).Alter;
+    behav_data_nback(i).H_ndigkeit       = demog_data_nback(idx).H_ndigkeit;
+    behav_data_nback(i).OcularDominance  = demog_data_nback(idx).OcularDominance;
+end
+
+% Merge all
+merged_data_nback = struct( ...
+    'ID', {behav_data_nback.ID}, ...
+    'Gender', {behav_data_nback.Gender}, ...
+    'Age', {behav_data_nback.Alter}, ...
+    'Handedness', {behav_data_nback.H_ndigkeit}, ...
+    'OcularDominance', {behav_data_nback.OcularDominance}, ...
     'Condition', {behav_data_nback.Condition}, ...
     'Accuracy', {behav_data_nback.Accuracy}, ...
     'ReactionTime', {behav_data_nback.ReactionTime}, ...

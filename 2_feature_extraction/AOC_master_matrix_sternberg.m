@@ -4,18 +4,43 @@
 clear
 clc
 close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/';
+path = '/Volumes/methlab/Students/Arne/AOC/data/automagic_nohp';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
 %% Load data
+% Demographics from methlab_vp
+demog_data_sternberg = readtable('/Volumes/methlab_vp/AOC/AOC_VPs.xlsx');
+demog_data_sternberg = demog_data_sternberg(:, {'ID', 'Gender', 'Alter', 'H_ndigkeit', 'OcularDominance'});
+demog_data_sternberg = table2struct(demog_data_sternberg(1:120, :));
+
+% Behavioral
 load('/Volumes/methlab/Students/Arne/AOC/data/features/behavioral_matrix_sternberg.mat');
+
+% EEG
 load('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg.mat');
+
+% Gaze
 load('/Volumes/methlab/Students/Arne/AOC/data/features/gaze_matrix_sternberg.mat');
 
 %% Merge structures
-merged_data_sternberg = struct('ID', {behav_data_sternberg.ID}, ...
+demoIDs = [demog_data_sternberg.ID];
+for i = 1:numel(behav_data_sternberg)
+    idx = find(demoIDs == behav_data_sternberg(i).ID, 1);
+    behav_data_sternberg(i).Gender           = demog_data_sternberg(idx).Gender;
+    behav_data_sternberg(i).Alter            = demog_data_sternberg(idx).Alter;
+    behav_data_sternberg(i).H_ndigkeit       = demog_data_sternberg(idx).H_ndigkeit;
+    behav_data_sternberg(i).OcularDominance  = demog_data_sternberg(idx).OcularDominance;
+end
+
+% Merge all
+merged_data_sternberg = struct( ...
+    'ID', {behav_data_sternberg.ID}, ...
+    'Gender', {behav_data_sternberg.Gender}, ...
+    'Age', {behav_data_sternberg.Alter}, ...
+    'Handedness', {behav_data_sternberg.H_ndigkeit}, ...
+    'OcularDominance', {behav_data_sternberg.OcularDominance}, ...
     'Condition', {behav_data_sternberg.Condition}, ...
     'Accuracy', {behav_data_sternberg.Accuracy}, ...
     'ReactionTime', {behav_data_sternberg.ReactionTime}, ...

@@ -406,6 +406,9 @@ startup
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
     try
+        clc
+        disp(['Processinng TFR for Subject AOC ', num2str(subjects{subj})])
+
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all

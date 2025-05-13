@@ -51,6 +51,10 @@ for subj = 1:length(subjects)
     erp4{subj} = ft_timelockanalysis(cfg, dat4);
     erp6{subj} = ft_timelockanalysis(cfg, dat6);
 
+    % Save
+    cd(datapath);
+    save ERPs_sternberg erp2 erp4 erp6 
+
     fprintf('Processed ERP for subject %d/%d \n', subj, numel(subjects));
 end
 

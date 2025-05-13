@@ -27,7 +27,7 @@ for subj = 1:length(subjects)
     else
         newDataFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_sternberg.mat']);
     end
-    %if isempty(newDataFolder)
+    if isempty(newDataFolder)
         clear alleeg
         %% Read blocks
         for block = 1:6
@@ -299,9 +299,9 @@ for subj = 1:length(subjects)
         else
             disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. Loading next subject...'])
         end
-    %else
-    %    disp(['Subject ', num2str(subjects{subj}), ' already done. SKIPPING...'])
-    %end
+    else
+        disp(['Subject ', num2str(subjects{subj}), ' already done. SKIPPING...'])
+    end
 end
 toc;
 %finishedScriptMail;

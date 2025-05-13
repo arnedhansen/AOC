@@ -237,11 +237,7 @@ for subj = 1:length(subjects)
         %% Resegment data to avoid filter ringing
         % TRF data
         cfg = [];
-        dataTFR = ft_selectdata(cfg, dataEEG); 
-
-        % EEG data (incl. baseline)
-        cfg = [];
-        dataEEGlong = ft_selectdata(cfg, dataEEG); % EEG data
+        dataTFR = ft_selectdata(cfg, dataEEG);
 
         % EEG & ET data for Sternberg retention interval
         cfg = [];
@@ -256,8 +252,6 @@ for subj = 1:length(subjects)
         cfg.refchannel = 'all';
         dataTFR = ft_preprocessing(cfg,dataTFR);
         dataTFR.trialinfo = trialinfo;
-        dataEEGlong = ft_preprocessing(cfg,dataEEGlong);
-        dataEEGlong.trialinfo = trialinfo;
         dataEEG = ft_preprocessing(cfg,dataEEG);
         dataEEG.trialinfo = trialinfo;
 
@@ -285,7 +279,7 @@ for subj = 1:length(subjects)
         end
         mkdir(savepathEEG)
         cd(savepathEEG)
-        save dataEEG_sternberg dataEEG dataEEGlong
+        save dataEEG_sternberg dataEEG
         save dataEEG_TFR_sternberg dataTFR
         if ispc == 1
             savepathET = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\gaze\');

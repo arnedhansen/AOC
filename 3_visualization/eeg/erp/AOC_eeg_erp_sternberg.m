@@ -22,20 +22,20 @@ for subj = 1:length(subjects)
     % Load data
     datapath = strcat(path, subjects{subj}, filesep, 'eeg');
     cd(datapath);
-    load('dataEEG_sternberg.mat');
+    load('dataEEG_TFR_sternberg.mat');
 
     % Identify indices of trials belonging to conditions
-    ind2 = find(dataEEGlong.trialinfo == 22); % WM load 2
-    ind4 = find(dataEEGlong.trialinfo == 24); % WM load 4
-    ind6 = find(dataEEGlong.trialinfo == 26); % WM load 6
+    ind2 = find(dataTFR.trialinfo == 22); % WM load 2
+    ind4 = find(dataTFR.trialinfo == 24); % WM load 4
+    ind6 = find(dataTFR.trialinfo == 26); % WM load 6
 
     % Select data per condition
     cfg.trials = ind2;
-    dat2 = ft_selectdata(cfg, dataEEGlong);
+    dat2 = ft_selectdata(cfg, dataTFR);
     cfg.trials = ind4;
-    dat4 = ft_selectdata(cfg, dataEEGlong);
+    dat4 = ft_selectdata(cfg, dataTFR);
     cfg.trials = ind6;
-    dat6 = ft_selectdata(cfg, dataEEGlong);
+    dat6 = ft_selectdata(cfg, dataTFR);
 
     % Baseline
     cfg = [];

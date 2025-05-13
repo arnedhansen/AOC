@@ -189,25 +189,25 @@ for subj = 1:length(subjects)
         update_labels(data3);
 
         % Fix labels for subjects with only left eye recording (AOC419)
-        if strcmp(subjects{subj}, '419')
-            % Reduce to 132 electrodes
-            label_132 = data2{2}.label;
-            data_structs = {data1, data2, data3};
-
-            for datastrct = 1:numel(data_structs)
-                for conds = 1:2
-                data_structs{datastrct}{conds}.label = label_132;
-                for i = 1:length(data_structs{datastrct}{conds}.trial)
-                    data_structs{datastrct}{conds}.trial{i} = data_structs{datastrct}{conds}.trial{i}(1:132, :);
-                end
-                end
-            end
-
-            % Assign modified blocks back
-            data1 = data_structs{1};
-            data2 = data_structs{2};
-            data3 = data_structs{3};
-        end
+        % if strcmp(subjects{subj}, '419')
+        %     % Reduce to 132 electrodes
+        %     label_132 = data2{1}.label;
+        %     data_structs = {data1, data2, data3};
+        % 
+        %     for datastrct = 1:numel(data_structs)
+        %         for conds = 1:2
+        %         data_structs{datastrct}{conds}.label = label_132;
+        %         for i = 1:length(data_structs{datastrct}{conds}.trial)
+        %             data_structs{datastrct}{conds}.trial{i} = data_structs{datastrct}{conds}.trial{i}(1:132, :);
+        %         end
+        %         end
+        %     end
+        % 
+        %     % Assign modified blocks back
+        %     data1 = data_structs{1};
+        %     data2 = data_structs{2};
+        %     data3 = data_structs{3};
+        % end
 
         %% Append data for conditions
         cfg = [];

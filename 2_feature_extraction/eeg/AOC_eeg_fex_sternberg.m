@@ -64,58 +64,58 @@ end
 
 %% POWSPCTRM (Baseline)
 % Setup
-% startup
-% [subjects, path, ~ , ~] = setup('AOC');
-% 
-% for subj = 1:length(subjects)
-%     try
-%         clc
-%         disp(['Processinng Baseline POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
-% 
-%         % Load data
-%         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
-%         cd(datapath)
-%         close all
-%         load dataEEG_TFR_sternberg
-% 
-%         % Identify indices of trials belonging to conditions
-%         ind2 = find(dataTFR.trialinfo == 22); % WM load 2
-%         ind4 = find(dataTFR.trialinfo == 24); % WM load 4
-%         ind6 = find(dataTFR.trialinfo == 26); % WM load 6
-% 
-%         % Frequency analysis
-%         % Select data
-%         cfg = [];                      % Empty configuration
-%         cfg.latency = [-1.5 -0.5];     % Segmentation for retention interval
-%         datalong = ft_selectdata(cfg, dataTFR);
-% 
-%         % Analysis settings
-%         cfg = [];                      % Empty configuration
-%         cfg.output = 'pow';            % Estimate power only
-%         cfg.method = 'mtmfft';         % Multi-taper FFT method
-%         cfg.taper = 'dpss';            % Multiple tapers (discrete prolate spheroidal sequences)
-%         cfg.tapsmofrq = 1;             % Smoothening frequency around foi
-%         cfg.foilim = [3 30];           % Frequencies of interest
-%         cfg.keeptrials = 'no';         % Discard trial information
-%         cfg.pad = 2;                  % Add zero-padding
-% 
-%         % Conduct frequency analysis for each condition separately
-%         cfg.trials = ind2;
-%         powload2_baseline_period = ft_freqanalysis(cfg, datalong);
-%         cfg.trials = ind4;
-%         powload4_baseline_period = ft_freqanalysis(cfg, datalong);
-%         cfg.trials = ind6;
-%         powload6_baseline_period = ft_freqanalysis(cfg, datalong);
-% 
-%         % Save baselined power spectra
-%         cd(datapath)
-%         save power_stern_baseline_period powload2_baseline_period powload4_baseline_period powload6_baseline_period
-% 
-%     catch ME
-%         ME.message
-%         error(['ERROR extracting power for Subject ' num2str(subjects{subj}) '!'])
-%     end
-% end
+startup
+[subjects, path, ~ , ~] = setup('AOC');
+
+for subj = 1:length(subjects)
+    try
+        clc
+        disp(['Processinng Baseline POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
+
+        % Load data
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        cd(datapath)
+        close all
+        load dataEEG_TFR_sternberg
+
+        % Identify indices of trials belonging to conditions
+        ind2 = find(dataTFR.trialinfo == 22); % WM load 2
+        ind4 = find(dataTFR.trialinfo == 24); % WM load 4
+        ind6 = find(dataTFR.trialinfo == 26); % WM load 6
+
+        % Frequency analysis
+        % Select data
+        cfg = [];                      % Empty configuration
+        cfg.latency = [-1.5 -0.5];     % Segmentation for retention interval
+        datalong = ft_selectdata(cfg, dataTFR);
+
+        % Analysis settings
+        cfg = [];                      % Empty configuration
+        cfg.output = 'pow';            % Estimate power only
+        cfg.method = 'mtmfft';         % Multi-taper FFT method
+        cfg.taper = 'dpss';            % Multiple tapers (discrete prolate spheroidal sequences)
+        cfg.tapsmofrq = 1;             % Smoothening frequency around foi
+        cfg.foilim = [3 30];           % Frequencies of interest
+        cfg.keeptrials = 'no';         % Discard trial information
+        cfg.pad = 2;                  % Add zero-padding
+
+        % Conduct frequency analysis for each condition separately
+        cfg.trials = ind2;
+        powload2_baseline_period = ft_freqanalysis(cfg, datalong);
+        cfg.trials = ind4;
+        powload4_baseline_period = ft_freqanalysis(cfg, datalong);
+        cfg.trials = ind6;
+        powload6_baseline_period = ft_freqanalysis(cfg, datalong);
+
+        % Save baselined power spectra
+        cd(datapath)
+        save power_stern_baseline_period powload2_baseline_period powload4_baseline_period powload6_baseline_period
+
+    catch ME
+        ME.message
+        error(['ERROR extracting power for Subject ' num2str(subjects{subj}) '!'])
+    end
+end
 
 %% ALPHA POWER, IAF and LATERALIZATION INDEX
 % Setup

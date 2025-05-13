@@ -1,4 +1,5 @@
 %% AOC Alpha Power Sternberg
+clear
 
 %% Plot alpha power TOPOS
 close all;

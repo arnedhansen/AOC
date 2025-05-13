@@ -16,7 +16,7 @@ subjects = exclude_subjects(subjects, 'AOC');
 
 %% Read data, segment and convert to FieldTrip data structure
 tic;
-for subj = 23:length(subjects)%%%%%%%%%%%%
+for subj = 1:length(subjects)
     clearvars -except subjects subj path
     datapath = strcat(path,subjects{subj});
     cd(datapath)
@@ -53,6 +53,9 @@ for subj = 23:length(subjects)%%%%%%%%%%%%
         epoch_window = [-2 3.5];
         analysis_window = [1 2]; % Analysis window for Sternberg eye metric extraction
         for block = 1:6
+            % PRESENTATION2 = 22 (Trigger for stimuli presentation (setSize = 2))
+            % PRESENTATION4 = 24 (Trigger for stimuli presentation (setSize = 4))
+            % PRESENTATION6 = 26 (Trigger for stimuli presentation (setSize = 6))
             % 52 = RETENTION2 (Trigger for retention (setSize = 2))
             % 54 = RETENTION4 (Trigger for retention (setSize = 4))
             % 56 = RETENTION6 (Trigger for retention (setSize = 6))
@@ -236,9 +239,8 @@ for subj = 23:length(subjects)%%%%%%%%%%%%
         cfg = [];
         dataTFR = ft_selectdata(cfg, dataEEG); 
 
-        % EEG data for baseline
+        % EEG data (incl. baseline)
         cfg = [];
-        cfg.latency = [-1.5 -0.5]; % Time window for baseline
         dataEEGlong = ft_selectdata(cfg, dataEEG); % EEG data
 
         % EEG & ET data for Sternberg retention interval

@@ -89,7 +89,7 @@ for subj = 1:length(subjects)
         %% Append data for this trial
         subject_id = [subject_id; str2num(subjects{subj})];
         trial_num = [trial_num; trl];
-        condition = [condition; dataet.trialinfo(trl)-50];
+        condition = [condition; dataet.trialinfo(trl)-20];
         gazeDev = [gazeDev; mean_euclidean_distance];
         gazeSDx = [gazeSDx; gaze_standard_deviation_x];
         gazeSDy = [gazeSDy; gaze_standard_deviation_y];

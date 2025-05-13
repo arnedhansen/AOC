@@ -1,5 +1,21 @@
-%% AOC Alpha Power Sternberg
-clear
+%% AOC Alpha Power Sternberg Topos
+startup
+[subjects, path, colors, headmodel] = setup('AOC');
+
+%% Define channels
+subj = 1;
+datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+cd(datapath);
+load('power_stern.mat');
+% Occipital channels
+occ_channels = {};
+for i = 1:length(powload2.label)
+    label = powload2.label{i};
+    if contains(label, {'O'}) || contains(label, {'I'})
+        occ_channels{end+1} = label;
+    end
+end
+channels = occ_channels;
 
 %% Plot alpha power TOPOS
 close all;

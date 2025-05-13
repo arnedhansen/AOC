@@ -40,6 +40,8 @@ for i = 1:length(channels)
 end
 
 %% Load data
+disp('LOADING DATA...')
+
 % Load power at IAF
 for subj = 1:length(subjects)
     datapath = strcat(path, subjects{subj}, filesep, 'eeg');
@@ -66,14 +68,14 @@ gapow4_raw = ft_freqgrandaverage([],powl4{:});
 gapow6_raw = ft_freqgrandaverage([],powl6{:});
 
 % Load baseline period powerspctrm data
-for subj = 1:length(subjects)
-    datapath = strcat(path,subjects{subj}, filesep, 'eeg');
-    cd(datapath)
-    load power_stern_baseline_period
-    powl2_blperiod{subj} = powload2_baseline_period;
-    powl4_blperiod{subj} = powload4_baseline_period;
-    powl6_blperiod{subj} = powload6_baseline_period;
-end
+% for subj = 1:length(subjects)
+%     datapath = strcat(path,subjects{subj}, filesep, 'eeg');
+%     cd(datapath)
+%     load power_stern_baseline_period
+%     powl2_blperiod{subj} = powload2_baseline_period;
+%     powl4_blperiod{subj} = powload4_baseline_period;
+%     powl6_blperiod{subj} = powload6_baseline_period;
+% end
 
 %% Compute baseline-corrected POWERSPECTRUM
 % Relative change: (retention - baseline) / baseline
@@ -99,7 +101,7 @@ gapow6 = gapow6_raw;
 % gapow4 = gapow4_bl;
 % gapow6 = gapow6_bl;
 
-for electrodes = {'occ_cluster'} %%%%%%%%%%, 'POz', 'right_hemisphere'}
+for electrodes = {'occ_cluster'} %, 'POz'} %, 'right_hemisphere'}
     close all
     cfg = [];
     figure;
@@ -122,12 +124,15 @@ for electrodes = {'occ_cluster'} %%%%%%%%%%, 'POz', 'right_hemisphere'}
 
     % Add shadedErrorBar
     channels_seb = ismember(gapow2.label, cfg.channel);
+    lp2     = {'-','Color', colors(1,:)};
+    lp4     = {'-','Color', colors(2,:)};
+    lp6     = {'-','Color', colors(3,:)};
     eb2 = shadedErrorBar(gapow2.freq, mean(gapow2.powspctrm(channels_seb, :), 1), ...
-        std(gapow2.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+        std(gapow2.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow2.powspctrm(channels_seb, :), 1)), 'lineProps', lp2);
     eb4 = shadedErrorBar(gapow4.freq, mean(gapow4.powspctrm(channels_seb, :), 1), ...
-        std(gapow4.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow4.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+        std(gapow4.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow4.powspctrm(channels_seb, :), 1)), 'lineProps', lp4);
     eb6 = shadedErrorBar(gapow6.freq, mean(gapow6.powspctrm(channels_seb, :), 1), ...
-        std(gapow6.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow6.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+        std(gapow6.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow6.powspctrm(channels_seb, :), 1)), 'lineProps', lp6);
     eb2.mainLine.Color = colors(1, :);
     eb4.mainLine.Color = colors(2, :);
     eb6.mainLine.Color = colors(3, :);
@@ -155,10 +160,10 @@ for electrodes = {'occ_cluster'} %%%%%%%%%%, 'POz', 'right_hemisphere'}
     max_spctrm = max([mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow4.powspctrm(channel_idx, freq_idx), 2); mean(gapow6.powspctrm(channel_idx, freq_idx), 2)]);
     %ylim([0 max_spctrm*1.25])
     %ylim([-200 200])
-    ylim([0 0.6])
+    ylim([0 2.6])
     xlim([4 30])
     if strcmp(electrodes, 'POz')
-        ylim([0 1])
+        ylim([0 5])
     elseif strcmp(electrodes, 'right_hemisphere')
         ylim([0 1])
     end

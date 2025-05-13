@@ -14,9 +14,9 @@ eeglab
 clc
 close all
 if ispc == 1
-    path = 'W:\Students\Arne\AOC\data\automagic';
+    path = 'W:\Students\Arne\AOC\data\automagic_nohp';
 else
-    path = '/Volumes/methlab/Students/Arne/AOC/data/automagic/';
+    path = '/Volumes/methlab/Students/Arne/AOC/data/automagic_nohp/';
 end
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
@@ -33,11 +33,11 @@ for subjects = 1 : length(subjectIDs)
         % Set up data paths
         if ispc == 1
             filePathET = ['V:\OCC\AOC\data\', char(subjectID)];
-            filePathEEG = ['W:\Students\Arne\AOC\data\automagic\',  char(subjectID)];
+            filePathEEG = ['W:\Students\Arne\AOC\data\automagic_nohp\',  char(subjectID)];
             resultFolder = ['W:\Students\Arne\AOC\data\merged\', char(subjectID)];
         else
             filePathET = ['/Volumes/methlab_data/OCC/AOC/data/', char(subjectID)];
-            filePathEEG = ['/Volumes/methlab/Students/Arne/AOC/data/automagic/',  char(subjectID)];
+            filePathEEG = ['/Volumes/methlab/Students/Arne/AOC/data/automagic_nohp/',  char(subjectID)];
             resultFolder = ['/Volumes/methlab/Students/Arne/AOC/data/merged/', char(subjectID)];
         end
         mkdir(resultFolder)
@@ -85,22 +85,22 @@ for subjects = 1 : length(subjectIDs)
                 EEG = pop_importeyetracker(EEG, ETfile,[startTrigger endTrigger],[2 3 4 5 6 7],{'L_GAZE_X', 'L_GAZE_Y', 'L_AREA', 'R_GAZE_X', 'R_GAZE_Y', 'R_AREA'},1,1,1,1);
 
                 %% Save merge info as image
-                set(gcf, "Position", [0 0 1200 800], "Color", "W")
-                if ispc == 1
-                    savepath = strcat('W:\Students\Arne\AOC\data\controls\mergeInfo\', subjectID);
-                else
-                    savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/mergeInfo/', subjectID);
-                end
-                mkdir(savepath)
-                if strcmp(task, 'Resting') == 1
-                    taskName = 'Resting';
-                elseif strcmp(task, 'AOC_Sternberg') == 1
-                    taskName = ['Sternberg_block' num2str(block)];
-                elseif strcmp(task, 'AOC_Nback') == 1
-                    taskName = ['Nback_block' num2str(block)];
-                end
-                saveName = [savepath, filesep, num2str(subjectID) '_mergeInfo_', taskName, '.png'];
-                saveas(gcf, saveName);
+                % set(gcf, "Position", [0 0 1200 800], "Color", "W")
+                % if ispc == 1
+                %     savepath = strcat('W:\Students\Arne\AOC\data\controls\mergeInfo\', subjectID);
+                % else
+                %     savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/mergeInfo/', subjectID);
+                % end
+                % mkdir(savepath)
+                % if strcmp(task, 'Resting') == 1
+                %     taskName = 'Resting';
+                % elseif strcmp(task, 'AOC_Sternberg') == 1
+                %     taskName = ['Sternberg_block' num2str(block)];
+                % elseif strcmp(task, 'AOC_Nback') == 1
+                %     taskName = ['Nback_block' num2str(block)];
+                % end
+                % saveName = [savepath, filesep, num2str(subjectID) '_mergeInfo_', taskName, '.png'];
+                % saveas(gcf, saveName);
 
                 %% Save to disk
                 if strcmp(task, 'Resting') == 1

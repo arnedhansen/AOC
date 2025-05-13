@@ -42,7 +42,7 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1;             % Smoothening frequency around foi
         cfg.foilim = [3 30];           % Frequencies of interest
         cfg.keeptrials = 'no';         % Discard trial information
-        cfg.pad = 10;                  % Add zero-padding
+        cfg.pad = 'nextpow2';          % Add zero-padding
 
         % Conduct frequency analysis for each condition separately
         cfg.trials = ind2;
@@ -97,7 +97,7 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1;             % Smoothening frequency around foi
         cfg.foilim = [3 30];           % Frequencies of interest
         cfg.keeptrials = 'no';         % Discard trial information
-        cfg.pad = 10;                  % Add zero-padding
+        cfg.pad = 'nextpow2';                  % Add zero-padding
 
         % Conduct frequency analysis for each condition separately
         cfg.trials = ind2;
@@ -157,7 +157,7 @@ for i = 1:length(channels)
     end
 end
 
-% Load data and calculate alpha power and IAF
+% Load data and calculate alpha power, IAF and lateralization index
 alphaRange = [8 14];
 powerIAF2 = [];
 powerIAF4 = [];
@@ -319,7 +319,7 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1;% smoothening frequency around foi
         cfg.foilim = [3 30];% frequencies of interest (foi)
         cfg.keeptrials = 'yes';
-        cfg.pad = 10;
+        cfg.pad = 'nextpow2';
         cfg.trials = ind2;
         powload2_trials = ft_freqanalysis(cfg,dat);
         cfg.trials = ind4;
@@ -365,7 +365,7 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1; % smoothening frequency around foi
         cfg.foilim = [3 30]; % frequencies of interest (foi)
         cfg.keeptrials = 'no';
-        cfg.pad = 10;
+        cfg.pad = 'nextpow2';
         cfg.trials = ind2;
         powload2 = ft_freqanalysis(cfg,dat);
         cfg.trials = ind4;

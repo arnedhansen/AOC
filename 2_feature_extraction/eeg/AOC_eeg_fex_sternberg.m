@@ -433,20 +433,16 @@ for subj = 1 : length(subjects)
                 cfg.latency = tfr.time(t);
                 tmp = ft_selectdata(cfg,tfr);
 
+                % ERROR CATCHING
+                disp(['subj      ' num2str(subj)])
+                disp(['cond      ' num2str(tfr_conds)])
+                disp(['time      ' num2str(t)])
+
                 for chan = 1:length(tmp.label)
 
                     % Transpose, to make inputs row vectors
                     freqs = tmp.freq';
                     psd = tmp.powspctrm(chan,:)';
-
-                    % ERROR CATCHING
-                    disp(['cond ' num2str(tfr_conds)])
-                    disp(['time ' num2str(t)])
-                    disp(['electrode ' num2str(chan)])
-                    if any(isnan(psd)) || any(isinf(psd))
-                        error('PSD contains NaN or Inf at t=%.2f s, channel %s', ...
-                            tfr.time(t), tmp.label{chan});
-                    end
 
                     % FOOOF settings
                     settings = struct();  % Use defaults
@@ -490,8 +486,6 @@ for subj = 1 : length(subjects)
         tfr2_fooof_bl                    = ft_freqbaseline(cfg, tfr2_fooof);
         tfr4_fooof_bl                    = ft_freqbaseline(cfg, tfr4_fooof);
         tfr6_fooof_bl                    = ft_freqbaseline(cfg, tfr6_fooof);
-        tfr_c100_fooof_bl                = ft_freqbaseline(cfg, tfr_c100_fooof);
-        disp(upper('Baseline done...'))
 
         % Save data
         cd(datapath)

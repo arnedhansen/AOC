@@ -54,7 +54,7 @@ for subj = 1:length(subjects)
     powIAF6(subj) = powerIAF6;
 end
 
-% Load powerspctrm data
+% Load raw powerspctrm data
 for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj}, filesep, 'eeg');
     cd(datapath)
@@ -109,6 +109,39 @@ end
 gapow2_bl = ft_freqgrandaverage([], pow2_bl{:});
 gapow4_bl = ft_freqgrandaverage([], pow4_bl{:});
 gapow6_bl = ft_freqgrandaverage([], pow6_bl{:});
+
+% Load FOOOF powerspctrm data
+for subj = 1:length(subjects)
+    datapath = strcat(path,subjects{subj}, filesep, 'eeg');
+    cd(datapath)
+    load power_stern_fooof
+
+    % FOOOF
+    powl2_fooof{subj} = pow2_fooof;
+    powl4_fooof{subj} = pow4_fooof;
+    powl6_fooof{subj} = pow6_fooof;
+
+    % FOOOF Baselined
+    powl2_fooof_bl{subj} = pow2_fooof_bl;
+    powl4_fooof_bl{subj} = pow4_fooof_bl;
+    powl6_fooof_bl{subj} = pow6_fooof_bl;
+
+    % FOOOF Baselined Long
+    powl2_fooof_bl_long{subj} = pow2_fooof_bl_long;
+    powl4_fooof_bl_long{subj} = pow4_fooof_bl_long;
+    powl6_fooof_bl_long{subj} = pow6_fooof_bl_long;
+end
+
+% Compute grand avg of long time window (200ms - 2000ms) powerspctrm data
+gapow2_fooof = ft_freqgrandaverage([], powl2_fooof{:});
+gapow4_fooof = ft_freqgrandaverage([], powl4_fooof{:});
+gapow6_fooof = ft_freqgrandaverage([], powl6_fooof{:});
+gapow2_fooof_bl = ft_freqgrandaverage([], powl2_fooof_bl{:});
+gapow4_fooof_bl = ft_freqgrandaverage([], powl4_fooof_bl{:});
+gapow6_fooof_bl = ft_freqgrandaverage([], powl6_fooof_bl{:});
+gapow2_fooof_bl_long = ft_freqgrandaverage([], powl2_fooof_bl_long{:});
+gapow4_fooof_bl_long = ft_freqgrandaverage([], powl4_fooof_bl_long{:});
+gapow6_fooof_bl_long = ft_freqgrandaverage([], powl6_fooof_bl_long{:});
 
 %% Plot alpha power grand average POWERSPECTRUM
 % Prepare your data-sets

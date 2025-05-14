@@ -69,6 +69,21 @@ gapow2_raw = ft_freqgrandaverage([],powl2{:});
 gapow4_raw = ft_freqgrandaverage([],powl4{:});
 gapow6_raw = ft_freqgrandaverage([],powl6{:});
 
+% Load long time window (200ms - 2000ms) powerspctrm data
+for subj = 1:length(subjects)
+    datapath = strcat(path,subjects{subj}, filesep, 'eeg');
+    cd(datapath)
+    load power_stern_long
+    powl2long{subj} = powload2long;
+    powl4long{subj} = powload4long;
+    powl6long{subj} = powload6long;
+end
+
+% Compute grand avg of long time window (200ms - 2000ms) powerspctrm data
+gapow2_long = ft_freqgrandaverage([],powl2long{:});
+gapow4_long = ft_freqgrandaverage([],powl4long{:});
+gapow6_long = ft_freqgrandaverage([],powl6long{:});
+
 % Load baseline period powerspctrm data
 % for subj = 1:length(subjects)
 %     datapath = strcat(path,subjects{subj}, filesep, 'eeg');
@@ -102,6 +117,9 @@ gapow6 = gapow6_raw;
 % gapow2 = gapow2_bl;
 % gapow4 = gapow4_bl;
 % gapow6 = gapow6_bl;
+gapow2 = gapow2_long;
+gapow4 = gapow4_long;
+gapow6 = gapow6_long;
 
 for electrodes = {'occ_cluster'} %, 'POz'} %, 'right_hemisphere'}
     close all

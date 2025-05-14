@@ -388,7 +388,7 @@ startup
 [subjects, path, ~ , ~] = setup('AOC');
 
 % Read data, segment and convert to FieldTrip data structure
-for subj = 1 %: length(subjects)
+for subj = 1 : length(subjects)
     try
         clc
         disp(['Processing TFR for Subject AOC ', num2str(subjects{subj})])
@@ -424,7 +424,7 @@ for subj = 1 %: length(subjects)
         orig_freq = 2:1:40;
         tfrs = {tfr2, tfr4, tfr6};
         for tfr_conds = 1:3
-            %clc
+            clc
             disp('FOOOFing...')
             clear fspctrm
             tfr = tfrs{1, tfr_conds};

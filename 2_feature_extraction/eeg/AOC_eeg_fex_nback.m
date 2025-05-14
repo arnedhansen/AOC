@@ -38,7 +38,7 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1;% smoothening frequency around foi
         cfg.foilim = [3 30];% frequencies of interest (foi)
         cfg.keeptrials = 'no';% do not keep single trials in output
-        cfg.pad = 10;
+        cfg.pad = 5;
 
         % Frequency analysis settings
         cfg.trials = ind1;
@@ -216,7 +216,7 @@ for subj = 1:length(subjects)
         eeg_data_nback = [eeg_data_nback; subj_data_eeg];
         clc
         fprintf(['Subject %s IAF: 1-back: %f Hz (Power: %f), 2-back: %f Hz (Power: %f), ' ...
-            '3-back: %f Hz (Power: %f) | Lateralization: %f %f %f \n'], subjects{subj}, IAF1, ...
+            '3-back: %f Hz (Power: %f) |Lateralization: %f %f %f \n'], subjects{subj}, IAF1, ...
             powerIAF1, IAF2, powerIAF2, IAF3, powerIAF3, LatIdx1, LatIdx2, LatIdx3);
     catch ME
         ME.message
@@ -257,7 +257,7 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1;% smoothening frequency around foi
         cfg.foilim = [3 30];% frequencies of interest (foi)
         cfg.keeptrials = 'yes';% do not keep single trials in output
-        cfg.pad = 10;
+        cfg.pad = 5;
         cfg.trials = ind1;
         powload1_trials = ft_freqanalysis(cfg,dat);
         powload1_trials.trialinfo = ones(1,length(powload1_trials.powspctrm(:, 1, 1)));
@@ -276,6 +276,7 @@ for subj = 1:length(subjects)
         error(['ERROR extracting trial-by-trial power for Subject ' num2str(subjects{subj}) '!'])
     end
 end
+
 %% FOOOF Power
 % Setup
 startup
@@ -305,7 +306,7 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1; % smoothening frequency around foi
         cfg.foilim = [3 30]; % frequencies of interest (foi)
         cfg.keeptrials = 'no'; % do not keep single trials in output
-        cfg.pad = 10;
+        cfg.pad = 5;
         cfg.trials = ind1;
         powload1 = ft_freqanalysis(cfg,dat);
         cfg.trials = ind2;

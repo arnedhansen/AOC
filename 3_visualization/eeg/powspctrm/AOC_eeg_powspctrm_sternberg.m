@@ -85,16 +85,16 @@ gapow4_long = ft_freqgrandaverage([],powl4long{:});
 gapow6_long = ft_freqgrandaverage([],powl6long{:});
 
 % Load baseline period powerspctrm data
-% for subj = 1:length(subjects)
-%     datapath = strcat(path,subjects{subj}, filesep, 'eeg');
-%     cd(datapath)
-%     load power_stern_baseline_period
-%     powl2_blperiod{subj} = powload2_baseline_period;
-%     powl4_blperiod{subj} = powload4_baseline_period;
-%     powl6_blperiod{subj} = powload6_baseline_period;
-% end
+for subj = 1:length(subjects)
+    datapath = strcat(path,subjects{subj}, filesep, 'eeg');
+    cd(datapath)
+    load power_stern_baseline_period
+    powl2_blperiod{subj} = powload2_baseline_period;
+    powl4_blperiod{subj} = powload4_baseline_period;
+    powl6_blperiod{subj} = powload6_baseline_period;
+end
 
-%% Compute baseline-corrected POWERSPECTRUM
+% Compute baseline-corrected POWERSPECTRUM
 % Relative change: (retention - baseline) / baseline
 for subj = 1:length(subjects)
     pow2_bl{subj} = powl2{subj};
@@ -114,9 +114,9 @@ gapow6_bl = ft_freqgrandaverage([], pow6_bl{:});
 gapow2 = gapow2_raw;
 gapow4 = gapow4_raw;
 gapow6 = gapow6_raw;
-% gapow2 = gapow2_bl;
-% gapow4 = gapow4_bl;
-% gapow6 = gapow6_bl;
+gapow2 = gapow2_bl;
+gapow4 = gapow4_bl;
+gapow6 = gapow6_bl;
 gapow2 = gapow2_long;
 gapow4 = gapow4_long;
 gapow6 = gapow6_long;
@@ -180,7 +180,7 @@ for electrodes = {'occ_cluster'} %, 'POz'} %, 'right_hemisphere'}
     max_spctrm = max([mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow4.powspctrm(channel_idx, freq_idx), 2); mean(gapow6.powspctrm(channel_idx, freq_idx), 2)]);
     %ylim([0 max_spctrm*1.25])
     %ylim([-200 200])
-    ylim([0 2.6])
+    %ylim([0 2.6])
     xlim([4 30])
     if strcmp(electrodes, 'POz')
         ylim([0 5])

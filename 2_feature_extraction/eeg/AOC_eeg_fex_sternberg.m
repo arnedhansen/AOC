@@ -382,7 +382,7 @@ end
 % end
 %
 
-%% TFR (Raw, FOOOF and Baselined)
+%% TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM
 % Setup
 startup
 [subjects, path, ~ , ~] = setup('AOC');
@@ -391,7 +391,7 @@ startup
 for subj = 1 : length(subjects)
     try
         clc
-        disp(['Processing TFR for Subject AOC ', num2str(subjects{subj})])
+        disp(['Processing TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
 
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
@@ -542,4 +542,4 @@ for subj = 1 : length(subjects)
         error(['ERROR extracting TFR for Subject ' num2str(subjects{subj}) '!'])
     end
 end
-disp('TFR COMPUTED...');
+disp('TFR and FOOOFed POWSPCTRM COMPUTED...');

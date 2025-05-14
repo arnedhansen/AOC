@@ -30,9 +30,9 @@ for subj = 1:length(subjects)
 
         % Frequency analysis for retenttion interval = 1000 ms - 2000ms after stimulus presentation
         % Select data
-        cfg = [];                         % Empty configuration
-        cfg.latency = [1 2];              % Segmentation for retention interval 1000ms - 2000ms
-        dat = ft_selectdata(cfg,dataEEG); % Select data
+        cfg = [];                          % Empty configuration
+        cfg.latency = [1 2];               % Segmentation for retention interval 1000ms - 2000ms
+        dat = ft_selectdata(cfg, dataEEG); % Select data
 
         % Analysis settings
         cfg = [];                      % Empty configuration
@@ -42,7 +42,7 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1;             % Smoothening frequency around foi
         cfg.foilim = [3 30];           % Frequencies of interest
         cfg.keeptrials = 'no';         % Discard trial information
-        cfg.pad = 2;                   % Add zero-padding
+        cfg.pad = 5;                   % Add zero-padding
 
         % Conduct frequency analysis for each condition separately
         cfg.trials = ind2;
@@ -97,7 +97,7 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1;             % Smoothening frequency around foi
         cfg.foilim = [3 30];           % Frequencies of interest
         cfg.keeptrials = 'no';         % Discard trial information
-        cfg.pad = 2;                  % Add zero-padding
+        cfg.pad = 5;                   % Add zero-padding
 
         % Conduct frequency analysis for each condition separately
         cfg.trials = ind2;
@@ -111,7 +111,9 @@ for subj = 1:length(subjects)
         cd(datapath)
         save power_stern_baseline_period powload2_baseline_period powload4_baseline_period powload6_baseline_period
 
-        % Frequency analysis for retenttion interval = 200 ms - 2000ms after stimulus presentation
+        % Frequency analysis for retention interval = 200 ms - 2000ms after stimulus presentation
+        disp(['Processinng Long Retention Interval (200ms - 2000ms) POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
+
         % Select data
         cfg = [];                              % Empty configuration
         cfg.latency = [0.2 2];                 % Segmentation for retention interval 200ms - 2000ms
@@ -125,7 +127,7 @@ for subj = 1:length(subjects)
         cfg.tapsmofrq = 1;             % Smoothening frequency around foi
         cfg.foilim = [3 30];           % Frequencies of interest
         cfg.keeptrials = 'no';         % Discard trial information
-        cfg.pad = 2;                   % Add zero-padding
+        cfg.pad = 5;                   % Add zero-padding
 
         % Conduct frequency analysis for each condition separately
         cfg.trials = ind2;

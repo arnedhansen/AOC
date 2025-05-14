@@ -28,10 +28,10 @@ for subj = 1:length(subjects)
         ind4 = find(dataEEG.trialinfo == 24); % WM load 4
         ind6 = find(dataEEG.trialinfo == 26); % WM load 6
 
-        % Frequency analysis
+        % Frequency analysis for retenttion interval = 1000 ms - 2000ms after stimulus presentation
         % Select data
-        cfg = [];                      % Empty configuration
-        cfg.latency = [1 2];           % Segmentation for retention interval
+        cfg = [];                         % Empty configuration
+        cfg.latency = [1 2];              % Segmentation for retention interval 1000ms - 2000ms
         dat = ft_selectdata(cfg,dataEEG); % Select data
 
         % Analysis settings
@@ -55,6 +55,34 @@ for subj = 1:length(subjects)
         % Save data
         cd(datapath)
         save power_stern powload2 powload4 powload6
+
+        % Frequency analysis for retenttion interval = 200 ms - 2000ms after stimulus presentation
+        % Select data
+        cfg = [];                              % Empty configuration
+        cfg.latency = [0.2 2];                 % Segmentation for retention interval 200ms - 2000ms
+        datLong = ft_selectdata(cfg, dataEEG); % Select data
+
+        % Analysis settings
+        cfg = [];                      % Empty configuration
+        cfg.output = 'pow';            % Estimate power only
+        cfg.method = 'mtmfft';         % Multi-taper FFT method
+        cfg.taper = 'dpss';            % Multiple tapers (discrete prolate spheroidal sequences)
+        cfg.tapsmofrq = 1;             % Smoothening frequency around foi
+        cfg.foilim = [3 30];           % Frequencies of interest
+        cfg.keeptrials = 'no';         % Discard trial information
+        cfg.pad = 2;                   % Add zero-padding
+
+        % Conduct frequency analysis for each condition separately
+        cfg.trials = ind2;
+        powload2long = ft_freqanalysis(cfg, datLong);
+        cfg.trials = ind4;
+        powload4long = ft_freqanalysis(cfg, datLong);
+        cfg.trials = ind6;
+        powload6long = ft_freqanalysis(cfg, datLong);
+
+        % Save data
+        cd(datapath)
+        save power_stern_long powload2long powload4long powload6long
 
     catch ME
         ME.message

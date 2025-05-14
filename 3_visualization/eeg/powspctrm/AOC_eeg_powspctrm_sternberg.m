@@ -18,6 +18,8 @@ for i = 1:length(powload2.label)
     end
 end
 channels = occ_channels;
+%channels(25:31) = [{'Pz'}, {'P1'}, {'P2'}, {'P3'}, {'P4'}, {'P5'}, {'P6'}]
+
 % Left and right channels
 left_channels = {};
 right_channels = {};

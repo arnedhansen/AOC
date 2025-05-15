@@ -498,7 +498,7 @@ for subj = 1 : length(subjects)
         % Convert TFR data to POWSCPTRM (channels x frequency)
         analysis_period = [1 2];
         analysis_period_long = [0.2 2];
-        freq_range = [8 14];
+        freq_range = [2 40];
 
         % Select data
         pow2_fooof                                = select_data(analysis_period, freq_range, tfr2_fooof);

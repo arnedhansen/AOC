@@ -46,26 +46,26 @@ gapow2_raw = ft_freqgrandaverage([],powl2{:});
 gapow3_raw = ft_freqgrandaverage([],powl3{:});
 
 % Load baselined powspctrm data
-for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj}, filesep, 'eeg');
-    cd(datapath)
-    load power_nback_bl
-    powl1_bl{subj} = powload1_bl;
-    powl2_bl{subj} = powload2_bl;
-    powl3_bl{subj} = powload3_bl;
-end
-
-% Compute grand avg of baselined powspctrm data
-gapow1_bl = ft_freqgrandaverage([], powl1_bl{:});
-gapow2_bl = ft_freqgrandaverage([], powl2_bl{:});
-gapow3_bl = ft_freqgrandaverage([], powl3_bl{:});
+% for subj = 1:length(subjects)
+%     datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+%     cd(datapath)
+%     load power_nback_bl
+%     powl1_bl{subj} = powload1_bl;
+%     powl2_bl{subj} = powload2_bl;
+%     powl3_bl{subj} = powload3_bl;
+% end
+% 
+% % Compute grand avg of baselined powspctrm data
+% gapow1_bl = ft_freqgrandaverage([], powl1_bl{:});
+% gapow2_bl = ft_freqgrandaverage([], powl2_bl{:});
+% gapow3_bl = ft_freqgrandaverage([], powl3_bl{:});
 
 %% Plot alpha power grand average POWERSPECTRUM
 % Loop over analysis conditions
-analysis_conditions = {'raw', 'bl'};
+analysis_conditions = {'raw'}%, 'bl'};
 
 for i = 1:length(analysis_conditions)
-    for electrodes = {'occ_cluster', 'POz'}
+    for electrodes = {'occ_cluster'}%, 'POz'}
         switch analysis_conditions{i}
             case 'raw'
                 gapow1 = gapow1_raw;
@@ -111,11 +111,11 @@ for i = 1:length(analysis_conditions)
         % Add shadedErrorBar
         channels_seb = ismember(gapow1.label, cfg.channel);
         eb1 = shadedErrorBar(gapow1.freq, mean(gapow1.powspctrm(channels_seb, :), 1), ...
-            std(gapow1.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow1.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+            std(gapow1.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow1.powspctrm(channels_seb, :), 1)), 'lineProps', {'-','Color',colors(1,:)});
         eb2 = shadedErrorBar(gapow2.freq, mean(gapow2.powspctrm(channels_seb, :), 1), ...
-            std(gapow2.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+            std(gapow2.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow2.powspctrm(channels_seb, :), 1)), 'lineProps', {'-','Color',colors(1,:)});
         eb3 = shadedErrorBar(gapow3.freq, mean(gapow3.powspctrm(channels_seb, :), 1), ...
-            std(gapow3.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow3.powspctrm(channels_seb, :), 1)), {'-'}, 0);
+            std(gapow3.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow3.powspctrm(channels_seb, :), 1)), 'lineProps', {'-','Color',colors(1,:)});
         eb1.mainLine.Color = colors(1, :);
         eb2.mainLine.Color = colors(2, :);
         eb3.mainLine.Color = colors(3, :);

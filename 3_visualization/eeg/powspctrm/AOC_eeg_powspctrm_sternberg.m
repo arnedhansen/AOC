@@ -18,7 +18,6 @@ for i = 1:length(powload2.label)
     end
 end
 channels = occ_channels;
-%channels(25:31) = [{'Pz'}, {'P1'}, {'P2'}, {'P3'}, {'P4'}, {'P5'}, {'P6'}]
 
 % Left and right channels
 left_channels = {};
@@ -36,12 +35,12 @@ for i = 1:length(channels)
             right_channels{end+1} = ch;
         end
     catch ME
-        ME.message
         disp(['Midline channel: ', ch])
     end
 end
 
 %% Load data
+clc
 disp('LOADING DATA...')
 
 % Load power at IAF
@@ -146,22 +145,24 @@ gapow6_fooof_bl_long = ft_freqgrandaverage([], powl6_fooof_bl_long{:});
 %% Plot alpha power grand average POWERSPECTRUM
 % Prepare your data-sets
 datasets = { ...
-    struct('name','raw',  'pow2',gapow2_raw,  'pow4',gapow4_raw,  'pow6',gapow6_raw), ...
-    struct('name','baselined',   'pow2',gapow2_bl,   'pow4',gapow4_bl,   'pow6',gapow6_bl), ...
-    struct('name','long', 'pow2',gapow2_long, 'pow4',gapow4_long, 'pow6',gapow6_long)  ...
+    struct('name','raw', 'pow2', gapow2_raw,  'pow4', gapow4_raw,  'pow6', gapow6_raw), ...
+    struct('name','baselined', 'pow2', gapow2_bl,   'pow4', gapow4_bl,   'pow6', gapow6_bl), ...
+    struct('name','long', 'pow2', gapow2_long, 'pow4', gapow4_long, 'pow6', gapow6_long),  ...
+    struct('name','fooof', 'pow2', gapow2_fooof_bl_long, 'pow4', gapow4_fooof_bl_long, 'pow6', gapow6_fooof_bl_long)  ...
     };
 
 % Prepare your electrode clusters
 electrodeSets = struct( ...
-    'occ cluster', {channels}, ...
-    'POz',         {{'POz'}}, ...
-    'right hemisphere',{right_channels} ...
-    );
+    'occ_cluster', {channels}); %, ...
+    %'POz',         {{'POz'}}), ...
+    % 'right hemisphere',{right_channels} ...
+    %);
 
 % Loop over data types and electrode sets
-for d = 1:numel(datasets)
+for d = 1%4:numel(datasets)
     D = datasets{d};
     for fn = fieldnames(electrodeSets)'
+        close all
         elecName = fn{1};
         elecChans = electrodeSets.(elecName);
 
@@ -208,6 +209,8 @@ for d = 1:numel(datasets)
         end
 
         set(gca,'FontSize',20);
+        %ylim([-0.175 0.175])
+        ylim([0 2.6])
         xlim([4 30]);
         ylabel('Power [\muV^2/Hz]');
         xlabel('Frequency [Hz]');
@@ -220,7 +223,6 @@ for d = 1:numel(datasets)
         %–– save out with a descriptive filename ––
         outfn = sprintf('AOC_powspctrm_sternberg_%s_%s.png', D.name, elecName);
         saveas(gcf, fullfile('/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm', outfn));
-        close all
     end
 end
 

@@ -199,10 +199,21 @@ for(i in seq_along(variables)) {
       step.increase    = 0.1,
       hide.ns          = FALSE
     ) +
-    # enlarge top margin slightly to accommodate the outside drawing
-    theme(
-      plot.margin = margin(20 + delta * 10, 15, 10, 15)
-    )
+    # ensure there's ~10% breathing room above max, so brackets never squish
+    scale_y_continuous(expand = expansion(mult = c(0, .10)))
+
+  # Add plot margins conditional on var
+  if (var == "ReactionTime") {
+    p_stats <- p_stats +
+      theme(
+        plot.margin = margin(15, 15, 10, 15)
+      )
+  } else {
+    p_stats <- p_stats +
+      theme(
+        plot.margin = margin(20 + delta * 10, 15, 10, 15)
+      )
+  }
   
   # Save the stats plot
   ggsave(

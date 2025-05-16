@@ -130,14 +130,21 @@ for(i in seq_along(variables)) {
       panel.grid.minor     = element_blank(),
       panel.grid.major.x   = element_blank(),
       axis.ticks           = element_blank(),
-      axis.text.x          = element_text(family = "Roboto Mono"),
-      axis.text.y          = element_text(family = "Roboto Mono", size = 15),
+      axis.text.x          = element_text(family = "Arial"),
+      axis.text.y          = element_text(family = "Arial", size = 15),
       axis.title.y         = element_text(margin = margin(r = 10), size = 16),
       plot.subtitle        = element_text(colour = "grey40", hjust = 0,
                                           margin = margin(0, 0, 20, 0)),
       plot.title.position  = "plot",
       plot.margin          = margin(15, 15, 10, 15)
     )
+  #if(var == "ReactionTime") {
+  #  p_base <- p_base + scale_y_continuous(
+  #    limits = c(550, 1200),
+  #    breaks = seq(600, 1200, by = 100),
+  #    expand = c(0.001, 0.001)
+  #  )
+  #}
   
   # Save the base plot
   ggsave(
@@ -198,21 +205,27 @@ for(i in seq_along(variables)) {
       bracket.size     = 0.6,
       step.increase    = 0.1,
       hide.ns          = FALSE
-    ) +
-    # ensure there's ~10% breathing room above max, so brackets never squish
-    scale_y_continuous(expand = expansion(mult = c(0, .10)))
-
-  # Add plot margins conditional on var
+    )
+  
+  # Add plot margins for ReactionTime
   if (var == "ReactionTime") {
     p_stats <- p_stats +
       theme(
-        plot.margin = margin(15, 15, 10, 15)
-      )
+        plot.margin = margin(20, 30, 10, 15)
+      ) + 
+      scale_y_continuous(expand = expansion(mult = c(0, .10)))
+    p_stats <- p_stats + scale_y_continuous(
+      limits = c(550, 1300),
+      breaks = seq(600, 1200, by = 100),
+      expand = c(0.001, 0.001)
+    )
   } else {
     p_stats <- p_stats +
       theme(
         plot.margin = margin(20 + delta * 10, 15, 10, 15)
-      )
+      ) + 
+      # ensure there's ~10% breathing room above max, so brackets never squish
+      scale_y_continuous(expand = expansion(mult = c(0, .10)))
   }
   
   # Save the stats plot

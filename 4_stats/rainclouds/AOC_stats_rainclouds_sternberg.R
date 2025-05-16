@@ -9,9 +9,6 @@ library(rstatix)      # for rm-ANOVA and pairwise tests
 library(ggpubr)       # for stat_compare_means()
 
 # Define colour palette
-#pal <- c("#FF8C00", "#A034F0", "#159090") # DataViz workshop colors
-#pal <- c("#ADD9E6", "#99CC99", "#FFB3BF") # Light AOC pastel colors
-#pal <- c("#7998A1", "#6B8F6B", "#B37D86") # Dark AOC pastel colors
 pal <- c("#93B8C4", "#82AD82", "#D998A2") # Perfect AOC pastel colours
 
 # Function to add sample size as text (offset adjusted by a fraction of the range)
@@ -66,40 +63,20 @@ comparisons <- list(
   c("WM load 4", "WM load 6")
 )
 
-# Loop over each variable to create, test, annotate, and save raincloud plots
+# Loop over each variable to create and save raincloud plots
 for(i in seq_along(variables)) {
   
   var       <- variables[i]
   y_lab     <- y_labels[i]
   save_name <- save_names[i]
   
-  # Repeated‐measures ANOVA
-  anova_res <- dat %>%
-    anova_test(
-      dv      = .data[[var]],
-      wid     = ID,
-      within  = Condition
-    )
-  print(glue::glue("ANOVA for {var}:"))
-  print(anova_res)
-  
-  # Pairwise paired t-tests with Bonferroni correction
-  pwc <- dat %>%
-    pairwise_t_test(
-      formula         = as.formula(paste(var, "~ Condition")),
-      paired          = TRUE,
-      p.adjust.method = "bonferroni"
-    )
-  print(glue::glue("Pairwise tests for {var}:"))
-  print(pwc)
-  
-  # Build the raincloud plot
-  p <- dat %>% 
-    group_by(Condition) %>% 
+  ##### BASE PLOT #####
+  # Build the base raincloud plot (no stats, no significance annotations)
+  p_base <- dat %>% 
     ggplot(aes(x = Condition, y = .data[[var]])) +
     
     # Raincloud (half-eye)
-    ggdist::stat_halfeye(
+    stat_halfeye(
       aes(color = Condition,
           fill  = after_scale(lighten(color, 0.5))),
       adjust        = 0.5,
@@ -162,8 +139,48 @@ for(i in seq_along(variables)) {
       plot.margin          = margin(15, 15, 10, 15)
     )
   
-  # Add fancy significance annotations
-  p <- p +
+  # Save the base plot
+  ggsave(
+    filename = file.path(output_dir, paste0("AOC_stats_rainclouds_", save_name, "_sternberg.png")),
+    plot     = p_base,
+    width    = 8,
+    height   = 6,
+    dpi      = 300
+  )
+  ##### STATS #####
+  # Repeated‐measures ANOVA (printed to console)
+  anova_res <- dat %>%
+    anova_test(
+      dv      = .data[[var]],
+      wid     = ID,
+      within  = Condition
+    )
+  print(glue::glue("ANOVA for {var}:"))
+  print(anova_res)
+  
+  # Pairwise paired t-tests with Bonferroni correction (printed to console)
+  pwc <- dat %>%
+    pairwise_t_test(
+      formula         = as.formula(paste(var, "~ Condition")),
+      paired          = TRUE,
+      p.adjust.method = "bonferroni"
+    )
+  print(glue::glue("Pairwise tests for {var}:"))
+  print(pwc)
+  
+  # Determine natural y-limits and a small delta for the annotation strip
+  y_min <- min(dat[[var]], na.rm = TRUE)
+  y_max <- max(dat[[var]], na.rm = TRUE)
+  delta <- 0.05 * (y_max - y_min)
+  
+  ##### STATS PLOT #####
+  # Build the stats plot starting from p_base
+  p_stats <- p_base +
+    labs(title    = "",
+         subtitle = "") +
+    # fix y to data min/max and allow drawing outside
+    coord_cartesian(ylim = c(y_min, y_max), clip = "off") +
+    # Significance annotations
     stat_compare_means(
       comparisons      = comparisons,
       method           = "t.test",
@@ -181,42 +198,16 @@ for(i in seq_along(variables)) {
       bracket.size     = 0.6,
       step.increase    = 0.1,
       hide.ns          = FALSE
+    ) +
+    # enlarge top margin slightly to accommodate the outside drawing
+    theme(
+      plot.margin = margin(20 + delta * 10, 15, 10, 15)
     )
   
-  # Custom y-axis limits for specific variables
-  #if(var == "Accuracy") {
-  #  p <- p + scale_y_continuous(
-  #    limits = c(60, 100),
-  #    breaks = seq(65, 100, by = 5),
-  #    expand = c(0.001, 0.001)
-  #  )
-  #}
-  #if(var == "ReactionTime") {
-  #  p <- p + scale_y_continuous(
-  #    limits = c(550, 1200),
-  #    breaks = seq(600, 1200, by = 200),
-  #    expand = c(0.001, 0.001)
-  #  )
-  #}
-  #if(var == "MSRate") {
-  #  p <- p + scale_y_continuous(
-  #    limits = c(0, 4),
-  #    breaks = seq(0, 4, by = 1),
-  #    expand = c(0.001, 0.001)
-  #  )
-  #}
-  #if(var == "IAF") {
-  #  p <- p + scale_y_continuous(
-  #    limits = c(8.5, 13),
-  #    breaks = seq(9, 13, by = 1),
-  #    expand = c(0.001, 0.001)
-  #  )
-  #}
-  
-  # Save the plot
+  # Save the stats plot
   ggsave(
-    filename = file.path(output_dir, paste0("AOC_stats_rainclouds_", save_name, "_sternberg.png")),
-    plot     = p,
+    filename = file.path(output_dir, paste0("AOC_stats_rainclouds_", save_name, "_sternberg_stats.png")),
+    plot     = p_stats,
     width    = 8,
     height   = 6,
     dpi      = 300

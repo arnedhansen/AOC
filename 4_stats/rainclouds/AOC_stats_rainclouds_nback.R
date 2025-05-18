@@ -111,18 +111,7 @@ for (i in seq_along(variables)) {
       plot.title.position= "plot",
       plot.margin        = margin(15,15,10,15)
     )
-  
-  # Custom y-limits for base if desired
-  if (var=="Accuracy") {
-    p_base <- p_base +
-      scale_y_continuous(
-        limits = c(70,100),
-        breaks = seq(75,100,5),
-        expand = c(0.001,0.001)
-      )
-  }
-  # (repeat for GazeDeviation, MSRate, Fixations, IAF as in your script…)
-  
+
   # Save base plot
   ggsave(
     filename = file.path(output_dir,
@@ -176,13 +165,22 @@ for (i in seq_along(variables)) {
     # adjust top margin for the annotation strip
     theme(plot.margin = margin(20 + delta*10, 15, 10, 15))
   
-  # Special margin and y-limits for RT if desired
+  # Custom y-limits for base if desired
+  if (var=="Accuracy") {
+    p_stats <- p_stats +
+      theme(plot.margin = margin(30,50,10,15)) +
+      scale_y_continuous(
+        limits = c(65,160),
+        breaks = seq(70,100,5),
+        expand = c(0.001,0.001)
+      )
+  }
   if (var=="ReactionTime") {
     p_stats <- p_stats +
-      theme(plot.margin = margin(20,30,10,15)) +
+      theme(plot.margin = margin(30,50,10,15)) +
       scale_y_continuous(
-        limits = c(550,1300),
-        breaks = seq(600,1200,100),
+        limits = c(390,1500),
+        breaks = seq(400,1300,100),
         expand = c(0.001,0.001)
       )
   }

@@ -207,24 +207,26 @@ for(i in seq_along(variables)) {
       hide.ns          = FALSE
     )
   
-  # Add plot margins for ReactionTime
-  if (var == "ReactionTime") {
+  # Add plot margins
+  if (var == "Accuracy") {
     p_stats <- p_stats +
-      theme(
-        plot.margin = margin(20, 30, 10, 15)
-      ) + 
-      scale_y_continuous(expand = expansion(mult = c(0, .10)))
-    p_stats <- p_stats + scale_y_continuous(
-      limits = c(550, 1300),
-      breaks = seq(600, 1200, by = 100),
-      expand = c(0.001, 0.001)
-    )
+      theme(plot.margin = margin(30, 50, 10, 15)) +
+      scale_y_continuous(
+        limits = c(65, 140),
+        breaks = seq(70, 100, by = 5),
+        expand = c(0.001, 0.001)
+      )
+  } else if (var == "ReactionTime") {
+    p_stats <- p_stats +
+      theme(plot.margin = margin(20, 30, 10, 15)) +
+      scale_y_continuous(
+        limits = c(550, 1300),
+        breaks = seq(600, 1200, by = 100),
+        expand = c(0.001, 0.001)
+      )
   } else {
     p_stats <- p_stats +
-      theme(
-        plot.margin = margin(20 + delta * 10, 15, 10, 15)
-      ) + 
-      # ensure there's ~10% breathing room above max, so brackets never squish
+      theme(plot.margin = margin(20 + delta * 10, 15, 10, 15)) +
       scale_y_continuous(expand = expansion(mult = c(0, .10)))
   }
   

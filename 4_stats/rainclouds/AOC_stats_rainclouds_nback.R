@@ -111,7 +111,18 @@ for (i in seq_along(variables)) {
       plot.title.position= "plot",
       plot.margin        = margin(15,15,10,15)
     )
-
+  
+  # Custom y-limits
+  if (var=="Accuracy") {
+    p_base <- p_base +
+      scale_y_continuous(
+        limits = c(65,125),
+        breaks = seq(70,100,5),
+        expand = c(0.001,0.001)
+      ) +
+      coord_cartesian(ylim = c(65, 105), clip = "off")
+  }
+  
   # Save base plot
   ggsave(
     filename = file.path(output_dir,
@@ -165,15 +176,15 @@ for (i in seq_along(variables)) {
     # adjust top margin for the annotation strip
     theme(plot.margin = margin(20 + delta*10, 15, 10, 15))
   
-  # Custom y-limits for base if desired
+  # Custom y-limits
   if (var=="Accuracy") {
     p_stats <- p_stats +
-      theme(plot.margin = margin(30,50,10,15)) +
       scale_y_continuous(
-        limits = c(65,160),
+        limits = c(65,125),
         breaks = seq(70,100,5),
         expand = c(0.001,0.001)
-      )
+      ) +
+      coord_cartesian(ylim = c(65, 105), clip = "off")
   }
   if (var=="ReactionTime") {
     p_stats <- p_stats +

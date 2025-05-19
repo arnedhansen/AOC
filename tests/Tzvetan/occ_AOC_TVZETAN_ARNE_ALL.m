@@ -5,30 +5,35 @@ clear all; close all;
 
 % Subject IDs
 subjects = {'301','302','304','306','309','310','312','313','314','315', ...
-    '319','320','321','325','327','328','329','330','331','335', ...
-    '336','339','341','342','343','344','345','346','347','348', ...
-    '349','322','355','326','358','359','361','362','364','365', ...
-    '368','372','373','374','375','377','378','379','386','388', ...
+    '321','325','327','328','329','330','331','335', ...
+    '336','339','341','342','343','344','345','346','348', ...
+    '349','355','359','361','362','364','365', ...
+    '368','372','373','374','375','377','379','386','388', ...
     '389','390','391','394','397','398','401','403','404','406', ...
     '412','413','416','419'};
 
+[subjects, path, ~ , ant128lay] = setup('AOC');
+
 %base_dir = '/Volumes/TOURO/arne/merged';
-if ispc == 1     
+if ispc == 1    
+    merged_dir = 'W:\Students\Arne\AOC\data\merged\';
     base_dir = 'W:\Students\Arne\AOC\data\features\'; 
 else     
+    merged_dir = '/Volumes/methlab/Students/Arne/AOC/data/merged';
     base_dir = '/Volumes/methlab/Students/Arne/AOC/data/features/'; 
 end%%
+%%
 for s = 1:length(subjects)
     subj = subjects{s};
     subj_dir = fullfile(base_dir, subj);
     fprintf('\n--- Processing subject %s in %s ---\n', subj, subj_dir);
 
-    if ~exist(subj_dir, 'dir')
+    if ~exist(merged_dir, 'dir')
         warning('Subject directory %s not found. Skipping...', subj_dir);
 
     end
 
-    cd(subj_dir);
+    cd([merged_dir, filesep, subj]);
 
     %% ----- Sternberg Task ----- %%
     block_data = struct('load2', [], 'load4', [], 'load6', []);
@@ -75,7 +80,7 @@ for s = 1:length(subjects)
     allSternberg = [block_data.load2, block_data.load4, block_data.load6];
     if ~isempty(allSternberg)
         dataSternberg = ft_appenddata([], allSternberg{:});
-        save(fullfile(subj_dir, [subj '_Sternberg_all.mat']), 'dataSternberg');
+        save(fullfile(subj_dir, [subj '_Sternberg_all_TZVETAN.mat']), 'dataSternberg');
     end
     %% ----- N-back Task ----- %%
     % nback_data = struct('oneback', [], 'twoback', [], 'threeback', []);
@@ -146,6 +151,8 @@ subjects = {'301','302','304','309','310','312','313','314','315', ...
     '321','325','327','328','329','330','331','335','336','339','341','342','343','344','345','346','348', ...
     '349','322','355','326','359','361','362','364','365','368','372','373','374','375','377','379','386','388', ...
     '389','390','391','394','397','398','401','403','404','406','413','416','419'};
+[subjects, path, ~ , ant128lay] = setup('AOC');
+
 %base_dir = '/Volumes/TOURO/arne/merged';
 if ispc == 1     
     base_dir = 'W:\Students\Arne\AOC\data\features\'; 
@@ -175,7 +182,7 @@ for s = 1:length(subjects)
         task = tasks{t};
         conds = task_conditions.(task);
 
-        datafile = fullfile(subj_dir, [subj '_' task '_all.mat']);
+        datafile = fullfile(subj_dir, [subj '_' task '_all_TZVETAN.mat']);
         if ~exist(datafile, 'file')
             fprintf('  > Skipping %s (no data found)\n', task);
             continue;
@@ -262,6 +269,7 @@ subjects = {'301','302','304','309','310','312','313','314','315', ...
     '368','372','373','374','375','377','379','386','388', ...
     '389','390','391','394','397','398','401','403','404','406', ...
     '413','416','419'};%,'306' '319', '320',,'347' ,'358','378'  '412',
+[subjects, path, ~ , ant128lay] = setup('AOC');
 
 %base_dir = '/Volumes/TOURO/arne/merged';
 if ispc == 1     

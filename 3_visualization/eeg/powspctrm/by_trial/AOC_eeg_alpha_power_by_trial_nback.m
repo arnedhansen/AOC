@@ -5,18 +5,39 @@ startup
 [subjects, path, ~ , ~] = setup('AOC');
 
 %% Define channels
-subj = 1;
-datapath = strcat(path, subjects{subj}, '/eeg');
+datapath = strcat(path, subjects{1}, filesep, 'eeg');
 cd(datapath);
-load('power_nback_trials.mat');
+load('power_nback.mat');
+% Occipital channels
 occ_channels = {};
-for i = 1:length(powload1_trials.label)
-    label = powload1_trials.label{i};
-    if contains(label, {'O'})
+for i = 1:length(powload2.label)
+    label = powload2.label{i};
+    if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
 end
 channels = occ_channels;
+
+% Left and right channels
+left_channels = {};
+right_channels = {};
+for i = 1:length(channels)
+    try
+        ch = channels{i};
+        % Find the first numeric part in the channel name
+        numStr = regexp(ch, '\d+', 'match');
+        % Convert the first numerical token to a number
+        numVal = str2double(numStr{1});
+        if mod(numVal, 2) == 1
+            left_channels{end+1} = ch;
+        else
+            right_channels{end+1} = ch;
+        end
+    catch ME
+        ME.message
+        disp(['Midline channel: ', ch])
+    end
+end
 
 %% Load data and calculate alpha power and IAF
 alphaRange = [8 14];
@@ -28,7 +49,7 @@ IAF_results = struct();
 for subj = 1:length(subjects)
     datapath = strcat(path, subjects{subj}, '/eeg');
     cd(datapath);
-    load('power_nback_trials.mat');
+    load('power_nback_trials.mat'); % size: [nTrials × nChans × nFreqs]
     channelIdx = find(ismember(powload1_trials.label, channels));
 
     % Find the indices corresponding to the alpha range

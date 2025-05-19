@@ -4,6 +4,7 @@
 %   Power Spectrum (Retention)
 %   Power Spectrum (Baseline)
 %   IAF, Power at IAF, and Lateralization Index
+%   POWER TRIAL-BY-TRIAL
 %   TFR (Raw, FOOOF and Baselined)
 
 %% POWSPCTRM (Retention)
@@ -335,7 +336,7 @@ else
     save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg eeg_data_sternberg
 end
 
-%% POWER WITH TRIAL INFO
+%% POWER TRIAL-BY-TRIAL
 % Setup
 startup
 [subjects, path, ~ , ~] = setup('AOC');
@@ -372,7 +373,7 @@ for subj = 1:length(subjects)
         cfg.taper = 'dpss';            % Multiple tapers (discrete prolate spheroidal sequences)
         cfg.tapsmofrq = 1;             % Smoothening frequency around foi
         cfg.foilim = [3 30];           % Frequencies of interest
-        cfg.keeptrials = 'no';         % Discard trial information
+        cfg.keeptrials = 'yes';         % Discard trial information
         cfg.pad = 5;                   % Add zero-padding
 
         % Conduct frequency analysis for each condition separately

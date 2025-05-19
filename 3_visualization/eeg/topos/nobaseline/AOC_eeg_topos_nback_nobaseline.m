@@ -2,7 +2,7 @@
 
 %% Setup
 startup
-[subjects, path, colors, ~] = setup('AOC');
+[subjects, path, colors, headmodel] = setup('AOC');
 
 %% Define channels
 subj = 1;
@@ -37,7 +37,7 @@ for subj = 1:length(subjects)
     load power_nback
     powl1{subj} = powload1;
     powl2{subj} = powload2;
-    powl3{subj} = powload3;c
+    powl3{subj} = powload3;
 end
 
 % Compute grand avg of raw powspctrm data
@@ -68,10 +68,9 @@ gapow3 = gapow3_raw;
 close all;
 clc;
 cfg = [];
-load('/Volumes/methlab/Students/Arne/toolboxes/headmodel/layANThead.mat');
-cfg.layout = layANThead;
+%load('/Volumes/methlab/Students/Arne/toolboxes/headmodel/layANThead.mat');
+cfg.layout = headmodel.layANThead;
 allchannels = cfg.layout.label;
-cfg.layout = layANThead;
 cfg.channel = allchannels(1:end-2);
 cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M2'));
 cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M1'));

@@ -113,15 +113,15 @@ for (i in seq_along(variables)) {
     )
   
   # Custom y-limits
-  if (var=="Accuracy") {
-    p_base <- p_base +
-      scale_y_continuous(
-        limits = c(65,125),
-        breaks = seq(70,100,5),
-        expand = c(0.001,0.001)
-      ) +
-      coord_cartesian(ylim = c(65, 105), clip = "off")
-  }
+  #if (var=="Accuracy") {
+  #  p_base <- p_base +
+  #    scale_y_continuous(
+  #      limits = c(65,125),
+  #      breaks = seq(70,100,5),
+  #      expand = c(0.001,0.001)
+  #    ) +
+  #    coord_cartesian(ylim = c(65, 105), clip = "off")
+  #}
   
   # Save base plot
   ggsave(
@@ -150,6 +150,44 @@ for (i in seq_along(variables)) {
   delta <- 0.05 * (y_max - y_min)
   
   # Build stats plot from p_base
+  if (var=="Accuracy") {
+    p_stats <- p_base +
+      labs(title="", subtitle="") +
+      coord_cartesian(ylim = c(65, 115), clip = "off") +
+      stat_compare_means(
+        comparisons     = comparisons,
+        method          = "t.test",
+        paired          = TRUE,
+        p.adjust.method = "bonferroni",
+        label           = "p.signif",
+        label.y         = c(105, 109, 113),
+        symnum.args     = list(
+          cutpoints = c(0,0.001,0.01,0.05,1),
+          symbols   = c("***","**","*","n.s.")
+        ),
+        label.size      = 5,
+        family          = "Roboto Mono",
+        colour          = "grey30",
+        tip.length      = 0.01,
+        bracket.size    = 0.6,
+        step.increase   = 0.1,
+        hide.ns         = FALSE
+      ) +
+      scale_y_continuous(
+        limits = c(65,125),
+        breaks = seq(70,100,5),
+        expand = c(0.001,0.001)
+      ) +
+      # give 10% breathing room above max for brackets
+      scale_y_continuous(expand = expansion(mult = c(0, .2))) +
+      # a single y-scale, not two conflicting ones
+      scale_y_continuous(
+          breaks = seq(70, 100, 5),
+          expand = expansion(add = 0)
+        ) +
+      # adjust top margin for the annotation strip
+      theme(plot.margin = margin(20 + delta*10, 15, 10, 15))
+  } else
   p_stats <- p_base +
     labs(title="", subtitle="") +
     coord_cartesian(ylim = c(y_min, y_max), clip = "off") +
@@ -172,20 +210,12 @@ for (i in seq_along(variables)) {
       hide.ns         = FALSE
     ) +
     # give 10% breathing room above max for brackets
-    scale_y_continuous(expand = expansion(mult = c(0, .10))) +
+    scale_y_continuous(expand = expansion(mult = c(0, .2))) +
     # adjust top margin for the annotation strip
     theme(plot.margin = margin(20 + delta*10, 15, 10, 15))
-  
+}
+
   # Custom y-limits
-  if (var=="Accuracy") {
-    p_stats <- p_stats +
-      scale_y_continuous(
-        limits = c(65,125),
-        breaks = seq(70,100,5),
-        expand = c(0.001,0.001)
-      ) +
-      coord_cartesian(ylim = c(65, 105), clip = "off")
-  }
   if (var=="ReactionTime") {
     p_stats <- p_stats +
       theme(plot.margin = margin(30,50,10,15)) +

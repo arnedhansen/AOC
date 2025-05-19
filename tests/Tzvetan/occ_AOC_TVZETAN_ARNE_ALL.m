@@ -174,7 +174,7 @@ for s = 1:length(subjects)
     fprintf('\n--- Processing subject %s ---\n', subj);
 
     if ~exist(subj_dir, 'dir')
-        fprintf('  ✘ Directory not found: %s\n', subj_dir);
+        fprintf('   Directory not found: %s\n', subj_dir);
         continue;
     end
     cd(subj_dir);
@@ -205,7 +205,7 @@ for s = 1:length(subjects)
             dataload = ft_selectdata(cfg, data);
 
             % Remove eye-tracking channels (assume last 6)
-            eye_labels = dataload.label(end-5:end);  % channels 130–135
+            eye_labels = dataload.label(end-5:end);  % channels 130135
             cfg_rm = [];
             cfg_rm.channel = setdiff(dataload.label, eye_labels);
             dataload = ft_selectdata(cfg_rm, dataload);
@@ -253,7 +253,7 @@ for s = 1:length(subjects)
             %% Save only the normal TFR (no FOOOF)
             %             savefile = fullfile(subj_dir, sprintf('%s_%s_cond%d_tfr.mat', subj, task, cond));
             %             save(savefile, 'tfr');
-            %             fprintf('  ✔ Saved: %s\n', savefile);
+            %             fprintf('   Saved: %s\n', savefile);
         end
     end
 end

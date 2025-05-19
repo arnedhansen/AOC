@@ -1,7 +1,7 @@
 %% AOC EEG Feature Extraction N-back
 %
 % Extracted features:
-%   Power Spectrum
+%   Power Spectrum (Average & Trial-by-Trial)
 %   IAF, Power at IAF, and Lateralization Index
 %   FOOOF Power
 %   TFR
@@ -10,7 +10,7 @@
 %% POWER Spectrum
 % Setup
 startup
-[subjects, path, ~ , ant128lay] = setup('AOC');
+[subjects, path, ~ , ~] = setup('AOC');
 
 for subj = 1:length(subjects)
     try
@@ -61,7 +61,7 @@ end
 %% ALPHA POWER, IAF and LATERALIZATION INDEX
 % Setup
 startup
-[subjects, path, ~ , ant128lay] = setup('AOC');
+[subjects, path, ~ , ~] = setup('AOC');
 
 % Define channels
 datapath = strcat(path, subjects{1}, filesep, 'eeg');
@@ -232,32 +232,39 @@ end
 %% POWER WITH TRIAL INFO
 % Setup
 startup
-[subjects, path, ~ , ant128lay] = setup('AOC');
+[subjects, path, ~ , ~] = setup('AOC');
 
 for subj = 1:length(subjects)
-    try
+    clc
+    disp('Processing Subject ', num2str(subjects{subj}))
+    try        
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all
         load dataEEG_nback
 
-        %% Identify indices of trials belonging to conditions
-        ind1=find(data.trialinfo==21);
-        ind2=find(data.trialinfo==22);
-        ind3=find(data.trialinfo==23);
-
         %% Frequency analysis
-        cfg=[];
+        % Identify indices of trials belonging to conditions
+        ind1 = find(data.trialinfo == 21);
+        ind2 = find(data.trialinfo == 22);
+        ind3 = find(data.trialinfo == 23);
+
+        % Select data
+        cfg = [];
         cfg.latency = [0 2]; % Segment from 0 to 2 [seconds]
         dat = ft_selectdata(cfg,data);
+
+        % Frequency analysis settings
         cfg = [];% empty config
         cfg.output = 'pow';% estimates power only
         cfg.method = 'mtmfft';% multi taper fft method
         cfg.taper = 'dpss';% multiple tapers
         cfg.tapsmofrq = 1;% smoothening frequency around foi
         cfg.foilim = [3 30];% frequencies of interest (foi)
-        cfg.keeptrials = 'yes';% do not keep single trials in output
+        cfg.keeptrials = 'no';% do not keep single trials in output
         cfg.pad = 5;
+
+        % Frequency analysis settings
         cfg.trials = ind1;
         powload1_trials = ft_freqanalysis(cfg,dat);
         powload1_trials.trialinfo = ones(1,length(powload1_trials.powspctrm(:, 1, 1)));
@@ -280,7 +287,7 @@ end
 %% FOOOF Power
 % Setup
 startup
-[subjects, path, ~ , ant128lay] = setup('AOC');
+[subjects, path, ~ , ~] = setup('AOC');
 
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
@@ -326,7 +333,7 @@ end
 %% TFR
 % Setup
 startup
-[subjects, path, ~ , ant128lay] = setup('AOC');
+[subjects, path, ~ , ~] = setup('AOC');
 
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
@@ -349,7 +356,7 @@ for subj = 1:length(subjects)
         cfg.foi          = 2:1:40;                         % analysis 2 to 40 Hz in steps of 1 Hz
         cfg.t_ftimwin    = ones(length(cfg.foi),1).*0.5;   % length of time window = 0.5 sec
         cfg.toi          = -1:0.05:2;
-        cfg.keeptrials = 'no';
+        cfg.keeptrials   = 'yes';
         cfg.trials = ind1;
         tfr1 = ft_freqanalysis(cfg,dataTFR);
         cfg.trials = ind2;
@@ -379,7 +386,7 @@ disp('TFR COMPUTED...');
 % Concert TFR data to POWSPCTRM (channels x frequency)
 % Setup
 startup
-[subjects, path, ~ , ant128lay] = setup('AOC');
+[subjects, path, ~ , ~] = setup('AOC');
 
 % Baselined power spectra analysis
 analysis_period = [0 2]; % N-back analysis window

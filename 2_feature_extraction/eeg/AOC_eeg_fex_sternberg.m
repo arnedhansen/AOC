@@ -372,7 +372,7 @@ for subj = 1:length(subjects)
         cfg.taper = 'dpss';            % Multiple tapers (discrete prolate spheroidal sequences)
         cfg.tapsmofrq = 1;             % Smoothening frequency around foi
         cfg.foilim = [3 30];           % Frequencies of interest
-        cfg.keeptrials = 'no';         % Discard trial information
+        cfg.keeptrials = 'yes';         % Discard trial information
         cfg.pad = 5;                   % Add zero-padding
 
         % Conduct frequency analysis for each condition separately

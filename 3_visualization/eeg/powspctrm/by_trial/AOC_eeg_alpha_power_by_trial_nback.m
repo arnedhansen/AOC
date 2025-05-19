@@ -1,22 +1,14 @@
 %% AOC Alpha Power Nback (trial-by-trial)
 
 %% Setup
-clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.0');
-eeglab
-clc
-close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+startup
+[subjects, path, ~ , ~] = setup('AOC');
 
 %% Define channels
 subj = 1;
 datapath = strcat(path, subjects{subj}, '/eeg');
 cd(datapath);
 load('power_nback_trials.mat');
-% Occipital channels
 occ_channels = {};
 for i = 1:length(powload1_trials.label)
     label = powload1_trials.label{i};
@@ -38,6 +30,7 @@ for subj = 1:length(subjects)
     cd(datapath);
     load('power_nback_trials.mat');
     channelIdx = find(ismember(powload1_trials.label, channels));
+
     % Find the indices corresponding to the alpha range
     alphaIndices = find(powload1_trials.freq >= alphaRange(1) & powload1_trials.freq <= alphaRange(2));
 

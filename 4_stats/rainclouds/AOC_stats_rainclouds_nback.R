@@ -33,7 +33,7 @@ variables  <- c("Accuracy","ReactionTime","GazeDeviation","GazeStd",
 titles     <- c("Accuracy","Reaction Time","Gaze Deviation","Gaze Std",
                 "Microsaccade Rate","Fixations","Saccades","Alpha Power","IAF")
 y_labels   <- c("Accuracy [%]","Reaction Time [ms]","Gaze Deviation [px]","Gaze Std [px]",
-                "Microsaccade Rate [ms/s]","Fixations","Saccades",
+                "Microsaccade Rate [MS/s]","Fixations","Saccades",
                 "Alpha Power [\u03BCV²/Hz]","IAF [Hz]")
 save_names <- c("acc","rt","gazedev","gazestd","ms","fix","sacc","pow","iaf")
 
@@ -47,11 +47,11 @@ dat <- dat %>%
   })) %>%
   ungroup()
 
-# Create a jittered copy of the variable
+# Create a tiny jittered copy of Accuracy for density only
 set.seed(123)
 dat2 <- dat %>%
   filter(!is.na(Accuracy)) %>%
-  mutate(Accuracy_jit = Accuracy + runif(n(), -0.1, 0.1))
+  mutate(Accuracy_jit = Accuracy + runif(n(), -1.25, 1.25))
 
 # Output directory
 output_dir <- "/Volumes/methlab/Students/Arne/AOC/figures/stats/rainclouds"
@@ -72,69 +72,97 @@ for (i in seq_along(variables)) {
   
   ###### BASE PLOT ######
   p_base <- dat %>%
-    ggplot() +
-    stat_halfeye(
-      data = dat2,
-      aes(x = Condition, y = Accuracy_jit,
-          colour = Condition,
-          fill   = after_scale(lighten(colour, 0.5))),
-      adjust        = 1,
-      width         = 0.6,    # bump it out a bit
-      scale         = 1.3,    # tone down overall height
-      slab_scale    = "area", # or "width" if you prefer
-      justification = 1.55,
-      side          = "left",
-      alpha         = 0.5
-    ) +
+    ggplot(aes(x = Condition, y = .data[[var]])) +
+    
+    # half-eye densities (jitter only for Accuracy)
+    {
+      if (var == "Accuracy") {
+        stat_halfeye(
+          data = dat2,
+          aes(y     = Accuracy_jit,
+              colour = Condition,
+              fill   = after_scale(lighten(colour, 0.5))),
+          adjust        = 0.5,
+          width         = 0.6,
+          scale         = 1,
+          justification = 1.5,
+          side          = "left",
+          alpha         = 0.5
+        )
+      } else {
+        stat_halfeye(
+          aes(colour = Condition,
+              fill   = after_scale(lighten(colour, 0.5))),
+          adjust        = 0.5,
+          width         = 0.5,
+          justification = 1.55,
+          side          = "left",
+          alpha         = 0.5
+        )
+      }
+    } +
+    
+    # boxplot on the real data
     geom_boxplot(
-      aes(color = Condition, fill = after_scale(lighten(color,0.5))),
+      aes(color = Condition, fill = after_scale(lighten(color, 0.5))),
       width = 0.35, outlier.shape = NA
     ) +
+    
+    # points on the real data
     geom_point(
-      aes(color = Condition, fill = after_scale(lighten(color,0.5))),
+      aes(color = Condition, fill = after_scale(lighten(color, 0.5))),
       shape = 21, stroke = 0.4, size = 3,
-      position = position_jitter(seed=1, width=0.125),
+      position = position_jitter(seed = 1, width = 0.125),
       alpha = 0.65
     ) +
     geom_point(
       aes(fill = Condition),
       color = "transparent", shape = 21, stroke = 0.4, size = 0.25,
-      alpha = 0.4, position = position_jitter(seed=1, width=0.125)
+      alpha = 0.4, position = position_jitter(seed = 1, width = 0.125)
     ) +
+    
+    # colours & guides
     scale_color_manual(values = pal, guide = "none") +
-    scale_fill_manual(values = pal, guide = "none") +
+    scale_fill_manual(values  = pal, guide = "none") +
+    
+    # labels
     labs(
       x        = "Condition",
       y        = y_lab,
       title    = titles[i],
       subtitle = paste("N-back", titles[i], "by Condition")
     ) +
-    theme_minimal(base_family="Zilla Slab", base_size=15) +
+    
+    # theme
+    theme_minimal(base_family = "Zilla Slab", base_size = 15) +
     theme(
-      plot.background    = element_rect(fill="white", colour=NA),
+      plot.background    = element_rect(fill = "white", colour = NA),
       panel.grid.minor   = element_blank(),
       panel.grid.major.x = element_blank(),
       axis.ticks         = element_blank(),
-      axis.text.x        = element_text(family="Roboto Mono"),
-      axis.text.y        = element_text(family="Roboto Mono", size=15),
-      axis.title.y       = element_text(margin=margin(r=10), size=16),
-      plot.subtitle      = element_text(colour="grey40", hjust=0,
-                                        margin=margin(0,0,20,0)),
+      axis.text.x        = element_text(family = "Roboto Mono"),
+      axis.text.y        = element_text(family = "Roboto Mono", size = 15),
+      axis.title.y       = element_text(margin = margin(r = 10), size = 16),
+      plot.subtitle      = element_text(colour = "grey40", hjust = 0,
+                                        margin = margin(0,0,20,0)),
       plot.title.position= "plot",
       plot.margin        = margin(15,15,10,15)
     ) +
-    # force the same grid‐lines for Accuracy (70→100) or let ggplot choose for others
-    ({ if (var=="Accuracy")
+    
+    # y-scale and zoom
+    ({ if (var == "Accuracy")
       scale_y_continuous(breaks = seq(70,100,5), expand = expansion(add = 0))
       else
         scale_y_continuous(expand = expansion(add = 0))
     }) +
-    # zoom without dropping any data or grid‐lines
     coord_cartesian(
-      ylim = if (var=="Accuracy") c(65,102) else if (var=="ReactionTime") c(400,1500) else NULL,
+      ylim = if (var=="Accuracy") c(65,102)
+      else if (var=="ReactionTime") c(400,1500)
+      else NULL,
       clip = "off"
     )
   
+  # save the base raincloud
   ggsave(
     filename = file.path(output_dir,
                          paste0("AOC_stats_rainclouds_",
@@ -143,7 +171,6 @@ for (i in seq_along(variables)) {
   )
   
   ###### STATS ######
-  # Run repeated-measures ANOVA and pairwise tests
   anova_res <- dat %>%
     anova_test(dv = .data[[var]], wid = ID, within = Condition)
   print(glue::glue("ANOVA for {var}:")); print(anova_res)
@@ -156,21 +183,21 @@ for (i in seq_along(variables)) {
     )
   print(glue::glue("Pairwise tests for {var}:")); print(pwc)
   
-  # Compute data range and buffer for brackets
-  y_min <- min(dat[[var]], na.rm=TRUE)
-  y_max <- max(dat[[var]], na.rm=TRUE)
+  # data range for bracket spacing
+  y_min <- min(dat[[var]], na.rm = TRUE)
+  y_max <- max(dat[[var]], na.rm = TRUE)
   delta <- 0.05 * (y_max - y_min)
   
   ###### STATS PLOT ######
   p_stats <- p_base +
-    labs(title="", subtitle="") +
+    labs(title = "", subtitle = "") +
     stat_compare_means(
       comparisons     = comparisons,
       method          = "t.test",
       paired          = TRUE,
       p.adjust.method = "bonferroni",
       label           = "p.signif",
-      label.y         = if (var=="Accuracy") c(102,104,106) else NULL,
+      label.y         = if (var == "Accuracy") c(102,103.5,105) else NULL,
       symnum.args     = list(
         cutpoints = c(0,0.001,0.01,0.05,1),
         symbols   = c("***","**","*","n.s.")
@@ -180,36 +207,27 @@ for (i in seq_along(variables)) {
       colour          = "grey30",
       tip.length      = 0.01,
       bracket.size    = 0.6,
-      step.increase   = if (var=="Accuracy") 0.1 else 0.1,
+      step.increase   = 0.1,
       hide.ns         = FALSE
     ) +
-    # reuse exactly one y‐scale & one coord
-    ({ if (var=="Accuracy")
+    ({ if (var == "Accuracy")
       scale_y_continuous(breaks = seq(70,100,5), expand = expansion(add = 0))
       else
         scale_y_continuous(expand = expansion(add = 0))
     }) +
     coord_cartesian(
-      ylim = if (var=="Accuracy") c(65,110) else if (var=="ReactionTime") c(400,1500) else NULL,
+      ylim = if (var=="Accuracy") c(65,105.5)
+      else if (var=="ReactionTime") c(400,1500)
+      else NULL,
       clip = "off"
     ) +
     theme(plot.margin = margin(20 + delta*10, 15, 10, 15))
   
-  # Custom y-limits
-  #if (var=="ReactionTime") {
-  #  p_stats <- p_stats +
-  #    theme(plot.margin = margin(30,50,10,15)) +
-  #    scale_y_continuous(
-  #      limits = c(390,1500),
-  #      breaks = seq(400,1300,100),
-  #      expand = c(0.001,0.001)
-  #    )
-  #}
-  
-  # Save stats plot
+  # save the stats raincloud
   ggsave(
     filename = file.path(output_dir,
-                         paste0("AOC_stats_rainclouds_", save_name, "_nback_stats.png")),
+                         paste0("AOC_stats_rainclouds_",
+                                save_name, "_nback_stats.png")),
     plot   = p_stats, width = 8, height = 6, dpi = 300
   )
 }

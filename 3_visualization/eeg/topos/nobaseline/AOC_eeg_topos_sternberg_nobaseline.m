@@ -61,7 +61,6 @@ gapow6_raw = ft_freqgrandaverage([],powl6{:});
 % gapow6_bl = ft_freqgrandaverage([], powl6_bl{:});
 
 %% Plot alpha power TOPOS
-
 gapow2 = gapow2_raw;
 gapow4 = gapow4_raw;
 gapow6 = gapow6_raw;

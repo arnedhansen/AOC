@@ -46,19 +46,19 @@ gapow2_raw = ft_freqgrandaverage([],powl2{:});
 gapow3_raw = ft_freqgrandaverage([],powl3{:});
 
 % Load baselined powspctrm data
-for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj}, filesep, 'eeg');
-    cd(datapath)
-    load power_nback_bl
-    powl1_bl{subj} = powload1_bl;
-    powl2_bl{subj} = powload2_bl;
-    powl3_bl{subj} = powload3_bl;
-end
-
-% Compute grand avg of baselined powspctrm data
-gapow1_bl = ft_freqgrandaverage([], powl1_bl{:});
-gapow2_bl = ft_freqgrandaverage([], powl2_bl{:});
-gapow3_bl = ft_freqgrandaverage([], powl3_bl{:});
+% for subj = 1:length(subjects)
+%     datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+%     cd(datapath)
+%     load power_nback_bl
+%     powl1_bl{subj} = powload1_bl;
+%     powl2_bl{subj} = powload2_bl;
+%     powl3_bl{subj} = powload3_bl;
+% end
+% 
+% % Compute grand avg of baselined powspctrm data
+% gapow1_bl = ft_freqgrandaverage([], powl1_bl{:});
+% gapow2_bl = ft_freqgrandaverage([], powl2_bl{:});
+% gapow3_bl = ft_freqgrandaverage([], powl3_bl{:});
 
 %% Plot grand average alpha power TOPOS
 gapow1 = gapow1_raw;

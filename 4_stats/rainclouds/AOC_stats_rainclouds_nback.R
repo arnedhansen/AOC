@@ -47,6 +47,12 @@ dat <- dat %>%
   })) %>%
   ungroup()
 
+# Create a jittered copy of the variable
+set.seed(123)
+dat2 <- dat %>%
+  filter(!is.na(Accuracy)) %>%
+  mutate(Accuracy_jit = Accuracy + runif(n(), -0.1, 0.1))
+
 # Output directory
 output_dir <- "/Volumes/methlab/Students/Arne/AOC/figures/stats/rainclouds"
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
@@ -60,19 +66,25 @@ comparisons <- list(
 
 # Loop through variables
 for (i in seq_along(variables)) {
-  
   var       <- variables[i]
   y_lab     <- y_labels[i]
   save_name <- save_names[i]
   
-  ##### BASE PLOT #####
+  ###### BASE PLOT ######
   p_base <- dat %>%
-    ggplot(aes(x = Condition, y = .data[[var]])) +
+    ggplot() +
     stat_halfeye(
-      aes(color = Condition, fill = after_scale(lighten(color,0.5))),
-      adjust        = 0.5, width = 0.5, height = 0.6,
-      .width        = 0,
-      justification = 1.55, side = "left"
+      data = dat2,
+      aes(x = Condition, y = Accuracy_jit,
+          colour = Condition,
+          fill   = after_scale(lighten(colour, 0.5))),
+      adjust        = 1,
+      width         = 0.6,    # bump it out a bit
+      scale         = 1.3,    # tone down overall height
+      slab_scale    = "area", # or "width" if you prefer
+      justification = 1.55,
+      side          = "left",
+      alpha         = 0.5
     ) +
     geom_boxplot(
       aes(color = Condition, fill = after_scale(lighten(color,0.5))),
@@ -110,27 +122,27 @@ for (i in seq_along(variables)) {
                                         margin=margin(0,0,20,0)),
       plot.title.position= "plot",
       plot.margin        = margin(15,15,10,15)
+    ) +
+    # force the same grid‐lines for Accuracy (70→100) or let ggplot choose for others
+    ({ if (var=="Accuracy")
+      scale_y_continuous(breaks = seq(70,100,5), expand = expansion(add = 0))
+      else
+        scale_y_continuous(expand = expansion(add = 0))
+    }) +
+    # zoom without dropping any data or grid‐lines
+    coord_cartesian(
+      ylim = if (var=="Accuracy") c(65,102) else if (var=="ReactionTime") c(400,1500) else NULL,
+      clip = "off"
     )
   
-  # Custom y-limits
-  #if (var=="Accuracy") {
-  #  p_base <- p_base +
-  #    scale_y_continuous(
-  #      limits = c(65,125),
-  #      breaks = seq(70,100,5),
-  #      expand = c(0.001,0.001)
-  #    ) +
-  #    coord_cartesian(ylim = c(65, 105), clip = "off")
-  #}
-  
-  # Save base plot
   ggsave(
     filename = file.path(output_dir,
-                         paste0("AOC_stats_rainclouds_", save_name, "_nback.png")),
+                         paste0("AOC_stats_rainclouds_",
+                                save_name, "_nback.png")),
     plot   = p_base, width = 8, height = 6, dpi = 300
   )
   
-  ##### STATS PLOT #####
+  ###### STATS ######
   # Run repeated-measures ANOVA and pairwise tests
   anova_res <- dat %>%
     anova_test(dv = .data[[var]], wid = ID, within = Condition)
@@ -149,54 +161,16 @@ for (i in seq_along(variables)) {
   y_max <- max(dat[[var]], na.rm=TRUE)
   delta <- 0.05 * (y_max - y_min)
   
-  # Build stats plot from p_base
-  if (var=="Accuracy") {
-    p_stats <- p_base +
-      labs(title="", subtitle="") +
-      coord_cartesian(ylim = c(65, 115), clip = "off") +
-      stat_compare_means(
-        comparisons     = comparisons,
-        method          = "t.test",
-        paired          = TRUE,
-        p.adjust.method = "bonferroni",
-        label           = "p.signif",
-        label.y         = c(105, 109, 113),
-        symnum.args     = list(
-          cutpoints = c(0,0.001,0.01,0.05,1),
-          symbols   = c("***","**","*","n.s.")
-        ),
-        label.size      = 5,
-        family          = "Roboto Mono",
-        colour          = "grey30",
-        tip.length      = 0.01,
-        bracket.size    = 0.6,
-        step.increase   = 0.1,
-        hide.ns         = FALSE
-      ) +
-      scale_y_continuous(
-        limits = c(65,125),
-        breaks = seq(70,100,5),
-        expand = c(0.001,0.001)
-      ) +
-      # give 10% breathing room above max for brackets
-      scale_y_continuous(expand = expansion(mult = c(0, .2))) +
-      # a single y-scale, not two conflicting ones
-      scale_y_continuous(
-          breaks = seq(70, 100, 5),
-          expand = expansion(add = 0)
-        ) +
-      # adjust top margin for the annotation strip
-      theme(plot.margin = margin(20 + delta*10, 15, 10, 15))
-  } else
+  ###### STATS PLOT ######
   p_stats <- p_base +
     labs(title="", subtitle="") +
-    coord_cartesian(ylim = c(y_min, y_max), clip = "off") +
     stat_compare_means(
       comparisons     = comparisons,
       method          = "t.test",
       paired          = TRUE,
       p.adjust.method = "bonferroni",
       label           = "p.signif",
+      label.y         = if (var=="Accuracy") c(102,104,106) else NULL,
       symnum.args     = list(
         cutpoints = c(0,0.001,0.01,0.05,1),
         symbols   = c("***","**","*","n.s.")
@@ -206,25 +180,31 @@ for (i in seq_along(variables)) {
       colour          = "grey30",
       tip.length      = 0.01,
       bracket.size    = 0.6,
-      step.increase   = 0.1,
+      step.increase   = if (var=="Accuracy") 0.1 else 0.1,
       hide.ns         = FALSE
     ) +
-    # give 10% breathing room above max for brackets
-    scale_y_continuous(expand = expansion(mult = c(0, .2))) +
-    # adjust top margin for the annotation strip
+    # reuse exactly one y‐scale & one coord
+    ({ if (var=="Accuracy")
+      scale_y_continuous(breaks = seq(70,100,5), expand = expansion(add = 0))
+      else
+        scale_y_continuous(expand = expansion(add = 0))
+    }) +
+    coord_cartesian(
+      ylim = if (var=="Accuracy") c(65,110) else if (var=="ReactionTime") c(400,1500) else NULL,
+      clip = "off"
+    ) +
     theme(plot.margin = margin(20 + delta*10, 15, 10, 15))
-}
-
+  
   # Custom y-limits
-  if (var=="ReactionTime") {
-    p_stats <- p_stats +
-      theme(plot.margin = margin(30,50,10,15)) +
-      scale_y_continuous(
-        limits = c(390,1500),
-        breaks = seq(400,1300,100),
-        expand = c(0.001,0.001)
-      )
-  }
+  #if (var=="ReactionTime") {
+  #  p_stats <- p_stats +
+  #    theme(plot.margin = margin(30,50,10,15)) +
+  #    scale_y_continuous(
+  #      limits = c(390,1500),
+  #      breaks = seq(400,1300,100),
+  #      expand = c(0.001,0.001)
+  #    )
+  #}
   
   # Save stats plot
   ggsave(

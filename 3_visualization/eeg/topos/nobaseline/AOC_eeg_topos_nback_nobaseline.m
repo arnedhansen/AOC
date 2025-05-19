@@ -37,7 +37,7 @@ for subj = 1:length(subjects)
     load power_nback
     powl1{subj} = powload1;
     powl2{subj} = powload2;
-    powl3{subj} = powload3;
+    powl3{subj} = powload3;c
 end
 
 % Compute grand avg of raw powspctrm data
@@ -100,7 +100,7 @@ ft_topoplotER(cfg, gapow1);
 title('');
 cb = colorbar;
 set(cb, 'FontSize', 20);
-ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
+ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
 title('1-back', 'FontSize', 40);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_nback_topo1.png');
 
@@ -111,7 +111,7 @@ ft_topoplotER(cfg, gapow2);
 title('');
 cb = colorbar;
 set(cb, 'FontSize', 20);
-ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
+ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
 title('2-back', 'FontSize', 40);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_nback_topo2.png');
 
@@ -122,7 +122,7 @@ ft_topoplotER(cfg, gapow3);
 title('');
 cb = colorbar;
 set(cb, 'FontSize', 20);
-ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
+ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
 title('3-back', 'FontSize', 40);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_nback_topo3.png');
 
@@ -219,7 +219,7 @@ for subj = 1:length(subjects)
     title(['Sub ', num2str(subjectID), ' 1-back'], 'FontSize', 40);
     cb = colorbar;
     set(cb, 'FontSize', 20);
-    ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
+    ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
     saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_nback_topo1_%s.png', subjectID)));
     
     % 2-back
@@ -229,7 +229,7 @@ for subj = 1:length(subjects)
     title(['Sub ', num2str(subjectID), ' 2-back'], 'FontSize', 40);
     cb = colorbar;
     set(cb, 'FontSize', 20);
-    ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
+    ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
     saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_nback_topo2_%s.png', subjectID)));
     
     % 3-back
@@ -239,7 +239,7 @@ for subj = 1:length(subjects)
     title(['Sub ', num2str(subjectID), ' 3-back'], 'FontSize', 40);
     cb = colorbar;
     set(cb, 'FontSize', 20);
-    ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
+    ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
     saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_nback_topo3_%s.png', subjectID)));
 
     % Difference topo
@@ -271,6 +271,6 @@ for subj = 1:length(subjects)
     title(['Sub ', num2str(subjectID), ' Difference'], 'FontSize', 40);
     cb = colorbar;
     set(cb, 'FontSize', 20);
-    ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
+    ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
     saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_nback_topo_diff_%s.png', subjectID))); 
 end

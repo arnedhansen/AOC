@@ -159,7 +159,7 @@ electrodeSets = struct( ...
     %);
 
 % Loop over data types and electrode sets
-for d = 1%4:numel(datasets)
+for d = 4%1:numel(datasets)
     D = datasets{d};
     for fn = fieldnames(electrodeSets)'
         close all
@@ -211,6 +211,9 @@ for d = 1%4:numel(datasets)
         set(gca,'FontSize',20);
         %ylim([-0.175 0.175])
         ylim([0 2.6])
+        if d == 4
+            ylim([-0.25 0.25])
+        end
         xlim([4 30]);
         ylabel('Power [\muV^2/Hz]');
         xlabel('Frequency [Hz]');

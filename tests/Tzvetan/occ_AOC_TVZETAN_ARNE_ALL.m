@@ -15,12 +15,12 @@ subjects = {'301','302','304','306','309','310','312','313','314','315', ...
 [subjects, path, ~ , ant128lay] = setup('AOC');
 
 %base_dir = '/Volumes/TOURO/arne/merged';
-if ispc == 1    
+if ispc == 1
     merged_dir = 'W:\Students\Arne\AOC\data\merged\';
-    base_dir = 'W:\Students\Arne\AOC\data\features\'; 
-else     
+    base_dir = 'W:\Students\Arne\AOC\data\features\';
+else
     merged_dir = '/Volumes/methlab/Students/Arne/AOC/data/merged';
-    base_dir = '/Volumes/methlab/Students/Arne/AOC/data/features/'; 
+    base_dir = '/Volumes/methlab/Students/Arne/AOC/data/features/';
 end%%
 %%
 for s = 1:length(subjects)
@@ -62,7 +62,7 @@ for s = 1:length(subjects)
             block_data.load6{end+1} = data;
         end
     end
-end
+
 
     %     if ~isempty(block_data.load2)
     %         data2 = ft_appenddata([], block_data.load2{:});
@@ -83,56 +83,58 @@ end
         dataSternberg = ft_appenddata([], allSternberg{:});
         save(fullfile(subj_dir, filesep, 'eeg', filesep, [subj '_Sternberg_all_TZVETAN.mat']), 'dataSternberg');
     end
-    %% ----- N-back Task ----- %%
-    % nback_data = struct('oneback', [], 'twoback', [], 'threeback', []);
-    % for b = 1:10
-    %     filename = sprintf('%s_EEG_ET_Nback_block%d_merged.mat', subj, b);
-    %     if exist(filename, 'file')
-    %         tmp = load(filename); EEG = tmp.EEG;
-    %         eventtypes = unique({EEG.event.type});
-    %
-    %         if any(strcmp(eventtypes, '21'))
-    %             trigger = '21';
-    %             EEGload = pop_epoch(EEG, {trigger}, [-2 4]);
-    %             data = eeglab2fieldtrip(EEGload, 'raw');
-    %             data.trialinfo = repmat(str2double(trigger), length(data.trial), 1);
-    %             nback_data.oneback{end+1} = data;
-    %         elseif any(strcmp(eventtypes, '22'))
-    %             trigger = '22';
-    %             EEGload = pop_epoch(EEG, {trigger}, [-2 4]);
-    %             data = eeglab2fieldtrip(EEGload, 'raw');
-    %             data.trialinfo = repmat(str2double(trigger), length(data.trial), 1);
-    %             nback_data.twoback{end+1} = data;
-    %         elseif any(strcmp(eventtypes, '23'))
-    %             trigger = '23';
-    %             EEGload = pop_epoch(EEG, {trigger}, [-2 4]);
-    %             data = eeglab2fieldtrip(EEGload, 'raw');
-    %             data.trialinfo = repmat(str2double(trigger), length(data.trial), 1);
-    %             nback_data.threeback{end+1} = data;
-    %         else
-    %             warning('No known N-back triggers (21/22/23) in %s', filename);
-    %         end
-    %     end
-    % end
-    %
-    % %     if ~isempty(nback_data.oneback)
-    % %         data1b = ft_appenddata([], nback_data.oneback{:});
-    % %         save(fullfile(subj_dir, [subj '_Nback_oneback.mat']), 'data1b');
-    % %     end
-    % %     if ~isempty(nback_data.twoback)
-    % %         data2b = ft_appenddata([], nback_data.twoback{:});
-    % %         save(fullfile(subj_dir, [subj '_Nback_twoback.mat']), 'data2b');
-    % %     end
-    % %     if ~isempty(nback_data.threeback)
-    % %         data3b = ft_appenddata([], nback_data.threeback{:});
-    % %         save(fullfile(subj_dir, [subj '_Nback_threeback.mat']), 'data3b');
-    % %     end
-    % allNback = [nback_data.oneback, nback_data.twoback, nback_data.threeback];
-    % if ~isempty(allNback)
-    %
-    %     dataNback = ft_appenddata([], allNback{:});
-    %     save(fullfile(subj_dir, [subj '_Nback_all.mat']), 'dataNback');
-    % end
+end
+
+%% ----- N-back Task ----- %%
+% nback_data = struct('oneback', [], 'twoback', [], 'threeback', []);
+% for b = 1:10
+%     filename = sprintf('%s_EEG_ET_Nback_block%d_merged.mat', subj, b);
+%     if exist(filename, 'file')
+%         tmp = load(filename); EEG = tmp.EEG;
+%         eventtypes = unique({EEG.event.type});
+%
+%         if any(strcmp(eventtypes, '21'))
+%             trigger = '21';
+%             EEGload = pop_epoch(EEG, {trigger}, [-2 4]);
+%             data = eeglab2fieldtrip(EEGload, 'raw');
+%             data.trialinfo = repmat(str2double(trigger), length(data.trial), 1);
+%             nback_data.oneback{end+1} = data;
+%         elseif any(strcmp(eventtypes, '22'))
+%             trigger = '22';
+%             EEGload = pop_epoch(EEG, {trigger}, [-2 4]);
+%             data = eeglab2fieldtrip(EEGload, 'raw');
+%             data.trialinfo = repmat(str2double(trigger), length(data.trial), 1);
+%             nback_data.twoback{end+1} = data;
+%         elseif any(strcmp(eventtypes, '23'))
+%             trigger = '23';
+%             EEGload = pop_epoch(EEG, {trigger}, [-2 4]);
+%             data = eeglab2fieldtrip(EEGload, 'raw');
+%             data.trialinfo = repmat(str2double(trigger), length(data.trial), 1);
+%             nback_data.threeback{end+1} = data;
+%         else
+%             warning('No known N-back triggers (21/22/23) in %s', filename);
+%         end
+%     end
+% end
+%
+% %     if ~isempty(nback_data.oneback)
+% %         data1b = ft_appenddata([], nback_data.oneback{:});
+% %         save(fullfile(subj_dir, [subj '_Nback_oneback.mat']), 'data1b');
+% %     end
+% %     if ~isempty(nback_data.twoback)
+% %         data2b = ft_appenddata([], nback_data.twoback{:});
+% %         save(fullfile(subj_dir, [subj '_Nback_twoback.mat']), 'data2b');
+% %     end
+% %     if ~isempty(nback_data.threeback)
+% %         data3b = ft_appenddata([], nback_data.threeback{:});
+% %         save(fullfile(subj_dir, [subj '_Nback_threeback.mat']), 'data3b');
+% %     end
+% allNback = [nback_data.oneback, nback_data.twoback, nback_data.threeback];
+% if ~isempty(allNback)
+%
+%     dataNback = ft_appenddata([], allNback{:});
+%     save(fullfile(subj_dir, [subj '_Nback_all.mat']), 'dataNback');
+% end
 
 %% TFR
 clear all
@@ -153,10 +155,10 @@ subjects = {'301','302','304','309','310','312','313','314','315', ...
 [subjects, path, ~ , ant128lay] = setup('AOC');
 
 %base_dir = '/Volumes/TOURO/arne/merged';
-if ispc == 1     
-    base_dir = 'W:\Students\Arne\AOC\data\features\'; 
-else     
-    base_dir = '/Volumes/methlab/Students/Arne/AOC/data/features/'; 
+if ispc == 1
+    base_dir = 'W:\Students\Arne\AOC\data\features\';
+else
+    base_dir = '/Volumes/methlab/Students/Arne/AOC/data/features/';
 end%%
 
 % Tasks and conditions
@@ -166,7 +168,7 @@ task_conditions = struct(...
     'Nback', [21, 22, 23]);
 
 %% Loop over subjects
-for s = 1%%%%%%:length(subjects)
+for s = 1:length(subjects)
     subj = subjects{s};
     subj_dir = fullfile(base_dir, subj, filesep, 'eeg');
     fprintf('\n--- Processing subject %s ---\n', subj);
@@ -271,10 +273,10 @@ subjects = {'301','302','304','309','310','312','313','314','315', ...
 [subjects, path, ~ , ant128lay] = setup('AOC');
 
 %base_dir = '/Volumes/TOURO/arne/merged';
-if ispc == 1     
-    base_dir = 'W:\Students\Arne\AOC\data\features\'; 
-else     
-    base_dir = '/Volumes/methlab/Students/Arne/AOC/data/features/'; 
+if ispc == 1
+    base_dir = 'W:\Students\Arne\AOC\data\features\';
+else
+    base_dir = '/Volumes/methlab/Students/Arne/AOC/data/features/';
 end
 
 %% Loop over subjects

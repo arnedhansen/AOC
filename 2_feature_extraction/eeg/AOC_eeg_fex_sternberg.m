@@ -4,6 +4,7 @@
 %   Power Spectrum (Retention)
 %   Power Spectrum (Baseline)
 %   IAF, Power at IAF, and Lateralization Index
+%   POWER TRIAL-BY-TRIAL
 %   TFR (Raw, FOOOF and Baselined)
 
 %% POWSPCTRM (Retention)
@@ -335,7 +336,7 @@ else
     save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg eeg_data_sternberg
 end
 
-%% POWER WITH TRIAL INFO
+%% POWER TRIAL-BY-TRIAL
 % Setup
 startup
 [subjects, path, ~ , ~] = setup('AOC');

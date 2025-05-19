@@ -3,6 +3,7 @@
 % Extracted features:
 %   Power Spectrum (Average & Trial-by-Trial)
 %   IAF, Power at IAF, and Lateralization Index
+%   POWER TRIAL-BY-TRIAL
 %   FOOOF Power
 %   TFR
 %   Baselined Power Spectrum
@@ -229,14 +230,14 @@ else
     save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_nback eeg_data_nback
 end
 
-%% POWER WITH TRIAL INFO
+%% POWER TRIAL-BY-TRIAL
 % Setup
 startup
 [subjects, path, ~ , ~] = setup('AOC');
 
 for subj = 1:length(subjects)
     clc
-    disp('Processing Subject ', num2str(subjects{subj}))
+    disp(['Processing Subject ', subjects{subj}])
     try        
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
@@ -261,7 +262,7 @@ for subj = 1:length(subjects)
         cfg.taper = 'dpss';% multiple tapers
         cfg.tapsmofrq = 1;% smoothening frequency around foi
         cfg.foilim = [3 30];% frequencies of interest (foi)
-        cfg.keeptrials = 'no';% do not keep single trials in output
+        cfg.keeptrials = 'yes';
         cfg.pad = 5;
 
         % Frequency analysis settings

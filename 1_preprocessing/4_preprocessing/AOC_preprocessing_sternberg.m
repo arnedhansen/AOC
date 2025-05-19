@@ -178,7 +178,7 @@ for subj = 1:length(subjects)
 
         %% Append data for conditions
         cfg = [];
-        cfg.keepsampleinfo = 'no';
+        cfg.keepsampleinfo = 'yes';
         data2 = ft_appenddata(cfg,data2{:});
         data4 = ft_appenddata(cfg,data4{:});
         data6 = ft_appenddata(cfg,data6{:});
@@ -190,7 +190,7 @@ for subj = 1:length(subjects)
 
         %% Append all data into single data file with appropriate trialinfo
         cfg = [];
-        cfg.keepsampleinfo = 'no';
+        cfg.keepsampleinfo = 'yes';
         data = ft_appenddata(cfg,data2, data4, data6);
         trialinfo = [data2.trialinfo; data4.trialinfo; data6.trialinfo];
         data.trialinfo = trialinfo;

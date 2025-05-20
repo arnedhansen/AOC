@@ -24,6 +24,7 @@ subj_eeg_data_sternberg_trials = struct('ID',{},'Trial',{},'Block',{},'Condition
 eeg_data_sternberg_trials = struct('ID',{},'Trial',{},'Block',{},'Condition',{},'AlphaPower',{},'IAF',{});
 
 %% Loop over subjects
+tic
 for isub = 1:numel(subjects)
     clc
     subj = subjects{isub};
@@ -171,7 +172,7 @@ for isub = 1:numel(subjects)
         save(['/Volumes/methlab/Students/Arne/AOC/data/features/', subj, '/eeg/power_nback_trials.mat'], 'PowAll');
     end
 end
-
+toc
 %% Save results
 if ispc
     save('W:\Students\Arne\AOC\data\features\eeg_matrix_sternberg_trials.mat', 'eeg_data_sternberg_trials');

@@ -162,11 +162,11 @@ for isub = 1:numel(subjects)
     end
     % Save subject results
     if ispc == 1
-        save(['W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\eeg_matrix_sternberg_subj_trials.mat'], 'subj_eeg_data_sternberg_trials');
-        save(['W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\power_nback_trials.mat'], 'PowAll');
+        save(['W:\Students\Arne\AOC\data\features\', subj, '\eeg\eeg_matrix_sternberg_subj_trials.mat'], 'subj_eeg_data_sternberg_trials');
+        save(['W:\Students\Arne\AOC\data\features\', subj, '\eeg\power_nback_trials.mat'], 'PowAll');
     else
-        save(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/eeg_matrix_sternberg_subj_trials.mat'], 'subj_eeg_data_sternberg_trials');
-        save(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/power_nback_trials.mat'], 'PowAll');
+        save(['/Volumes/methlab/Students/Arne/AOC/data/features/', subj, '/eeg/eeg_matrix_sternberg_subj_trials.mat'], 'subj_eeg_data_sternberg_trials');
+        save(['/Volumes/methlab/Students/Arne/AOC/data/features/', subj, '/eeg/power_nback_trials.mat'], 'PowAll');
     end
 end
 

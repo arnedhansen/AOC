@@ -212,12 +212,15 @@ for (i in seq_along(variables)) {
     ) +
     ({ if (var == "Accuracy")
       scale_y_continuous(breaks = seq(70,100,5), expand = expansion(add = 0))
+      else if (var == "GazeDeviation")
+        scale_y_continuous(breaks = seq(10,60,10), expand = expansion(add = 0))
       else
         scale_y_continuous(expand = expansion(add = 0))
     }) +
     coord_cartesian(
       ylim = if (var=="Accuracy") c(65,105.5)
       else if (var=="ReactionTime") c(400,1500)
+      else if (var=="GazeDeviation") c(5,65)
       else NULL,
       clip = "off"
     ) +

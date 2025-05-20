@@ -138,13 +138,6 @@ for(i in seq_along(variables)) {
       plot.title.position  = "plot",
       plot.margin          = margin(15, 15, 10, 15)
     )
-  #if(var == "ReactionTime") {
-  #  p_base <- p_base + scale_y_continuous(
-  #    limits = c(550, 1200),
-  #    breaks = seq(600, 1200, by = 100),
-  #    expand = c(0.001, 0.001)
-  #  )
-  #}
   
   # Save the base plot
   ggsave(
@@ -224,6 +217,14 @@ for(i in seq_along(variables)) {
         breaks = seq(600, 1200, by = 100),
         expand = c(0.001, 0.001)
       )
+   } else if (var == "GazeDeviation") {
+      p_stats <- p_stats +
+        theme(plot.margin = margin(50, 75, 10, 15)) +
+        scale_y_continuous(
+          limits = c(5, 175),
+          breaks = seq(25, 125, by = 25),
+          expand = c(0.001, 0.001)
+        )
   } else {
     p_stats <- p_stats +
       theme(plot.margin = margin(20 + delta * 10, 15, 10, 15)) +

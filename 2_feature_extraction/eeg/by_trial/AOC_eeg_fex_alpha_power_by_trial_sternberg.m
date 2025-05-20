@@ -104,15 +104,15 @@ for isub = 1:numel(subjects)
     % dataAll.trialOrder = ftb.trialOrder;
 
     % Single-trial frequency analysis (3�30Hz)
-    cfg         = [];
-    cfg.output  = 'pow';
-    cfg.method  = 'mtmfft';
-    cfg.taper   = 'dpss';
-    cfg.tapsmofrq = 1;
-    cfg.foilim  = [3 30];
-    cfg.pad     = 5;
+    cfg            = [];
+    cfg.output     = 'pow';
+    cfg.method     = 'mtmfft';
+    cfg.taper      = 'dpss';
+    cfg.tapsmofrq  = 1;
+    cfg.foilim     = [3 30];
+    cfg.pad        = 5;
     cfg.keeptrials = 'yes';
-    freqAll     = ft_freqanalysis(cfg, dataAll);
+    freqAll        = ft_freqanalysis(cfg, dataAll);
 
     % carry over trialinfo
     freqAll.trialinfo = dataAll.trialinfo;
@@ -143,13 +143,46 @@ for isub = 1:numel(subjects)
             alphaPow = pks(imax);
         end
 
+
+
+
+     % Calculate IAF for WM load 6
+        alphaPower6 = powspctrm6(alphaIndices);
+        [pks6,locs] = findpeaks(alphaPower6);
+        if isempty(pks6)
+            IAF6 = NaN;
+            IAF_range6 = NaN;
+            powerIAF6 = NaN;
+        else
+            [~, ind] = max(pks6);
+            IAF6 = powload6.freq(alphaIndices(locs(ind)));
+            IAF_range6 = find(powload6.freq > (IAF6-4) & powload6.freq < (IAF6+2));
+            powerIAF6 = mean(powspctrm6(IAF_range6));
+        end
+
+
+
+
+
         % build struct entry
-        eeg_data_sternberg_trials(end+1)= struct(...
+        subj_data_sternberg_trials(end+1) = struct(...
             'ID',         sid, ...
             'Trial',      t, ...
-            'Condition',  freqAll.trialinfo(t)-20, ...  % 222, 244, 266
+            'Condition',  freqAll.trialinfo(t)-20, ...
             'AlphaPower', alphaPow, ...
             'IAF',        IAF );
+        eeg_data_sternberg_trials(end+1) = struct(...
+            'ID',         sid, ...
+            'Trial',      t, ...
+            'Condition',  freqAll.trialinfo(t)-20, ...
+            'AlphaPower', alphaPow, ...
+            'IAF',        IAF );
+    end
+    % Save subject results
+    if ispc == 1
+        save(['W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\eeg_matrix_sternberg_subj'], 'subj_data_sternberg_trials');
+    else
+        save(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/eeg_matrix_sternberg_subj'], 'subj_data_sternberg_trials');
     end
 end
 

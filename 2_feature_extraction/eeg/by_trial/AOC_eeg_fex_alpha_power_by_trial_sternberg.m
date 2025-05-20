@@ -103,7 +103,7 @@ for isub = 1:numel(subjects)
     dataAll.trialinfo
     % dataAll.trialOrder = ftb.trialOrder;
 
-    % Single-trial frequency analysis (3–30Hz)
+    % Single-trial frequency analysis (3�30Hz)
     cfg         = [];
     cfg.output  = 'pow';
     cfg.method  = 'mtmfft';
@@ -132,7 +132,7 @@ for isub = 1:numel(subjects)
         % average over occ channels, then take only alpha band
         spec = squeeze(mean(freqAll.powspctrm(t,occIdx,alphaIdx), 2 ));
 
-        % find peaks within 8–14Hz
+        % find peaks within 8�14Hz
         [pks, locs] = findpeaks(spec);
         if isempty(pks)
             IAF      = NaN;
@@ -147,12 +147,16 @@ for isub = 1:numel(subjects)
         eeg_data_sternberg_trials(end+1)= struct(...
             'ID',         sid, ...
             'Trial',      t, ...
-            'Condition',  freqAll.trialinfo(t)-20, ...  % 22→2, 24→4, 26→6
+            'Condition',  freqAll.trialinfo(t)-20, ...  % 222, 244, 266
             'AlphaPower', alphaPow, ...
             'IAF',        IAF );
     end
 end
 
 %% Save results
-save('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg_trials.mat', 'eeg_data_sternberg_trials');
+if ispc
+    save('W:\Students\Arne\AOC\data\features\eeg_matrix_sternberg_trials.mat', 'eeg_data_sternberg_trials');
+else
+    save('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg_trials.mat', 'eeg_data_sternberg_trials');
+end
 fprintf('AOC STERNBERG TRIAL-BY-TRIAL ALPHA POWER COMPUTED');

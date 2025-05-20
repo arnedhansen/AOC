@@ -66,7 +66,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 set(gca, 'FontSize', 25);
 title('1-back TFR', 'FontSize', 30);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_ga_1back.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_1back.png');
 
 % 2-back
 figure;
@@ -80,7 +80,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 title('2-back TFR', 'FontSize', 30);
 set(gca, 'FontSize', 25);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_ga_2back.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_2back.png');
 
 % 3-back
 figure;
@@ -94,7 +94,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 title('3-back TFR', 'FontSize', 30);
 set(gca, 'FontSize', 25);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_ga_3back.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_3back.png');
 
 %% Compute the difference between condition 3 and condition 1
 close all

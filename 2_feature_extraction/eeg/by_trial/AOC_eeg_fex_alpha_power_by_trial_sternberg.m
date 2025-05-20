@@ -103,7 +103,7 @@ for isub = 1:numel(subjects)
     dataAll.trialinfo
     % dataAll.trialOrder = ftb.trialOrder;
 
-    % Single-trial frequency analysis (3�30Hz)
+    % Single-trial frequency analysis (330Hz)
     cfg            = [];
     cfg.output     = 'pow';
     cfg.method     = 'mtmfft';
@@ -132,7 +132,7 @@ for isub = 1:numel(subjects)
         % average over occ channels, then take only alpha band
         spec = squeeze(mean(PowAll.powspctrm(t,occIdx,alphaIdx), 2));
 
-        % find peaks within 8�14Hz
+        % find peaks within 814Hz
         [pks, locs] = findpeaks(spec);
         if isempty(pks)
             IAF      = NaN;
@@ -143,6 +143,7 @@ for isub = 1:numel(subjects)
             IAF_range = find(freqs > (IAF-4) & freqs < (IAF+2));
             specIAF   = squeeze(mean(PowAll.powspctrm(t,occIdx,IAF_range), 2));
             powerIAF  = mean(specIAF(IAF_range));
+            disp(['Alpha Power at IAF: ' powerIAF ' at ' IAF_range ' Hz'])
         end
 
         % build struct entry

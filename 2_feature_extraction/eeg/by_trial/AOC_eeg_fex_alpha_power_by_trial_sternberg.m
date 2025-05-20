@@ -67,7 +67,7 @@ for isub = 1:numel(subjects)
         for t = 1:nTr
             for nTypes = 1:length(EEGepo.epoch(t).eventtype)
                 et = EEGepo.epoch(t).eventtype{nTypes};
-                disp(et)
+                % disp(et)
                 if strcmp(et, '22')|| strcmp(et, '24')|| strcmp(et, '26')
                     conds(t)= str2double(et);
                 end

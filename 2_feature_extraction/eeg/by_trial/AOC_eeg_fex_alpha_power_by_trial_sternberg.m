@@ -118,7 +118,7 @@ for isub = 1:numel(subjects)
     PowAll.trialinfo = dataAll.trialinfo;
 
     % Identify occipital channels
-    occIdx = find(contains(PowAll.label, 'O')& ~contains(PowAll.label, {'EOG'})| contains(PowAll.label, {'I'} ));
+    occIdx = find(contains(PowAll.label, 'O')& ~contains(PowAll.label, {'EOG'}) | contains(PowAll.label, {'I'} ));
 
     % Set up alpha band indices
     freqs      = PowAll.freq;
@@ -130,52 +130,33 @@ for isub = 1:numel(subjects)
     sid      = str2double(subj);
     for t = 1:nTrials
         % average over occ channels, then take only alpha band
-        spec = squeeze(mean(PowAll.powspctrm(t,occIdx,alphaIdx), 2 ));
+        spec = squeeze(mean(PowAll.powspctrm(t,occIdx,alphaIdx), 2));
 
         % find peaks within 8�14Hz
         [pks, locs] = findpeaks(spec);
         if isempty(pks)
             IAF      = NaN;
-            alphaPow = NaN;
+            powerIAF = NaN;
         else
             [~, imax] = max(pks);
-            IAF      = freqs(alphaIdx(locs(imax)));
-            alphaPow = pks(imax);
+            IAF       = freqs(alphaIdx(locs(imax)));
+            IAF_range = find(freqs > (IAF-4) & freqs < (IAF+2));
+            specIAF   = squeeze(mean(PowAll.powspctrm(t,occIdx,IAF_range), 2));
+            powerIAF  = mean(specIAF(IAF_range));
         end
-
-
-
-
-     % Calculate IAF for WM load 6
-        alphaPower6 = powspctrm6(alphaIndices);
-        [pks6,locs] = findpeaks(alphaPower6);
-        if isempty(pks6)
-            IAF6 = NaN;
-            IAF_range6 = NaN;
-            powerIAF6 = NaN;
-        else
-            [~, ind] = max(pks6);
-            IAF6 = powload6.freq(alphaIndices(locs(ind)));
-            IAF_range6 = find(powload6.freq > (IAF6-4) & powload6.freq < (IAF6+2));
-            powerIAF6 = mean(powspctrm6(IAF_range6));
-        end
-
-
-
-
 
         % build struct entry
         subj_data_sternberg_trials(end+1) = struct(...
             'ID',         sid, ...
             'Trial',      t, ...
             'Condition',  PowAll.trialinfo(t)-20, ...
-            'AlphaPower', alphaPow, ...
+            'AlphaPower', powerIAF, ...
             'IAF',        IAF );
         eeg_data_sternberg_trials(end+1) = struct(...
             'ID',         sid, ...
             'Trial',      t, ...
             'Condition',  PowAll.trialinfo(t)-20, ...
-            'AlphaPower', alphaPow, ...
+            'AlphaPower', powerIAF, ...
             'IAF',        IAF );
     end
     % Save subject results

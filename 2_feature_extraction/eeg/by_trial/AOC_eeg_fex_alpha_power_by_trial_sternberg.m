@@ -20,6 +20,7 @@ subjects = {folders.name};
 subjects = exclude_subjects(subjects, 'AOC');
 
 % prepare output
+subj_eeg_data_sternberg_trials = struct('ID',{},'Trial',{},'Condition',{},'AlphaPower',{},'IAF',{});
 eeg_data_sternberg_trials = struct('ID',{},'Trial',{},'Condition',{},'AlphaPower',{},'IAF',{});
 
 %% Loop over subjects
@@ -76,7 +77,7 @@ for isub = 1:numel(subjects)
         ftb.trialinfo = conds;
         % ftb.trialOrder = b*length(conds)-(length(conds)-1):b*length(conds);
 
-        dataBlocks{end+1} = ftb;  %#ok<AGROW>
+        dataBlocks{end+1} = ftb;
     end
 
     % if no epoched blocks, skip
@@ -100,7 +101,6 @@ for isub = 1:numel(subjects)
     cfg.reref   = 'yes';
     cfg.refchannel = 'all';
     dataAll = ft_preprocessing(cfg, dataAll);
-    dataAll.trialinfo
     % dataAll.trialOrder = ftb.trialOrder;
 
     % Single-trial frequency analysis (330Hz)
@@ -142,12 +142,12 @@ for isub = 1:numel(subjects)
             IAF       = freqs(alphaIdx(locs(imax)));
             IAF_range = find(freqs > (IAF-4) & freqs < (IAF+2));
             specIAF   = squeeze(mean(PowAll.powspctrm(t,occIdx,IAF_range), 2));
-            powerIAF  = mean(specIAF(IAF_range));
-            disp(['Alpha Power at IAF: ' powerIAF ' at ' IAF_range ' Hz'])
+            powerIAF  = mean(specIAF);
+            disp(['Alpha Power ' num2str(powerIAF) ' at IAF range ' num2str(freqs(IAF_range(1))) ' to ' num2str(freqs(IAF_range(end))) ' Hz'])
         end
 
         % build struct entry
-        subj_data_sternberg_trials(end+1) = struct(...
+        subj_eeg_data_sternberg_trials(end+1) = struct(...
             'ID',         sid, ...
             'Trial',      t, ...
             'Condition',  PowAll.trialinfo(t)-20, ...
@@ -162,10 +162,10 @@ for isub = 1:numel(subjects)
     end
     % Save subject results
     if ispc == 1
-        save(['W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\eeg_matrix_sternberg_subj_trials.mat'], 'subj_data_sternberg_trials');
+        save(['W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\eeg_matrix_sternberg_subj_trials.mat'], 'subj_eeg_data_sternberg_trials');
         save(['W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\power_nback_trials.mat'], 'PowAll');
     else
-        save(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/eeg_matrix_sternberg_subj_trials.mat'], 'subj_data_sternberg_trials');
+        save(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/eeg_matrix_sternberg_subj_trials.mat'], 'subj_eeg_data_sternberg_trials');
         save(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/power_nback_trials.mat'], 'PowAll');
     end
 end

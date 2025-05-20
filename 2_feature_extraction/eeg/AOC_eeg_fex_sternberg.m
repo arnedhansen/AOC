@@ -13,10 +13,10 @@ startup
 [subjects, path, ~ , ~] = setup('AOC');
 
 for subj = 1:length(subjects)
-    try
-        clc
-        disp(['Processing Retention POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
+    clc
+    disp(['Processing Retention POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
 
+    try
         % Load data
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
@@ -68,10 +68,10 @@ startup
 [subjects, path, ~ , ~] = setup('AOC');
 
 for subj = 1:length(subjects)
-    try
-        clc
-        disp(['Processing Baseline POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
+    clc
+    disp(['Processing Baseline POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
 
+    try
         % Load data
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
@@ -196,10 +196,10 @@ IAF_results = struct();
 eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {}, 'Lateralization', {});
 
 for subj = 1:length(subjects)
-    try
-        clc
-        disp(['Processing Alpha Power, IAF and Lateralization for Subject AOC ', num2str(subjects{subj})])
+    clc
+    disp(['Processing Alpha Power, IAF and Lateralization for Subject AOC ', num2str(subjects{subj})])
 
+    try
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath);
         load('power_stern.mat');
@@ -343,16 +343,14 @@ startup
 
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
+    clc
+    disp(['Processing POWER TRIAL-BY-TRIAL for Subject AOC ', num2str(subjects{subj})])
+
     try
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all
         load dataEEG_sternberg
-
-        %% Identify indices of trials belonging to conditions
-        ind2=find(dataEEG.trialinfo == 22);
-        ind4=find(dataEEG.trialinfo == 24);
-        ind6=find(dataEEG.trialinfo == 26);
 
         %% Frequency analysis
         % Identify indices of trials belonging to conditions
@@ -400,10 +398,10 @@ startup
 
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1 : length(subjects)
-    try
-        clc
-        disp(['Processing TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
+    clc
+    disp(['Processing TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
 
+    try
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all

@@ -159,7 +159,7 @@ electrodeSets = struct( ...
     %);
 
 % Loop over data types and electrode sets
-for d = 4%1:numel(datasets)
+for d = 1%%%%:numel(datasets)
     D = datasets{d};
     for fn = fieldnames(electrodeSets)'
         close all
@@ -176,7 +176,7 @@ for d = 4%1:numel(datasets)
         figure('Position',[0,0,800,1600],'Color','w');
         cfg.channel   = elecChans;
         cfg.figure    = 'gcf';
-        cfg.linewidth = 1;
+        cfg.linewidth = 3;
 
         ft_singleplotER(cfg, gapow2, gapow4, gapow6);
         hold on;
@@ -209,8 +209,9 @@ for d = 4%1:numel(datasets)
         end
 
         set(gca,'FontSize',20);
+        box on
         %ylim([-0.175 0.175])
-        ylim([0 2.6])
+        ylim([0 2.75])
         if d == 4
             ylim([-0.25 0.25])
         end
@@ -220,8 +221,11 @@ for d = 4%1:numel(datasets)
         legend([eb2.mainLine, eb4.mainLine, eb6.mainLine], ...
             {'WM load 2','WM load 4','WM load 6'}, ...
             'FontName','Arial','FontSize',20);
-        title(sprintf('Sternberg Power Spectrum — %s — %s', D.name, elecName), ...
-            'FontSize',30);
+        if strcmp(D.name, 'raw') & strcmp(elecName, 'occ_cluster')
+            title('Sternberg Power Spectrum', 'FontSize', 30);
+        else
+        title(sprintf('Sternberg Power Spectrum — %s — %s', D.name, elecName), 'FontSize',30);
+        end
 
         %–– save out with a descriptive filename ––
         outfn = sprintf('AOC_powspctrm_sternberg_%s_%s.png', D.name, elecName);

@@ -74,9 +74,9 @@ for i = 1:length(analysis_conditions)
                 yLabel = 'Power [\muV^2/Hz]';
                 figTitle = 'N-back Power Spectrum';
                 if strcmp(electrodes, 'occ_cluster')
-                    savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_nback_powspctrm_raw.png';
+                    savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_powspctrm_nback_raw.png';
                 elseif strcmp(electrodes, 'POz')
-                    savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_nback_powspctrm_raw_elecPOz.png';
+                    savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_powspctrm_nback_raw_elecPOz.png';
                 end
             % case 'bl'
             %     gapow1 = gapow1_bl;
@@ -104,7 +104,7 @@ for i = 1:length(analysis_conditions)
             cfg.channel = 'POz';
         end
         cfg.figure = 'gcf';
-        cfg.linewidth = 1;
+        cfg.linewidth = 3;
         ft_singleplotER(cfg, gapow1, gapow2, gapow3);
         hold on;
 

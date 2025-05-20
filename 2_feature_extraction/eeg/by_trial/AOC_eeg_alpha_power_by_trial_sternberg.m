@@ -1,108 +1,158 @@
 %% AOC Alpha Power Sternberg (trial-by-trial)
+% Outputs: eeg_data_sternberg_trials (struct array)
 
-%% Setup
-clear
-addpath('/Users/Arne/Documents/matlabtools/eeglab2024.0');
-eeglab
-clc
-close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+%% Startup
+startup;           % initialise paths, EEGLAB, etc.
+clear; clc; close all;
+addEEGLab;         % make sure pop_epoch etc. are on the path
 
-%% Define channels
-subj = 1;
-datapath = strcat(path, subjects{subj}, '/eeg');
-cd(datapath);
-load('power_stern_trials.mat');
-% Occipital channels
-occ_channels = {};
-for i = 1:length(powload2_trials.label)
-    label = powload2_trials.label{i};
-    if contains(label, {'O'})
-        occ_channels{end+1} = label;
-    end
+%% Define paths & subjects
+if ispc
+    basepath = 'W:\Students\Arne\AOC\data\merged\';
+else
+    basepath = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
 end
-channels = occ_channels;
 
-%% Load data and calculate alpha power and IAF
-alphaRange = [8 14];
-powerIAF2 = [];
-powerIAF4 = [];
-powerIAF6 = [];
-IAF_results = struct();
+% find subject folders
+dirs    = dir(basepath);
+folders = dirs([dirs.isdir] & ~ismember({dirs.name},{'.','..'}));
+subjects = {folders.name};
+subjects = exclude_subjects(subjects, 'AOC');
 
-for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj}, '/eeg');
-    cd(datapath);
-    load('power_stern_trials.mat');
-    channelIdx = find(ismember(powload2_trials.label, channels));
-    % Find the indices corresponding to the alpha range
-    alphaIndices = find(powload2_trials.freq >= alphaRange(1) & powload2_trials.freq <= alphaRange(2));
+% prepare output
+eeg_data_sternberg_trials = struct('ID',{},'Trial',{},'Condition',{},'AlphaPower',{},'IAF',{});
 
-    %% Initialize arrays
-    subject_id = [];
-    trial_num = [];
-    num_trials = length(powload2_trials.trialinfo)+length(powload4_trials.trialinfo)+length(powload6_trials.trialinfo);
-    condition = [];
-    alpha = [];
-    IAF = [];
+%% Loop over subjects
+for isub = 1:numel(subjects)
+    clc
+    subj = subjects{isub};
+    fprintf('Subject %s (%d/%d)\n', subj, isub, numel(subjects));
 
-    %% Extract power spectra
-    for trl = 1:num_trials
-        if trl <= length(powload2_trials.trialinfo)
-            %% Extract power spectra for selected channels and calculate IAF for WM load 2
-            powspctrm2 = powload2_trials.powspctrm(trl, channelIdx, :);
-            alphaPower2 = powspctrm2(alphaIndices);
-            [~, maxIndex2] = max(alphaPower2);
-            IAFsub = powload2_trials.freq(alphaIndices(maxIndex2));
-            cond = 2;
-            alphaPower = alphaPower2(maxIndex2);
-        elseif trl <= length(powload4_trials.trialinfo)+length(powload2_trials.trialinfo)
-            %% Extract power spectra for selected channels and calculate IAF for WM load 4
-            powspctrm4 = powload4_trials.powspctrm(trl-length(powload2_trials.trialinfo), channelIdx, :);
-            alphaPower4 = powspctrm4(alphaIndices);
-            [~, maxIndex4] = max(alphaPower4);
-            IAFsub = powload4_trials.freq(alphaIndices(maxIndex4));
-            cond = 4;
-            alphaPower = alphaPower4(maxIndex4);
-        else 
-            %% Extract power spectra for selected channels and calculate IAF for WM load 6
-            powspctrm6 = powload6_trials.powspctrm(trl-(length(powload4_trials.trialinfo)+length(powload2_trials.trialinfo)), channelIdx, :);
-            alphaPower6 = powspctrm6(alphaIndices);
-            [~, maxIndex6] = max(alphaPower6);
-            IAFsub = powload6_trials.freq(alphaIndices(maxIndex6));
-            cond = 6;
-            alphaPower = alphaPower6(maxIndex6);
+    % Load all blocks
+    alleeg = cell(1,6);
+    for block = 1:6
+        fname = fullfile(basepath, subj, sprintf('%s_EEG_ET_Sternberg_block%d_merged.mat', subj, block));
+        if exist(fname,'file')
+            tmp = load(fname);
+            alleeg{block} = tmp.EEG;
+            fprintf('Subject %s: Block %.1d loaded \n', subj, block)
+        else
+            warning('  Block %d missing, skipping', block);
+        end
+    end
+    alleeg = alleeg(~cellfun(@isempty,alleeg));
+    if isempty(alleeg)
+        warning('  No data for subject %s, skipping\n', subj);
+        continue;
+    end
+
+    % Epoch all Sternberg stimuli in each block
+    epoch_window = [-2 3.5];  % seconds
+    dataBlocks = {};
+    for b = 1:numel(alleeg)
+        EEGb = alleeg{b};
+        try
+            EEGepo = pop_epoch(EEGb, {'22','24','26'}, epoch_window, 'epochinfo','yes' );
+        catch ME
+            warning('  Error epoching block %d: %s', b, ME.message);
+            continue;
         end
 
-        %% Append data for this trial
-        subject_id = [subject_id; str2num(subjects{subj})];
-        trial_num = [trial_num; trl];
-        condition = [condition; cond];
-        alpha = [alpha; alphaPower];
-        IAF = [IAF; IAFsub];
+        % convert to FieldTrip raw data structure
+        ftb = eeglab2fieldtrip(EEGepo, 'raw', 'none' );
 
-        %% Create a structure array for this subject
-        subj_data_eeg_trial = struct('ID', num2cell(subject_id), 'Trial', num2cell(trial_num), 'Condition', num2cell(condition), 'AlphaPower', num2cell(alpha), 'IAF', num2cell(IAF));
+        % extract trialinfo = trigger code for each epoch, in order
+        nTr = EEGepo.trials;
+        conds = nan(nTr,1);
+        for t = 1:nTr
+            for nTypes = 1:length(EEGepo.epoch(t).eventtype)
+                et = EEGepo.epoch(t).eventtype{nTypes};
+                disp(et)
+                if strcmp(et, '22')|| strcmp(et, '24')|| strcmp(et, '26')
+                    conds(t)= str2double(et);
+                end
+            end
+        end
+        ftb.trialinfo = conds;
+        % ftb.trialOrder = b*length(conds)-(length(conds)-1):b*length(conds);
 
-        %% Calculate subject-specific AlphaPower by condition
-        l2 = subj_data_eeg_trial([subj_data_eeg_trial.Condition] == 2);
-        l2alphapow = mean([l2.AlphaPower], 'omitnan');
-        l4 = subj_data_eeg_trial([subj_data_eeg_trial.Condition] == 4);
-        l4alphapow = mean([l4.AlphaPower], 'omitnan');
-        l6 = subj_data_eeg_trial([subj_data_eeg_trial.Condition] == 6);
-        l6alphapow = mean([l6.AlphaPower], 'omitnan');
+        dataBlocks{end+1} = ftb;  %#ok<AGROW>
     end
 
-    %% Save
-    savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/eeg/');
-    mkdir(savepath)
-    cd(savepath)
-    save eeg_matrix_sternberg_subj_trial subj_data_eeg_trial
-    save alpha_power_sternberg_trial l2alphapow l4alphapow l6alphapow
-    clc
-    disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' done.'])
+    % if no epoched blocks, skip
+    if isempty(dataBlocks)
+        warning('  No epochs for subject %s, skipping\n', subj);
+        continue;
+    end
 
+    % Append blocks so trials remain in order
+    cfg        = [];
+    cfg.keepsampleinfo = 'yes';
+    dataAll    = ft_appenddata(cfg, dataBlocks{:});
+
+    % EEG data for Sternberg retention interval
+    cfg = [];
+    cfg.latency = [1 2]; % Time window for Sternberg task
+    dataAll = ft_selectdata(cfg, dataAll); % EEG data
+
+    % Re-reference data to average or common reference
+    cfg = [];
+    cfg.reref   = 'yes';
+    cfg.refchannel = 'all';
+    dataAll = ft_preprocessing(cfg, dataAll);
+    dataAll.trialinfo
+    % dataAll.trialOrder = ftb.trialOrder;
+
+    % Single-trial frequency analysis (3–30Hz)
+    cfg         = [];
+    cfg.output  = 'pow';
+    cfg.method  = 'mtmfft';
+    cfg.taper   = 'dpss';
+    cfg.tapsmofrq = 1;
+    cfg.foilim  = [3 30];
+    cfg.pad     = 5;
+    cfg.keeptrials = 'yes';
+    freqAll     = ft_freqanalysis(cfg, dataAll);
+
+    % carry over trialinfo
+    freqAll.trialinfo = dataAll.trialinfo;
+
+    % Identify occipital channels
+    occIdx = find(contains(freqAll.label, 'O')& ~contains(freqAll.label, {'EOG'})| contains(freqAll.label, {'I'} ));
+
+    % Set up alpha band indices
+    freqs      = freqAll.freq;
+    alphaRange = [8 14];
+    alphaIdx   = find(freqs>=alphaRange(1)& freqs<=alphaRange(2));
+
+    % Loop through trials and extract IAF & alpha power
+    nTrials = size(freqAll.powspctrm,1);
+    sid      = str2double(subj);
+    for t = 1:nTrials
+        % average over occ channels, then take only alpha band
+        spec = squeeze(mean(freqAll.powspctrm(t,occIdx,alphaIdx), 2 ));
+
+        % find peaks within 8–14Hz
+        [pks, locs] = findpeaks(spec);
+        if isempty(pks)
+            IAF      = NaN;
+            alphaPow = NaN;
+        else
+            [~, imax] = max(pks);
+            IAF      = freqs(alphaIdx(locs(imax)));
+            alphaPow = pks(imax);
+        end
+
+        % build struct entry
+        eeg_data_sternberg_trials(end+1)= struct(...
+            'ID',         sid, ...
+            'Trial',      t, ...
+            'Condition',  freqAll.trialinfo(t)-20, ...  % 22→2, 24→4, 26→6
+            'AlphaPower', alphaPow, ...
+            'IAF',        IAF );
+    end
 end
+
+%% Save results
+save('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg_trials.mat', 'eeg_data_sternberg_trials');
+fprintf('AOC STERNBERG TRIAL-BY-TRIAL ALPHA POWER COMPUTED');

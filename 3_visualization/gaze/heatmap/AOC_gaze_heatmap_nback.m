@@ -92,7 +92,7 @@ for subj = 1:length(subjects)
         tmp(1,:,:)      = squeeze(smoothed_data_pixels(subj,condcounter, :, :));
         freq.powspctrm  = tmp;
 
-               if condition     == 1
+        if condition     == 1
             l1g{subj}    = freq;
         elseif condition == 2
             l2g{subj}    = freq;
@@ -150,6 +150,7 @@ stat.stat = fillmissing(stat.stat, 'linear', 2);  % Linear interpolation along t
 
 %% Plot HEATMAPS (1-back, 2-back & 3-back)
 close all;
+overallFontSize = 40;
 
 % Common configuration
 centerX = 800 / 2;
@@ -177,10 +178,10 @@ xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(mycolormap);
 cb = colorbar;
-ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', 25); 
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'Fontsize', 25);
+set(gca, 'Fontsize', overallFontSize);
 title('1-back Heatmap', 'FontSize', 30)
 
 % Save
@@ -205,10 +206,10 @@ xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(mycolormap);
 cb = colorbar;
-ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', 25); 
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'Fontsize', 25);
+set(gca, 'Fontsize', overallFontSize);
 title('2-back Heatmap', 'FontSize', 30)
 
 % Save
@@ -233,10 +234,10 @@ xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(mycolormap);
 cb = colorbar;
-ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', 25); 
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'Fontsize', 25);
+set(gca, 'Fontsize', overallFontSize);
 title('3-back Heatmap', 'FontSize', 30)
 
 % Save
@@ -266,49 +267,49 @@ xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(mycolormap);
 cb = colorbar;
-ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', 25); 
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'Fontsize', 25);
+set(gca, 'FontSize', overallFontSize);
 title('N-back Difference Heatmap (3-back minus 1-back)', 'FontSize', 30)
 
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_diff.png');
 
 %% Plot differences heatmap INDIVIDUAL subjects (3-back - 1-back)
-for subj = 1:length(subjects)
-    close all;
-    diff = l3g{subj};
-    diff = l3g{subj}.powspctrm - l1g{subj}.powspctrm;
-
-    maxval = max(diff(:));
-    Clim = [-maxval maxval];
-
-    freq.powspctrm(1,:,:) = squeeze(diff)';
-    freq.time = x_grid_pixels(1:end-1);
-    freq.freq = y_grid_pixels(1:end-1);
-    freq.label = {'et'};
-    freq.dimord = 'chan_freq_time';
-
-    figure;
-    set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
-    cfg = [];
-    cfg.figure = 'gcf';
-    ft_singleplotTFR(cfg, freq);
-    clim(Clim);
-    xlim([0 800]);
-    ylim([0 600]);
-    xlabel('Screen Width [px]');
-    ylabel('Screen Height [px]');
-    colormap(mycolormap);
-    cb = colorbar;
-    ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', 25);
-    hold on
-    plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-    set(gca, 'Fontsize', 25);
-    title(['N-back Difference Heatmap Subject ', subjects{subj}, ' (3-back minus 1-back)'], 'FontSize', 30)
-
-    saveas(gcf, ['/Volumes/methlab/Students/Arne/AOC/figures/gaze/heatmap/subjects/AOC_gaze_heatmap_nback_diff_subj', subjects{subj}, '.png']);
-end
+% for subj = 1:length(subjects)
+%     close all;
+%     diff = l3g{subj};
+%     diff = l3g{subj}.powspctrm - l1g{subj}.powspctrm;
+% 
+%     maxval = max(diff(:));
+%     Clim = [-maxval maxval];
+% 
+%     freq.powspctrm(1,:,:) = squeeze(diff)';
+%     freq.time = x_grid_pixels(1:end-1);
+%     freq.freq = y_grid_pixels(1:end-1);
+%     freq.label = {'et'};
+%     freq.dimord = 'chan_freq_time';
+% 
+%     figure;
+%     set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
+%     cfg = [];
+%     cfg.figure = 'gcf';
+%     ft_singleplotTFR(cfg, freq);
+%     clim(Clim);
+%     xlim([0 800]);
+%     ylim([0 600]);
+%     xlabel('Screen Width [px]');
+%     ylabel('Screen Height [px]');
+%     colormap(mycolormap);
+%     cb = colorbar;
+%     ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
+%     hold on
+%     plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+%     set(gca, 'FontSize', overallFontSize);
+%     title(['N-back Difference Heatmap Subject ', subjects{subj}, ' (3-back minus 1-back)'], 'FontSize', 30)
+% 
+%     saveas(gcf, ['/Volumes/methlab/Students/Arne/AOC/figures/gaze/heatmap/subjects/AOC_gaze_heatmap_nback_diff_subj', subjects{subj}, '.png']);
+% end
 
 %% Plot t-value stats
 close all
@@ -336,7 +337,7 @@ cb = colorbar;
 ylabel(cb, 'Effect Size [Cohen''s d]', 'FontSize', 32); % Label the colorbar
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'Fontsize', 25);
+set(gca, 'FontSize', overallFontSize);
 title('N-back t-value Stats', 'FontSize', 30)
 
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_tvalues.png');
@@ -400,7 +401,7 @@ cb = colorbar;
 ylabel(cb, 'Effect Size [Cohen''s d]', 'FontSize', 32); % Label the colorbar
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'Fontsize', 25);
+set(gca, 'FontSize', overallFontSize);
 title('N-back CBPT t-value Stats', 'FontSize', 30)
 
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_cbpt.png');

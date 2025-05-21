@@ -10,9 +10,9 @@ for subj = 1:length(subjects)
     load([datapath, filesep 'dataET_sternberg'])
 
     %% Segment data per condition
-    ind2 = find(dataet.trialinfo == 52);
-    ind4 = find(dataet.trialinfo == 54);
-    ind6 = find(dataet.trialinfo == 56);
+    ind2 = find(dataet.trialinfo == 22);
+    ind4 = find(dataet.trialinfo == 24);
+    ind6 = find(dataet.trialinfo == 2h6);
     cfg = [];
     cfg.latency = [1 2];
     cfg.trials = ind2;
@@ -150,6 +150,7 @@ stat.stat = fillmissing(stat.stat, 'linear', 2);  % Linear interpolation along t
 
 %% Plot HEATMAPS (WM load 2, WM load 4 & WM load 6)
 close all;
+overallFontSize = 40;
 
 % Common configuration
 centerX = 800 / 2;
@@ -275,40 +276,40 @@ title('Sternberg Difference Heatmap (WM load 6 minus WM load 2)', 'FontSize', 30
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_diff.png');
 
 %% Plot differences heatmap INDIVIDUAL subjects (WM load 6 - WM load 2)
-for subj = 1:length(subjects)
-    close all;
-    diff = l6g{subj};
-    diff = l6g{subj}.powspctrm - l2g{subj}.powspctrm;
-
-    maxval = max(diff(:));
-    Clim = [-maxval maxval];
-
-    freq.powspctrm(1,:,:) = squeeze(diff)';
-    freq.time = x_grid_pixels(1:end-1);
-    freq.freq = y_grid_pixels(1:end-1);
-    freq.label = {'et'};
-    freq.dimord = 'chan_freq_time';
-
-    figure;
-    set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
-    cfg = [];
-    cfg.figure = 'gcf';
-    ft_singleplotTFR(cfg, freq);
-    clim(Clim);
-    xlim([0 800]);
-    ylim([0 600]);
-    xlabel('Screen Width [px]');
-    ylabel('Screen Height [px]');
-    colormap(mycolormap);
-    cb = colorbar;
-    ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', 25);
-    hold on
-    plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-    set(gca, 'Fontsize', 25);
-    title(['Sternberg Difference Heatmap Subject ', subjects{subj}, ' (WM load 6 minus WM load 2)'], 'FontSize', 30)
-
-    saveas(gcf, ['/Volumes/methlab/Students/Arne/AOC/figures/gaze/heatmap/subjects/AOC_gaze_heatmap_sternberg_diff_subj', subjects{subj}, '.png']);
-end
+% for subj = 1:length(subjects)
+%     close all;
+%     diff = l6g{subj};
+%     diff = l6g{subj}.powspctrm - l2g{subj}.powspctrm;
+% 
+%     maxval = max(diff(:));
+%     Clim = [-maxval maxval];
+% 
+%     freq.powspctrm(1,:,:) = squeeze(diff)';
+%     freq.time = x_grid_pixels(1:end-1);
+%     freq.freq = y_grid_pixels(1:end-1);
+%     freq.label = {'et'};
+%     freq.dimord = 'chan_freq_time';
+% 
+%     figure;
+%     set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
+%     cfg = [];
+%     cfg.figure = 'gcf';
+%     ft_singleplotTFR(cfg, freq);
+%     clim(Clim);
+%     xlim([0 800]);
+%     ylim([0 600]);
+%     xlabel('Screen Width [px]');
+%     ylabel('Screen Height [px]');
+%     colormap(mycolormap);
+%     cb = colorbar;
+%     ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', 25);
+%     hold on
+%     plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+%     set(gca, 'Fontsize', 25);
+%     title(['Sternberg Difference Heatmap Subject ', subjects{subj}, ' (WM load 6 minus WM load 2)'], 'FontSize', 30)
+% 
+%     saveas(gcf, ['/Volumes/methlab/Students/Arne/AOC/figures/gaze/heatmap/subjects/AOC_gaze_heatmap_sternberg_diff_subj', subjects{subj}, '.png']);
+% end
 
 %% Plot t-value stats
 close all

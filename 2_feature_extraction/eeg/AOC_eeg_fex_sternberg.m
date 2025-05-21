@@ -85,7 +85,7 @@ for subj = 1:length(subjects)
         % Frequency analysis
         % Select data
         cfg = [];                      % Empty configuration
-        cfg.latency = [-1.5 -0.5];     % Segmentation for retention interval
+        cfg.latency = [-.5 0];     % Segmentation for retention interval
         datalong = ft_selectdata(cfg, dataTFR);
 
         % Analysis settings
@@ -341,7 +341,7 @@ startup
 [subjects, path, ~ , ~] = setup('AOC');
 
 % Read data, segment and convert to FieldTrip data structure
-for subj = 1 : length(subjects)
+for subj = 1 : 10 %%%%% length(subjects)
     clc
     disp(['Processing TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
 
@@ -426,7 +426,7 @@ for subj = 1 : length(subjects)
         % Baselined TFR
         % Raw powspctrm baselined
         cfg                              = [];
-        cfg.baseline                     = [-1.5 -0.5];
+        cfg.baseline                     = [-.5 0];
         cfg.baselinetype                 = 'db';
         tfr2_bl                          = ft_freqbaseline(cfg, tfr2);
         tfr4_bl                          = ft_freqbaseline(cfg, tfr4);
@@ -434,7 +434,7 @@ for subj = 1 : length(subjects)
 
         % FOOOFed powspctrm baselined
         cfg                              = [];
-        cfg.baseline                     = [-1.5 -0.5];
+        cfg.baseline                     = [-.5 0];
         cfg.baselinetype                 = 'absolute';   % FOOOF already sets log scale, so no 'dB' here
         tfr2_fooof_bl                    = ft_freqbaseline(cfg, tfr2_fooof);
         tfr4_fooof_bl                    = ft_freqbaseline(cfg, tfr4_fooof);

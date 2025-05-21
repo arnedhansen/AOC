@@ -99,7 +99,7 @@ ft_topoplotER(cfg, gapow2);
 title('');
 cb = colorbar;
 set(cb, 'FontSize', 20);
-ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
+ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
 title('WM load 2', 'FontSize', 40);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_sternberg_topo2_nobaseline.png');
 
@@ -110,7 +110,7 @@ ft_topoplotER(cfg, gapow4);
 title('');
 cb = colorbar;
 set(cb, 'FontSize', 20);
-ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
+ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
 title('WM load 4', 'FontSize', 40);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_sternberg_topo4_nobaseline.png');
 
@@ -121,7 +121,7 @@ ft_topoplotER(cfg, gapow6);
 title('');
 cb = colorbar;
 set(cb, 'FontSize', 20);
-ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
+ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
 title('WM load 6', 'FontSize', 40);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_alpha_power_sternberg_topo6_nobaseline.png');
 
@@ -219,7 +219,7 @@ for subj = 1:length(subjects)
     title(['Sub ', num2str(subjectID), ' WM load 2'], 'FontSize', 40);
     cb = colorbar;
     set(cb, 'FontSize', 20);
-    ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
+    ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
     saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_sternberg_topo_WM2_%s_nobaseline.png', subjectID)));
     
     % 2-back
@@ -229,7 +229,7 @@ for subj = 1:length(subjects)
     title(['Sub ', num2str(subjectID), ' WM load 4'], 'FontSize', 40);
     cb = colorbar;
     set(cb, 'FontSize', 20);
-    ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
+    ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
     saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_sternberg_topo_WM4_%s_nobaseline.png', subjectID)));
     
     % 3-back
@@ -239,7 +239,7 @@ for subj = 1:length(subjects)
     title(['Sub ', num2str(subjectID), ' WM load 6'], 'FontSize', 40);
     cb = colorbar;
     set(cb, 'FontSize', 20);
-    ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
+    ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
     saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_sternberg_topo_WM6_%s_nobaseline.png', subjectID)));
 
     % Difference topo
@@ -271,6 +271,6 @@ for subj = 1:length(subjects)
     title(['Sub ', num2str(subjectID), ' Difference'], 'FontSize', 40);
     cb = colorbar;
     set(cb, 'FontSize', 20);
-    ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
+    ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
     saveas(gcf, fullfile(outFolder, sprintf('AOC_alpha_power_sternberg_topo_diff_%s_nobaseline.png', subjectID))); 
 end

@@ -34,17 +34,21 @@ channels = occ_channels;
 
 %% Plot TFR for each individual condition
 close all
+fontSize = 40;
 
 % Define the common configuration
 cfg = [];
 cfg.channel = channels; % specify the channels to include
 cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
-cfg.xlim = [-.5 2]; % Time axis limits in secon
-cfg.ylim = [4 20];
-% load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
+%cfg.xlim = [-.5 2]; % Time axis limits in secon
+cfg.ylim = [6 20];
 cfg.layout = layANThead; % your specific layout
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
+
+% Optional: baseline
+cfg.baseline = [-.5 0]
+cfg.baselinetype = 'db';
 
 % Find maximum deviation across conditions
 [~, channel_idx] = ismember(channels, gatfr1.label);
@@ -64,7 +68,7 @@ colorbar;
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
-set(gca, 'FontSize', 25);
+set(gca, 'FontSize', fontSize);
 title('1-back TFR', 'FontSize', 30);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_1back.png');
 
@@ -79,7 +83,7 @@ xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 title('2-back TFR', 'FontSize', 30);
-set(gca, 'FontSize', 25);
+set(gca, 'FontSize', fontSize);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_2back.png');
 
 % 3-back
@@ -93,7 +97,7 @@ xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 title('3-back TFR', 'FontSize', 30);
-set(gca, 'FontSize', 25);
+set(gca, 'FontSize', fontSize);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_3back.png');
 
 %% Compute the difference between condition 3 and condition 1
@@ -110,7 +114,7 @@ cfg.channel = channels; % specify the channels to include
 cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
 cfg.xlim = [-.5 2]; % Time axis limits in secon
-cfg.ylim = [4 20];
+cfg.ylim = [6 20];
 load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
 cfg.layout = layANThead; % your specific layout
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
@@ -132,10 +136,10 @@ line([0 0], [2 2], 'LineWidth', 5, 'LineStyle', '-', 'Color', 'r');
 %line(14, 'LineWidth', 5, 'LineStyle', '-', 'Color', 'r');
 xlabel('Time [ms]');
 ylabel('Frequency [Hz]');
-ylim([4 20]);
+ylim([6 20]);
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 title('N-back TFR Difference (3-back minus 1-back)', 'FontName', 'Arial', 'FontSize', 30);
-set(gca, 'FontSize', 25);
+set(gca, 'FontSize', fontSize);
 
 % Save the figure
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_nback_diff.png');

@@ -14,6 +14,9 @@ startup
 [subjects, path, ~ , ~] = setup('AOC');
 
 for subj = 1:length(subjects)
+    clc
+    disp(['Processing POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
+
     try
         % Load data
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
@@ -109,6 +112,9 @@ IAF_results = struct();
 eeg_data_nback = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {}, 'Lateralization', {});
 
 for subj = 1:length(subjects)
+    clc
+    disp(['Processing Alpha Power, IAF and Lateralization for Subject AOC ', num2str(subjects{subj})])
+
     try
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath);
@@ -338,6 +344,9 @@ startup
 
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
+    clc
+    disp(['Processing TFR for Subject AOC ', num2str(subjects{subj})])
+
     try
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)

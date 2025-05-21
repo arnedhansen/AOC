@@ -41,14 +41,10 @@ cfg = [];
 cfg.channel = channels; % specify the channels to include
 cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
-%cfg.xlim = [-.5 2]; % Time axis limits in secon
-cfg.ylim = [6 20];
+cfg.xlim = [-.5 2]; % Time axis limits in secon
+cfg.ylim = [7 20];
 cfg.layout = layANThead; % your specific layout
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
-
-% Optional: baseline
-cfg.baseline = [-.5 0]
-cfg.baselinetype = 'db';
 
 % Find maximum deviation across conditions
 [~, channel_idx] = ismember(channels, gatfr1.label);
@@ -64,8 +60,10 @@ set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr1);
 colormap(color_map);
 set(gca, 'CLim', clim); 
-colorbar;
-xlabel('Time [ms]');
+cb = colorbar;
+%ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
+xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
@@ -78,8 +76,10 @@ set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr2);
 colormap(color_map);
 set(gca, 'CLim', clim); 
-colorbar;
-xlabel('Time [ms]');
+cb = colorbar;
+%ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
+xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 title('2-back TFR', 'FontSize', 30);
@@ -92,8 +92,10 @@ set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr3);
 colormap(color_map);
 set(gca, 'CLim', clim); 
-colorbar;
-xlabel('Time [ms]');
+cb = colorbar;
+%ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
+xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 title('3-back TFR', 'FontSize', 30);
@@ -114,7 +116,7 @@ cfg.channel = channels; % specify the channels to include
 cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
 cfg.xlim = [-.5 2]; % Time axis limits in secon
-cfg.ylim = [6 20];
+cfg.ylim = [7 20];
 load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
 cfg.layout = layANThead; % your specific layout
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
@@ -131,10 +133,12 @@ set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
 ft_singleplotTFR(cfg, diff);
 colormap(color_map);
 set(gca, 'CLim', clim); 
-colorbar;
+cb = colorbar;
+%ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 line([0 0], [2 2], 'LineWidth', 5, 'LineStyle', '-', 'Color', 'r');
 %line(14, 'LineWidth', 5, 'LineStyle', '-', 'Color', 'r');
-xlabel('Time [ms]');
+xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 ylim([6 20]);
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);

@@ -178,10 +178,10 @@ xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(mycolormap);
 cb = colorbar;
-ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', 25);
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'Fontsize', 25);
+set(gca, 'FontSize', overallFontSize);
 title('WM load 2 Heatmap', 'FontSize', 30)
 
 % Save
@@ -206,10 +206,10 @@ xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(mycolormap);
 cb = colorbar;
-ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', 25);
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'Fontsize', 25);
+set(gca, 'FontSize', overallFontSize);
 title('WM load 4 Heatmap', 'FontSize', 30)
 
 % Save
@@ -234,10 +234,10 @@ xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(mycolormap);
 cb = colorbar;
-ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', 25);
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'Fontsize', 25);
+set(gca, 'FontSize', overallFontSize);
 title('WM load 6 Heatmap', 'FontSize', 30)
 
 % Save
@@ -267,10 +267,10 @@ xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(mycolormap);
 cb = colorbar;
-ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', 25);
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'Fontsize', 25);
+set(gca, 'FontSize', overallFontSize);
 title('Sternberg Difference Heatmap (WM load 6 minus WM load 2)', 'FontSize', 30)
 
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_diff.png');
@@ -302,10 +302,10 @@ saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_he
 %     ylabel('Screen Height [px]');
 %     colormap(mycolormap);
 %     cb = colorbar;
-%     ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', 25);
+%     ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 %     hold on
 %     plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-%     set(gca, 'Fontsize', 25);
+%     set(gca, 'FontSize', overallFontSize);
 %     title(['Sternberg Difference Heatmap Subject ', subjects{subj}, ' (WM load 6 minus WM load 2)'], 'FontSize', 30)
 % 
 %     saveas(gcf, ['/Volumes/methlab/Students/Arne/AOC/figures/gaze/heatmap/subjects/AOC_gaze_heatmap_sternberg_diff_subj', subjects{subj}, '.png']);
@@ -337,7 +337,7 @@ cb = colorbar;
 ylabel(cb, 'Effect Size [Cohen''s d]', 'FontSize', 32); % Label the colorbar
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'Fontsize', 25);
+set(gca, 'FontSize', overallFontSize);
 title('Sternberg t-value Stats', 'FontSize', 30)
 
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_tvalues.png');
@@ -401,7 +401,7 @@ cb = colorbar;
 ylabel(cb, 'Effect Size [Cohen''s d]', 'FontSize', 32); % Label the colorbar
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'Fontsize', 25);
+set(gca, 'FontSize', overallFontSize);
 title('Sternberg CBPT t-value Stats', 'FontSize', 30)
 
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_cbpt.png');

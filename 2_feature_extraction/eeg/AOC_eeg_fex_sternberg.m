@@ -341,7 +341,7 @@ startup
 [subjects, path, ~ , ~] = setup('AOC');
 
 % Read data, segment and convert to FieldTrip data structure
-for subj = 1 : 10 %%%%% length(subjects)
+for subj = 1 : length(subjects)
     clc
     disp(['Processing TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
 

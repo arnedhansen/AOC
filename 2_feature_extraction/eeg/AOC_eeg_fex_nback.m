@@ -357,7 +357,7 @@ for subj = 1:length(subjects)
         cfg.foi          = 2:1:40;                         % analysis 2 to 40 Hz in steps of 1 Hz
         cfg.t_ftimwin    = ones(length(cfg.foi),1).*0.5;   % length of time window = 0.5 sec
         cfg.toi          = -1:0.05:2;
-        cfg.keeptrials   = 'yes';
+        cfg.keeptrials   = 'no';
         cfg.trials = ind1;
         tfr1 = ft_freqanalysis(cfg,dataTFR);
         cfg.trials = ind2;

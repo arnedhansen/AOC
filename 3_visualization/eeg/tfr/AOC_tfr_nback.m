@@ -9,9 +9,9 @@ for subj= 1:length(subjects)
     datapath = strcat(path,subjects{subj}, '/eeg');
     cd(datapath)
     load tfr_nback
-    l1{subj} = tfr1_bl;
-    l2{subj} = tfr2_bl;
-    l3{subj} = tfr3_bl;
+    l1{subj} = tfr1%%%%%_bl;
+    l2{subj} = tfr2%%%%%_bl;
+    l3{subj} = tfr3%%%%%_bl;
     disp(['Subject ' num2str(subjects{subj}) ' TFR data loaded.'])
 end
 
@@ -41,10 +41,13 @@ cfg = [];
 cfg.channel = channels; % specify the channels to include
 cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
-cfg.xlim = [-.5 2]; % Time axis limits in secon
+%cfg.xlim = [-.5 2]; % Time axis limits in seconds
+cfg.xlim = [0 2]
 cfg.ylim = [7 20];
+load('/Volumes/methlab/Students/Arne/toolboxes/headmodel/layANThead.mat');
 cfg.layout = layANThead; % your specific layout
-color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
+%color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
+color_map = cbrewer('seq', 'Reds', 64); % 'RdBu' for blue to red diverging color map
 
 % Find maximum deviation across conditions
 [~, channel_idx] = ismember(channels, gatfr1.label);
@@ -52,8 +55,10 @@ max_spctrm = max([
     max(abs(gatfr1.powspctrm(channel_idx, :, :)), [], 'all'), ...
     max(abs(gatfr2.powspctrm(channel_idx, :, :)), [], 'all'), ...
     max(abs(gatfr3.powspctrm(channel_idx, :, :)), [], 'all')]);
-clim = double([-max_spctrm * 0.9, max_spctrm * 0.9]);
-
+max_spctrm = 10
+%clim = [-max_spctrm, max_spctrm];
+clim = [0 max_spctrm];
+ 
 % 1-back
 figure;
 set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
@@ -61,11 +66,11 @@ ft_singleplotTFR(cfg, gatfr1);
 colormap(color_map);
 set(gca, 'CLim', clim); 
 cb = colorbar;
-%ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
-ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
+ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+%ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
+rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('1-back TFR', 'FontSize', 30);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_1back.png');
@@ -77,11 +82,11 @@ ft_singleplotTFR(cfg, gatfr2);
 colormap(color_map);
 set(gca, 'CLim', clim); 
 cb = colorbar;
-%ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
-ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
+ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+%ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
+rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 title('2-back TFR', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_2back.png');
@@ -93,11 +98,11 @@ ft_singleplotTFR(cfg, gatfr3);
 colormap(color_map);
 set(gca, 'CLim', clim); 
 cb = colorbar;
-%ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
-ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
+ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+%ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
+rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 title('3-back TFR', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
 saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_3back.png');
@@ -124,7 +129,7 @@ color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red divergi
 % Find maximum deviation
 [~, channel_idx] = ismember(channels, gatfr1.label);
 max_spctrm = max(abs(diff.powspctrm(channel_idx, :, :)), [], 'all');
-max_spctrm = 0.65
+max_spctrm = 3
 clim = double([-max_spctrm, max_spctrm]);
 
 % Plot: Difference (Condition 3 minus Condition 1) - Time-Frequency Response
@@ -141,7 +146,7 @@ line([0 0], [2 2], 'LineWidth', 5, 'LineStyle', '-', 'Color', 'r');
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 ylim([6 20]);
-rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'r', 'LineWidth', 5);
+rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 title('N-back TFR Difference (3-back minus 1-back)', 'FontName', 'Arial', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
 

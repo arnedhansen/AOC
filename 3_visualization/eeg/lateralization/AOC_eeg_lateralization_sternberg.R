@@ -22,7 +22,8 @@ dat$Condition <- factor(dat$Condition, levels = c(1, 2, 3), labels = c("WM load 
 # Set variables for lateralisation visualisation
 var <- "Lateralization"
 title <- "Lateralization"
-x_lab <- "Lateralization"  # continuous variable on x-axis
+subtit <- "Alpha Power Lateralization"
+x_lab <- "Lateralization [%]"  # continuous variable on x-axis
 y_lab <- "Condition"
 save_name <- "lat"
 
@@ -94,7 +95,7 @@ p <- dat %>%
     x = x_lab,
     y = y_lab,
     title = title,
-    subtitle = paste("Sternberg", title, "by Condition")
+    subtitle = paste("Sternberg", subtit, "by Condition")
   ) +
   
   theme_minimal(base_family = "Zilla Slab", base_size = 15) +

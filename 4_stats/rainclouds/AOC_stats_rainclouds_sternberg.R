@@ -211,10 +211,10 @@ for(i in seq_along(variables)) {
       )
   } else if (var == "ReactionTime") {
     p_stats <- p_stats +
-      theme(plot.margin = margin(20, 30, 10, 15)) +
+      theme(plot.margin = margin(50, 75, 50, 75)) +
+      coord_cartesian(ylim = c(300, 1300), clip = "off") +
       scale_y_continuous(
-        limits = c(550, 1300),
-        breaks = seq(600, 1200, by = 100),
+        breaks = seq(400, 1200, by = 100),
         expand = c(0.001, 0.001)
       )
    } else if (var == "GazeDeviation") {

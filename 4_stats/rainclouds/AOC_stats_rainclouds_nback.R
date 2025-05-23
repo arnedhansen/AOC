@@ -51,7 +51,7 @@ dat <- dat %>%
 set.seed(123)
 dat2 <- dat %>%
   filter(!is.na(Accuracy)) %>%
-  mutate(Accuracy_jit = Accuracy + runif(n(), -1.25, 1.25))
+  mutate(Accuracy_jit = Accuracy + runif(n(), -1.15, 1.15))
 
 # Output directory
 output_dir <- "/Volumes/methlab/Students/Arne/AOC/figures/stats/rainclouds"

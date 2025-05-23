@@ -12,7 +12,7 @@ for subj = 1:length(subjects)
     %% Segment data per condition
     ind2 = find(dataet.trialinfo == 22);
     ind4 = find(dataet.trialinfo == 24);
-    ind6 = find(dataet.trialinfo == 2h6);
+    ind6 = find(dataet.trialinfo == 26);
     cfg = [];
     cfg.latency = [1 2];
     cfg.trials = ind2;
@@ -115,7 +115,7 @@ cfg.method             = 'analytic';
 cfg.statistic          = 'ft_statfun_depsamplesT';
 cfg.tail               = 0;
 cfg.clustertail        = 0;
-cfg.alpha              = 0.05;
+cfg.alpha              = 0.005%%%%% 0.05;
 cfg.numrandomization   = 10000;
 cfg.neighbours         = [];
 
@@ -345,7 +345,7 @@ saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_he
 %% MONTECARLO
 close all
 
-% Calculate significant differences l2 and l8
+% Calculate significant differences l2 and l6
 stat = [];
 cfg                    = [];
 cfg.spmversion         = 'spm12';

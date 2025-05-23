@@ -6,6 +6,9 @@ startup
 
 %% Load data
 for subj = 1:length(subjects)
+    clc
+    disp(['Processing Subject ', num2str(subjects{subj})])
+
     datapath = strcat(path,subjects{subj}, '/gaze');
     load([datapath, filesep 'dataET_nback'])
 
@@ -115,7 +118,7 @@ cfg.method             = 'analytic';
 cfg.statistic          = 'ft_statfun_depsamplesT';
 cfg.tail               = 0;
 cfg.clustertail        = 0;
-cfg.alpha              = 0.05;
+cfg.alpha              = 0.0005%%%%% 0.05;
 cfg.numrandomization   = 10000;
 cfg.neighbours         = [];
 

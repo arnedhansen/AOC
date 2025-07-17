@@ -3,15 +3,20 @@
 % AOC 319 - Sternberg only block 1
 % AOC 320 - N-back only block 1-4; NO ET DATA
 % AOC 322 - N-back only block 1-2
+% AOC 333 -
 % AOC 347 - no Sternberg data (triggers bug)
+% AOC 351 - 
 % AOC 358 - no data (triggers bug)
+% AOC 360 - 
 % AOC 378 - N-back block 1-5, Sternberg only block 1
 % AOC 380 - N-back only block 1
 % AOC 381 - no Sternberg data 
-% AOC 382 - no data
+% AOC 387 -
 % AOC 405 - no data (triggers bug)
 % AOC 407 - N-back only block 1
+% AOC 408 - 
 % AOC 412 - N-back only block 1-3
+% AOC 414 - 
 
 %% Setup
 startup
@@ -107,14 +112,39 @@ caxis([0 1]);
 xticks(1:length(subjects));
 xticklabels(subjects);
 
+% Load exclusion list
+fid = fopen('/Volumes/methlab/Students/Arne/AOC/data/controls/AOC_exclusion_participants.rtf','rt');
+raw = fread(fid, '*char')';
+fclose(fid);
+exclIDs = regexp(raw, '\d+', 'match');  % cell array of strings
+
+% Determine which subjects are excluded
+isExcluded = ismember(subjects, exclIDs);
+
+% Replace X‑tick labels with coloured text
+hAx = gca;
+hAx.XTickLabel = [];   % remove default labels
+hAx.XTick = 1:length(subjects);
+
+for i = 1:length(subjects)
+    txt = text(i, hAx.YLim(2) + 0.1, subjects{i}, ...
+               'Rotation', 90, ...
+               'HorizontalAlignment', 'right', ...
+               'FontSize', 12);
+    if isExcluded(i)
+        txt.Color = 'red';
+    else
+        txt.Color = 'black';
+    end
+end
+
 % Custom Y-tick labels (Conditions & Blocks)
 yticks(1:length(conditions)*num_blocks);
 yticklabels(arrayfun(@(i) sprintf('%s Block %d', conditions{ceil(i/num_blocks)}, mod(i-1, num_blocks)+1), 1:length(conditions)*num_blocks, 'UniformOutput', false));
 
 % Labels and title
 ylabel('Task & Block');
-xlabel('Subjects');
-title(sprintf('AOC Missing Data Heatmap (%.2f%% missing)', missingPercentage), 'FontSize', 50, 'FontWeight', 'bold');
+title(sprintf('AOC Missing Data Heatmap (%.d / %.d (%.2f%%) files missing)', sum(missingMatrix(:) == 0), numel(missingMatrix), missingPercentage), 'FontSize', 50, 'FontWeight', 'bold');
 
 % Add grid lines (grid lines removed and replaced with explicit lines)
 hold on;
@@ -132,7 +162,7 @@ end
 hold off;
 
 % Set font sizes for labels and title
-set(gca, 'FontSize', 15, 'LineWidth', 1.5, 'Box', 'on');
+set(gca, 'FontSize', 12, 'LineWidth', 1.5, 'Box', 'on');
 titleHandle = get(gca, 'Title');
 set(titleHandle, 'FontSize', 30);
 xlabelHandle = get(gca, 'XLabel');

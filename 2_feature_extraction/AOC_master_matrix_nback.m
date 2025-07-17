@@ -11,7 +11,7 @@ subjects = {folders.name};
 
 %% Load data
 % Demographics from methlab_vp
-demog_data_nback = readtable('/Volumes/methlab_vp/AOC/AOC_VPs.xlsx');
+demog_data_nback = readtable('/Volumes/methlab_vp/OCC/AOC/AOC_VPs.xlsx');
 demog_data_nback = demog_data_nback(:, {'ID', 'Gender', 'Alter', 'H_ndigkeit', 'OcularDominance'});
 demog_data_nback = table2struct(demog_data_nback(1:120, :));
 

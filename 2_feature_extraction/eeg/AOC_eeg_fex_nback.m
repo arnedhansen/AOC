@@ -401,7 +401,7 @@ startup
 % Baselined power spectra analysis
 analysis_period = [0 2]; % N-back analysis window
 freq_range = [3 30];
-for subj = 1 : length(subjects)
+for subj = 1:length(subjects)
     try
         % Load data
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');

@@ -147,6 +147,7 @@ for i = 1:length(analysis_conditions)
             ylim([0 0.45])
         end
         box on
+        xlim([5 20]);
         xlabel('Frequency [Hz]');
         ylabel(yLabel);
         legend([eb1.mainLine, eb2.mainLine, eb3.mainLine], {'1 back', '2 back', '3 back'}, 'FontName', 'Arial', 'FontSize', 20);
@@ -157,11 +158,7 @@ for i = 1:length(analysis_conditions)
         hold off;
 
         % Save
-        if strcmp(electrodes, 'occ_cluster')
-            saveas(gcf, savePath);
-        elseif strcmp(electrodes, 'POz')
-            saveas(gcf, savePath);
-        end
+        saveas(gcf, savePath);
     end
 end
 

@@ -69,46 +69,46 @@ gapow4_raw = ft_freqgrandaverage([],powl4{:});
 gapow6_raw = ft_freqgrandaverage([],powl6{:});
 
 % Load long time window (200ms - 2000ms) powerspctrm data
-for subj = 1:length(subjects)
-    datapath = strcat(path,subjects{subj}, filesep, 'eeg');
-    cd(datapath)
-    load power_stern_long
-    powl2long{subj} = powload2long;
-    powl4long{subj} = powload4long;
-    powl6long{subj} = powload6long;
-end
-
-% Compute grand avg of long time window (200ms - 2000ms) powerspctrm data
-gapow2_long = ft_freqgrandaverage([],powl2long{:});
-gapow4_long = ft_freqgrandaverage([],powl4long{:});
-gapow6_long = ft_freqgrandaverage([],powl6long{:});
-
-% Load baseline period powerspctrm data
-for subj = 1:length(subjects)
-    datapath = strcat(path,subjects{subj}, filesep, 'eeg');
-    cd(datapath)
-    load power_stern_baseline_period
-    powl2_blperiod{subj} = powload2_baseline_period;
-    powl4_blperiod{subj} = powload4_baseline_period;
-    powl6_blperiod{subj} = powload6_baseline_period;
-end
-
-% Compute baseline-corrected POWERSPECTRUM
-% Relative change: (retention - baseline) / baseline
-for subj = 1:length(subjects)
-    pow2_bl{subj} = powl2{subj};
-    pow2_bl{subj}.powspctrm = 100 * (powl2{subj}.powspctrm - powl2_blperiod{subj}.powspctrm) ./ powl2_blperiod{subj}.powspctrm;
-    pow4_bl{subj} = powl4{subj};
-    pow4_bl{subj}.powspctrm = 100 * (powl4{subj}.powspctrm - powl4_blperiod{subj}.powspctrm) ./ powl4_blperiod{subj}.powspctrm;
-    pow6_bl{subj} = powl6{subj};
-    pow6_bl{subj}.powspctrm = 100 * (powl6{subj}.powspctrm - powl6_blperiod{subj}.powspctrm) ./ powl6_blperiod{subj}.powspctrm;
-end
-
-% Compute grand average of baseline-corrected power spectra
-gapow2_bl = ft_freqgrandaverage([], pow2_bl{:});
-gapow4_bl = ft_freqgrandaverage([], pow4_bl{:});
-gapow6_bl = ft_freqgrandaverage([], pow6_bl{:});
-
+% for subj = 1:length(subjects)
+%     datapath = strcat(path,subjects{subj}, filesep, 'eeg');
+%     cd(datapath)
+%     load power_stern_long
+%     powl2long{subj} = powload2long;
+%     powl4long{subj} = powload4long;
+%     powl6long{subj} = powload6long;
+% end
+% 
+% % Compute grand avg of long time window (200ms - 2000ms) powerspctrm data
+% gapow2_long = ft_freqgrandaverage([],powl2long{:});
+% gapow4_long = ft_freqgrandaverage([],powl4long{:});
+% gapow6_long = ft_freqgrandaverage([],powl6long{:});
+% 
+% % Load baseline period powerspctrm data
+% for subj = 1:length(subjects)
+%     datapath = strcat(path,subjects{subj}, filesep, 'eeg');
+%     cd(datapath)
+%     load power_stern_baseline_period
+%     powl2_blperiod{subj} = powload2_baseline_period;
+%     powl4_blperiod{subj} = powload4_baseline_period;
+%     powl6_blperiod{subj} = powload6_baseline_period;
+% end
+% 
+% % Compute baseline-corrected POWERSPECTRUM
+% % Relative change: (retention - baseline) / baseline
+% for subj = 1:length(subjects)
+%     pow2_bl{subj} = powl2{subj};
+%     pow2_bl{subj}.powspctrm = 100 * (powl2{subj}.powspctrm - powl2_blperiod{subj}.powspctrm) ./ powl2_blperiod{subj}.powspctrm;
+%     pow4_bl{subj} = powl4{subj};
+%     pow4_bl{subj}.powspctrm = 100 * (powl4{subj}.powspctrm - powl4_blperiod{subj}.powspctrm) ./ powl4_blperiod{subj}.powspctrm;
+%     pow6_bl{subj} = powl6{subj};
+%     pow6_bl{subj}.powspctrm = 100 * (powl6{subj}.powspctrm - powl6_blperiod{subj}.powspctrm) ./ powl6_blperiod{subj}.powspctrm;
+% end
+% 
+% % Compute grand average of baseline-corrected power spectra
+% gapow2_bl = ft_freqgrandaverage([], pow2_bl{:});
+% gapow4_bl = ft_freqgrandaverage([], pow4_bl{:});
+% gapow6_bl = ft_freqgrandaverage([], pow6_bl{:});
+% 
 % Load FOOOF powerspctrm data
 for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj}, filesep, 'eeg');
@@ -131,7 +131,7 @@ for subj = 1:length(subjects)
     powl6_fooof_bl_long{subj} = pow6_fooof_bl_long;
 end
 
-% Compute grand avg of long time window (200ms - 2000ms) powerspctrm data
+% Compute grand avg
 gapow2_fooof = ft_freqgrandaverage([], powl2_fooof{:});
 gapow4_fooof = ft_freqgrandaverage([], powl4_fooof{:});
 gapow6_fooof = ft_freqgrandaverage([], powl6_fooof{:});
@@ -146,20 +146,20 @@ gapow6_fooof_bl_long = ft_freqgrandaverage([], powl6_fooof_bl_long{:});
 % Prepare your data-sets
 datasets = { ...
     struct('name','raw', 'pow2', gapow2_raw,  'pow4', gapow4_raw,  'pow6', gapow6_raw), ...
-    struct('name','baselined', 'pow2', gapow2_bl,   'pow4', gapow4_bl,   'pow6', gapow6_bl), ...
-    struct('name','long', 'pow2', gapow2_long, 'pow4', gapow4_long, 'pow6', gapow6_long),  ...
-    struct('name','fooof', 'pow2', gapow2_fooof_bl_long, 'pow4', gapow4_fooof_bl_long, 'pow6', gapow6_fooof_bl_long)  ...
+    % struct('name','baselined', 'pow2', gapow2_bl,   'pow4', gapow4_bl,   'pow6', gapow6_bl), ...
+    % struct('name','long', 'pow2', gapow2_long, 'pow4', gapow4_long, 'pow6', gapow6_long),  ...
+    struct('name','fooof', 'pow2', gapow2_fooof_bl, 'pow4', gapow4_fooof_bl, 'pow6', gapow6_fooof_bl)  ...
     };
 
 % Prepare your electrode clusters
 electrodeSets = struct( ...
-    'occ_cluster', {channels}); %, ...
-    %'POz',         {{'POz'}}), ...
+    'occ_cluster', {channels}, ...
+    'POz',         {{'POz'}}); %%, ...
     % 'right hemisphere',{right_channels} ...
     %);
 
 % Loop over data types and electrode sets
-for d = 1%%%%:numel(datasets)
+for d = 1:numel(datasets)
     D = datasets{d};
     for fn = fieldnames(electrodeSets)'
         close all
@@ -210,12 +210,12 @@ for d = 1%%%%:numel(datasets)
 
         set(gca,'FontSize',20);
         box on
+        xlim([5 20]);
         %ylim([-0.175 0.175])
-        ylim([0 2.75])
-        if d == 4
-            ylim([-0.25 0.25])
-        end
-        xlim([4 30]);
+        %ylim([-50 50])
+        %if d == 4
+        %    ylim([-0.25 0.25])
+        %end
         ylabel('Power [\muV^2/Hz]');
         xlabel('Frequency [Hz]');
         legend([eb2.mainLine, eb4.mainLine, eb6.mainLine], ...

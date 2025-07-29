@@ -157,7 +157,7 @@ for (i in seq_along(variables)) {
     }) +
     coord_cartesian(
       ylim = if (var=="Accuracy") c(65,102)
-      else if (var=="ReactionTime") c(400,1500)
+      else if (var=="ReactionTime") c(300,1400)
       else NULL,
       clip = "off"
     )
@@ -197,7 +197,9 @@ for (i in seq_along(variables)) {
       paired          = TRUE,
       p.adjust.method = "bonferroni",
       label           = "p.signif",
-      label.y         = if (var == "Accuracy") c(102,103.5,105) else NULL,
+      label.y         = if (var == "Accuracy") c(102,103.5,105) 
+                        else if (var == "ReactionTime") c(13.00,13.50,14.00) 
+                        else NULL,
       symnum.args     = list(
         cutpoints = c(0,0.001,0.01,0.05,1),
         symbols   = c("***","**","*","n.s.")
@@ -219,7 +221,7 @@ for (i in seq_along(variables)) {
     }) +
     coord_cartesian(
       ylim = if (var=="Accuracy") c(65,105.5)
-      else if (var=="ReactionTime") c(400,1500)
+      else if (var=="ReactionTime") c(300,1400)
       else if (var=="GazeDeviation") c(5,65)
       else NULL,
       clip = "off"

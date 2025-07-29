@@ -153,7 +153,7 @@ for i = 1:length(variables)
 
     % Create a new figure for the individual variable
     figure;
-    set(gcf, 'Position', [100, 200, 1000, 800], 'Color', 'w'); % Adjust size for individual plots
+    set(gcf, 'Position', [100, 200, 1600, 1200], 'Color', 'w'); % Adjust size for individual plots
     set(gca, 'FontSize', 15); 
     hold on;
 

@@ -22,6 +22,7 @@ library("lm.beta")
 #library(drop1)
 library(car)
 
+
 # Set WD
 setwd('/Users/Arne/Documents/GitHub/AOC/4_stats')
 
@@ -32,7 +33,7 @@ options(scipen=0)
 # https://stackoverflow.com/questions/6970705/why-cant-i-get-a-p-value-smaller-than-2-2e-16
 
 # load data 
-dat = read.csv('/Volumes/methlab/Students/Arne/AOC/data/features/merged_data_sternberg.csv')
+dat = read.csv('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/merged_data_sternberg.csv')
 dat = na.omit(dat)
 
 # make sure, the vars are factors

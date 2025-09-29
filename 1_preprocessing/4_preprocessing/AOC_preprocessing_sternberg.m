@@ -235,7 +235,7 @@ for subj = 1:length(subjects)
         dataEEG = ft_selectdata(cfg, data);
 
         %% Resegment data to avoid filter ringing
-        % TRF data
+        % TFR data
         cfg = [];
         dataTFR = ft_selectdata(cfg, dataEEG);
 
@@ -245,6 +245,14 @@ for subj = 1:length(subjects)
         dataEEG = ft_selectdata(cfg, dataEEG); % EEG data
         dataet = ft_selectdata(cfg,dataet); % ET data
         dataet.trialinfo = trialinfo;
+
+        % Early and late retention interval data
+        cfg = [];
+        cfg.latency = [0 1]; % Early
+        dataETearly = ft_selectdata(cfg,dataet);
+        cfg = [];
+        cfg.latency = [1 2]; % Late
+        dataETlate = ft_selectdata(cfg,dataet);
 
         %% Re-reference data to average or common reference
         cfg = [];
@@ -288,7 +296,7 @@ for subj = 1:length(subjects)
         end
         mkdir(savepathET)
         cd(savepathET)
-        save dataET_sternberg dataet dataETlong
+        save dataET_sternberg dataet dataETlong dataETearly dataETlate
         save gaze_metrics_sternberg ...
             saccades_l2 fixations_l2 blinks_l2 ...
             saccades_l4 fixations_l4 blinks_l4 ...

@@ -13,7 +13,7 @@
 clear
 clc
 close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
+path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
@@ -172,7 +172,7 @@ for subj = 1:length(subjects)
         'Saccades', num2cell([saccades_l2; saccades_l4; saccades_l6]));
 
     %% Save data
-    savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
+    savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
     mkdir(savepath)
     cd(savepath)
     save gaze_matrix_sternberg_trial subj_data_gaze_trial
@@ -188,5 +188,5 @@ for subj = 1:length(subjects)
     gaze_data_sternberg = [gaze_data_sternberg; subj_data_gaze];
 end
 trialinfo = dataet.trialinfo';
-save /Volumes/methlab/Students/Arne/AOC/data/features/gaze_sternberg gaze_x gaze_y trialinfo
-save /Volumes/methlab/Students/Arne/AOC/data/features/gaze_matrix_sternberg gaze_data_sternberg
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/gaze_sternberg gaze_x gaze_y trialinfo
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/gaze_matrix_sternberg gaze_data_sternberg

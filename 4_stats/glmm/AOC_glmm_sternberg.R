@@ -21,6 +21,7 @@ library("writexl")
 library("lm.beta") 
 #library(drop1)
 library(car)
+source("/Users/Arne/Documents/GitHub/functions/export_model_table.R")
 
 
 # Set WD
@@ -64,7 +65,9 @@ coeff_accuracy
 coeff_rt <- summary(glmm_rt)[["coefficients"]]
 coeff_rt
 
-# Display models
+# Save model overview
+export_model_table(glmm_accuracy, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/glmm/AOC_sternberg_glmm_acc.docx')
+export_model_table(glmm_rt, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/glmm/AOC_sternberg_glmm_rt.docx')
 
 ######################
 ######## Gaze ########
@@ -81,7 +84,8 @@ Anova(glmm_gaze, type = "II")
 coeff_gaze <- summary(glmm_gaze)[["coefficients"]]
 coeff_gaze
 
-# Display models
+# Save model overview
+export_model_table(glmm_gaze, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/glmm/AOC_sternberg_glmm_gaze.docx')
 
 ######################
 ####### Alpha ########
@@ -100,12 +104,16 @@ Anova(glmm_alpha, type = "III")
 
 # Dropping terms and finalizing model if needed
 s_alpha <- drop1(glmm_alpha)
-glmm_alpha_final <- get_model(s_alpha)
-summary(glmm_alpha_final)
+#glmm_alpha_final <- get_model(s_alpha)
+#summary(glmm_alpha_final)
 #Anova(glmm_alpha_final, type = "II")
 
 # Extract coefficients
-coeff_alpha <- summary(glmm_alpha_final)[["coefficients"]]
+#coeff_alpha <- summary(glmm_alpha_final)[["coefficients"]]
 
 # Display models
-tab_model(glmm_alpha_final)
+#tab_model(glmm_alpha_final)
+
+# Save model overview
+export_model_table(glmm_ONLYalpha, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/glmm/AOC_sternberg_glmm_alpha_by_cond.docx')
+export_model_table(glmm_alpha, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/glmm/AOC_sternberg_glmm_alpha.docx')

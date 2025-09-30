@@ -8,10 +8,10 @@ startup
 for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj}, '/eeg');
     cd(datapath)
-    load tfr_stern_temp_noFOOOF
-    tfr2_all{subj} = tfr2%%%%_bl;
-    tfr4_all{subj} = tfr4%%%%_bl;
-    tfr6_all{subj} = tfr6%%%%_bl;
+    load tfr_stern
+    tfr2_all{subj} = tfr2;
+    tfr4_all{subj} = tfr4;
+    tfr6_all{subj} = tfr6;
     disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' TFR data loaded.'])
 end
 
@@ -44,7 +44,7 @@ cfg.zlim = 'maxabs'; % color limits
 %cfg.xlim = [-.5 2]; % Time axis limits in seconds
 cfg.xlim = [0 2]
 cfg.ylim = [7 20];
-load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
 cfg.layout = layANThead; % your specific layout
 %color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
 color_map = cbrewer('seq', 'Reds', 64); % 'RdBu' for blue to red diverging color map
@@ -55,8 +55,8 @@ freq_idx = find(gatfr2.freq >= 8 & gatfr2.freq <= 14);
 max_spctrm = max([mean(gatfr2.powspctrm(channel_idx, freq_idx), 'omitnan'); ...
                   mean(gatfr4.powspctrm(channel_idx, freq_idx), 'omitnan'); ...
                   mean(gatfr6.powspctrm(channel_idx, freq_idx), 'omitnan')]);
-max_spctrm = abs(max_spctrm);
-max_spctrm = 8
+max_spctrm = max(abs(max_spctrm));
+%max_spctrm = 8
 %clim = [-max_spctrm, max_spctrm];
 clim = [0 max_spctrm];
 
@@ -74,7 +74,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('Sternberg WM load 2 TFR');
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_2.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_2.png');
 
 % WM load 4
 figure;
@@ -90,7 +90,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('Sternberg WM load 4 TFR');
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_4.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_4.png');
 
 % WM load 6
 figure;
@@ -106,7 +106,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('Sternberg WM load 6 TFR');
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_6.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_6.png');
 
 %% Plot the grand averages for the difference between condition 3 and condition 1
 close all
@@ -122,7 +122,7 @@ cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
 cfg.xlim = [-.5 2]; % Time axis limits in secon
 cfg.ylim = [7 20];
-load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
 cfg.layout = layANThead; % your specific layout
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
 
@@ -150,4 +150,4 @@ title('Sternberg TFR Difference (WM load 6 minus WM load 2)', 'FontName', 'Arial
 set(gca, 'FontSize', fontSize);
 
 % Save
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_diff.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_diff.png');

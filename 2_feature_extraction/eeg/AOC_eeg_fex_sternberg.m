@@ -478,7 +478,7 @@ for subj = 1:length(subjects)
                     % ERROR CATCHING
                     disp(['subj      ' num2str(subj)])
                     disp(['cond      ' num2str(tfr_conds)])
-                    disp(['time      ' num2str(t)])
+                    disp(['timepnt   ' num2str(t)])
 
                     for chan = 1:length(tmp.label)
 
@@ -515,7 +515,7 @@ for subj = 1:length(subjects)
             % Baselined TFR
             % Raw powspctrm baselined
             cfg                              = [];
-            cfg.baseline                     = [-1.5 -.5];
+            cfg.baseline                     = [-.75 -.25];
             cfg.baselinetype                 = 'db';
             tfr2_bl                          = ft_freqbaseline(cfg, tfr2);
             tfr4_bl                          = ft_freqbaseline(cfg, tfr4);
@@ -523,7 +523,7 @@ for subj = 1:length(subjects)
 
             % FOOOFed powspctrm baselined
             cfg                              = [];
-            cfg.baseline                     = [-1.5 -.5];
+            cfg.baseline                     = [-.75 -.25];
             cfg.baselinetype                 = 'absolute';   % FOOOF already sets log scale, so no 'dB' here
             tfr2_fooof_bl                    = ft_freqbaseline(cfg, tfr2_fooof);
             tfr4_fooof_bl                    = ft_freqbaseline(cfg, tfr4_fooof);
@@ -538,23 +538,24 @@ for subj = 1:length(subjects)
                 tfr2_fooof_bl tfr4_fooof_bl tfr6_fooof_bl
 
             % Convert TFR data to POWSCPTRM (channels x frequency)
+            analysisPeriodFull = [0 2];
             analysisPeriodEarly = [0 1];
             analysisPeriodLate = [1 2];
             freq_range = [2 40];
 
             % Select data
-            pow2_fooof                                = select_data(analysisPeriodLate, freq_range, tfr2_fooof);
-            pow2_fooof_bl                             = select_data(analysisPeriodLate, freq_range, tfr2_fooof_bl);
+            pow2_fooof                                = select_data(analysisPeriodFull, freq_range, tfr2_fooof);
+            pow2_fooof_bl                             = select_data(analysisPeriodFull, freq_range, tfr2_fooof_bl);
             pow2_fooof_bl_early                       = select_data(analysisPeriodEarly, freq_range, tfr2_fooof_bl);
             pow2_fooof_bl_late                        = select_data(analysisPeriodLate, freq_range, tfr2_fooof_bl);
 
-            pow4_fooof                                = select_data(analysisPeriodLate, freq_range, tfr4_fooof);
-            pow4_fooof_bl                             = select_data(analysisPeriodLate, freq_range, tfr4_fooof_bl);
+            pow4_fooof                                = select_data(analysisPeriodFull, freq_range, tfr4_fooof);
+            pow4_fooof_bl                             = select_data(analysisPeriodFull, freq_range, tfr4_fooof_bl);
             pow4_fooof_bl_early                       = select_data(analysisPeriodEarly, freq_range, tfr4_fooof_bl);
             pow4_fooof_bl_late                        = select_data(analysisPeriodLate, freq_range, tfr4_fooof_bl);
 
-            pow6_fooof                                = select_data(analysisPeriodLate, freq_range, tfr6_fooof);
-            pow6_fooof_bl                             = select_data(analysisPeriodLate, freq_range, tfr6_fooof_bl);
+            pow6_fooof                                = select_data(analysisPeriodFull, freq_range, tfr6_fooof);
+            pow6_fooof_bl                             = select_data(analysisPeriodFull, freq_range, tfr6_fooof_bl);
             pow6_fooof_bl_early                       = select_data(analysisPeriodEarly, freq_range, tfr6_fooof_bl);
             pow6_fooof_bl_late                        = select_data(analysisPeriodLate, freq_range, tfr6_fooof_bl);
 

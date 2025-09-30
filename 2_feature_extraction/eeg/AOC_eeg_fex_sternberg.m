@@ -19,7 +19,7 @@ for subj = 1:length(subjects)
         % Load data
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
-        close alln
+        close all
         load dataEEG_sternberg
 
         % Identify indices of trials belonging to conditions

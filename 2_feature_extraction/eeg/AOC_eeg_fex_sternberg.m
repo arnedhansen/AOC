@@ -19,7 +19,7 @@ for subj = 1:length(subjects)
         % Load data
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
-        close all
+        close alln
         load dataEEG_sternberg
 
         % Identify indices of trials belonging to conditions
@@ -433,7 +433,7 @@ for subj = 1:length(subjects)
 
     % Check existing data
     datapath = strcat(path, subjects{subj}, filesep, 'eeg');
-    if ~isfile([datapath, filesep, 'power_stern_fooof.mat'])
+    %if ~isfile([datapath, filesep, 'power_stern_fooof.mat'])
         disp(['Processing TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
         try
             cd(datapath)
@@ -561,17 +561,17 @@ for subj = 1:length(subjects)
             % Remove time dimension for POWSCPTRM (channels x frequency)
             pow2_fooof                                = remove_time_dimension(pow2_fooof);
             pow2_fooof_bl                             = remove_time_dimension(pow2_fooof_bl);
-            pow2_fooof_bl_early                        = remove_time_dimension(pow2_fooof_bl_early);
+            pow2_fooof_bl_early                       = remove_time_dimension(pow2_fooof_bl_early);
             pow2_fooof_bl_late                        = remove_time_dimension(pow2_fooof_bl_late);
 
             pow4_fooof                                = remove_time_dimension(pow4_fooof);
             pow4_fooof_bl                             = remove_time_dimension(pow4_fooof_bl);
-            pow4_fooof_bl_early                        = remove_time_dimension(pow4_fooof_bl_early);
+            pow4_fooof_bl_early                       = remove_time_dimension(pow4_fooof_bl_early);
             pow4_fooof_bl_late                        = remove_time_dimension(pow4_fooof_bl_late);
 
             pow6_fooof                                = remove_time_dimension(pow6_fooof);
             pow6_fooof_bl                             = remove_time_dimension(pow6_fooof_bl);
-            pow6_fooof_bl_early                        = remove_time_dimension(pow6_fooof_bl_early);
+            pow6_fooof_bl_early                       = remove_time_dimension(pow6_fooof_bl_early);
             pow6_fooof_bl_late                        = remove_time_dimension(pow6_fooof_bl_late);
 
             save power_stern_fooof ...
@@ -584,8 +584,8 @@ for subj = 1:length(subjects)
             ME.message
             error(['ERROR extracting TFR for Subject ' num2str(subjects{subj}) '!'])
         end
-    else
-        disp(['TFR and FOOOFed POWSPCTRM already exists for Subject AOC ', num2str(subjects{subj})])
-    end
+    %else
+    %    disp(['TFR and FOOOFed POWSPCTRM already exists for Subject AOC ', num2str(subjects{subj})])
+    %end
 end
 disp('TFR and FOOOFed POWSPCTRM COMPUTED...');

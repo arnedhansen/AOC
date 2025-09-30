@@ -7,7 +7,7 @@ addEEGLab
 if ispc == 1
     path = 'W:\Students\Arne\AOC\data\merged\';
 else
-    path = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
+    path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/merged/';
 end
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
@@ -25,7 +25,7 @@ for subj = 1:length(subjects)
     if ispc == 1
         newDataFolder = dir(['W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\dataEEG_sternberg.mat']);
     else
-        newDataFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_sternberg.mat']);
+        newDataFolder = dir(['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_sternberg.mat']);
     end
     if isempty(newDataFolder)
         clear alleeg
@@ -213,7 +213,7 @@ for subj = 1:length(subjects)
             mkdir(savepathControlsFix)
             save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_sternberg'], "preStimFixInfo");
         else
-            savepathControlsFix = ['/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/', subjects{subj}];
+            savepathControlsFix = ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/preStimFixation/', subjects{subj}];
             mkdir(savepathControlsFix)
             save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_sternberg'], "preStimFixInfo");
         end
@@ -283,7 +283,7 @@ for subj = 1:length(subjects)
         if ispc == 1
             savepathEEG = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\');
         else
-            savepathEEG = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
+            savepathEEG = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
         end
         mkdir(savepathEEG)
         cd(savepathEEG)
@@ -292,7 +292,7 @@ for subj = 1:length(subjects)
         if ispc == 1
             savepathET = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\gaze\');
         else
-            savepathET = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
+            savepathET = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
         end
         mkdir(savepathET)
         cd(savepathET)

@@ -59,7 +59,7 @@ max_spctrm = max([mean(gatfr2.powspctrm(channel_idx, freq_idx, time_idx), 'omitn
                   mean(gatfr4.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan'); ...
                   mean(gatfr6.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan')]);
 max_spctrm = max(max(abs(max_spctrm)));
-max_spctrm = 0.65
+max_spctrm = 0.75
 clim = [-max_spctrm, max_spctrm];
 
 % WM load 2
@@ -69,11 +69,11 @@ ft_singleplotTFR(cfg, gatfr2);
 colormap(color_map);
 set(gca, 'CLim', clim);
 cb = colorbar;
-ylabel(cb, 'Power [db]', 'FontSize', fontSize);
-%ylabel(cb, 'Power [\mu]', 'FontSize', fontSize);
+ylabel(cb, 'Power [%]', 'FontSize', fontSize);
+%ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+%rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('Sternberg WM load 2 TFR');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_2_bl_relchange.png');
@@ -85,11 +85,11 @@ ft_singleplotTFR(cfg, gatfr4);
 colormap(color_map);
 set(gca, 'CLim', clim);
 cb = colorbar;
-ylabel(cb, 'Power [db]', 'FontSize', fontSize);
-%ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
+ylabel(cb, 'Power [%]', 'FontSize', fontSize);
+%ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+%rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('Sternberg WM load 4 TFR');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_4_bl_relchange.png');
@@ -101,11 +101,11 @@ ft_singleplotTFR(cfg, gatfr6);
 colormap(color_map);
 set(gca, 'CLim', clim);
 cb = colorbar;
-ylabel(cb, 'Power [db]', 'FontSize', fontSize);
-%ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
+ylabel(cb, 'Power [%]', 'FontSize', fontSize);
+%ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+%rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('Sternberg WM load 6 TFR');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_6_bl_relchange.png');
@@ -143,8 +143,8 @@ ft_singleplotTFR(cfg, diff);
 colormap(color_map);
 set(gca, 'CLim', clim); 
 cb = colorbar;
+ylabel(cb, 'Power [%]', 'FontSize', fontSize);
 %ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
-ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'r', 'LineWidth', 5);

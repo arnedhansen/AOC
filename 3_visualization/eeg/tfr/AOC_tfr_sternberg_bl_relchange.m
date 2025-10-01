@@ -48,7 +48,7 @@ cfg.layout = layANThead;
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % Red diverging color map
 
 % Baseline
-cfg.baseline      = [-.75 -0.25];   % example baseline window
+cfg.baseline      = [-.5 -0.25];   % example baseline window
 cfg.baselinetype  = 'relchange';   % options: 'absolute', 'relative', 'relchange', 'db'
 
 % Find maximum deviation across conditions
@@ -69,11 +69,11 @@ ft_singleplotTFR(cfg, gatfr2);
 colormap(color_map);
 set(gca, 'CLim', clim);
 cb = colorbar;
-ylabel(cb, 'Power [%]', 'FontSize', fontSize);
-%ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+ylabel(cb, 'Relative Power Change [%]', 'FontSize', fontSize);
+ticks = get(cb, 'Ticks');
+set(cb, 'TickLabels', arrayfun(@(x) sprintf('%d%', round(x*100)), ticks, 'UniformOutput', false));
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-%rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('Sternberg WM load 2 TFR');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_2_bl_relchange.png');
@@ -85,11 +85,11 @@ ft_singleplotTFR(cfg, gatfr4);
 colormap(color_map);
 set(gca, 'CLim', clim);
 cb = colorbar;
-ylabel(cb, 'Power [%]', 'FontSize', fontSize);
-%ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+ylabel(cb, 'Relative Power Change [%]', 'FontSize', fontSize);
+ticks = get(cb, 'Ticks');
+set(cb, 'TickLabels', arrayfun(@(x) sprintf('%d%', round(x*100)), ticks, 'UniformOutput', false));
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-%rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('Sternberg WM load 4 TFR');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_4_bl_relchange.png');
@@ -101,11 +101,11 @@ ft_singleplotTFR(cfg, gatfr6);
 colormap(color_map);
 set(gca, 'CLim', clim);
 cb = colorbar;
-ylabel(cb, 'Power [%]', 'FontSize', fontSize);
-%ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+ylabel(cb, 'Relative Power Change [%]', 'FontSize', fontSize);
+ticks = get(cb, 'Ticks');
+set(cb, 'TickLabels', arrayfun(@(x) sprintf('%d%', round(x*100)), ticks, 'UniformOutput', false));
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-%rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('Sternberg WM load 6 TFR');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_6_bl_relchange.png');
@@ -133,7 +133,7 @@ color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red divergi
 time_idx = find(diff.time >= -0.5 & diff.time <= 2);
 freq_idx = find(gatfr2.freq >= 8 & gatfr2.freq <= 14);
 max_spctrm = max(abs(diff.powspctrm(channel_idx, freq_idx, time_idx)), [], 'all');
-max_spctrm = .5
+max_spctrm = .6
 clim = double([-max_spctrm max_spctrm]);
 
 % Plot: Difference Time-Frequency Response

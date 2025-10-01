@@ -434,6 +434,7 @@ for subj = 1:length(subjects)
     % Check existing data
     datapath = strcat(path, subjects{subj}, filesep, 'eeg');
     %if ~isfile([datapath, filesep, 'power_stern_fooof.mat'])
+        clc
         disp(['Processing TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
         try
             cd(datapath)

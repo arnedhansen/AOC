@@ -48,7 +48,7 @@ cfg.layout = layANThead;
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % Red diverging color map
 
 % Baseline
-cfg.baseline      = [-.75 -0.25];   % example baseline window
+cfg.baseline      = [-.5 -0.25];   % example baseline window
 cfg.baselinetype  = 'absolute';   % options: 'absolute', 'relative', 'relchange', 'db'
 
 % Find maximum deviation across conditions
@@ -59,7 +59,7 @@ max_spctrm = max([mean(gatfr2.powspctrm(channel_idx, freq_idx, time_idx), 'omitn
                   mean(gatfr4.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan'); ...
                   mean(gatfr6.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan')]);
 max_spctrm = max(max(abs(max_spctrm)));
-max_spctrm = 2.4
+max_spctrm = 2.5
 clim = [-max_spctrm, max_spctrm];
 
 % WM load 2
@@ -69,7 +69,7 @@ ft_singleplotTFR(cfg, gatfr2);
 colormap(color_map);
 set(gca, 'CLim', clim);
 cb = colorbar;
-ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+ylabel(cb, 'Absolute Power Change [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 %rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
@@ -84,7 +84,7 @@ ft_singleplotTFR(cfg, gatfr4);
 colormap(color_map);
 set(gca, 'CLim', clim);
 cb = colorbar;
-ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+ylabel(cb, 'Absolute Power Change [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 %rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
@@ -99,7 +99,7 @@ ft_singleplotTFR(cfg, gatfr6);
 colormap(color_map);
 set(gca, 'CLim', clim);
 cb = colorbar;
-ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+ylabel(cb, 'Absolute Power Change [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 %rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
@@ -140,7 +140,7 @@ ft_singleplotTFR(cfg, diff);
 colormap(color_map);
 set(gca, 'CLim', clim); 
 cb = colorbar;
-ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+ylabel(cb, 'Absolute Power Change [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 %rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'r', 'LineWidth', 5);

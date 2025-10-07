@@ -448,133 +448,65 @@ for subj = 1:length(subjects)
         cfg.output       = 'pow';
         cfg.method       = 'mtmconvol';
         cfg.taper        = 'hanning';
-        cfg.foi          = 2:1:40;                       % 2..40 Hz (1-Hz step)
-        cfg.t_ftimwin    = ones(length(cfg.foi),1).*0.5; % 0.5 s window
+        cfg.foi          = 2:1:40;
+        cfg.t_ftimwin    = 0.5 * ones(length(cfg.foi),1);
         cfg.toi          = -2:0.05:3;
-        cfg.keeptrials   = 'yes';                        % need to keep trials for FOOOF on single trials
+        cfg.keeptrials   = 'yes';
 
-        cfg.trials = ind2;
+        cfg.trials = ind2;  
         tfr2 = ft_freqanalysis(cfg, dataTFR);
-        cfg.trials = ind4;
+        cfg.trials = ind4;  
         tfr4 = ft_freqanalysis(cfg, dataTFR);
-        cfg.trials = ind6;
+        cfg.trials = ind6;  
         tfr6 = ft_freqanalysis(cfg, dataTFR);
 
-        % FOOOF
-        orig_freq = 2:1:40;
-        tfrs = {tfr2, tfr4, tfr6};
-        tfrs_fooof_trials = cell(1,3);
+        % Get the aperiodic (1/f) fit directly from FieldTrip
+        cfg_fooof           = cfg;                % same time–freq settings
+        cfg_fooof.output    = 'fooof_aperiodic';  % returns the FOOOF 1/f estimate
+        tfr2_ap = ft_freqanalysis(cfg_fooof, dataTFR);
+        cfg_fooof.trials = ind4; tfr4_ap = ft_freqanalysis(cfg_fooof, dataTFR);
+        cfg_fooof.trials = ind6; tfr6_ap = ft_freqanalysis(cfg_fooof, dataTFR);
 
-        % FOOOF settings for 2–40 Hz
-        settings = struct();
-        settings.verbose = false;
-        settings.peak_width_limits = [0.5 12];
-        settings.max_n_peaks = 4;
+        % Periodic-only (FOOOF peaks): pow - aperiodic
+        cfgm              = [];
+        cfgm.parameter    = 'powspctrm';
+        cfgm.operation    = 'x2-x1';            % original minus aperiodic
+        tfr2_fooof = ft_math(cfgm, tfr2_ap, tfr2);
+        tfr4_fooof = ft_math(cfgm, tfr4_ap, tfr4);
+        tfr6_fooof = ft_math(cfgm, tfr6_ap, tfr6);
 
-        for cond_idx = 1:3
-            clc
-            disp('FOOOFing (keeptrials = yes)...')
+        % Baselining
+        cfgBL                  = [];
+        cfgBL.baseline         = [-.75 -.25];
+        cfgBL.baselinetype     = 'db';
+        tfr2_bl  = ft_freqbaseline(cfgBL, tfr2);
+        tfr4_bl  = ft_freqbaseline(cfgBL, tfr4);
+        tfr6_bl  = ft_freqbaseline(cfgBL, tfr6);
 
-            tfr = tfrs{cond_idx};
-            freqs = tfr.freq(:);
-            nChan = numel(tfr.label);
-            nFreq = numel(freqs);
-            nTime = numel(tfr.time);
-            nTr   = size(tfr.powspctrm, 4);
-
-            % Exclude time points too close to edges for the 0.5 s window
-            t_win   = 0.5;
-            t_valid = find( tfr.time >= (tfr.time(1)+t_win/2) & ...
-                tfr.time <= (tfr.time(end)-t_win/2) );
-
-            % Preallocate: chan x freq x time x trial (NaNs by default)
-            fspctrm = nan(nChan, nFreq, nTime, nTr, 'single');
-
-            f_range = [freqs(1) freqs(end)];
-            for kk = 1:numel(t_valid)
-                tt = t_valid(kk);
-
-                % Select a single time point; FieldTrip will squeeze time to length 1
-                cfgSel = [];
-                cfgSel.latency = [tfr.time(tt) tfr.time(tt)];
-                tmp = ft_selectdata(cfgSel, tfr);  % chan x freq x 1 x trials
-
-                % reshape to chan x freq x trials for convenience
-                tmpPSD = squeeze(tmp.powspctrm);   % chan x freq x trials
-
-                % loop trials then channels
-                for tr = 1:nTr
-                    for ch = 1:nChan
-                        psd = squeeze(tmpPSD(ch, :, tr)).';
-                        % guard against non-positive / non-finite values
-                        if any(~isfinite(psd)) || any(psd <= 0), continue, end
-
-                        % Use tmp.freq to be maximally safe about spacing
-                        fr = fooof(tmp.freq(:), psd, f_range, settings, true);
-
-                        % periodic-only (log10 units): fooofed - aperiodic
-                        fspctrm(ch, :, tt, tr) = fr.fooofed_spectrum - fr.ap_fit;
-                    end
-                end
-            end
-
-            % Build a FieldTrip object with TRIAL DIMENSION preserved
-            tfr_fooof_trials = tfr;
-            tfr_fooof_trials.powspctrm = fspctrm;
-
-            % Store
-            tfrs_fooof_trials{cond_idx} = tfr_fooof_trials;
-        end
-        disp(upper('FOOOF (keeptrials) done...'))
-
-        % Baselining 
-        % Raw power: baseline in dB, with trials kept
-        cfgBL = [];
-        cfgBL.baseline     = [-.75 -.25];
-        cfgBL.baselinetype = 'db';
-
-        tfr2_bl_trials = ft_freqbaseline(cfgBL, tfr2);
-        tfr4_bl_trials = ft_freqbaseline(cfgBL, tfr4);
-        tfr6_bl_trials = ft_freqbaseline(cfgBL, tfr6);
-
-        % FOOOF-periodic (log10 units): baseline with subtraction (absolute), with trials kept
-        cfgBLP = [];
-        cfgBLP.baseline     = [-.75 -.25];
-        cfgBLP.baselinetype = 'absolute';
-
-        tfr2_fooof_bl_trials = ft_freqbaseline(cfgBLP, tfrs_fooof_trials{1});
-        tfr4_fooof_bl_trials = ft_freqbaseline(cfgBLP, tfrs_fooof_trials{2});
-        tfr6_fooof_bl_trials = ft_freqbaseline(cfgBLP, tfrs_fooof_trials{3});
+        cfgBLP                 = [];
+        cfgBLP.baseline        = [-.75 -.25];
+        cfgBLP.baselinetype    = 'absolute';    % already in log scale
+        tfr2_fooof_bl = ft_freqbaseline(cfgBLP, tfr2_fooof);
+        tfr4_fooof_bl = ft_freqbaseline(cfgBLP, tfr4_fooof);
+        tfr6_fooof_bl = ft_freqbaseline(cfgBLP, tfr6_fooof);
 
         % Average across trials
-        tfr2_bl = tfr2_bl_trials;
-        tfr2_bl.powspctrm = mean(tfr2_bl_trials.powspctrm, 4, 'omitnan');
-
-        tfr4_bl = tfr4_bl_trials;
-        tfr4_bl.powspctrm = mean(tfr4_bl_trials.powspctrm, 4, 'omitnan');
-
-        tfr6_bl = tfr6_bl_trials;
-        tfr6_bl.powspctrm = mean(tfr6_bl_trials.powspctrm, 4, 'omitnan');
-
-        tfr2_fooof_bl = tfr2_fooof_bl_trials;
-        tfr2_fooof_bl.powspctrm = mean(tfr2_fooof_bl_trials.powspctrm, 4, 'omitnan');
-
-        tfr4_fooof_bl = tfr4_fooof_bl_trials;
-        tfr4_fooof_bl.powspctrm = mean(tfr4_fooof_bl_trials.powspctrm, 4, 'omitnan');
-
-        tfr6_fooof_bl = tfr6_fooof_bl_trials;
-        tfr6_fooof_bl.powspctrm = mean(tfr6_fooof_bl_trials.powspctrm, 4, 'omitnan');
+        tfr2_bl.powspctrm       = mean(tfr2_bl.powspctrm, 4, 'omitnan');
+        tfr4_bl.powspctrm       = mean(tfr4_bl.powspctrm, 4, 'omitnan');
+        tfr6_bl.powspctrm       = mean(tfr6_bl.powspctrm, 4, 'omitnan');
+        tfr2_fooof_bl.powspctrm = mean(tfr2_fooof_bl.powspctrm, 4, 'omitnan');
+        tfr4_fooof_bl.powspctrm = mean(tfr4_fooof_bl.powspctrm, 4, 'omitnan');
+        tfr6_fooof_bl.powspctrm = mean(tfr6_fooof_bl.powspctrm, 4, 'omitnan');
 
         % Save
         cd(datapath)
         save tfr_stern ...
             tfr2 tfr4 tfr6 ...
             tfr2_bl tfr4_bl tfr6_bl ...
-            tfr2_bl_trials tfr4_bl_trials tfr6_bl_trials
 
         save tfr_stern_fooof ...
+            tfr2_fooof tfr4_fooof tfr6_fooof ...
             tfr2_fooof_bl tfr4_fooof_bl tfr6_fooof_bl ...
-            tfr2_fooof_bl_trials tfr4_fooof_bl_trials tfr6_fooof_bl_trials
 
         clc
     catch ME

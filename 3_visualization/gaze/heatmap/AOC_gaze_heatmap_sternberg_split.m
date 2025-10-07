@@ -11,18 +11,20 @@ for subj = 1:3%%%%%length(subjects)
     datapath = strcat(path,subjects{subj}, '/gaze');
     load([datapath, filesep 'dataET_sternberg'])
 
-    %% Segment data per condition
-    ind2 = find(dataet.trialinfo == 22);
-    ind4 = find(dataet.trialinfo == 24);
-    ind6 = find(dataet.trialinfo == 26);
+    %% Segment data per condition and split time
+    ind2 = find(dataETlong.trialinfo == 22);
+    ind4 = find(dataETlong.trialinfo == 24);
+    ind6 = find(dataETlong.trialinfo == 26);
     cfg = [];
-    cfg.latency = [1 2];
+    cfg.avgovertime  = 'no';
+    cfg.keeptrials   = 'yes';
+    cfg.latency = [0 1];
     cfg.trials = ind2;
-    dataetL2 = ft_selectdata(cfg,dataet);
+    dataetL2 = ft_selectdata(cfg,dataETlong);
     cfg.trials = ind4;
-    dataetL4 = ft_selectdata(cfg,dataet);
+    dataetL4 = ft_selectdata(cfg,dataETlong);
     cfg.trials = ind6;
-    dataetL6 = ft_selectdata(cfg,dataet);
+    dataetL6 = ft_selectdata(cfg,dataETlong);
 
     %% Filter data for out-of-screen data points and zeros from blinks
     condcounter = 0;
@@ -52,17 +54,16 @@ for subj = 1:3%%%%%length(subjects)
 
         %% Create scatterplot for data check
         % figure;
-        %
         % scatterhist(x_positions, y_positions, 'Location', 'SouthEast', 'Color', 'k', 'Marker', '.');
-        %
+        % 
         % % Calculate mean values
         % mean_x = mean(x_positions);
         % mean_y = mean(y_positions);
-        %
+        % 
         % % Add mean markers and labels
         % hold on;
         % plot(mean_x, mean_y, 'ro', 'MarkerSize', 10);
-        %
+        % 
         % % Set axis labels
         % xlabel('X Position');
         % ylabel('Y Position');
@@ -123,6 +124,7 @@ cfg.neighbours         = [];
 
 clear design
 subj = length(subjects);
+subj = 3
 design = zeros(2,2*subj);
 for i = 1:subj
     design(1,i) = i;
@@ -187,7 +189,7 @@ set(gca, 'FontSize', overallFontSize);
 title('WM load 2 Heatmap', 'FontSize', 30)
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_WM2.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_WM2_bl_early.png');
 
 % Plot WM load 4 heatmap
 freq.powspctrm(1,:,:) = squeeze(l4)';
@@ -215,7 +217,7 @@ set(gca, 'FontSize', overallFontSize);
 title('WM load 4 Heatmap', 'FontSize', 30)
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_WM4.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_WM4_bl_early.png');
 
 % Plot WM load 6 heatmap
 freq.powspctrm(1,:,:) = squeeze(l6)';
@@ -243,124 +245,7 @@ set(gca, 'FontSize', overallFontSize);
 title('WM load 6 Heatmap', 'FontSize', 30)
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_WM6.png');
-
-%% Plot difference heatmap (WM load 6 - WM load 2)
-close all
-
-for subj = 1:length(subjects)
-
-    subdat = l6g{subj};
-    allpow = cat(4, l2g{subj}.powspctrm, l4g{subj}.powspctrm, l6g{subj}.powspctrm);
-    subdat.powspctrm = nanmean(allpow, 4);
-
-    % Common configuration
-    centerX = 800 / 2;
-    centerY = 600 / 2;
-    mycolormap = customcolormap_preset('red-white-blue');
-    maxval = max([max(subdat.powspctrm(:))]);
-    Clim = [-maxval maxval];
-
-    % Plot WM load 2 heatmap
-    freq.powspctrm(1,:,:) = squeeze(subdat.powspctrm)';
-    freq.time = x_grid_pixels(1:end-1);
-    freq.freq = y_grid_pixels(1:end-1);
-    freq.label = {'et'};
-    freq.dimord = 'chan_freq_time';
-
-    figure;
-    set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
-    cfg = [];
-    cfg.figure = 'gcf';
-    ft_singleplotTFR(cfg, freq);
-    clim(Clim);
-    xlim([0 800]);
-    ylim([0 600]);
-    xlabel('Screen Width [px]');
-    ylabel('Screen Height [px]');
-    colormap(mycolormap);
-    cb = colorbar;
-    ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
-    hold on
-    plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-    set(gca, 'FontSize', overallFontSize);
-    title(['Gaze Heatmap AVERAGED over ALL LOADS - Subject ' , subjects{subj}], 'FontSize', 30)
-
-    % Save
-    saveas(gcf, ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/subjects/AOC_gaze_heatmap_sternberg_ALLAVG_subj', subjects{subj}, '.png']);
-end
-
-%% Plot AVERAGED heatmaps INDIVIDUAL subjects
-for subj = 1:length(subjects)
-    close all;
-    diff = l6g{subj};
-    diff = l6g{subj}.powspctrm - l2g{subj}.powspctrm;
-
-    maxval = max(diff(:));
-    Clim = [-maxval maxval];
-
-    freq.powspctrm(1,:,:) = squeeze(diff)';
-    freq.time = x_grid_pixels(1:end-1);
-    freq.freq = y_grid_pixels(1:end-1);
-    freq.label = {'et'};
-    freq.dimord = 'chan_freq_time';
-
-    figure;
-    set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
-    cfg = [];
-    cfg.figure = 'gcf';
-    ft_singleplotTFR(cfg, freq);
-    clim(Clim);
-    xlim([0 800]);
-    ylim([0 600]);
-    xlabel('Screen Width [px]');
-    ylabel('Screen Height [px]');
-    colormap(mycolormap);
-    cb = colorbar;
-    ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
-    hold on
-    plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-    set(gca, 'FontSize', overallFontSize);
-    title(['Sternberg Difference Heatmap Subject ', subjects{subj}, ' (WM load 6 minus WM load 2)'], 'FontSize', 30)
-
-    saveas(gcf, ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/subjects/AOC_gaze_heatmap_sternberg_diff_subj', subjects{subj}, '.png']);
-end
-
-%% Plot differences heatmap INDIVIDUAL subjects (WM load 6 - WM load 2)
-for subj = 1:length(subjects)
-    close all;
-    diff = l6g{subj};
-    diff = l6g{subj}.powspctrm - l2g{subj}.powspctrm;
-
-    maxval = max(diff(:));
-    Clim = [-maxval maxval];
-
-    freq.powspctrm(1,:,:) = squeeze(diff)';
-    freq.time = x_grid_pixels(1:end-1);
-    freq.freq = y_grid_pixels(1:end-1);
-    freq.label = {'et'};
-    freq.dimord = 'chan_freq_time';
-
-    figure;
-    set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
-    cfg = [];
-    cfg.figure = 'gcf';
-    ft_singleplotTFR(cfg, freq);
-    clim(Clim);
-    xlim([0 800]);
-    ylim([0 600]);
-    xlabel('Screen Width [px]');
-    ylabel('Screen Height [px]');
-    colormap(mycolormap);
-    cb = colorbar;
-    ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
-    hold on
-    plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-    set(gca, 'FontSize', overallFontSize);
-    title(['Sternberg Difference Heatmap Subject ', subjects{subj}, ' (WM load 6 minus WM load 2)'], 'FontSize', 30)
-
-    saveas(gcf, ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/subjects/AOC_gaze_heatmap_sternberg_diff_subj', subjects{subj}, '.png']);
-end
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_WM6_bl_early.png');
 
 %% Plot t-value stats
 close all
@@ -391,68 +276,68 @@ plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
 set(gca, 'FontSize', overallFontSize);
 title('Sternberg t-value Stats', 'FontSize', 30)
 
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_tvalues.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_tvalues_bl_early.png');
 
 %% MONTECARLO
-close all
-
-% Calculate significant differences l2 and l6
-stat = [];
-cfg                    = [];
-cfg.spmversion         = 'spm12';
-cfg.method             = 'montecarlo';
-cfg.statistic          = 'ft_statfun_depsamplesT';
-cfg.tail               = 0;
-cfg.clustertail        = 0;
-cfg.alpha              = 0.05;
-cfg.numrandomization   = 10000;
-cfg.neighbours         = [];
-
-clear design
-subj = length(subjects);
-design = zeros(2,2*subj);
-for i = 1:subj
-    design(1,i) = i;
-end
-for i = 1:subj
-    design(1,subj+i) = i;
-end
-design(2,1:subj)        = 1;
-design(2,subj+1:2*subj) = 2;
-
-cfg.design   = design;
-cfg.uvar     = 1;
-cfg.ivar     = 2;
-
-[stat] = ft_freqstatistics(cfg, l6g{:}, l2g{:});
-stat.stat(stat.mask==0)=0; % mask out all non significant
-statsternberg=stat;
-cohensd=2*((statsternberg.stat)./sqrt(numel(design)));
-statsternberg.stat=cohensd;
-
-% Plot t-value stats
-freq.powspctrm(1,:,:)= squeeze(stat.stat)';
-freq.time = x_grid_pixels(1:end-1);
-freq.freq = y_grid_pixels(1:end-1);
-freq.label = {'et'};
-freq.dimord = 'chan_freq_time';
-
-figure;
-set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
-cfg = [];
-cfg.figure = 'gcf';
-ft_singleplotTFR(cfg, freq);
-clim(Clim);
-xlim([0 800]);
-ylim([0 600]);
-xlabel('Screen Width [px]');
-ylabel('Screen Height [px]');
-colormap(mycolormap);
-cb = colorbar;
-ylabel(cb, 'Effect Size [Cohen''s d]', 'FontSize', 32); % Label the colorbar
-hold on
-plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'FontSize', overallFontSize);
-title('Sternberg CBPT t-value Stats', 'FontSize', 30)
-
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_cbpt.png');
+% close all
+% 
+% % Calculate significant differences l2 and l6
+% stat = [];
+% cfg                    = [];
+% cfg.spmversion         = 'spm12';
+% cfg.method             = 'montecarlo';
+% cfg.statistic          = 'ft_statfun_depsamplesT';
+% cfg.tail               = 0;
+% cfg.clustertail        = 0;
+% cfg.alpha              = 0.05;
+% cfg.numrandomization   = 10000;
+% cfg.neighbours         = [];
+% 
+% clear design
+% subj = length(subjects);
+% design = zeros(2,2*subj);
+% for i = 1:subj
+%     design(1,i) = i;
+% end
+% for i = 1:subj
+%     design(1,subj+i) = i;
+% end
+% design(2,1:subj)        = 1;
+% design(2,subj+1:2*subj) = 2;
+% 
+% cfg.design   = design;
+% cfg.uvar     = 1;
+% cfg.ivar     = 2;
+% 
+% [stat] = ft_freqstatistics(cfg, l6g{:}, l2g{:});
+% stat.stat(stat.mask==0)=0; % mask out all non significant
+% statsternberg=stat;
+% cohensd=2*((statsternberg.stat)./sqrt(numel(design)));
+% statsternberg.stat=cohensd;
+% 
+% % Plot t-value stats
+% freq.powspctrm(1,:,:)= squeeze(stat.stat)';
+% freq.time = x_grid_pixels(1:end-1);
+% freq.freq = y_grid_pixels(1:end-1);
+% freq.label = {'et'};
+% freq.dimord = 'chan_freq_time';
+% 
+% figure;
+% set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
+% cfg = [];
+% cfg.figure = 'gcf';
+% ft_singleplotTFR(cfg, freq);
+% clim(Clim);
+% xlim([0 800]);
+% ylim([0 600]);
+% xlabel('Screen Width [px]');
+% ylabel('Screen Height [px]');
+% colormap(mycolormap);
+% cb = colorbar;
+% ylabel(cb, 'Effect Size [Cohen''s d]', 'FontSize', 32); % Label the colorbar
+% hold on
+% plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+% set(gca, 'FontSize', overallFontSize);
+% title('Sternberg CBPT t-value Stats', 'FontSize', 30)
+% 
+% saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_cbpt.png');

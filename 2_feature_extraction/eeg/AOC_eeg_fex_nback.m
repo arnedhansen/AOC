@@ -1,12 +1,10 @@
 %% AOC EEG Feature Extraction N-back
 %
 % Extracted features:
-%   Power Spectrum (Average & Trial-by-Trial)
+%   Power Spectrum 
 %   IAF, Power at IAF, and Lateralization Index
 %   POWER TRIAL-BY-TRIAL
-%   FOOOF Power
-%   TFR
-%   Baselined Power Spectrum
+%   TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM
 
 %% POWER Spectrum
 % Setup
@@ -26,7 +24,7 @@ for subj = 1:length(subjects)
 
         % Identify indices of trials belonging to conditions
         ind1 = find(data.trialinfo == 21);
-        ind2 = find(data.trialinfo == 22);
+        ind1 = find(data.trialinfo == 22);
         ind3 = find(data.trialinfo == 23);
 
         % Select data
@@ -47,7 +45,7 @@ for subj = 1:length(subjects)
         % Frequency analysis settings
         cfg.trials = ind1;
         powload1 = ft_freqanalysis(cfg,dat);
-        cfg.trials = ind2;
+        cfg.trials = ind1;
         powload2 = ft_freqanalysis(cfg,dat);
         cfg.trials = ind3;
         powload3 = ft_freqanalysis(cfg,dat);
@@ -253,7 +251,7 @@ for subj = 1:length(subjects)
         %% Frequency analysis
         % Identify indices of trials belonging to conditions
         ind1 = find(data.trialinfo == 21);
-        ind2 = find(data.trialinfo == 22);
+        ind1 = find(data.trialinfo == 22);
         ind3 = find(data.trialinfo == 23);
 
         % Select data
@@ -275,7 +273,7 @@ for subj = 1:length(subjects)
         cfg.trials = ind1;
         powload1_trials = ft_freqanalysis(cfg,dat);
         powload1_trials.trialinfo = ones(1,length(powload1_trials.powspctrm(:, 1, 1)));
-        cfg.trials = ind2;
+        cfg.trials = ind1;
         powload2_trials = ft_freqanalysis(cfg,dat);
         powload2_trials.trialinfo = ones(1,length(powload2_trials.powspctrm(:, 1, 1)))*2;
         cfg.trials = ind3;
@@ -291,140 +289,172 @@ for subj = 1:length(subjects)
     end
 end
 
-%% FOOOF Power
+%% TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM
 % Setup
 startup
 [subjects, path, ~ , ~] = setup('AOC');
 
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1:length(subjects)
-    try
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
-        cd(datapath)
-        close all
-        load dataEEG_nback
 
-        %% Identify indices of trials belonging to conditions
-        ind1=find(data.trialinfo==21);
-        ind2=find(data.trialinfo==22);
-        ind3=find(data.trialinfo==23);
+    % Check existing data
+    datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+    %if ~isfile([datapath, filesep, 'power_nback_fooof.mat'])
+        clc
+        disp(['Processing TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
+        try
+            cd(datapath)
+            close all
+            load dataEEG_TFR_nback
 
-        %% Frequency analysis
-        cfg = [];
-        cfg.latency = [0 2]; % Segment from 0 to 2 [seconds]
-        dat = ft_selectdata(cfg,data);
-        cfg = []; % empty config
-        cfg.output = 'fooof_peaks'; % 1/f
-        cfg.method = 'mtmfft'; % multi taper fft method
-        cfg.taper = 'dpss'; % multiple tapers
-        cfg.tapsmofrq = 1; % smoothening frequency around foi
-        cfg.foilim = [3 30]; % frequencies of interest (foi)
-        cfg.keeptrials = 'no'; % do not keep single trials in output
-        cfg.pad = 5;
-        cfg.trials = ind1;
-        powload1 = ft_freqanalysis(cfg,dat);
-        cfg.trials = ind2;
-        powload2 = ft_freqanalysis(cfg,dat);
-        cfg.trials = ind3;
-        powload3 = ft_freqanalysis(cfg,dat);
+            % Identify indices of trials belonging to conditions
+            ind1 = find(dataTFR.trialinfo == 21);
+            ind2 = find(dataTFR.trialinfo == 22);
+            ind3 = find(dataTFR.trialinfo == 23);
 
-        %% Save data
-        cd(datapath)
-        save power_nback_fooof powload1 powload2 powload3
-    catch ME
-        ME.message
-        error(['ERROR extracting FOOOF power for Subject ' num2str(subjects{subj}) '!'])
-    end
+            % Time frequency analysis
+            cfg              = [];
+            cfg.output       = 'pow';
+            cfg.method       = 'mtmconvol';
+            cfg.taper        = 'hanning';
+            cfg.foi          = 2:1:40;                         % analysis 2 to 40 Hz in steps of 1 Hz
+            cfg.t_ftimwin    = ones(length(cfg.foi),1).*0.5;   % length of time window = 0.5 sec
+            cfg.toi          = -2:0.05:3;
+            cfg.keeptrials   = 'yes';
+
+            cfg.trials = ind1;
+            tfr1 = ft_freqanalysis(cfg, dataTFR);
+            cfg.trials = ind2;
+            tfr2 = ft_freqanalysis(cfg, dataTFR);
+            cfg.trials = ind3;
+            tfr3 = ft_freqanalysis(cfg, dataTFR);
+
+            % FOOOF
+            orig_freq = 2:1:40;
+            tfrs = {tfr1, tfr2, tfr3};
+            for tfr_conds = 1:3
+                clc
+                disp('FOOOFing...')
+                clear fspctrm
+                tfr = tfrs{1, tfr_conds};
+                for t = 21 :length(tfr.time) % Start at timepoint 21 because of sliding window of 500ms and start of data only at -1500ms
+                    cfg = [];
+                    cfg.latency = tfr.time(t);
+                    tmp = ft_selectdata(cfg,tfr);
+
+                    % ERROR CATCHING
+                    disp(['subj      ' num2str(subj)])
+                    disp(['cond      ' num2str(tfr_conds)])
+                    disp(['timepnt   ' num2str(t)])
+
+                    for chan = 1:length(tmp.label)
+
+                        % Transpose, to make inputs row vectors
+                        freqs = tmp.freq';
+                        psd = tmp.powspctrm(chan,:)';
+
+                        % FOOOF settings
+                        settings = struct();  % Use defaults
+                        settings.verbose = false; % Suppress warnings about too low peak_width_limits
+                        f_range = [tfr.freq(1), tfr.freq(end)];
+
+                        % Run FOOOF
+                        freqs = orig_freq'; % Equidistant freq distribution
+                        fooof_results = fooof(freqs, psd, f_range, settings, true);
+                        powspctrmff(chan,:) = fooof_results.fooofed_spectrum-fooof_results.ap_fit;
+                    end
+                    fspctrm(:,:,t) = powspctrmff;
+                end
+                fooofedtrl(:,:,:) = fspctrm;
+                if tfr_conds == 1
+                    tfr1_fooof = tfr;
+                    tfr1_fooof.powspctrm = fooofedtrl;
+                elseif tfr_conds == 2
+                    tfr2_fooof = tfr;
+                    tfr2_fooof.powspctrm = fooofedtrl;
+                elseif tfr_conds == 3
+                    tfr3_fooof = tfr;
+                    tfr3_fooof.powspctrm = fooofedtrl;
+                end
+            end
+            disp(upper('FOOOF done...'))
+
+            % Baselined TFR
+            % Raw powspctrm baselined
+            cfg                              = [];
+            cfg.baseline                     = [-.75 -.25];
+            cfg.baselinetype                 = 'db';
+            tfr1_bl                          = ft_freqbaseline(cfg, tfr1);
+            tfr2_bl                          = ft_freqbaseline(cfg, tfr2);
+            tfr3_bl                          = ft_freqbaseline(cfg, tfr3);
+
+            % FOOOFed powspctrm baselined
+            cfg                              = [];
+            cfg.baseline                     = [-.75 -.25];
+            cfg.baselinetype                 = 'absolute';   % FOOOF already sets log scale, so no 'dB' here
+            tfr1_fooof_bl                    = ft_freqbaseline(cfg, tfr1_fooof);
+            tfr2_fooof_bl                    = ft_freqbaseline(cfg, tfr2_fooof);
+            tfr3_fooof_bl                    = ft_freqbaseline(cfg, tfr3_fooof);
+
+            % Save data
+            cd(datapath)
+            save tfr_nback ...
+                tfr1 tfr2 tfr3 ...
+                tfr1_fooof tfr2_fooof tfr3_fooof ...
+                tfr1_bl tfr2_bl tfr3_bl ...
+                tfr1_fooof_bl tfr2_fooof_bl tfr3_fooof_bl
+
+            % Convert TFR data to POWSCPTRM (channels x frequency)
+            analysisPeriodFull = [0 2];
+            analysisPeriodEarly = [0 1];
+            analysisPeriodLate = [1 2];
+            freq_range = [2 40];
+
+            % Select data
+            pow1_fooof                                = select_data(analysisPeriodFull, freq_range, tfr1_fooof);
+            pow1_fooof_bl                             = select_data(analysisPeriodFull, freq_range, tfr1_fooof_bl);
+            pow1_fooof_bl_early                       = select_data(analysisPeriodEarly, freq_range, tfr1_fooof_bl);
+            pow1_fooof_bl_late                        = select_data(analysisPeriodLate, freq_range, tfr1_fooof_bl);
+
+            pow2_fooof                                = select_data(analysisPeriodFull, freq_range, tfr2_fooof);
+            pow2_fooof_bl                             = select_data(analysisPeriodFull, freq_range, tfr2_fooof_bl);
+            pow2_fooof_bl_early                       = select_data(analysisPeriodEarly, freq_range, tfr2_fooof_bl);
+            pow2_fooof_bl_late                        = select_data(analysisPeriodLate, freq_range, tfr2_fooof_bl);
+
+            pow3_fooof                                = select_data(analysisPeriodFull, freq_range, tfr3_fooof);
+            pow3_fooof_bl                             = select_data(analysisPeriodFull, freq_range, tfr3_fooof_bl);
+            pow3_fooof_bl_early                       = select_data(analysisPeriodEarly, freq_range, tfr3_fooof_bl);
+            pow3_fooof_bl_late                        = select_data(analysisPeriodLate, freq_range, tfr3_fooof_bl);
+
+            % Remove time dimension for POWSCPTRM (channels x frequency)
+            pow1_fooof                                = remove_time_dimension(pow1_fooof);
+            pow1_fooof_bl                             = remove_time_dimension(pow1_fooof_bl);
+            pow1_fooof_bl_early                       = remove_time_dimension(pow1_fooof_bl_early);
+            pow1_fooof_bl_late                        = remove_time_dimension(pow1_fooof_bl_late);
+
+            pow2_fooof                                = remove_time_dimension(pow2_fooof);
+            pow2_fooof_bl                             = remove_time_dimension(pow2_fooof_bl);
+            pow2_fooof_bl_early                       = remove_time_dimension(pow2_fooof_bl_early);
+            pow2_fooof_bl_late                        = remove_time_dimension(pow2_fooof_bl_late);
+
+            pow3_fooof                                = remove_time_dimension(pow3_fooof);
+            pow3_fooof_bl                             = remove_time_dimension(pow3_fooof_bl);
+            pow3_fooof_bl_early                       = remove_time_dimension(pow3_fooof_bl_early);
+            pow3_fooof_bl_late                        = remove_time_dimension(pow3_fooof_bl_late);
+
+            save power_nback_fooof ...
+                pow1_fooof pow2_fooof pow3_fooof ...
+                pow1_fooof_bl pow2_fooof_bl pow3_fooof_bl ...
+                pow1_fooof_bl_early pow2_fooof_bl_early pow3_fooof_bl_early ...
+                pow1_fooof_bl_late pow2_fooof_bl_late pow3_fooof_bl_late
+            clc
+        catch ME
+            ME.message
+            error(['ERROR extracting TFR for Subject ' num2str(subjects{subj}) '!'])
+        end
+    %else
+    %    disp(['TFR and FOOOFed POWSPCTRM already exists for Subject AOC ', num2str(subjects{subj})])
+    %end
 end
+disp('TFR and FOOOFed POWSPCTRM COMPUTED...');
 
-%% TFR
-% Setup
-startup
-[subjects, path, ~ , ~] = setup('AOC');
-
-% Read data, segment and convert to FieldTrip data structure
-for subj = 1:length(subjects)
-    clc
-    disp(['Processing TFR for Subject AOC ', num2str(subjects{subj})])
-
-    try
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
-        cd(datapath)
-        close all
-        load dataEEG_TFR_nback
-
-        %% Identify indices of trials belonging to conditions
-        ind1 = find(dataTFR.trialinfo==21);
-        ind2 = find(dataTFR.trialinfo==22);
-        ind3 = find(dataTFR.trialinfo==23);
-
-        %% Time frequency analysis
-        cfg              = [];
-        cfg.output       = 'pow';
-        cfg.method       = 'mtmconvol';
-        cfg.taper        = 'hanning';
-        cfg.foi          = 2:1:40;                         % analysis 2 to 40 Hz in steps of 1 Hz
-        cfg.t_ftimwin    = ones(length(cfg.foi),1).*0.5;   % length of time window = 0.5 sec
-        cfg.toi          = -1:0.05:2;
-        cfg.keeptrials   = 'no';
-        cfg.trials = ind1;
-        tfr1 = ft_freqanalysis(cfg,dataTFR);
-        cfg.trials = ind2;
-        tfr2 = ft_freqanalysis(cfg,dataTFR);
-        cfg.trials = ind3;
-        tfr3 = ft_freqanalysis(cfg,dataTFR);
-
-        %% Baseline
-        cfg                              = [];
-        cfg.baseline                     = [-.5 0];
-        cfg.baselinetype                 = 'db';
-        tfr1_bl                          = ft_freqbaseline(cfg, tfr1);
-        tfr2_bl                          = ft_freqbaseline(cfg, tfr2);
-        tfr3_bl                          = ft_freqbaseline(cfg, tfr3);
-
-        %% Save data
-        cd(datapath)
-        save tfr_nback tfr1 tfr2 tfr3 tfr1_bl tfr2_bl tfr3_bl
-    catch ME
-        ME.message
-        error(['ERROR extracting TFR for Subject ' num2str(subjects{subj}) '!'])
-    end
-end
-disp('TFR COMPUTED...');
-
-%% BASELINED POWER Spectrum
-% Concert TFR data to POWSPCTRM (channels x frequency)
-% Setup
-startup
-[subjects, path, ~ , ~] = setup('AOC');
-
-% Baselined power spectra analysis
-analysis_period = [0 2]; % N-back analysis window
-freq_range = [3 30];
-for subj = 1:length(subjects)
-    try
-        % Load data
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
-        cd(datapath);
-        load('tfr_nback.mat');
-
-        % Power spectra calculations
-        powload1_bl = select_data(analysis_period, freq_range, tfr1_bl);
-        powload2_bl = select_data(analysis_period, freq_range, tfr2_bl);
-        powload3_bl = select_data(analysis_period, freq_range, tfr3_bl);
-
-        % Remove time dimension for POWSCPTRM (channels x frequency)
-        powload1_bl = remove_time_dimension(powload1_bl);
-        powload2_bl = remove_time_dimension(powload2_bl);
-        powload3_bl = remove_time_dimension(powload3_bl);
-
-        % Save baselined power spectra
-        cd(datapath)
-        save power_nback_bl powload1_bl powload2_bl powload3_bl
-
-    catch ME
-        ME.message
-        error(['ERROR extracting baselined power for Subject ' num2str(subjects{subj}) '!'])
-    end
-
-end

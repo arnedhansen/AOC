@@ -9,9 +9,10 @@ for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj}, '/eeg');
     cd(datapath)
     load tfr_stern
-    tfr2_all{subj} = tfr2_fooof;
-    tfr4_all{subj} = tfr4_fooof;
-    tfr6_all{subj} = tfr6_fooof;
+    % NEVER USE FOOOF DATA WITH RELCHANGE
+    tfr2_all{subj} = tfr2;
+    tfr4_all{subj} = tfr4;
+    tfr6_all{subj} = tfr6;
     disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' TFR data loaded.'])
 end
 

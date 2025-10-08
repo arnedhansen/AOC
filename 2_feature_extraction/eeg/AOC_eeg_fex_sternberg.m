@@ -433,7 +433,6 @@ for subj = 1:length(subjects)
     %if ~isfile([datapath, filesep, 'power_stern_fooof.mat'])
     clc
     disp(['Processing TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
-    try
         cd(datapath)
         close all
         load dataEEG_TFR_sternberg
@@ -444,14 +443,14 @@ for subj = 1:length(subjects)
         ind6 = find(dataTFR.trialinfo == 26);
 
         % Time frequency analysis
-        cfg              = [];
-        cfg.output       = 'pow';
-        cfg.method       = 'mtmconvol';
-        cfg.taper        = 'hanning';
-        cfg.foi          = 2:1:40;
-        cfg.t_ftimwin    = 0.5 * ones(length(cfg.foi),1);
-        cfg.toi          = -2:0.05:3;
-        cfg.keeptrials   = 'yes';
+        cfg = [];% empty config
+        cfg.output = 'pow';% estimates power only
+        cfg.method = 'mtmfft';% multi taper fft method
+        cfg.taper = 'dpss';% multiple tapers
+        cfg.tapsmofrq = 1;% smoothening frequency around foi
+        cfg.foilim = [3 30];% frequencies of interest (foi)
+        cfg.keeptrials = 'no';% do not keep single trials in output
+        cfg.pad = 10;
 
         cfg.trials = ind2;  
         tfr2 = ft_freqanalysis(cfg, dataTFR);
@@ -461,7 +460,7 @@ for subj = 1:length(subjects)
         tfr6 = ft_freqanalysis(cfg, dataTFR);
 
         % Get the aperiodic (1/f) fit directly from FieldTrip
-        cfg_fooof           = cfg;                % same time–freq settings
+        cfg_fooof           = cfg;                % same time�freq settings
         cfg_fooof.output    = 'fooof_aperiodic';  % returns the FOOOF 1/f estimate
         tfr2_ap = ft_freqanalysis(cfg_fooof, dataTFR);
         cfg_fooof.trials = ind4; tfr4_ap = ft_freqanalysis(cfg_fooof, dataTFR);
@@ -509,10 +508,6 @@ for subj = 1:length(subjects)
             tfr2_fooof_bl tfr4_fooof_bl tfr6_fooof_bl ...
 
         clc
-    catch ME
-        ME.message
-        error(['ERROR extracting TFR for Subject ' num2str(subjects{subj}) '!'])
-    end
     %else
     %    disp(['TFR and FOOOFed POWSPCTRM already exists for Subject AOC ', num2str(subjects{subj})])
     %end

@@ -477,6 +477,7 @@ for subj = 1:length(subjects)
                     tmp = ft_selectdata(cfg,tfr);
 
                     % ERROR CATCHING
+                    clc
                     disp(['subj      ' num2str(subj)])
                     disp(['cond      ' num2str(tfr_conds)])
                     disp(['timepnt   ' num2str(t)])

@@ -11,6 +11,8 @@ startup
 for subj = 1:10%%%%%length(subjects)
     datapath = strcat(path,subjects{subj}, '/gaze');
     load([datapath, filesep 'dataET_sternberg'])
+    clc
+    disp(['Loading ET data for Subject ' num2str(subj) '/' num2str(length(subjects)) '...'])
 
     %% Segment data in split times
     cfg = [];
@@ -72,7 +74,7 @@ for subj = 1:10%%%%%length(subjects)
         y_grid_pixels = linspace(0, 600, num_bins);
 
         % Bin data
-        smoothing_factor = 2.5;
+        smoothing_factor = 5;
         binned_data_pixels = histcounts2(x_positions, y_positions, x_grid_pixels, y_grid_pixels);
 
         % Apply gaussian smoothing
@@ -103,8 +105,6 @@ datBase  = subject_average(1, :, :);
 datEarly = subject_average(2, :, :);
 datLate  = subject_average(3, :, :);
 
-
-
 %% Plot HEATMAPS
 close all;
 overallFontSize = 40;
@@ -127,7 +127,6 @@ set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
 cfg = [];
 cfg.figure = 'gcf';
 ft_singleplotTFR(cfg, freq);
-clim(Clim);
 xlim([0 800]);
 ylim([0 600]);
 xlabel('Screen Width [px]');
@@ -138,7 +137,7 @@ ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
 set(gca, 'FontSize', overallFontSize);
-title('Baseline Period [-0.75 -0.25] Heatmap', 'FontSize', 30)
+title('Baseline Period [-0.75 -0.25] Gaze Heatmap', 'FontSize', 30)
 set(gca, "Clim", [0 max(datBase(:))])
 
 % Save
@@ -166,7 +165,7 @@ ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
 set(gca, 'FontSize', overallFontSize);
-title('EARLY Heatmap', 'FontSize', 30)
+title('EARLY [0 1] Gaze Heatmap', 'FontSize', 30)
 set(gca, "Clim", [0 maxval])
 
 % Save
@@ -194,7 +193,7 @@ ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
 set(gca, 'FontSize', overallFontSize);
-title('LATE Heatmap', 'FontSize', 30)
+title('LATE [1 2] Gaze Heatmap', 'FontSize', 30)
 set(gca, "Clim", [0 maxval])
 
 % Save
@@ -213,7 +212,6 @@ cfg.neighbours         = [];
 
 clear design
 subj = length(subjects);
-subj = 3%%%%%
 design = zeros(2,2*subj);
 for i = 1:subj
     design(1,i) = i;

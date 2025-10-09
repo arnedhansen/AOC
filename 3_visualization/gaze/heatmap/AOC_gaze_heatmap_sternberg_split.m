@@ -1,5 +1,6 @@
 %% Heatmap for AOC Sternberg COMBINED gaze data SPLIT EARLY AND LATE
 % combined data of loads 2, 4, and 6
+% Baseline = [-0.5 -0.25]
 % Early = 0-1000ms
 % Late = 1000-2000ms
 
@@ -8,285 +9,217 @@ startup
 [subjects, path, ~, ~] = setup('AOC');
 
 %% Load data
-for subj = 1:10%%%%%length(subjects)
+for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj}, '/gaze');
     load([datapath, filesep 'dataET_sternberg'])
     clc
-    disp(['Loading ET data for Subject ' num2str(subj) '/' num2str(length(subjects)) '...'])
+    disp(upper(['Loading ET data for Subject ' num2str(subj) '/' num2str(length(subjects)) '...']))
 
-    %% Segment data in split times
+    %% Segment data in split latencies and conditions, filter and compute heatmaps
+    % Find condition indexes for each trial
+    ind2 = find(dataet.trialinfo == 22);
+    ind4 = find(dataet.trialinfo == 24);
+    ind6 = find(dataet.trialinfo == 26);
+
+    % Common config
     cfg = [];
     cfg.avgovertime  = 'no';
     cfg.keeptrials   = 'yes';
-    cfg.latency = [-0.75 -0.25];
-    dataBaseline = ft_selectdata(cfg,dataETlong);
+    num_bins = 1000;
+    smoothing_factor = 10;
+
+    % BASELINE
+    cfg.latency = [-0.5 -0.25];
+    dataBaseCOMB = ft_selectdata(cfg,dataETlong);
+    dataBaseCOMB = horzcat(dataBaseCOMB.trial{:});
+    dataBaseCOMBAllsubs{subj} = computeGazeHeatmap(dataBaseCOMB, num_bins, smoothing_factor);
+    cfg.trials = ind2;
+    dataBase2 = ft_selectdata(cfg,dataETlong);
+    dataBase2 = horzcat(dataBase2.trial{:});
+    dataBase2Allsubs{subj} = computeGazeHeatmap(dataBase2, num_bins, smoothing_factor);
+    cfg.trials = ind4;
+    dataBase4 = ft_selectdata(cfg,dataETlong);
+    dataBase4 = horzcat(dataBase4.trial{:});
+    dataBase4Allsubs{subj} = computeGazeHeatmap(dataBase4, num_bins, smoothing_factor);
+    cfg.trials = ind6;
+    dataBase6 = ft_selectdata(cfg,dataETlong);
+    dataBase6 = horzcat(dataBase6.trial{:});
+    dataBase6Allsubs{subj} = computeGazeHeatmap(dataBase6, num_bins, smoothing_factor);
+
+    % EARLY
     cfg.latency = [0 1];
-    dataEarly = ft_selectdata(cfg,dataETlong);
+    dataEarlyCOMB = ft_selectdata(cfg,dataETlong);
+    dataEarlyCOMB = horzcat(dataEarlyCOMB.trial{:});
+    dataEarlyCOMBAllsubs{subj} = computeGazeHeatmap(dataEarlyCOMB, num_bins, smoothing_factor);
+    cfg.trials = ind2;
+    dataEarly2 = ft_selectdata(cfg,dataETlong);
+    dataEarly2 = horzcat(dataEarly2.trial{:});
+    dataEarly2Allsubs{subj} = computeGazeHeatmap(dataEarly2, num_bins, smoothing_factor);
+    cfg.trials = ind4;
+    dataEarly4 = ft_selectdata(cfg,dataETlong);
+    dataEarly4 = horzcat(dataEarly4.trial{:});
+    dataEarly4Allsubs{subj} = computeGazeHeatmap(dataEarly4, num_bins, smoothing_factor);
+    cfg.trials = ind6;
+    dataEarly6 = ft_selectdata(cfg,dataETlong);
+    dataEarly6 = horzcat(dataEarly6.trial{:});
+    dataEarly6Allsubs{subj} = computeGazeHeatmap(dataEarly6, num_bins, smoothing_factor);
+
+    % LATE
     cfg.latency = [1 2];
-    dataLate = ft_selectdata(cfg,dataETlong);
+    dataLateCOMB = ft_selectdata(cfg,dataETlong);
+    dataLateCOMB = horzcat(dataLateCOMB.trial{:});
+    dataLateCOMBAllsubs{subj} = computeGazeHeatmap(dataLateCOMB, num_bins, smoothing_factor);
+    cfg.trials = ind2;
+    dataLate2 = ft_selectdata(cfg,dataETlong);
+    dataLate2 = horzcat(dataLate2.trial{:});
+    dataLate2Allsubs{subj} = computeGazeHeatmap(dataLate2, num_bins, smoothing_factor);
+    cfg.trials = ind4;
+    dataLate4 = ft_selectdata(cfg,dataETlong);
+    dataLate4 = horzcat(dataLate4.trial{:});
+    dataLate4Allsubs{subj} = computeGazeHeatmap(dataLate4, num_bins, smoothing_factor);
+    cfg.trials = ind6;
+    dataLate6 = ft_selectdata(cfg,dataETlong);
+    dataLate6 = horzcat(dataLate6.trial{:});
+    dataLate6Allsubs{subj} = computeGazeHeatmap(dataLate6, num_bins, smoothing_factor);
 
-    %% Filter data for out-of-screen data points and zeros from blinks
-    for conds = 1:3
-        if conds == 1
-            data = horzcat(dataBaseline.trial{:});
-        elseif conds == 2
-            data = horzcat(dataEarly.trial{:});
-        elseif conds == 3
-            data = horzcat(dataLate.trial{:});
-        end
+end
 
-        % Filter out data points outside the screen boundaries
-        valid_data_indices = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
-        valid_data = data(1:3, valid_data_indices);
+%% Baseline data
+disp('BASELININIG...')
+for subj = 1 : length(subjects)
+    % EARLY
+    dataEarlyCOMBAllsubs_bl{subj}           = dataEarlyCOMBAllsubs{subj};
+    dataEarly2Allsubs_bl{subj}              = dataEarly2Allsubs{subj};
+    dataEarly4Allsubs_bl{subj}              = dataEarly4Allsubs{subj};
+    dataEarly6Allsubs_bl{subj}              = dataEarly6Allsubs{subj};
 
-        % Remove blinks with a window of 100ms (= 50 samples/timepoints)
-        win_size = 50;
-        data = remove_blinks(valid_data, win_size);
+    dataEarlyCOMBAllsubs_bl{subj}.powspctrm = dataEarlyCOMBAllsubs{subj}.powspctrm - dataBaseCOMBAllsubs{subj}.powspctrm;
+    dataEarly2Allsubs_bl{subj}.powspctrm    = dataEarly2Allsubs{subj}.powspctrm - dataBase2Allsubs{subj}.powspctrm;
+    dataEarly4Allsubs_bl{subj}.powspctrm    = dataEarly4Allsubs{subj}.powspctrm - dataBase4Allsubs{subj}.powspctrm;
+    dataEarly6Allsubs_bl{subj}.powspctrm    = dataEarly6Allsubs{subj}.powspctrm - dataBase6Allsubs{subj}.powspctrm;
 
-        x_positions = data(1, :);
-        y_positions = data(2, :);
-
-        %% Create scatterplot for data check
-        % figure;
-        % scatterhist(x_positions, y_positions, 'Location', 'SouthEast', 'Color', 'k', 'Marker', '.');
-        %
-        % % Calculate mean values
-        % mean_x = mean(x_positions);
-        % mean_y = mean(y_positions);
-        %
-        % % Add mean markers and labels
-        % hold on;
-        % plot(mean_x, mean_y, 'ro', 'MarkerSize', 10);
-        %
-        % % Set axis labels
-        % xlabel('X Position');
-        % ylabel('Y Position');
-        % title('Scatterhist of Eye Tracker Data');
-        % % Invert y-axis to match the typical eye-tracking coordinate system
-        % set(gca, 'YDir','reverse')
-        % xlim([0 800]);
-        % ylim([0 600]);
-
-        %% Bin and smooth data
-        % Create custom grid for heatmap in pixels
-        num_bins = 100;
-        x_grid_pixels = linspace(0, 800, num_bins);
-        y_grid_pixels = linspace(0, 600, num_bins);
-
-        % Bin data
-        smoothing_factor = 5;
-        binned_data_pixels = histcounts2(x_positions, y_positions, x_grid_pixels, y_grid_pixels);
-
-        % Apply gaussian smoothing
-        smoothed_data_pixels(subj,conds, :, :) = imgaussfilt(binned_data_pixels, smoothing_factor);
-
-        % Treat ET data as TFR for stats
-        freq = [];
-        freq.freq       = linspace(0, 600, 99);
-        freq.time       = linspace(0, 800, 99);
-        freq.label      = {'et'};
-        freq.dimord     = 'chan_freq_time';
-        tmp(1,:,:)      = squeeze(smoothed_data_pixels(subj,conds, :, :));
-        freq.powspctrm  = tmp;
-
-        if conds == 1
-            dataBaselineAll{subj} = freq;
-        elseif conds     == 2
-            dataEarlyAll{subj} = freq;
-        elseif conds == 3
-            dataLateAll{subj}  = freq;
-        end
-    end
+    % LATE
+    dataLateCOMBAllsubs_bl{subj}            = dataLateCOMBAllsubs{subj};
+    dataLate2Allsubs_bl{subj}               = dataLate2Allsubs{subj};
+    dataLate4Allsubs_bl{subj}               = dataLate4Allsubs{subj};
+    dataLate6Allsubs_bl{subj}               = dataLate6Allsubs{subj};
+    dataLateCOMBAllsubs_bl{subj}.powspctrm  = dataLateCOMBAllsubs{subj}.powspctrm - dataBaseCOMBAllsubs{subj}.powspctrm;
+    dataLate2Allsubs_bl{subj}.powspctrm     = dataLate2Allsubs{subj}.powspctrm - dataBase2Allsubs{subj}.powspctrm;
+    dataLate4Allsubs_bl{subj}.powspctrm     = dataLate4Allsubs{subj}.powspctrm - dataBase4Allsubs{subj}.powspctrm;
+    dataLate6Allsubs_bl{subj}.powspctrm     = dataLate6Allsubs{subj}.powspctrm - dataBase6Allsubs{subj}.powspctrm;
 end
 
 %% Average across subjects
-subject_average = squeeze(mean(smoothed_data_pixels, 1));
-datBase  = subject_average(1, :, :);
-datEarly = subject_average(2, :, :);
-datLate  = subject_average(3, :, :);
+disp('AVERAGING...')
+datBaseGACOMB = ft_freqgrandaverage([],dataBaseCOMBAllsubs{:});
+datBaseGA2    = ft_freqgrandaverage([],dataBase2Allsubs{:});
+datBaseGA4    = ft_freqgrandaverage([],dataBase4Allsubs{:});
+datBaseGA6    = ft_freqgrandaverage([],dataBase6Allsubs{:});
 
-%% Plot HEATMAPS
-close all;
-overallFontSize = 40;
+datEarlyGACOMB = ft_freqgrandaverage([],dataEarlyCOMBAllsubs_bl{:});
+datEarlyGA2    = ft_freqgrandaverage([],dataEarly2Allsubs_bl{:});
+datEarlyGA4    = ft_freqgrandaverage([],dataEarly4Allsubs_bl{:});
+datEarlyGA6    = ft_freqgrandaverage([],dataEarly6Allsubs_bl{:});
 
-% Common configuration
-centerX = 800 / 2;
-centerY = 600 / 2;
-colMap = customcolormap_preset('white-red');
-maxval = max([max(datEarly(:)), max(datLate(:))]);
+datLateGACOMB = ft_freqgrandaverage([],dataLateCOMBAllsubs_bl{:});
+datLateGA2    = ft_freqgrandaverage([],dataLate2Allsubs_bl{:});
+datLateGA4    = ft_freqgrandaverage([],dataLate4Allsubs_bl{:});
+datLateGA6    = ft_freqgrandaverage([],dataLate6Allsubs_bl{:});
 
-% Plot BASELINE heatmap
-freq.powspctrm(1,:,:) = squeeze(datBase)';
-freq.time = x_grid_pixels(1:end-1);
-freq.freq = y_grid_pixels(1:end-1);
-freq.label = {'et'};
-freq.dimord = 'chan_freq_time';
+%% Plot GRAND AVERAGE HEATMAPS RAW
+% close all;
+% overallFontSize = 40;
+% 
+% % Common configuration
+% centerX = 800 / 2;
+% centerY = 600 / 2;
+% colMapBase = customcolormap_preset('white-red');
+% colMap = customcolormap_preset('red-white-blue');
+% maxval = max([max(datEarlyGACOMB.powspctrm(:)), max(datLateGACOMB.powspctrm(:))]);
+% 
+% % Plot BASELINE heatmap
+% figure;
+% set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
+% cfg = [];
+% cfg.figure = 'gcf';
+% ft_singleplotTFR(cfg, datBaseGACOMB);
+% xlim([0 800]);
+% ylim([0 600]);
+% xlabel('Screen Width [px]');
+% ylabel('Screen Height [px]');
+% colormap(colMapBase);
+% cb = colorbar;
+% ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
+% hold on
+% plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+% set(gca, 'FontSize', overallFontSize);
+% title('Baseline Period [-0.75 -0.25] Gaze Heatmap', 'FontSize', 30)
+% set(gca, "Clim", [0 max(datBaseGACOMB.powspctrm(:))])
+% 
+% % Save
+% saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_BASELINE.png');
+% 
+% % Plot EARLY heatmap
+% figure;
+% set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
+% cfg = [];
+% cfg.figure = 'gcf';
+% ft_singleplotTFR(cfg, datEarlyGACOMB);
+% xlim([0 800]);
+% ylim([0 600]);
+% xlabel('Screen Width [px]');
+% ylabel('Screen Height [px]');
+% colormap(colMap);
+% cb = colorbar;
+% ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
+% hold on
+% plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+% set(gca, 'FontSize', overallFontSize);
+% title('EARLY [0 1] Gaze Heatmap', 'FontSize', 30)
+% set(gca, "Clim", [-maxval maxval])
+% 
+% % Save
+% saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_EARLY.png');
+% 
+% % Plot LATE heatmap
+% figure;
+% set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
+% cfg = [];
+% cfg.figure = 'gcf';
+% ft_singleplotTFR(cfg, datLateGACOMB);
+% xlim([0 800]);
+% ylim([0 600]);
+% xlabel('Screen Width [px]');
+% ylabel('Screen Height [px]');
+% colormap(colMap);
+% cb = colorbar;
+% ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
+% hold on
+% plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+% set(gca, 'FontSize', overallFontSize);
+% title('LATE [1 2] Gaze Heatmap', 'FontSize', 30)
+% set(gca, "Clim", [-maxval maxval])
+% 
+% % Save
+% saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_LATE.png');
 
-figure;
-set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
-cfg = [];
-cfg.figure = 'gcf';
-ft_singleplotTFR(cfg, freq);
-xlim([0 800]);
-ylim([0 600]);
-xlabel('Screen Width [px]');
-ylabel('Screen Height [px]');
-colormap(colMap);
-cb = colorbar;
-ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
-hold on
-plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'FontSize', overallFontSize);
-title('Baseline Period [-0.75 -0.25] Gaze Heatmap', 'FontSize', 30)
-set(gca, "Clim", [0 max(datBase(:))])
-
-% Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_BASELINE.png');
-
-% Plot EARLY heatmap
-freq.powspctrm(1,:,:) = squeeze(datEarly)';
-freq.time = x_grid_pixels(1:end-1);
-freq.freq = y_grid_pixels(1:end-1);
-freq.label = {'et'};
-freq.dimord = 'chan_freq_time';
-
-figure;
-set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
-cfg = [];
-cfg.figure = 'gcf';
-ft_singleplotTFR(cfg, freq);
-xlim([0 800]);
-ylim([0 600]);
-xlabel('Screen Width [px]');
-ylabel('Screen Height [px]');
-colormap(colMap);
-cb = colorbar;
-ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
-hold on
-plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'FontSize', overallFontSize);
-title('EARLY [0 1] Gaze Heatmap', 'FontSize', 30)
-set(gca, "Clim", [0 maxval])
-
-% Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_EARLY.png');
-
-% Plot LATE heatmap
-freq.powspctrm(1,:,:) = squeeze(datLate)';
-freq.time = x_grid_pixels(1:end-1);
-freq.freq = y_grid_pixels(1:end-1);
-freq.label = {'et'};
-freq.dimord = 'chan_freq_time';
-
-figure;
-set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
-cfg = [];
-cfg.figure = 'gcf';
-ft_singleplotTFR(cfg, freq);
-xlim([0 800]);
-ylim([0 600]);
-xlabel('Screen Width [px]');
-ylabel('Screen Height [px]');
-colormap(colMap);
-cb = colorbar;
-ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
-hold on
-plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'FontSize', overallFontSize);
-title('LATE [1 2] Gaze Heatmap', 'FontSize', 30)
-set(gca, "Clim", [0 maxval])
-
-% Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_LATE.png');
-
-%% Calculate significant differences between baseline and time windows
-cfg                    = [];
-cfg.spmversion         = 'spm12';
-cfg.method             = 'analytic';
-cfg.statistic          = 'ft_statfun_depsamplesT';
-cfg.tail               = 0;
-cfg.clustertail        = 0;
-cfg.alpha              = 0.05;
-cfg.numrandomization   = 10000;
-cfg.neighbours         = [];
-
-clear design
-subj = length(subjects);
-design = zeros(2,2*subj);
-for i = 1:subj
-    design(1,i) = i;
-end
-for i = 1:subj
-    design(1,subj+i) = i;
-end
-design(2,1:subj)        = 1;
-design(2,subj+1:2*subj) = 2;
-
-cfg.design   = design;
-cfg.uvar     = 1;
-cfg.ivar     = 2;
-
-[stat] = ft_freqstatistics(cfg, dataLateAll{:}, dataBaselineAll{:});
-
-% Handle NaNs by replacing them with 0 (or another placeholder value)
-stat.stat(isnan(stat.stat)) = 0;  % Replace NaNs with 0
-% Check if there are any remaining NaNs
-disp(sum(isnan(stat.stat(:))));  % Count NaNs in stat.stat
-stat.stat(stat.mask == 0) = 0;  % Mask out all non-significant
-statsternberg = stat;
-cohensd = 2 * ((statsternberg.stat) ./ sqrt(numel(design)));  % Calculate Cohen's d
-statsternberg.stat = cohensd;
-% Interpolate NaNs
-stat.stat = fillmissing(stat.stat, 'linear', 2);  % Linear interpolation along the 2nd dimension (time/frequency)
-
-%% Plot t-value stats
-close all
-freq.powspctrm(1,:,:) = squeeze(stat.stat)';
-freq.time = x_grid_pixels(1:end-1);
-freq.freq = y_grid_pixels(1:end-1);
-freq.label = {'et'};
-freq.dimord = 'chan_freq_time';
-
-maxval = max(stat.stat(:));
-Clim = [-maxval maxval];
-
-figure;
-set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
-cfg = [];
-cfg.figure = 'gcf';
-ft_singleplotTFR(cfg, freq);
-clim(Clim);
-xlim([0 800]);
-ylim([0 600]);
-xlabel('Screen Width [px]');
-ylabel('Screen Height [px]');
-colormap(colMap);
-cb = colorbar;
-ylabel(cb, 'Effect Size [Cohen''s d]', 'FontSize', 32); % Label the colorbar
-hold on
-plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
-set(gca, 'FontSize', overallFontSize);
-title('Sternberg t-value Stats', 'FontSize', 30)
-
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_tvalues_bl_early.png');
-
-%% MONTECARLO
-close all
-
-% Calculate significant differences l2 and l6
-stat = [];
+%% Set up stats
 cfg                    = [];
 cfg.spmversion         = 'spm12';
 cfg.method             = 'montecarlo';
 cfg.statistic          = 'ft_statfun_depsamplesT';
+cfg.correctm           = 'cluster';
+cfg.clusteralpha       = 0.05;
+cfg.clusterstatistic   = 'maxsum';
 cfg.tail               = 0;
 cfg.clustertail        = 0;
-cfg.alpha              = 0.05;
-cfg.numrandomization   = 10000;
+cfg.alpha              = 0.025;
+cfg.numrandomization   = 100;
 cfg.neighbours         = [];
 
+cfg.neighbours=[];
 clear design
-subj = length(subjects);
+subj = numel(subjects);
 design = zeros(2,2*subj);
 for i = 1:subj
     design(1,i) = i;
@@ -301,35 +234,191 @@ cfg.design   = design;
 cfg.uvar     = 1;
 cfg.ivar     = 2;
 
-[stat] = ft_freqstatistics(cfg, l6g{:}, l2g{:});
-stat.stat(stat.mask==0)=0; % mask out all non significant
-statsternberg=stat;
-cohensd=2*((statsternberg.stat)./sqrt(numel(design)));
-statsternberg.stat=cohensd;
+%% Compute significant differences
+clc; disp('COMPUTING STATS...')
 
-% Plot t-value stats
-freq.powspctrm(1,:,:)= squeeze(stat.stat)';
-freq.time = x_grid_pixels(1:end-1);
-freq.freq = y_grid_pixels(1:end-1);
-freq.label = {'et'};
-freq.dimord = 'chan_freq_time';
+clc; disp('dataEarlyCOMBAllsubs...')
+[statCOMBearly] = ft_freqstatistics(cfg, dataEarlyCOMBAllsubs{:},dataBaseCOMBAllsubs{:});
+cohensd=((statCOMBearly.stat)./sqrt(numel(subjects)));
+statCOMBearly.stat=cohensd;
+statCOMBearly.stat(statCOMBearly.mask==0)=0;
 
+clc; disp('dataEarly2Allsubs...')
+[stat2early] = ft_freqstatistics(cfg, dataEarly2Allsubs{:},dataBase2Allsubs{:});
+cohensd=((stat2early.stat)./sqrt(numel(subjects)));
+stat2early.stat=cohensd;
+stat2early.stat(stat2early.mask==0)=0;
+
+clc; disp('dataEarly4Allsubs...')
+[stat4early] = ft_freqstatistics(cfg, dataEarly4Allsubs{:},dataBase4Allsubs{:});
+cohensd=((stat4early.stat)./sqrt(numel(subjects)));
+stat4early.stat=cohensd;
+stat4early.stat(stat4early.mask==0)=0;
+
+clc; disp('dataEarly6Allsubs...')
+[stat6early] = ft_freqstatistics(cfg, dataEarly6Allsubs{:},dataBase6Allsubs{:});
+cohensd=((stat6early.stat)./sqrt(numel(subjects)));
+stat6early.stat=cohensd;
+stat6early.stat(stat6early.mask==0)=0;
+
+clc; disp('dataLateCOMBAllsubs...')
+[statCOMBlate] = ft_freqstatistics(cfg, dataLateCOMBAllsubs{:},dataBaseCOMBAllsubs{:});
+cohensd=((statCOMBlate.stat)./sqrt(numel(subjects)));
+statCOMBlate.stat=cohensd;
+statCOMBlate.stat(statCOMBlate.mask==0)=0;
+
+clc; disp('dataLate2Allsubs...')
+[stat2late] = ft_freqstatistics(cfg, dataLate2Allsubs{:},dataBase2Allsubs{:});
+cohensd=((stat2late.stat)./sqrt(numel(subjects)));
+stat2late.stat=cohensd;
+stat2late.stat(stat2late.mask==0)=0;
+
+clc; disp('dataLate4Allsubs...')
+[stat4late] = ft_freqstatistics(cfg, dataLate4Allsubs{:}, dataBase4Allsubs{:});
+cohensd=((stat4late.stat)./sqrt(numel(subjects)));
+stat4late.stat=cohensd;
+stat4late.stat(stat4late.mask==0)=0;
+
+clc; disp('dataLate6Allsubs...')
+[stat6late] = ft_freqstatistics(cfg, dataLate6Allsubs{:},dataBase6Allsubs{:});
+cohensd=((stat6late.stat)./sqrt(numel(subjects)));
+stat6late.stat=cohensd;
+stat6late.stat(stat6late.mask==0)=0;
+
+clc; disp('STATS DONE...')
+
+%% Plot stats OVERVIEW
+close all
+
+% Common config
+cfg               = [];
+cfg.parameter     = 'stat';
+cfg.maskparameter = 'mask';
+cfg.maskstyle     = 'outline';
+cfg.zlim          = 'maxabs';
+cfg.zlim          = [-.5 .5];
+colMap            = customcolormap_preset('red-white-blue');
+cfg.colormap      = colMap;
+cfg.figure        = 'gcf';
+overallFontSize   = 15;
+centerX           = 800 / 2;
+centerY           = 600 / 2;
+
+% Open fig
 figure;
-set(gcf, 'Position', [0, 0, 1600, 1000], 'Color', 'W');
-cfg = [];
-cfg.figure = 'gcf';
-ft_singleplotTFR(cfg, freq);
-clim(Clim);
+set(gcf, 'Position', [0 0 2000 1200], 'Color', 'W')
+
+% Early WM load 2
+subplot(3,2,1);
+ft_singleplotTFR(cfg,stat2early);
 xlim([0 800]);
 ylim([0 600]);
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(colMap);
-cb = colorbar;
-ylabel(cb, 'Effect Size [Cohen''s d]', 'FontSize', 32); % Label the colorbar
+colB = colorbar;
+colB.LineWidth = 1;
+colB.Ticks = [-.5 0 .5];
+title(colB,'Effect size \itd')
 hold on
-plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 set(gca, 'FontSize', overallFontSize);
-title('Sternberg CBPT t-value Stats', 'FontSize', 30)
+title('WM load 2 EARLY [0 1] Gaze Heatmap', 'FontSize', overallFontSize*1.25)
 
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_cbpt.png');
+% Late WM load 2
+subplot(3,2,2);
+ft_singleplotTFR(cfg,stat2late);
+xlim([0 800]);
+ylim([0 600]);
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colormap(colMap);
+colB = colorbar;
+colB.LineWidth = 1;
+colB.Ticks = [-.5 0 .5];
+title(colB,'Effect size \itd')
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 2 LATE [1 2] Gaze Heatmap', 'FontSize', overallFontSize*1.25)
+
+% Early WM load 4
+subplot(3,2,3);
+ft_singleplotTFR(cfg,stat4early);
+xlim([0 800]);
+ylim([0 600]);
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colormap(colMap);
+colB = colorbar;
+colB.LineWidth = 1;
+colB.Ticks = [-.5 0 .5];
+title(colB,'Effect size \itd')
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 4 EARLY [0 1] Gaze Heatmap', 'FontSize', overallFontSize*1.25)
+
+% Late WM load 4
+subplot(3,2,4);
+ft_singleplotTFR(cfg,stat4late);
+xlim([0 800]);
+ylim([0 600]);
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colormap(colMap);
+colB = colorbar;
+colB.LineWidth = 1;
+colB.Ticks = [-.5 0 .5];
+title(colB,'Effect size \itd')
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 4 LATE [1 2] Gaze Heatmap', 'FontSize', overallFontSize*1.25)
+
+% Early WM load 6
+subplot(3,2,5);
+ft_singleplotTFR(cfg,stat6early);
+xlim([0 800]);
+ylim([0 600]);
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colormap(colMap);
+colB = colorbar;
+colB.LineWidth = 1;
+colB.Ticks = [-.5 0 .5];
+title(colB,'Effect size \itd')
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 6 EARLY [0 1] Gaze Heatmap', 'FontSize', overallFontSize*1.25)
+
+% Late WM load 6
+subplot(3,2,6);
+ft_singleplotTFR(cfg,stat6late);
+xlim([0 800]);
+ylim([0 600]);
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colormap(colMap);
+colB = colorbar;
+colB.LineWidth = 1;
+colB.Ticks = [-.5 0 .5];
+title(colB,'Effect size \itd')
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 6 LATE [1 2] Gaze Heatmap', 'FontSize', overallFontSize*1.25)
+
+% Save
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_stats_OVERVIEW.png')
+
+%% Plot stats INDIVIDUAL figures
+plotGazeHeatmap(stat2early, 'WM load 2 EARLY [0 1] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_early2');
+plotGazeHeatmap(stat2late, 'WM load 2 LATE [1 2] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_late2');
+plotGazeHeatmap(stat4early, 'WM load 4 EARLY [0 1] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_early4');
+plotGazeHeatmap(stat4late, 'WM load 4 LATE [1 2] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_late4');
+plotGazeHeatmap(stat6early, 'WM load 6 EARLY [0 1] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_early6');
+plotGazeHeatmap(stat6late, 'WM load 6 LATE [1 2] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_late6');
+plotGazeHeatmap(statCOMBearly, 'COMB EARLY [0 1] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_early_COMB');
+plotGazeHeatmap(statCOMBlate, 'COMB LATE [1 2] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_late_COMB');

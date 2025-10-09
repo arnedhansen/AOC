@@ -9,7 +9,7 @@ startup
 [subjects, path, ~, ~] = setup('AOC');
 
 %% Load data
-for subj = 1:20%%%%%length(subjects)
+for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj}, '/gaze');
     load([datapath, filesep 'dataET_sternberg'])
     clc
@@ -29,7 +29,7 @@ for subj = 1:20%%%%%length(subjects)
     smoothing_factor = 10;
 
     % BASELINE
-    cfg.latency = [-0.5 -0.25];
+    cfg.latency = [-.5 -0.25];
     dataBaseCOMB = ft_selectdata(cfg,dataETlong);
     dataBaseCOMB = horzcat(dataBaseCOMB.trial{:});
     dataBaseCOMBAllsubs{subj} = computeGazeHeatmap(dataBaseCOMB, num_bins, smoothing_factor);
@@ -86,7 +86,7 @@ end
 
 %% Baseline data
 disp('BASELININIG...')
-for subj = 1 : 20%%%%%length(subjects)
+for subj = 1 : length(subjects)
     % EARLY
     dataEarlyCOMBAllsubs_bl{subj}           = dataEarlyCOMBAllsubs{subj};
     dataEarly2Allsubs_bl{subj}              = dataEarly2Allsubs{subj};
@@ -143,8 +143,8 @@ cfg.neighbours         = [];
 cfg.neighbours=[];
 clear design
 subj = numel(subjects);
-subj = 20
-subjects = [1:20]
+% subj = 20
+% subjects = [1:20]
 design = zeros(2,2*subj);
 for i = 1:subj
     design(1,i) = i;
@@ -209,7 +209,7 @@ cfg.parameter     = 'stat';
 cfg.maskparameter = 'mask';
 cfg.maskstyle     = 'outline';
 cfg.zlim          = 'maxabs';
-%cfg.zlim          = [-.5 .5];
+cfg.zlim          = [-.5 .5];
 colMap            = customcolormap_preset('red-white-blue');
 cfg.colormap      = colMap;
 cfg.figure        = 'gcf';
@@ -324,4 +324,4 @@ set(gca, 'FontSize', overallFontSize);
 title('WM load 6 LATE [1 3] Gaze Heatmap', 'FontSize', overallFontSize*1.25)
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_stats_OVERVIEW_TZVETAN_UNCORRECTED.png')
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_stats_OVERVIEW_TZVETAN_CORRECTED_COMPUTATION.png')

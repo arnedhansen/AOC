@@ -217,7 +217,6 @@ cfg.alpha              = 0.025;
 cfg.numrandomization   = 100;
 cfg.neighbours         = [];
 
-cfg.neighbours=[];
 clear design
 subj = numel(subjects);
 design = zeros(2,2*subj);

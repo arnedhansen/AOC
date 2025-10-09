@@ -214,7 +214,7 @@ cfg.clusterstatistic   = 'maxsum';
 cfg.tail               = 0;
 cfg.clustertail        = 0;
 cfg.alpha              = 0.025;
-cfg.numrandomization   = 100;
+cfg.numrandomization   = 1000;
 cfg.neighbours         = [];
 
 clear design

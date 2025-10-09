@@ -29,7 +29,7 @@ for subj = 1:length(subjects)
     smoothing_factor = 10;
 
     % BASELINE
-    cfg.latency = [-.5 -0.25];
+    cfg.latency = [-1.25 -0.25];
     dataBaseCOMB = ft_selectdata(cfg,dataETlong);
     dataBaseCOMB = horzcat(dataBaseCOMB.trial{:});
     dataBaseCOMBAllsubs{subj} = computeGazeHeatmap(dataBaseCOMB, num_bins, smoothing_factor);
@@ -324,4 +324,4 @@ set(gca, 'FontSize', overallFontSize);
 title('WM load 6 LATE [1 3] Gaze Heatmap', 'FontSize', overallFontSize*1.25)
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_stats_OVERVIEW_TZVETAN_CORRECTED_COMPUTATION.png')
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_stats_OVERVIEW_TZVETAN_UNCORRECTED.png')

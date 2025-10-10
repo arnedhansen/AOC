@@ -22,7 +22,7 @@ for subj = 1:length(subjects)
     cfg.avgovertime  = 'no';
     cfg.keeptrials   = 'yes';
     num_bins = 1000;
-    smoothing_factor = 5;
+    smoothing_factor = 10;
 
     % BASELINE
     cfg.latency = [-0.5 -0.25];

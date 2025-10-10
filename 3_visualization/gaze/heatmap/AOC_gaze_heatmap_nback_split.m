@@ -218,17 +218,8 @@ cfg.numrandomization   = 1000;
 cfg.neighbours         = [];
 
 clear design
-subj = numel(subjects);
-design = zeros(2,2*subj);
-for i = 1:subj
-    design(1,i) = i;
-end
-for i = 1:subj
-    design(1,subj+i) = i;
-end
-design(2,1:subj)        = 1;
-design(2,subj+1:2*subj) = 2;
-
+subj   = numel(subjects);
+design = [1:subj, 1:subj; ones(1,subj), 2*ones(1,subj)]; % subject IDs; condition labels
 cfg.design   = design;
 cfg.uvar     = 1;
 cfg.ivar     = 2;

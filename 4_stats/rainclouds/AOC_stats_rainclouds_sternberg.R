@@ -3,10 +3,15 @@
 # Load necessary libraries
 library(ggplot2)
 library(ggdist)
-library(dplyr)
 library(colorspace)   # provides darken(), lighten(), desaturate()
 library(rstatix)      # for rm-ANOVA and pairwise tests
 library(ggpubr)       # for stat_compare_means()
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(ggpubr)
+library(dplyr)
+library(stringr)
 
 # Define colour palette
 pal <- c("#93B8C4", "#82AD82", "#D998A2") # Perfect AOC pastel colours
@@ -17,8 +22,64 @@ add_sample <- function(x) {
   return(c(y = max(x) + offset, label = length(x)))
 }
 
+# === helper: map p to significance symbols (same cutpoints as before) ===
+p_to_signif <- function(p) {
+  dplyr::case_when(
+    p < 0.001 ~ "***",
+    p < 0.01  ~ "**",
+    p < 0.05  ~ "*",
+    TRUE      ~ "n.s."
+  )
+}
+
+# === helper: fit GLMM per variable and return a df for stat_pvalue_manual ===
+glmm_contrasts_df <- function(dat, var, comparisons, y_min, y_max, delta, pad_steps = 0.1, p_adjust = "bonferroni") {
+  # fit the model (random intercept by subject)
+  # IMPORTANT: don't use dat$ in the formula; pass 'data = dat'
+  form <- as.formula(paste(var, "~ Condition + (1|ID)"))
+  fit  <- lmer(form, data = dat, REML = TRUE, na.action = na.omit)
+  
+  # emmeans for Condition and pairwise contrasts with adjustment
+  em   <- emmeans::emmeans(fit, ~ Condition)
+  pw   <- emmeans::contrast(em, method = "pairwise", adjust = p_adjust)
+  pwdf <- as.data.frame(pw)
+  
+  # Normalise comparison labels to match your 'comparisons' list
+  # emmeans gives "WM load 4 - WM load 2"; we split to group1/group2
+  split_groups <- str_split(pwdf$contrast, " - ")
+  pwdf$group2  <- vapply(split_groups, `[`, "", 1) # left side
+  pwdf$group1  <- vapply(split_groups, `[`, "", 2) # right side
+  # After the line above, swap to ensure (group1, group2) are in ascending order
+  # to match typical ggpubr convention; but we’ll actually just use your explicit list
+  # to keep ordering identical to your current brackets.
+  
+  # Keep only the comparisons you want and in your order
+  out <- dplyr::bind_rows(lapply(seq_along(comparisons), function(i) {
+    cpair <- comparisons[[i]]
+    # find matching row irrespective of order
+    row   <- pwdf %>%
+      dplyr::filter(
+        (group1 == cpair[1] & group2 == cpair[2]) |
+          (group1 == cpair[2] & group2 == cpair[1])
+      ) %>%
+      dplyr::slice(1)
+    if (nrow(row) == 0) return(NULL)
+    # assign y position: start above y_max and step up
+    y_pos <- y_max + (i * pad_steps * (y_max - y_min) + delta)
+    data.frame(
+      group1     = cpair[1],
+      group2     = cpair[2],
+      p.adj      = row$p.value,        # already adjusted by emmeans
+      p.signif   = p_to_signif(row$p.value),
+      y.position = y_pos,
+      stringsAsFactors = FALSE
+    )
+  }))
+  out
+}
+
 # Read in the data (adjust the file path if needed)
-dat <- read.csv("/Volumes/methlab/Students/Arne/AOC/data/features/merged_data_sternberg.csv")
+dat <- read.csv("/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/merged_data_sternberg.csv")
 
 # Change condition from 2, 4, 6 to 1, 2, 4
 dat$Condition <- dat$Condition / 2
@@ -51,7 +112,7 @@ dat <- dat %>%
   ungroup()
 
 # Define the output directory and create it if it doesn't exist
-output_dir <- "/Volumes/methlab/Students/Arne/AOC/figures/stats/rainclouds"
+output_dir <- "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/rainclouds"
 if (!dir.exists(output_dir)) {
   dir.create(output_dir, recursive = TRUE)
 }
@@ -147,60 +208,30 @@ for(i in seq_along(variables)) {
     height   = 6,
     dpi      = 300
   )
-  ##### STATS #####
-  # Repeated‐measures ANOVA (printed to console)
-  anova_res <- dat %>%
-    anova_test(
-      dv      = .data[[var]],
-      wid     = ID,
-      within  = Condition
-    )
-  print(glue::glue("ANOVA for {var}:"))
-  print(anova_res)
-  
-  # Pairwise paired t-tests with Bonferroni correction (printed to console)
-  pwc <- dat %>%
-    pairwise_t_test(
-      formula         = as.formula(paste(var, "~ Condition")),
-      paired          = TRUE,
-      p.adjust.method = "bonferroni"
-    )
-  print(glue::glue("Pairwise tests for {var}:"))
-  print(pwc)
-  
-  # Determine natural y-limits and a small delta for the annotation strip
+  ##### STATS (GLMM + emmeans) #####
+  # compute natural limits and delta (you already do this)
   y_min <- min(dat[[var]], na.rm = TRUE)
   y_max <- max(dat[[var]], na.rm = TRUE)
   delta <- 0.05 * (y_max - y_min)
   
-  ##### STATS PLOT #####
-  # Build the stats plot starting from p_base
-  p_stats <- p_base +
-    labs(title    = "",
-         subtitle = "") +
-    # fix y to data min/max and allow drawing outside
-    coord_cartesian(ylim = c(y_min, y_max), clip = "off") +
-    # Significance annotations
-    stat_compare_means(
-      comparisons      = comparisons,
-      method           = "t.test",
-      paired           = TRUE,
-      p.adjust.method  = "bonferroni",
-      label            = "p.signif",
-      symnum.args      = list(
-        cutpoints = c(0, 0.001, 0.01, 0.05, 1),
-        symbols   = c("***", "**", "*", "n.s.")
-      ),
-      label.size       = 5,
-      family           = "Roboto Mono",
-      colour           = "grey30",
-      tip.length       = 0.01,
-      bracket.size     = 0.6,
-      step.increase    = 0.1,
-      hide.ns          = FALSE
-    )
+  # get GLMM contrasts for this variable
+  glmm_df <- glmm_contrasts_df(
+    dat         = dat,
+    var         = var,
+    comparisons = comparisons,
+    y_min       = y_min,
+    y_max       = y_max,
+    delta       = delta,
+    pad_steps   = 0.075,          # like step.increase = 0.1
+    p_adjust    = "bonferroni"   # match your previous correction
+  )
   
-  # Add plot margins
+  ##### STATS PLOT (driven by GLMM p-values) #####
+  p_stats <- p_base +
+    labs(title = "", subtitle = "") +
+    coord_cartesian(ylim = c(y_min, y_max), clip = "off")
+  
+  # variable-specific axis/margin tweaks (unchanged)
   if (var == "Accuracy") {
     p_stats <- p_stats +
       theme(plot.margin = margin(30, 50, 10, 15)) +
@@ -217,21 +248,38 @@ for(i in seq_along(variables)) {
         breaks = seq(400, 1200, by = 100),
         expand = c(0.001, 0.001)
       )
-   } else if (var == "GazeDeviation") {
-      p_stats <- p_stats +
-        theme(plot.margin = margin(50, 75, 10, 15)) +
-        scale_y_continuous(
-          limits = c(5, 175),
-          breaks = seq(25, 125, by = 25),
-          expand = c(0.001, 0.001)
-        )
+  } else if (var == "GazeDeviation") {
+    p_stats <- p_stats +
+      theme(plot.margin = margin(50, 75, 10, 15)) +
+      scale_y_continuous(
+        limits = c(5, 175),
+        breaks = seq(25, 125, by = 25),
+        expand = c(0.001, 0.001)
+      )
   } else {
     p_stats <- p_stats +
       theme(plot.margin = margin(20 + delta * 10, 15, 10, 15)) +
       scale_y_continuous(expand = expansion(mult = c(0, .10)))
   }
   
-  # Save the stats plot
+  # add significance brackets from GLMM results
+  if (!is.null(glmm_df) && nrow(glmm_df) > 0) {
+    p_stats <- p_stats +
+      ggpubr::stat_pvalue_manual(
+        data        = glmm_df,
+        label       = "p.signif",
+        xmin        = "group1",
+        xmax        = "group2",
+        y.position  = "y.position",
+        tip.length  = 0.01,
+        bracket.size= 0.6,
+        size        = 5,
+        family      = "Roboto Mono",
+        colour      = "grey30"
+      )
+  }
+  
+  # Save the stats plot (unchanged filename pattern)
   ggsave(
     filename = file.path(output_dir, paste0("AOC_stats_rainclouds_", save_name, "_sternberg_stats.png")),
     plot     = p_stats,

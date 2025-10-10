@@ -9,9 +9,9 @@ for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj}, '/eeg');
     cd(datapath)
     load tfr_stern
-    tfr2_all{subj} = tfr2;
-    tfr4_all{subj} = tfr4;
-    tfr6_all{subj} = tfr6;
+    tfr2_all{subj} = tfr2_fooof;
+    tfr4_all{subj} = tfr4_fooof;
+    tfr6_all{subj} = tfr6_fooof;
     disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' TFR data loaded.'])
 end
 
@@ -21,11 +21,9 @@ gatfr4 = ft_freqgrandaverage([],tfr4_all{:});
 gatfr6 = ft_freqgrandaverage([],tfr6_all{:});
 
 %% Define channels
-load('tfr_stern.mat');
-% Occipital channels
 occ_channels = {};
-for i = 1:length(tfr2.label)
-    label = tfr2.label{i};
+for i = 1:length(tfr2_fooof.label)
+    label = tfr2_fooof.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
@@ -42,7 +40,7 @@ cfg.channel = channels; % specify the channels to include
 cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
 cfg.xlim = [-.5 2];
-cfg.ylim = [7 20];
+cfg.ylim = [4 30];
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
 cfg.layout = layANThead;
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % Red diverging color map
@@ -59,7 +57,7 @@ max_spctrm = max([mean(gatfr2.powspctrm(channel_idx, freq_idx, time_idx), 'omitn
                   mean(gatfr4.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan'); ...
                   mean(gatfr6.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan')]);
 max_spctrm = max(max(abs(max_spctrm)));
-max_spctrm = 2.5
+max_spctrm = 0.275
 clim = [-max_spctrm, max_spctrm];
 
 % WM load 2

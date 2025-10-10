@@ -3,11 +3,22 @@
 %% Setup
 startup
 clear
+% Initialize FieldTrip
+clc
+disp(upper('initializing FieldTrip...'))
+if ispc == 1
+    addpath('W:\Students\Arne\toolboxes\fieldtrip-20250928');
+else
+    addpath('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/fieldtrip-20250928');
+end
+% which ft_defaults
+% which ft_warning
+ft_defaults
 addEEGLab
 if ispc == 1
     path = 'W:\Students\Arne\AOC\data\merged\';
 else
-    path = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
+    path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/merged/';
 end
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
@@ -27,9 +38,9 @@ for subj = 1:length(subjects)
     if ispc == 1
         newDataFolder = dir(['W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\dataEEG_nback.mat']);
     else
-        newDataFolder = dir(['/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_nback.mat']);
+        newDataFolder = dir(['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_nback.mat']);
     end
-    if isempty(newDataFolder)
+    % if isempty(newDataFolder)
         clear alleeg
         %% Read blocks
         for block = 1:6
@@ -246,7 +257,7 @@ for subj = 1:length(subjects)
             mkdir(savepathControlsFix)
             save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_nback'], "preStimFixInfo");
         else
-            savepathControlsFix = ['/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/', subjects{subj}];
+            savepathControlsFix = ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/preStimFixation/', subjects{subj}];
             mkdir(savepathControlsFix)
             save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_nback'], "preStimFixInfo");
         end
@@ -304,7 +315,7 @@ for subj = 1:length(subjects)
         if ispc == 1
             savepathEEG = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\');
         else
-            savepathEEG = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
+            savepathEEG = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
         end
         mkdir(savepathEEG)
         cd(savepathEEG)
@@ -313,7 +324,7 @@ for subj = 1:length(subjects)
         if ispc == 1
             savepathET = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\gaze\');
         else
-            savepathET = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
+            savepathET = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
         end
         mkdir(savepathET)
         cd(savepathET)
@@ -327,9 +338,9 @@ for subj = 1:length(subjects)
         else
             disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. Loading next subject...'])
         end
-    else
-       disp(['Subject ', num2str(subjects{subj}), ' already done. SKIPPING...'])
-    end
+    % else
+    %    disp(['Subject ', num2str(subjects{subj}), ' already done. SKIPPING...'])
+    % end
 end
 toc;
 %finishedScriptMail;

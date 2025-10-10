@@ -1,24 +1,81 @@
-# Raincloud plots for AOC N-back data
+# Raincloud plots for AOC N-back data (GLMM-driven asterisks)
 
+# ----------------------------
 # Load necessary libraries
+# ----------------------------
 library(ggplot2)
 library(ggdist)
 library(dplyr)
-library(colorspace)   # provides darken(), lighten(), desaturate()
-library(rstatix)      # for rm-ANOVA and pairwise tests
-library(ggpubr)       # for stat_compare_means()
+library(colorspace)   # darken(), lighten(), desaturate()
+library(ggpubr)       # stat_pvalue_manual()
+library(lme4)
+library(lmerTest)
+library(emmeans)
+library(stringr)
 
-# Define colour palette (Perfect AOC pastels)
+# ----------------------------
+# Colour palette (Perfect AOC pastels)
+# ----------------------------
 pal <- c("#93B8C4", "#82AD82", "#D998A2")
 
-# Helper to add sample size as text (unused in this version)
-add_sample <- function(x) {
-  offset <- 0.025 * diff(range(x))
-  return(c(y = max(x) + offset, label = length(x)))
+# ----------------------------
+# Helper: map p to significance symbols
+# ----------------------------
+p_to_signif <- function(p) {
+  dplyr::case_when(
+    p < 0.001 ~ "***",
+    p < 0.01  ~ "**",
+    p < 0.05  ~ "*",
+    TRUE      ~ "n.s."
+  )
 }
 
+# ----------------------------
+# Helper: fit GLMM per variable and return df for stat_pvalue_manual
+# - Model: response ~ Condition + (1|ID)
+# - Pairwise emmeans contrasts with chosen p-adjust
+# - y.position is computed relative to data range plus padding
+# ----------------------------
+glmm_contrasts_df <- function(dat, var, comparisons, y_min, y_max, delta,
+                              pad_steps = 0.10, p_adjust = "bonferroni") {
+  dvar <- dat %>% dplyr::filter(!is.na(.data[[var]]))
+  if (length(unique(dvar$Condition)) < 2L || nrow(dvar) == 0L) {
+    return(data.frame())
+  }
+  
+  form <- as.formula(paste(var, "~ Condition + (1|ID)"))
+  fit  <- lmer(form, data = dvar, REML = TRUE, na.action = na.omit)
+  
+  em   <- emmeans::emmeans(fit, ~ Condition)
+  pw   <- emmeans::contrast(em, method = "pairwise", adjust = p_adjust)
+  pwdf <- as.data.frame(pw)
+  
+  find_row <- function(df, g1, g2) {
+    hits <- with(df, grepl(g1, contrast, fixed = TRUE) & grepl(g2, contrast, fixed = TRUE))
+    df[hits, , drop = FALSE] |> dplyr::slice(1)
+  }
+  
+  out <- dplyr::bind_rows(lapply(seq_along(comparisons), function(i) {
+    cpair <- comparisons[[i]]
+    row   <- find_row(pwdf, cpair[1], cpair[2])
+    if (nrow(row) == 0) return(NULL)
+    y_pos <- y_max + (i * pad_steps * (y_max - y_min) + delta)
+    data.frame(
+      group1     = cpair[1],
+      group2     = cpair[2],
+      p.adj      = row$p.value,
+      p.signif   = p_to_signif(row$p.value),
+      y.position = y_pos,
+      stringsAsFactors = FALSE
+    )
+  }))
+  out
+}
+
+# ----------------------------
 # Read in the data
-dat <- read.csv("/Volumes/methlab/Students/Arne/AOC/data/features/merged_data_nback.csv")
+# ----------------------------
+dat <- read.csv("/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/merged_data_nback.csv")
 
 # Transform and derive columns
 dat$ReactionTime <- dat$ReactionTime * 1000
@@ -26,6 +83,9 @@ dat$GazeStd      <- (dat$GazeStdX + dat$GazeStdY) / 2
 dat$Condition    <- factor(dat$Condition,
                            levels = c(1,2,3),
                            labels = c("1-back","2-back","3-back"))
+
+# Ensure ID is a factor (needed for random intercepts)
+if (!is.factor(dat$ID)) dat$ID <- factor(dat$ID)
 
 # Variables, labels and save names
 variables  <- c("Accuracy","ReactionTime","GazeDeviation","GazeStd",
@@ -47,14 +107,14 @@ dat <- dat %>%
   })) %>%
   ungroup()
 
-# Create a tiny jittered copy of Accuracy for density only
+# Create a tiny jittered copy of Accuracy for half-eye density only
 set.seed(123)
 dat2 <- dat %>%
   filter(!is.na(Accuracy)) %>%
   mutate(Accuracy_jit = Accuracy + runif(n(), -1.15, 1.15))
 
 # Output directory
-output_dir <- "/Volumes/methlab/Students/Arne/AOC/figures/stats/rainclouds"
+output_dir <- "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/rainclouds"
 if (!dir.exists(output_dir)) dir.create(output_dir, recursive = TRUE)
 
 # Pairwise comparisons for stats
@@ -64,17 +124,54 @@ comparisons <- list(
   c("2-back","3-back")
 )
 
+# ----------------------------
 # Loop through variables
+# ----------------------------
 for (i in seq_along(variables)) {
   var       <- variables[i]
   y_lab     <- y_labels[i]
   save_name <- save_names[i]
+  # work on non-missing rows for this variable
+  dvar <- dat %>% dplyr::filter(!is.na(.data[[var]]))
+  if (nrow(dvar) == 0L) next  # nothing to plot
   
-  ###### BASE PLOT ######
-  p_base <- dat %>%
+  # data-driven limits and padding from dvar
+  y_min   <- min(dvar[[var]], na.rm = TRUE)
+  y_max   <- max(dvar[[var]], na.rm = TRUE)
+  rng     <- y_max - y_min
+  delta   <- 0.05 * rng
+  y_extra <- 0.25 * rng
+  
+  # ----------------------------
+  # Compute data-driven limits and padding
+  # ----------------------------
+  y_min  <- min(dat[[var]], na.rm = TRUE)
+  y_max  <- max(dat[[var]], na.rm = TRUE)
+  rng    <- y_max - y_min
+  delta  <- 0.025 * rng
+  y_extra <- 0.25 * rng   # vertical headroom so brackets don't get cropped
+  
+  # Variable-specific lower bounds (to keep your previous look)
+  lower_bound <-
+    if (var == "Accuracy")       65 else
+      if (var == "ReactionTime")  300 else
+        if (var == "GazeDeviation")   5 else y_min
+  
+  # Optional variable-specific nominal uppers; we still ensure headroom
+  nominal_upper <-
+    if (var == "ReactionTime") 1400 else
+      if (var == "GazeDeviation")  65 else
+        if (var == "Accuracy")      102 else NA_real_
+  
+  upper_bound <- max(c(y_max + y_extra, nominal_upper), na.rm = TRUE)
+  
+  # ----------------------------
+  # BASE PLOT (no stats)
+  # ----------------------------
+  p_base <- dvar %>%
     ggplot(aes(x = Condition, y = .data[[var]])) +
     
-    # half-eye densities (jitter only for Accuracy)
+    # half-eye densities (use jittered Accuracy for nicer density)
     {
       if (var == "Accuracy") {
         stat_halfeye(
@@ -149,16 +246,10 @@ for (i in seq_along(variables)) {
       plot.margin        = margin(15,15,10,15)
     ) +
     
-    # y-scale and zoom
-    ({ if (var == "Accuracy")
-      scale_y_continuous(breaks = seq(70,100,5), expand = expansion(add = 0))
-      else
-        scale_y_continuous(expand = expansion(add = 0))
-    }) +
+    # y-scale and zoom (base plot: no extra headroom needed)
+    scale_y_continuous(expand = expansion(add = 0)) +
     coord_cartesian(
-      ylim = if (var=="Accuracy") c(65,102)
-      else if (var=="ReactionTime") c(300,1400)
-      else NULL,
+      ylim = c(lower_bound, ifelse(is.finite(nominal_upper), nominal_upper, y_max)),
       clip = "off"
     )
   
@@ -170,63 +261,52 @@ for (i in seq_along(variables)) {
     plot   = p_base, width = 8, height = 6, dpi = 300
   )
   
-  ###### STATS ######
-  anova_res <- dat %>%
-    anova_test(dv = .data[[var]], wid = ID, within = Condition)
-  print(glue::glue("ANOVA for {var}:")); print(anova_res)
+  # ----------------------------
+  # GLMM + emmeans contrasts for this variable
+  # ----------------------------
+  glmm_df <- glmm_contrasts_df(
+    dat         = dvar,
+    var         = var,
+    comparisons = comparisons,
+    y_min       = y_min,
+    y_max       = y_max,
+    delta       = delta,
+    pad_steps   = 0.10,          # similar to step.increase
+    p_adjust    = "bonferroni"
+  )
+  # ---- ensure the panel is tall enough for brackets ----
+  max_bracket <- if (!is.null(glmm_df) && nrow(glmm_df) > 0) {
+    max(glmm_df$y.position, na.rm = TRUE)
+  } else {
+    y_max + y_extra
+  }
+  upper_needed <- max_bracket + 0.02 * (y_max - y_min)
+  upper_bound  <- max(c(upper_needed, nominal_upper, y_max + y_extra), na.rm = TRUE)
   
-  pwc <- dat %>%
-    pairwise_t_test(
-      formula         = as.formula(paste(var, "~ Condition")),
-      paired          = TRUE,
-      p.adjust.method = "bonferroni"
-    )
-  print(glue::glue("Pairwise tests for {var}:")); print(pwc)
-  
-  # data range for bracket spacing
-  y_min <- min(dat[[var]], na.rm = TRUE)
-  y_max <- max(dat[[var]], na.rm = TRUE)
-  delta <- 0.05 * (y_max - y_min)
-  
-  ###### STATS PLOT ######
+  # ----------------------------
+  # STATS PLOT (driven by GLMM p-values)
+  # - Give headroom so brackets are never cropped
+  # ----------------------------
   p_stats <- p_base +
     labs(title = "", subtitle = "") +
-    stat_compare_means(
-      comparisons     = comparisons,
-      method          = "t.test",
-      paired          = TRUE,
-      p.adjust.method = "bonferroni",
-      label           = "p.signif",
-      label.y         = if (var == "Accuracy") c(102,103.5,105) 
-                        else if (var == "ReactionTime") c(13.00,13.50,14.00) 
-                        else NULL,
-      symnum.args     = list(
-        cutpoints = c(0,0.001,0.01,0.05,1),
-        symbols   = c("***","**","*","n.s.")
-      ),
-      label.size      = 5,
-      family          = "Roboto Mono",
-      colour          = "grey30",
-      tip.length      = 0.01,
-      bracket.size    = 0.6,
-      step.increase   = 0.1,
-      hide.ns         = FALSE
-    ) +
-    ({ if (var == "Accuracy")
-      scale_y_continuous(breaks = seq(70,100,5), expand = expansion(add = 0))
-      else if (var == "GazeDeviation")
-        scale_y_continuous(breaks = seq(10,60,10), expand = expansion(add = 0))
-      else
-        scale_y_continuous(expand = expansion(add = 0))
-    }) +
-    coord_cartesian(
-      ylim = if (var=="Accuracy") c(65,105.5)
-      else if (var=="ReactionTime") c(300,1400)
-      else if (var=="GazeDeviation") c(5,65)
-      else NULL,
-      clip = "off"
-    ) +
+    coord_cartesian(ylim = c(lower_bound, upper_bound), clip = "off") +
     theme(plot.margin = margin(20 + delta*10, 15, 10, 15))
+  
+  if (!is.null(glmm_df) && nrow(glmm_df) > 0) {
+    p_stats <- p_stats +
+      ggpubr::stat_pvalue_manual(
+        data        = glmm_df,
+        label       = "p.signif",
+        xmin        = "group1",
+        xmax        = "group2",
+        y.position  = "y.position",
+        tip.length  = 0.01,
+        bracket.size= 0.6,
+        size        = 5,
+        family      = "Roboto Mono",
+        colour      = "grey30"
+      )
+  }
   
   # save the stats raincloud
   ggsave(

@@ -399,7 +399,7 @@ for subj = 1:length(subjects)
         if ispc == 1
             savepath = strcat('W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\');
         else
-            savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
+            savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
         end
         mkdir(savepath)
         cd(savepath)
@@ -420,7 +420,7 @@ end
 if ispc == 1
     save W:\Students\Arne\AOC\data\features\eeg_matrix_sternberg eeg_data_sternberg
 else
-    save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg eeg_data_sternberg
+    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/eeg_matrix_sternberg eeg_data_sternberg
 end
 
 %% TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM

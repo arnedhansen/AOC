@@ -2,19 +2,7 @@
 
 %% Setup
 startup
-clear
-% Initialize FieldTrip
-clc
-disp(upper('initializing FieldTrip...'))
-if ispc == 1
-    addpath('W:\Students\Arne\toolboxes\fieldtrip-20250928');
-else
-    addpath('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/fieldtrip-20250928');
-end
-% which ft_defaults
-% which ft_warning
-ft_defaults
-addEEGLab
+[subjects, path, ~ , ~] = setup('AOC');
 if ispc == 1
     path = 'W:\Students\Arne\AOC\data\merged\';
 else

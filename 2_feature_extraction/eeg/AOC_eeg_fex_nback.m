@@ -319,7 +319,7 @@ for subj = 1:length(subjects)
             cfg.taper        = 'hanning';
             cfg.foi          = 2:1:40;                         % analysis 2 to 40 Hz in steps of 1 Hz
             cfg.t_ftimwin    = ones(length(cfg.foi),1).*0.5;   % length of time window = 0.5 sec
-            cfg.toi          = -2:0.05:3;
+            cfg.toi          = -1.25:0.05:3;
             cfg.keeptrials   = 'yes';
 
             cfg.trials = ind1;
@@ -337,44 +337,52 @@ for subj = 1:length(subjects)
                 disp('FOOOFing...')
                 clear fspctrm
                 tfr = tfrs{1, tfr_conds};
-                for t = 21 :length(tfr.time) % Start at timepoint 21 because of sliding window of 500ms and start of data only at -1500ms
-                    cfg = [];
-                    cfg.latency = tfr.time(t);
-                    tmp = ft_selectdata(cfg,tfr);
 
-                    % ERROR CATCHING
+                % Pre-allocate
+                nch = numel(tfr.label); nfr = numel(tfr.freq); nt = numel(tfr.time);
+                fspctrm = nan(nch, nfr, nt);
+                powspctrmff = nan(nch, nfr);
+
+                % FOOOF settings
+                settings = struct();
+                settings.peak_width_limits = [2 12];
+                settings.aperiodic_mode = 'fixed';
+                settings.verbose = false;
+
+                for t = 1 :length(tfr.time)
+                    % Output progress
+                    clc
                     disp(['subj      ' num2str(subj)])
                     disp(['cond      ' num2str(tfr_conds)])
                     disp(['timepnt   ' num2str(t)])
 
-                    for chan = 1:length(tmp.label)
+                    % Config
+                    cfg = [];
+                    cfg.latency = tfr.time(t);
+                    tmp = ft_selectdata(cfg,tfr);
 
+                    for chan = 1:length(tmp.label)
                         % Transpose, to make inputs row vectors
                         freqs = tmp.freq';
                         psd = tmp.powspctrm(chan,:)';
 
-                        % FOOOF settings
-                        settings = struct();  % Use defaults
-                        settings.verbose = false; % Suppress warnings about too low peak_width_limits
-                        f_range = [tfr.freq(1), tfr.freq(end)];
-
                         % Run FOOOF
+                        f_range = [tfr.freq(1), tfr.freq(end)];
                         freqs = orig_freq'; % Equidistant freq distribution
-                        fooof_results = fooof(freqs, psd, f_range, settings, true);
-                        powspctrmff(chan,:) = fooof_results.fooofed_spectrum-fooof_results.ap_fit;
+                        fooof_results = fooof(freqs, psd, [min(freqs), max(freqs)], settings, true);
+                        powspctrmff(chan,:) = fooof_results.fooofed_spectrum - fooof_results.ap_fit;
                     end
                     fspctrm(:,:,t) = powspctrmff;
                 end
-                fooofedtrl(:,:,:) = fspctrm;
                 if tfr_conds == 1
                     tfr1_fooof = tfr;
-                    tfr1_fooof.powspctrm = fooofedtrl;
+                    tfr1_fooof.powspctrm = fspctrm;
                 elseif tfr_conds == 2
                     tfr2_fooof = tfr;
-                    tfr2_fooof.powspctrm = fooofedtrl;
+                    tfr2_fooof.powspctrm = fspctrm;
                 elseif tfr_conds == 3
                     tfr3_fooof = tfr;
-                    tfr3_fooof.powspctrm = fooofedtrl;
+                    tfr3_fooof.powspctrm = fspctrm;
                 end
             end
             disp(upper('FOOOF done...'))
@@ -382,7 +390,7 @@ for subj = 1:length(subjects)
             % Baselined TFR
             % Raw powspctrm baselined
             cfg                              = [];
-            cfg.baseline                     = [-.75 -.25];
+            cfg.baseline                     = [-.5 -.25];
             cfg.baselinetype                 = 'db';
             tfr1_bl                          = ft_freqbaseline(cfg, tfr1);
             tfr2_bl                          = ft_freqbaseline(cfg, tfr2);
@@ -390,7 +398,7 @@ for subj = 1:length(subjects)
 
             % FOOOFed powspctrm baselined
             cfg                              = [];
-            cfg.baseline                     = [-.75 -.25];
+            cfg.baseline                     = [-.5 -.25];
             cfg.baselinetype                 = 'absolute';   % FOOOF already sets log scale, so no 'dB' here
             tfr1_fooof_bl                    = ft_freqbaseline(cfg, tfr1_fooof);
             tfr2_fooof_bl                    = ft_freqbaseline(cfg, tfr2_fooof);

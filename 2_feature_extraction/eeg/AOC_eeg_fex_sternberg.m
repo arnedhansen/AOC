@@ -424,7 +424,7 @@ else
 end
 
 %% TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM
-% Setup
+% Setupnd 
 startup
 [subjects, path, ~ , ~] = setup('AOC');
 
@@ -471,8 +471,18 @@ for subj = 1:length(subjects)
                 disp('FOOOFing...')
                 clear fspctrm
                 tfr = tfrs{1, tfr_conds};
+
+                % Pre-allocate
+                nch = numel(tfr.label); nfr = numel(tfr.freq); nt = numel(tfr.time);
+                fspctrm = nan(nch, nfr, nt);
+                powspctrmff = nan(nch, nfr);
+
+                % FOOOF settings
                 settings = struct();
                 settings.peak_width_limits = [2 12];
+                settings.aperiodic_mode = 'fixed';
+                settings.verbose = false;
+
                 for t = 1 : length(tfr.time)
                     % Output progress
                     clc
@@ -485,17 +495,12 @@ for subj = 1:length(subjects)
                     cfg.latency = tfr.time(t);
                     tmp = ft_selectdata(cfg,tfr);
                     for chan = 1:length(tmp.label)
-
                         % Transpose, to make inputs row vectors
                         freqs = tmp.freq';
                         psd = tmp.powspctrm(chan,:)';
 
-                        % FOOOF settings
-                        settings = struct();  % Use defaults
-                        settings.verbose = false; % Suppress warnings about too low peak_width_limits
-                        f_range = [tfr.freq(1), tfr.freq(end)];
-
                         % Run FOOOF
+                        f_range = [tfr.freq(1), tfr.freq(end)];
                         freqs = orig_freq'; % Equidistant freq distribution
                         fooof_results = fooof(freqs, psd, [min(freqs), max(freqs)], settings, true);
                         powspctrmff(chan,:) = fooof_results.fooofed_spectrum - fooof_results.ap_fit;

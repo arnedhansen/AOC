@@ -231,7 +231,9 @@ for subj = 1:length(subjects)
 
         %% Get EEG data (excl. ET and EOG data)
         cfg = [];
-        cfg.channel = {'all' '-B*' '-HEOGR' '-HEOGL', '-VEOGU', '-VEOGL' ,'-L-GAZE-X' , '-L-GAZE-Y' , '-L-AREA'};
+        cfg.channel = {'all' '-B*' '-HEOGR' '-HEOGL' '-VEOGU' '-VEOGL' ...
+            '-L-GAZE-X' '-L-GAZE-Y' '-L-AREA' ...
+            '-R-GAZE-X' '-R-GAZE-Y' '-R-AREA'};
         dataEEG = ft_selectdata(cfg, data);
 
         %% Resegment data to avoid filter ringing

@@ -12,7 +12,7 @@ startup
 
 for subj = 1:length(subjects)
     clc
-    disp(['Processing Retention POWSPCTRM (TRIALS) for Subject AOC ', num2str(subjects{subj})])
+    disp(['Processing POWSPCTRM (TRIALS) for Subject AOC ', num2str(subjects{subj})])
 
     try
         % Load data
@@ -182,8 +182,8 @@ for subj = 1:length(subjects)
         cd(datapath);
 
         % Load trial-wise spectra
-        load('power_stern_late_trials.mat');
         load('power_stern_early_trials.mat');
+        load('power_stern_late_trials.mat');
         load('power_stern_baseline_period_trials.mat');
 
         % Channel selection

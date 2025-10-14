@@ -3,8 +3,7 @@
 %% Setup
 startup
 clear
-runMode = askRunMode();
-addEEGLab
+[subjects, path, ~ , ~] = setup('AOC');
 if ispc == 1
     path = 'W:\Students\Arne\AOC\data\merged\';
 else
@@ -14,11 +13,11 @@ dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 subjects = exclude_subjects(subjects, 'AOC');
+runMode = askRunMode();
 
 %% Read data, segment and convert to FieldTrip data structure
 tic;
-for subj = 1:length(subjects)
-    clearvars -except subjects subj path
+for subj = 1%%%%%:length(subjects)
     datapath = strcat(path,subjects{subj});
     cd(datapath)
 
@@ -30,12 +29,37 @@ for subj = 1:length(subjects)
     end
 
     if strcmp(runMode,'all') || isempty(newDataFolder)
+        clc
+        disp(['Preprocessing Subject AOC ', num2str(subjects{subj})])
         clear alleeg
         %% Read blocks
+        %  and assign globalID values
+        trialCounter = 0;
         for block = 1:6
             try % Do not load emtpy blocks
                 load(strcat(subjects{subj}, '_EEG_ET_Sternberg_block',num2str(block),'_merged.mat'))
                 alleeg{block} = EEG;
+
+                % Ensure field exists for all events
+                if ~isfield(EEG.event, 'globalTrial')
+                    [EEG.event.globalTrial] = deal(0);
+                end
+
+                % Identify stimulus events
+                stimCodes = {'22','24','26'};
+                stimEventIdx = find(ismember({EEG.event.type}, stimCodes));
+                [~, sortOrder] = sort([EEG.event(stimEventIdx).latency]);
+                stimEventIdx = stimEventIdx(sortOrder);
+
+                % Assign chronological trial IDs
+                for t = 1:length(stimEventIdx)
+                    EEG.event(stimEventIdx(t)).globalTrial = t + trialCounter;
+                end
+
+                % Update counter and save back
+                trialCounter = trialCounter + length(stimEventIdx);
+                alleeg{block} = EEG;
+
                 clear EEG
                 fprintf('Block %.1d loaded \n', block)
             catch ME
@@ -49,6 +73,9 @@ for subj = 1:length(subjects)
             fprintf('No Sternberg data... SKIPPING processing of Subject %s\n....', subjects{subj})
             continue;
         end
+
+        %% Add trialinfo (condition) and trial ID (actual number of trial in squence)
+        %
 
         %% Segment data into epochs -2s before and 3.5s after stim onset and
         %  convert to Fieldtrip data structure AND extract gaze metrics from raw EEG data
@@ -66,6 +93,20 @@ for subj = 1:length(subjects)
             try
                 EEGload2 = pop_epoch(alleeg{block}, {'22'}, epoch_window);
                 data2{block} = eeglab2fieldtrip(EEGload2, 'raw');
+
+                % Add global trial ID info
+                global_ids = nan(numel(EEGload2.epoch),1);
+                for e = 1:numel(EEGload2.epoch)
+                    evTypes = {EEGload2.event(EEGload2.epoch(e).event).type};
+                    matchIdx = find(ismember(evTypes, {'22'}), 1, 'first');
+                    if ~isempty(matchIdx)
+                        evIndex = EEGload2.epoch(e).event(matchIdx);
+                        global_ids(e) = EEGload2.event(evIndex).globalTrial;
+                    else
+                        global_ids(e) = NaN; % or 0, but NaN is clearer for missing IDs
+                    end
+                end
+                data2{block}.trialinfo = [repmat(22, numel(global_ids), 1), global_ids(:)];
 
                 % WM load 2 gaze metrics extraction
                 gaze_metrics_l2 = pop_epoch(alleeg{block}, {'22'}, analysis_window);
@@ -102,6 +143,20 @@ for subj = 1:length(subjects)
                 EEGload4 = pop_epoch(alleeg{block}, {'24'}, epoch_window);
                 data4{block} = eeglab2fieldtrip(EEGload4, 'raw');
 
+                % Add global trial ID info
+                global_ids = nan(numel(EEGload4.epoch),1);
+                for e = 1:numel(EEGload4.epoch)
+                    evTypes = {EEGload4.event(EEGload4.epoch(e).event).type};
+                    matchIdx = find(ismember(evTypes, {'24'}), 1, 'first');
+                    if ~isempty(matchIdx)
+                        evIndex = EEGload4.epoch(e).event(matchIdx);
+                        global_ids(e) = EEGload4.event(evIndex).globalTrial;
+                    else
+                        global_ids(e) = NaN; % or 0, but NaN is clearer for missing IDs
+                    end
+                end
+                data4{block}.trialinfo = [repmat(24, numel(global_ids), 1), global_ids(:)];
+
                 % WM load 4 gaze metrics extraction
                 gaze_metrics_l4 = pop_epoch(alleeg{block}, {'24'}, analysis_window);
                 trl_l4(block) = gaze_metrics_l4.trials;
@@ -137,6 +192,20 @@ for subj = 1:length(subjects)
                 EEGload6 = pop_epoch(alleeg{block}, {'26'}, epoch_window);
                 data6{block} = eeglab2fieldtrip(EEGload6, 'raw');
 
+                % Add global trial ID info
+                global_ids = nan(numel(EEGload6.epoch),1);
+                for e = 1:numel(EEGload6.epoch)
+                    evTypes = {EEGload6.event(EEGload6.epoch(e).event).type};
+                    matchIdx = find(ismember(evTypes, {'26'}), 1, 'first');
+                    if ~isempty(matchIdx)
+                        evIndex = EEGload6.epoch(e).event(matchIdx);
+                        global_ids(e) = EEGload6.event(evIndex).globalTrial;
+                    else
+                        global_ids(e) = NaN; % or 0, but NaN is clearer for missing IDs
+                    end
+                end
+                data6{block}.trialinfo = [repmat(26, numel(global_ids), 1), global_ids(:)];
+
                 % WM load 6 gaze metrics extraction
                 gaze_metrics_l6 = pop_epoch(alleeg{block}, {'26'}, analysis_window);
                 trl_l6(block) = gaze_metrics_l6.trials;
@@ -169,9 +238,9 @@ for subj = 1:length(subjects)
         end
 
         %% Equalize labels
-        update_labels(data2);
-        update_labels(data4);
-        update_labels(data6);
+        % update_labels(data2);
+        % update_labels(data4);
+        % update_labels(data6);
 
         %% Remove empty blocks
         data2 = data2(~cellfun(@(x) isempty(fieldnames(x)), data2));
@@ -185,17 +254,26 @@ for subj = 1:length(subjects)
         data4 = ft_appenddata(cfg,data4{:});
         data6 = ft_appenddata(cfg,data6{:});
 
-        %% Add trialinfo
-        data2.trialinfo = zeros(numel(data2.trial), 1) + 22;
-        data4.trialinfo = zeros(numel(data4.trial), 1) + 24;
-        data6.trialinfo = zeros(numel(data6.trial), 1) + 26;
-
         %% Append all data into single data file with appropriate trialinfo
         cfg = [];
         cfg.keepsampleinfo = 'yes';
         data = ft_appenddata(cfg,data2, data4, data6);
         trialinfo = [data2.trialinfo; data4.trialinfo; data6.trialinfo];
         data.trialinfo = trialinfo;
+
+        %% Sort appended data by chronological order based on global trial ID
+        % sort by chronological order (globalTrial), push NaNs to the end
+        [~, order] = sort(data.trialinfo(:,2), 'ascend', 'MissingPlacement', 'last');
+
+        % keep only valid (non-NaN, >0) global IDs in this reordering pass
+        valid = ~isnan(data.trialinfo(order,2)) & data.trialinfo(order,2) > 0;
+        order = order(valid);
+
+        % reorder the FieldTrip data *manually* (ft_selectdata won’t reorder)
+        data = reorder_trials_ft(data, order);
+
+        % always refresh trialinfo from the reordered data
+        trialinfo = data.trialinfo;
 
         %% Pre-stim fixation check
         preStimWindow = [-0.5 0];
@@ -284,6 +362,7 @@ for subj = 1:length(subjects)
         blinks_l6 = sum(blink_l6(:)) / sum(trl_l6(:));
 
         %% Save data
+        clc
         if ispc == 1
             savepathEEG = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\');
         else
@@ -291,7 +370,9 @@ for subj = 1:length(subjects)
         end
         mkdir(savepathEEG)
         cd(savepathEEG)
+        disp('SAVING dataEEG_sternberg...')
         save dataEEG_sternberg dataEEG
+        disp('SAVING dataEEG_TFR_sternberg...')
         save dataEEG_TFR_sternberg dataTFR
         if ispc == 1
             savepathET = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\gaze\');
@@ -300,7 +381,9 @@ for subj = 1:length(subjects)
         end
         mkdir(savepathET)
         cd(savepathET)
+        disp('SAVING dataET_sternberg...')
         save dataET_sternberg dataet dataETlong dataETearly dataETlate
+        disp('SAVING gaze_metrics_sternberg...')
         save gaze_metrics_sternberg ...
             saccades_l2 fixations_l2 blinks_l2 ...
             saccades_l4 fixations_l4 blinks_l4 ...
@@ -317,3 +400,27 @@ for subj = 1:length(subjects)
 end
 toc;
 %finishedScriptMail;
+
+%% CHECK GLOBAL TRIAL ID
+
+ids_all   = trialinfo(:,2);
+conds_all = trialinfo(:,1);
+ids_nonzero = ids_all(ids_all>0);
+
+% 6. Visual diagnostic plots
+figure('Name','Trialinfo diagnostics','Color','w','Position',[200 200 1200 400]);
+subplot(1,3,1)
+scatter(1:numel(ids_all), ids_all, 10, conds_all, 'filled');
+xlabel('Trial index'); ylabel('Global ID');
+title('Chronological distribution (coloured by condition)');
+box on
+
+subplot(1,3,2)
+histogram(ids_nonzero, 'BinWidth',5, 'FaceColor',[0.3 0.3 0.8]);
+xlabel('Global ID'); ylabel('Count');
+title('Global ID histogram'); box on
+
+subplot(1,3,3)
+plot(ids_nonzero, conds_all(ids_all>0), '.', 'MarkerSize',10);
+xlabel('Global ID'); ylabel('Condition code');
+title('Condition vs. Global ID'); box on

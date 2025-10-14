@@ -74,9 +74,9 @@ for i = 1:length(analysis_conditions)
                 yLabel = 'Power [\muV^2/Hz]';
                 figTitle = 'N-back Power Spectrum';
                 if strcmp(electrodes, 'occ_cluster')
-                    savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_powspctrm_nback_raw.png';
+                    savePath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/powspctrm/AOC_powspctrm_nback_raw.png';
                 elseif strcmp(electrodes, 'POz')
-                    savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_powspctrm_nback_raw_elecPOz.png';
+                    savePath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/powspctrm/AOC_powspctrm_nback_raw_elecPOz.png';
                 end
             % case 'bl'
             %     gapow1 = gapow1_bl;
@@ -85,9 +85,9 @@ for i = 1:length(analysis_conditions)
             %     yLabel = 'Power [dB]';
             %     figTitle = 'Baselined N-back Power Spectrum';
             %     if strcmp(electrodes, 'occ_cluster')
-            %         savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_nback_powspctrm_bl.png';
+            %         savePath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_nback_powspctrm_bl.png';
             %     elseif strcmp(electrodes, 'POz')
-            %         savePath = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_nback_powspctrm_bl_elecPOz.png';
+            %         savePath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/powspctrm/AOC_alpha_power_nback_powspctrm_bl_elecPOz.png';
             %     end
         end
         % Create figure
@@ -164,8 +164,8 @@ end
 
 %% Plot INDIVIDUAL power spectra
 close all
-output_dir = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
-load('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_nback.mat')
+output_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/eeg_matrix_nback.mat')
 
 for subj = 1:length(subjects)
     clear pow1 pow2 pow3
@@ -257,7 +257,7 @@ end
 
 %% Plot SUBPLOT of INDIVIDUAL powerspectra
 close all;
-output_dir = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
+output_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
 num_subj = length(subjects);
 
 % Determine subplot grid size
@@ -332,7 +332,7 @@ saveas(gcf, save_path);
 close all;
 clc;
 cfg = [];
-load('/Volumes/methlab/Students/Arne/toolboxes/headmodel/layANThead.mat');
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/layANThead.mat');
 cfg.layout = layANThead;
 allchannels = cfg.layout.label;
 cfg.layout = layANThead;
@@ -366,7 +366,7 @@ cb = colorbar;
 set(cb, 'FontSize', 20);
 ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('1-back', 'FontSize', 40);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_nback_topo1.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_nback_topo1.png');
 
 % Plot 2-back
 figure('Color', 'w');
@@ -377,7 +377,7 @@ cb = colorbar;
 set(cb, 'FontSize', 20);
 ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('2-back', 'FontSize', 40);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_nback_topo2.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_nback_topo2.png');
 
 % Plot 3-back
 figure('Color', 'w');
@@ -388,7 +388,7 @@ cb = colorbar;
 set(cb, 'FontSize', 20);
 ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('3-back', 'FontSize', 40);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_nback_topo3.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_nback_topo3.png');
 
 %% Plot alpha power TOPOS DIFFERENCE
 close all
@@ -402,7 +402,7 @@ ga_diff.powspctrm = gapow3.powspctrm - gapow1.powspctrm;
 figure('Color', 'w');
 set(gcf, 'Position', [100, 250, 800, 600]);
 cfg = [];
-load('/Volumes/methlab/Students/Arne/toolboxes/headmodel/layANThead.mat');
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/layANThead.mat');
 cfg.layout = layANThead;
 allchannels = cfg.layout.label;
 cfg.layout = layANThead;
@@ -431,4 +431,4 @@ title('N-back Alpha Power Difference (3-back - 1-back)', 'FontSize', 25);
 ft_topoplotER(cfg, ga_diff);
 
 % Save
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_nback_topo_diff.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_nback_topo_diff.png');

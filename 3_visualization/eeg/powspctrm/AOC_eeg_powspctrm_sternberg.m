@@ -125,10 +125,10 @@ for subj = 1:length(subjects)
     powl4_fooof_bl{subj} = pow4_fooof_bl;
     powl6_fooof_bl{subj} = pow6_fooof_bl;
 
-    % FOOOF Baselined Long
-    powl2_fooof_bl_long{subj} = pow2_fooof_bl_long;
-    powl4_fooof_bl_long{subj} = pow4_fooof_bl_long;
-    powl6_fooof_bl_long{subj} = pow6_fooof_bl_long;
+    % % FOOOF Baselined Long
+    % powl2_fooof_bl_long{subj} = pow2_fooof_bl_long;
+    % powl4_fooof_bl_long{subj} = pow4_fooof_bl_long;
+    % powl6_fooof_bl_long{subj} = pow6_fooof_bl_long;
 end
 
 % Compute grand avg
@@ -138,9 +138,9 @@ gapow6_fooof = ft_freqgrandaverage([], powl6_fooof{:});
 gapow2_fooof_bl = ft_freqgrandaverage([], powl2_fooof_bl{:});
 gapow4_fooof_bl = ft_freqgrandaverage([], powl4_fooof_bl{:});
 gapow6_fooof_bl = ft_freqgrandaverage([], powl6_fooof_bl{:});
-gapow2_fooof_bl_long = ft_freqgrandaverage([], powl2_fooof_bl_long{:});
-gapow4_fooof_bl_long = ft_freqgrandaverage([], powl4_fooof_bl_long{:});
-gapow6_fooof_bl_long = ft_freqgrandaverage([], powl6_fooof_bl_long{:});
+% gapow2_fooof_bl_long = ft_freqgrandaverage([], powl2_fooof_bl_long{:});
+% gapow4_fooof_bl_long = ft_freqgrandaverage([], powl4_fooof_bl_long{:});
+% gapow6_fooof_bl_long = ft_freqgrandaverage([], powl6_fooof_bl_long{:});
 
 %% Plot alpha power grand average POWERSPECTRUM
 % Prepare your data-sets
@@ -229,14 +229,14 @@ for d = 1:numel(datasets)
 
         %–– save out with a descriptive filename ––
         outfn = sprintf('AOC_powspctrm_sternberg_%s_%s.png', D.name, elecName);
-        saveas(gcf, fullfile('/Volumes/methlab/Students/Arne/AOC/figures/eeg/powspctrm', outfn));
+        saveas(gcf, fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/powspctrm', outfn));
     end
 end
 
 %% Plot INDIVIDUAL power spectra
 close all
-output_dir = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
-load('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg.mat')
+output_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/eeg_matrix_sternberg.mat')
 
 for subj = 1:length(subjects)
     close all;
@@ -327,7 +327,7 @@ end
 
 %% Plot SUBPLOT of INDIVIDUAL powerspectra
 % close all;
-% output_dir = '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
+% output_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
 % num_subj = length(subjects);
 %
 % % Determine subplot grid size

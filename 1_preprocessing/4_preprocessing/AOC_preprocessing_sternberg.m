@@ -269,7 +269,7 @@ for subj = 1%%%%%:length(subjects)
         valid = ~isnan(data.trialinfo(order,2)) & data.trialinfo(order,2) > 0;
         order = order(valid);
 
-        % reorder the FieldTrip data *manually* (ft_selectdata won’t reorder)
+        % reorder the FieldTrip data *manually* (ft_selectdata won't reorder)
         data = reorder_trials_ft(data, order);
 
         % always refresh trialinfo from the reordered data
@@ -399,28 +399,26 @@ for subj = 1%%%%%:length(subjects)
     end
 end
 toc;
-%finishedScriptMail;
 
 %% CHECK GLOBAL TRIAL ID
-
-ids_all   = trialinfo(:,2);
-conds_all = trialinfo(:,1);
-ids_nonzero = ids_all(ids_all>0);
-
-% 6. Visual diagnostic plots
-figure('Name','Trialinfo diagnostics','Color','w','Position',[200 200 1200 400]);
-subplot(1,3,1)
-scatter(1:numel(ids_all), ids_all, 10, conds_all, 'filled');
-xlabel('Trial index'); ylabel('Global ID');
-title('Chronological distribution (coloured by condition)');
-box on
-
-subplot(1,3,2)
-histogram(ids_nonzero, 'BinWidth',5, 'FaceColor',[0.3 0.3 0.8]);
-xlabel('Global ID'); ylabel('Count');
-title('Global ID histogram'); box on
-
-subplot(1,3,3)
-plot(ids_nonzero, conds_all(ids_all>0), '.', 'MarkerSize',10);
-xlabel('Global ID'); ylabel('Condition code');
-title('Condition vs. Global ID'); box on
+% ids_all   = trialinfo(:,2);
+% conds_all = trialinfo(:,1);
+% ids_nonzero = ids_all(ids_all>0);
+% 
+% % 6. Visual diagnostic plots
+% figure('Name','Trialinfo diagnostics','Color','w','Position',[200 200 1200 400]);
+% subplot(1,3,1)
+% scatter(1:numel(ids_all), ids_all, 10, conds_all, 'filled');
+% xlabel('Trial index'); ylabel('Global ID');
+% title('Chronological distribution (coloured by condition)');
+% box on
+% 
+% subplot(1,3,2)
+% histogram(ids_nonzero, 'BinWidth',5, 'FaceColor',[0.3 0.3 0.8]);
+% xlabel('Global ID'); ylabel('Count');
+% title('Global ID histogram'); box on
+% 
+% subplot(1,3,3)
+% plot(ids_nonzero, conds_all(ids_all>0), '.', 'MarkerSize',10);
+% xlabel('Global ID'); ylabel('Condition code');
+% title('Condition vs. Global ID'); box on

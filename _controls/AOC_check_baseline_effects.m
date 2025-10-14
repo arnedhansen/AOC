@@ -3,13 +3,8 @@
 % Setup
 startup
 [subjects, path, ~ , ~] = setup('AOC');
-
-
-% Subject IDs
-load('/Volumes/Homestore/OCC/arne/subjects.mat');
-
-base_dir = '/Volumes/Homestore/OCC/arne/merged';
-
+subjects = subjects(1:20);
+base_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/merged';
 
 %% Loop over subjects
 for s = 1:length(subjects)
@@ -545,7 +540,7 @@ xlim([1  40]);
 legend({'Load 6','Load 4','Load 2'}, 'Location','northeast','Fontsize',20);
 title('baseline -1.5 to -.5 sec');
 %%
-load('/Users/tpopov/Documents/DATA4FT/DeepEye/headmodel_ant/elec_aligned.mat');% adapt the path according to your setup
+load('/Users/tpopov/Documents/DATA4FT/DeepEye/headmodel_ant/elec_aligned.mat');
 cfg =[];
 cfg.method ='distance';
 cfg.elec = elec_aligned;

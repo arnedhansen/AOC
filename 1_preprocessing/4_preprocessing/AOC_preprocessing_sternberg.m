@@ -17,7 +17,7 @@ runMode = askRunMode();
 
 %% Read data, segment and convert to FieldTrip data structure
 tic;
-for subj = 1%%%%%:length(subjects)
+for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj});
     cd(datapath)
 
@@ -31,7 +31,7 @@ for subj = 1%%%%%:length(subjects)
     if strcmp(runMode,'all') || isempty(newDataFolder)
         clc
         disp(['Preprocessing Subject AOC ', num2str(subjects{subj})])
-        clear alleeg
+        clear alleeg data2 data4 data6
         %% Read blocks
         %  and assign globalID values
         trialCounter = 0;

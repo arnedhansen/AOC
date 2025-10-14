@@ -3,6 +3,7 @@
 %% Setup
 startup
 clear
+runMode = askRunMode();
 addEEGLab
 if ispc == 1
     path = 'W:\Students\Arne\AOC\data\merged\';
@@ -27,7 +28,8 @@ for subj = 1:length(subjects)
     else
         newDataFolder = dir(['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_sternberg.mat']);
     end
-    if isempty(newDataFolder)
+
+    if strcmp(runMode,'all') || isempty(newDataFolder)
         clear alleeg
         %% Read blocks
         for block = 1:6

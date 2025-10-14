@@ -22,9 +22,13 @@ for subj = 1:length(subjects)
         load dataEEG_TFR_sternberg
 
         % Identify indices of trials belonging to conditions
-        ind2 = find(dataTFR.trialinfo == 22); % WM load 2
-        ind4 = find(dataTFR.trialinfo == 24); % WM load 4
-        ind6 = find(dataTFR.trialinfo == 26); % WM load 6
+        globalTrialID = dataTFR.trialinfo(:,2);
+        ind2 = find(dataTFR.trialinfo(:, 1) == 22); % WM load 2
+        ind4 = find(dataTFR.trialinfo(:, 1) == 24); % WM load 4
+        ind6 = find(dataTFR.trialinfo(:, 1) == 26); % WM load 6
+        globalTrialID2 = globalTrialID(ind2);
+        globalTrialID4 = globalTrialID(ind4);
+        globalTrialID6 = globalTrialID(ind6);
 
         % ----------------------
         % Frequency analysis EARLY  (0-1 s)
@@ -273,13 +277,12 @@ for subj = 1:length(subjects)
         n4 = size(powload4_late.powspctrm,1);
         n6 = size(powload6_late.powspctrm,1);
 
-        trl2  = (1:n2)';  trl4  = (1:n4)';  trl6  = (1:n6)';
         IAFr2 = repmat(IAF_subj, n2, 1);
         IAFr4 = repmat(IAF_subj, n4, 1);
         IAFr6 = repmat(IAF_subj, n6, 1);
 
         subj_data_eeg_trials_2 = struct( ...
-            'Trial',              num2cell(trl2), ...
+            'Trial',              num2cell(globalTrialID2), ...
             'ID',                 num2cell(repmat(subID, n2, 1)), ...
             'Condition',          num2cell(repmat(2, n2, 1)), ...
             'AlphaPowerEarly',    num2cell(AlphaPowerEarly2), ...
@@ -290,7 +293,7 @@ for subj = 1:length(subjects)
             'Lateralization',     num2cell(LI2_trials) );
 
         subj_data_eeg_trials_4 = struct( ...
-            'Trial',              num2cell(trl4), ...
+            'Trial',              num2cell(globalTrialID4), ...
             'ID',                 num2cell(repmat(subID, n4, 1)), ...
             'Condition',          num2cell(repmat(4, n4, 1)), ...
             'AlphaPowerEarly',    num2cell(AlphaPowerEarly4), ...
@@ -301,7 +304,7 @@ for subj = 1:length(subjects)
             'Lateralization',     num2cell(LI4_trials) );
 
         subj_data_eeg_trials_6 = struct( ...
-            'Trial',              num2cell(trl6), ...
+            'Trial',              num2cell(globalTrialID6), ...
             'ID',                 num2cell(repmat(subID, n6, 1)), ...
             'Condition',          num2cell(repmat(6, n6, 1)), ...
             'AlphaPowerEarly',    num2cell(AlphaPowerEarly6), ...
@@ -431,9 +434,10 @@ end
 %             load dataEEG_TFR_sternberg
 %
 %             % Identify indices of trials belonging to conditions
-%             ind2 = find(dataTFR.trialinfo == 22);
-%             ind4 = find(dataTFR.trialinfo == 24);
-%             ind6 = find(dataTFR.trialinfo == 26);
+%             globalTrialID = dataTFR.trialinfo(:,2);
+%             ind2 = find(dataTFR.trialinfo(:, 1) == 22);
+%             ind4 = find(dataTFR.trialinfo(:, 1) == 24);
+%             ind6 = find(dataTFR.trialinfo(:, 1) == 26);
 %
 %             % ----------------------
 %             % Time frequency analysis (averaged across trials for FOOOF stability)

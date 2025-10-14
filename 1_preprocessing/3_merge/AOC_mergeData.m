@@ -8,7 +8,7 @@ clear
 if ispc == 1
     addpath W:\4marius_bdf\eeglab
 else
-    addpath /Volumes/methlab/4marius_bdf/eeglab % for pop_importeyetracker (EYE-EEG)
+    addpath /Volumes/g_psyplafor_methlab$/4marius_bdf/eeglab % for pop_importeyetracker (EYE-EEG)
 end
 eeglab
 clc
@@ -16,7 +16,7 @@ close all
 if ispc == 1
     path = 'W:\Students\Arne\AOC\data\automagic_nohp';
 else
-    path = '/Volumes/methlab/Students/Arne/AOC/data/automagic_nohp/';
+    path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/automagic_nohp/';
 end
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
@@ -29,16 +29,16 @@ for subjects = 1 : length(subjectIDs)
     fprintf('Processing Subject %s\n', subjectID)
 
     % Check if subject files have already been merged
-    if isempty(dir(['/Volumes/methlab/Students/Arne/AOC/data/merged/', char(subjectID), filesep, char(subjectID), '*_merged.mat']))
+    if isempty(dir(['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/merged/', char(subjectID), filesep, char(subjectID), '*_merged.mat']))
         % Set up data paths
         if ispc == 1
             filePathET = ['V:\OCC\AOC\data\', char(subjectID)];
             filePathEEG = ['W:\Students\Arne\AOC\data\automagic_nohp\',  char(subjectID)];
             resultFolder = ['W:\Students\Arne\AOC\data\merged\', char(subjectID)];
         else
-            filePathET = ['/Volumes/methlab_data/OCC/AOC/data/', char(subjectID)];
-            filePathEEG = ['/Volumes/methlab/Students/Arne/AOC/data/automagic_nohp/',  char(subjectID)];
-            resultFolder = ['/Volumes/methlab/Students/Arne/AOC/data/merged/', char(subjectID)];
+            filePathET = ['/Volumes/g_psyplafor_methlab_data$/OCC/AOC/data/', char(subjectID)];
+            filePathEEG = ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/automagic_nohp/',  char(subjectID)];
+            resultFolder = ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/merged/', char(subjectID)];
         end
         mkdir(resultFolder)
         dEEG = dir([filePathEEG, filesep, '*ip*EEG.mat']);
@@ -89,7 +89,7 @@ for subjects = 1 : length(subjectIDs)
                 % if ispc == 1
                 %     savepath = strcat('W:\Students\Arne\AOC\data\controls\mergeInfo\', subjectID);
                 % else
-                %     savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/mergeInfo/', subjectID);
+                %     savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/mergeInfo/', subjectID);
                 % end
                 % mkdir(savepath)
                 % if strcmp(task, 'Resting') == 1

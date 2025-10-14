@@ -55,7 +55,7 @@ cb = colorbar;
 set(cb, 'FontSize', 20);
 ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('WM load 2', 'FontSize', 40);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_sternberg_topo2.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_sternberg_topo2.png');
 
 % Plot WM load 4
 figure('Color', 'w');
@@ -66,7 +66,7 @@ cb = colorbar;
 set(cb, 'FontSize', 20);
 ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('WM load 4', 'FontSize', 40);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_sternberg_topo4.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_sternberg_topo4.png');
 
 % Plot WM load 6
 figure('Color', 'w');
@@ -77,7 +77,7 @@ cb = colorbar;
 set(cb, 'FontSize', 20);
 ylabel(cb, 'log(Power [\muV^2/Hz])', 'FontSize', 25);
 title('WM load 6', 'FontSize', 40);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_sternberg_topo6.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_sternberg_topo6.png');
 
 %% Plot alpha power TOPOS DIFFERENCE
 close all
@@ -120,4 +120,4 @@ title('Sternberg Task Alpha Power Difference (WM load 6 - WM load 2)', 'FontSize
 ft_topoplotER(cfg, ga_diff);
 
 % Save
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_power/topos/AOC_alpha_power_sternberg_topo_diff.png');
+saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_sternberg_topo_diff.png');

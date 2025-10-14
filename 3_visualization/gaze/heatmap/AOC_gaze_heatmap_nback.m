@@ -22,7 +22,7 @@ for subj = 1:length(subjects)
     cfg.avgovertime  = 'no';
     cfg.keeptrials   = 'yes';
     num_bins = 1000;
-    smoothing_factor = 20;
+    smoothing_factor = 10;
 
     % BASELINE
     cfg.latency = [-0.5 -0.25];
@@ -133,7 +133,7 @@ cohensd=((stat6late.stat)./sqrt(numel(subjects)));
 stat6late.stat=cohensd;
 stat6late.stat(stat6late.mask==0)=0;
 
-clc; disp('dataStim3Allsubs...')
+clc; disp('dataDIFF...')
 [statDIFF] = ft_freqstatistics(cfg, dataStim3Allsubs{:},dataStim1Allsubs{:});
 cohensd=((statDIFF.stat)./sqrt(numel(subjects)));
 statDIFF.stat=cohensd;

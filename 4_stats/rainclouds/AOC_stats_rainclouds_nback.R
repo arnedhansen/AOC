@@ -78,7 +78,7 @@ glmm_contrasts_df <- function(dat, var, comparisons, y_min, y_max, delta,
 dat <- read.csv("/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/merged_data_nback.csv")
 
 # Transform and derive columns
-dat$ReactionTime <- dat$ReactionTime * 1000
+#dat$ReactionTime <- dat$ReactionTime * 1000
 dat$GazeStd      <- (dat$GazeStdX + dat$GazeStdY) / 2
 dat$Condition    <- factor(dat$Condition,
                            levels = c(1,2,3),
@@ -92,7 +92,7 @@ variables  <- c("Accuracy","ReactionTime","GazeDeviation","GazeStd",
                 "MSRate","Fixations","Saccades","AlphaPower","IAF")
 titles     <- c("Accuracy","Reaction Time","Gaze Deviation","Gaze Std",
                 "Microsaccade Rate","Fixations","Saccades","Alpha Power","IAF")
-y_labels   <- c("Accuracy [%]","Reaction Time [ms]","Gaze Deviation [px]","Gaze Std [px]",
+y_labels   <- c("Accuracy [%]","Reaction Time [s]","Gaze Deviation [px]","Gaze Std [px]",
                 "Microsaccade Rate [MS/s]","Fixations","Saccades",
                 "Alpha Power [\u03BCV²/Hz]","IAF [Hz]")
 save_names <- c("acc","rt","gazedev","gazestd","ms","fix","sacc","pow","iaf")
@@ -154,12 +154,10 @@ for (i in seq_along(variables)) {
   # Variable-specific lower bounds (to keep your previous look)
   lower_bound <-
     if (var == "Accuracy")       65 else
-      if (var == "ReactionTime")  300 else
         if (var == "GazeDeviation")   5 else y_min
   
   # Optional variable-specific nominal uppers; we still ensure headroom
   nominal_upper <-
-    if (var == "ReactionTime") 1400 else
       if (var == "GazeDeviation")  65 else
         if (var == "Accuracy")      102 else NA_real_
   

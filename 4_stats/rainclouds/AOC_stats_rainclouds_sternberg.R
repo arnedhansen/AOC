@@ -212,7 +212,7 @@ for(i in seq_along(variables)) {
   # compute natural limits and delta (you already do this)
   y_min <- min(dat[[var]], na.rm = TRUE)
   y_max <- max(dat[[var]], na.rm = TRUE)
-  delta <- 0.05 * (y_max - y_min)
+  delta <- 0.025 * (y_max - y_min)
   
   # get GLMM contrasts for this variable
   glmm_df <- glmm_contrasts_df(
@@ -236,13 +236,13 @@ for(i in seq_along(variables)) {
     p_stats <- p_stats +
       theme(plot.margin = margin(30, 50, 10, 15)) +
       scale_y_continuous(
-        limits = c(65, 140),
+        limits = c(65, 150),
         breaks = seq(70, 100, by = 5),
         expand = c(0.001, 0.001)
       )
   } else if (var == "ReactionTime") {
     p_stats <- p_stats +
-      theme(plot.margin = margin(50, 75, 50, 75)) +
+      theme(plot.margin = margin(50, 75, 20, 75)) +
       coord_cartesian(ylim = c(300, 1300), clip = "off") +
       scale_y_continuous(
         breaks = seq(400, 1200, by = 100),

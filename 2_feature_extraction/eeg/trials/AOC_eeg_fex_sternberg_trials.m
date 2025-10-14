@@ -5,7 +5,7 @@
 %   IAF (subject-level), Power at IAF (trial-wise), and Lateralization Index (trial-wise, ridge stabilised)
 %   TFR (Raw, FOOOF and Baselined)  [with safer, throttled FOOOF]
 
-%% POWSPCTRM (Early, Late (= Registered Retention), Baseline Period) — TRIAL-BY-TRIAL
+%% POWSPCTRM (Early, Late (= Registered Retention), Baseline Period) - TRIAL-BY-TRIAL
 % Setup
 startup
 [subjects, path, ~ , ~] = setup('AOC');
@@ -27,7 +27,7 @@ for subj = 1:length(subjects)
         ind6 = find(dataTFR.trialinfo == 26); % WM load 6
 
         % ----------------------
-        % Frequency analysis EARLY  (0–1 s)
+        % Frequency analysis EARLY  (0-1 s)
         % ----------------------
         % Select data
         cfg = [];                      % Empty configuration
@@ -57,7 +57,7 @@ for subj = 1:length(subjects)
         save power_stern_early_trials powload2_early powload4_early powload6_early
 
         % ----------------------
-        % Frequency analysis LATE  (1–2 s)  = Registered Retention
+        % Frequency analysis LATE  (1-2 s)  = Registered Retention
         % ----------------------
         % Select data
         cfg = [];
@@ -87,7 +87,7 @@ for subj = 1:length(subjects)
         save power_stern_late_trials powload2_late powload4_late powload6_late
 
         % ----------------------
-        % Frequency analysis BASELINE PERIOD  (-0.5–.25 s)
+        % Frequency analysis BASELINE PERIOD  (-0.5-.25 s)
         % ----------------------
         % Select data
         cfg = [];                      % Empty configuration
@@ -129,7 +129,7 @@ end
 startup
 [subjects, path, ~ , ~] = setup('AOC');
 
-% Define channels (from one subject’s labels)
+% Define channels (from one subject-s labels)
 subj = 1;
 datapath = strcat(path, subjects{subj}, filesep, 'eeg');
 cd(datapath);
@@ -220,7 +220,7 @@ for subj = 1:length(subjects)
             end
         end
 
-        % Define IAF integration band if valid (−4/+2 Hz)
+        % Define IAF integration band if valid (4/+2 Hz)
         if ~isnan(IAF_subj)
             IAF_band = [(IAF_subj-4) (IAF_subj+2)];
         else
@@ -344,7 +344,7 @@ else
     save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/eeg_matrix_sternberg_trials eeg_data_sternberg_trials
 end
 
-%% FOOOF on FFT (trial-wise; EARLY and LATE) — optional add-on
+%% FOOOF on FFT (trial-wise; EARLY and LATE) - optional add-on
 % % Setup
 % startup
 % [subjects, path, ~ , ~] = setup('AOC');
@@ -494,7 +494,7 @@ end
 %                     for chan = 1:length(tmp.label)
 %                         % Prepare inputs
 %                         freqs = orig_freq(:);                         % Equidistant freq vector (column)
-%                         psd   = squeeze(tmp.powspctrm(chan, :))';     % row → flip to column below
+%                         psd   = squeeze(tmp.powspctrm(chan, :))';     % row  flip to column below
 %                         psd   = psd(:);
 %
 %                         % Keep only finite & positive bins; bail if too few
@@ -569,7 +569,7 @@ end
 %                 tfr2_bl tfr4_bl tfr6_bl ...
 %                 tfr2_fooof_bl tfr4_fooof_bl tfr6_fooof_bl
 %
-%             % Convert TFR data to POWSPCTRM (channels x frequency) — using your helpers
+%             % Convert TFR data to POWSPCTRM (channels x frequency) - using your helpers
 %             analysisPeriodFull  = [0 2];
 %             analysisPeriodEarly = [0 1];
 %             analysisPeriodLate  = [1 2];

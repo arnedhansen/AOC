@@ -68,7 +68,7 @@ for subj = 1:length(subjects)
             end
         end
 
-        % Skip subject if there is no Sternberg data
+        % Skip subject if there is no data
         if exist('alleeg', 'var') == 0
             fprintf('No Sternberg data... SKIPPING processing of Subject %s\n....', subjects{subj})
             continue;
@@ -100,7 +100,7 @@ for subj = 1:length(subjects)
                         evIndex = EEGload2.epoch(e).event(matchIdx);
                         global_ids(e) = EEGload2.event(evIndex).globalTrial;
                     else
-                        global_ids(e) = NaN; % or 0, but NaN is clearer for missing IDs
+                        global_ids(e) = NaN;
                     end
                 end
                 data2{block}.trialinfo = [repmat(22, numel(global_ids), 1), global_ids(:)];
@@ -149,7 +149,7 @@ for subj = 1:length(subjects)
                         evIndex = EEGload4.epoch(e).event(matchIdx);
                         global_ids(e) = EEGload4.event(evIndex).globalTrial;
                     else
-                        global_ids(e) = NaN; % or 0, but NaN is clearer for missing IDs
+                        global_ids(e) = NaN;
                     end
                 end
                 data4{block}.trialinfo = [repmat(24, numel(global_ids), 1), global_ids(:)];
@@ -198,7 +198,7 @@ for subj = 1:length(subjects)
                         evIndex = EEGload6.epoch(e).event(matchIdx);
                         global_ids(e) = EEGload6.event(evIndex).globalTrial;
                     else
-                        global_ids(e) = NaN; % or 0, but NaN is clearer for missing IDs
+                        global_ids(e) = NaN;
                     end
                 end
                 data6{block}.trialinfo = [repmat(26, numel(global_ids), 1), global_ids(:)];
@@ -319,14 +319,6 @@ for subj = 1:length(subjects)
         dataEEG = ft_selectdata(cfg, dataEEG); % EEG data
         dataet = ft_selectdata(cfg,dataet); % ET data
         dataet.trialinfo = trialinfo;
-
-        % Split early and late retention interval data
-        cfg = [];
-        cfg.latency = [0 1]; % Early
-        dataETearly = ft_selectdata(cfg,dataet);
-        cfg = [];
-        cfg.latency = [1 2]; % Late
-        dataETlate = ft_selectdata(cfg,dataet);
 
         %% Re-reference data to average or common reference
         cfg = [];

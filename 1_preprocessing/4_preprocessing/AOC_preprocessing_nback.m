@@ -2,7 +2,7 @@
 
 %% Setup
 startup
-[subjects, path, ~ , ~] = setup('AOC');
+[~, ~, ~ , ~] = setup('AOC');
 if ispc == 1
     path = 'W:\Students\Arne\AOC\data\merged\';
 else
@@ -12,15 +12,13 @@ dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 subjects = exclude_subjects(subjects, 'AOC');
+runMode = askRunMode();
 
 %% Read data, segment and convert to FieldTrip data structure
 tic;
 for subj = 1:length(subjects)
-    clearvars -except subjects subj path
-    clear data dataTFR data1 data2 data3
     datapath = strcat(path,subjects{subj});
     cd(datapath)
-    fprintf('Processing Subject %s\n', subjects{subj})
 
     % Only process new data
     if ispc == 1
@@ -28,23 +26,49 @@ for subj = 1:length(subjects)
     else
         newDataFolder = dir(['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_nback.mat']);
     end
-    % if isempty(newDataFolder)
-        clear alleeg
+    if strcmp(runMode,'all') || isempty(newDataFolder)
+        clc
+        disp(['Preprocessing Subject AOC ', num2str(subjects{subj})])
+        clear alleeg data1 data2 data3
         %% Read blocks
+        %  and assign globalID values
+        trialCounter = 0;
         for block = 1:6
             try % Do not load emtpy blocks
                 load(strcat(subjects{subj}, '_EEG_ET_Nback_block',num2str(block),'_merged.mat'))
                 alleeg{block} = EEG;
+
+                % Ensure field exists for all events
+                if ~isfield(EEG.event, 'globalTrial')
+                    [EEG.event.globalTrial] = deal(0);
+                end
+
+                % Identify stimulus events
+                stimCodes = {'21','22','23'};
+                stimEventIdx = find(ismember({EEG.event.type}, stimCodes));
+                [~, sortOrder] = sort([EEG.event(stimEventIdx).latency]);
+                stimEventIdx = stimEventIdx(sortOrder);
+
+                % Assign chronological trial IDs
+                for t = 1:length(stimEventIdx)
+                    EEG.event(stimEventIdx(t)).globalTrial = t + trialCounter;
+                end
+
+                % Update counter and save back
+                trialCounter = trialCounter + length(stimEventIdx);
+                alleeg{block} = EEG;
+
                 clear EEG
                 fprintf('Block %.1d loaded \n', block)
             catch ME
+                ME.message
                 disp(['ERROR loading Block ' num2str(block) '!'])
             end
         end
 
-        % Skip subject if there is no N-back data
+        % Skip subject if there is no data
         if exist('alleeg', 'var') == 0
-            fprintf('No N-back data... SKIPPING processing of Subject %s\n....', subjects{subj})
+            fprintf('No Nback data... SKIPPING processing of Subject %s\n....', subjects{subj})
             continue;
         end
 
@@ -66,6 +90,20 @@ for subj = 1:length(subjects)
                 exclude_epochs = unique([EEG1back.event(matching_trials).epoch]);
                 EEG1back = pop_select(EEG1back, 'notrial', exclude_epochs);
                 data1{block} = eeglab2fieldtrip(EEG1back, 'raw');
+
+                % Add global trial ID info
+                global_ids = nan(numel(EEG1back.epoch),1);
+                for e = 1:numel(EEG1back.epoch)
+                    evTypes = {EEG1back.event(EEG1back.epoch(e).event).type};
+                    matchIdx = find(ismember(evTypes, {'21'}), 1, 'first');
+                    if ~isempty(matchIdx)
+                        evIndex = EEG1back.epoch(e).event(matchIdx);
+                        global_ids(e) = EEG1back.event(evIndex).globalTrial;
+                    else
+                        global_ids(e) = NaN;
+                    end
+                end
+                data1{block}.trialinfo = [repmat(21, numel(global_ids), 1), global_ids(:)];
 
                 % 1-back gaze metrics extraction
                 gaze_metrics_1back = pop_epoch(alleeg{block}, {'21'}, analysis_window);
@@ -107,6 +145,20 @@ for subj = 1:length(subjects)
                 EEG2back = pop_select(EEG2back, 'notrial', exclude_epochs);
                 data2{block} = eeglab2fieldtrip(EEG2back, 'raw');
 
+                % Add global trial ID info
+                global_ids = nan(numel(EEG2back.epoch),1);
+                for e = 1:numel(EEG2back.epoch)
+                    evTypes = {EEG2back.event(EEG2back.epoch(e).event).type};
+                    matchIdx = find(ismember(evTypes, {'22'}), 1, 'first');
+                    if ~isempty(matchIdx)
+                        evIndex = EEG2back.epoch(e).event(matchIdx);
+                        global_ids(e) = EEG2back.event(evIndex).globalTrial;
+                    else
+                        global_ids(e) = NaN;
+                    end
+                end
+                data2{block}.trialinfo = [repmat(22, numel(global_ids), 1), global_ids(:)];
+
                 % 2-back gaze metrics extraction
                 gaze_metrics_2back = pop_epoch(alleeg{block}, {'22'}, analysis_window);
                 trl_2back(block) = gaze_metrics_2back.trials;
@@ -146,6 +198,20 @@ for subj = 1:length(subjects)
                 EEG3back = pop_select(EEG3back, 'notrial', exclude_epochs);
                 data3{block} = eeglab2fieldtrip(EEG3back, 'raw');
 
+                % Add global trial ID info
+                global_ids = nan(numel(EEG3back.epoch),1);
+                for e = 1:numel(EEG3back.epoch)
+                    evTypes = {EEG3back.event(EEG3back.epoch(e).event).type};
+                    matchIdx = find(ismember(evTypes, {'23'}), 1, 'first');
+                    if ~isempty(matchIdx)
+                        evIndex = EEG3back.epoch(e).event(matchIdx);
+                        global_ids(e) = EEG3back.event(evIndex).globalTrial;
+                    else
+                        global_ids(e) = NaN;
+                    end
+                end
+                data3{block}.trialinfo = [repmat(23, numel(global_ids), 1), global_ids(:)];
+
                 % 3-back gaze metrics extraction
                 gaze_metrics_3back = pop_epoch(alleeg{block}, {'23'}, analysis_window);
                 trl_3back(block) = gaze_metrics_3back.trials;
@@ -182,32 +248,6 @@ for subj = 1:length(subjects)
         data2 = data2(~cellfun(@(x) isempty(fieldnames(x)), data2));
         data3 = data3(~cellfun(@(x) isempty(fieldnames(x)), data3));
 
-        %% Equalize labels
-        update_labels(data1);
-        update_labels(data2);
-        update_labels(data3);
-
-        % Fix labels for subjects with only left eye recording (AOC419)
-        % if strcmp(subjects{subj}, '419')
-        %     % Reduce to 132 electrodes
-        %     label_132 = data2{1}.label;
-        %     data_structs = {data1, data2, data3};
-        % 
-        %     for datastrct = 1:numel(data_structs)
-        %         for conds = 1:2
-        %         data_structs{datastrct}{conds}.label = label_132;
-        %         for i = 1:length(data_structs{datastrct}{conds}.trial)
-        %             data_structs{datastrct}{conds}.trial{i} = data_structs{datastrct}{conds}.trial{i}(1:132, :);
-        %         end
-        %         end
-        %     end
-        % 
-        %     % Assign modified blocks back
-        %     data1 = data_structs{1};
-        %     data2 = data_structs{2};
-        %     data3 = data_structs{3};
-        % end
-
         %% Append data for conditions
         cfg = [];
         cfg.keepsampleinfo = 'yes';
@@ -215,17 +255,27 @@ for subj = 1:length(subjects)
         data2 = ft_appenddata(cfg,data2{:});
         data3 = ft_appenddata(cfg,data3{:});
 
-        %% Add trialinfo
-        data1.trialinfo = zeros(numel(data1.trial), 1) + 21;
-        data2.trialinfo = zeros(numel(data2.trial), 1) + 22;
-        data3.trialinfo = zeros(numel(data3.trial), 1) + 23;
-
         %% Append all data into single data file with appropriate trialinfo
         cfg = [];
         cfg.keepsampleinfo = 'yes';
         data = ft_appenddata(cfg, data1, data2, data3);
         trialinfo = [data1.trialinfo; data2.trialinfo; data3.trialinfo];
         data.trialinfo = trialinfo;
+
+        %% Sort appended data by chronological order based on global trial ID
+        %  (just sanity check for N-back, should already be ordered)
+        %  sort by chronological order (globalTrial), push NaNs to the end
+        [~, order] = sort(data.trialinfo(:,2), 'ascend', 'MissingPlacement', 'last');
+
+        % keep only valid (non-NaN, >0) global IDs in this reordering pass
+        valid = ~isnan(data.trialinfo(order,2)) & data.trialinfo(order,2) > 0;
+        order = order(valid);
+
+        % reorder the FieldTrip data *manually* (ft_selectdata won't reorder)
+        data = reorder_trials_ft(data, order);
+
+        % always refresh trialinfo from the reordered data
+        trialinfo = data.trialinfo;
 
         %% Pre-stim fixation check
         preStimWindow = [-0.5 0];
@@ -252,7 +302,7 @@ for subj = 1:length(subjects)
 
         % Continue analyses with correct fix trials
         data = ft_selectdata(struct('trials', trialsToKeep), data);
-        trialinfo = data.trialinfo; 
+        trialinfo = data.trialinfo;
 
         %% Get EyeTracking data
         cfg = [];
@@ -266,15 +316,15 @@ for subj = 1:length(subjects)
         cfg.channel = {'all' '-B*' '-HEOGR' '-HEOGL' '-VEOGU' '-VEOGL' ...
             '-L-GAZE-X' '-L-GAZE-Y' '-L-AREA' ...
             '-R-GAZE-X' '-R-GAZE-Y' '-R-AREA'};
-        data = ft_selectdata(cfg, data);
+        dataEEG = ft_selectdata(cfg, data);
 
         %% Resegment data to avoid filter ringing
         cfg = [];
-        dataTFR = ft_selectdata(cfg, data); % TRF data long
+        dataTFR = ft_selectdata(cfg, dataEEG); % TRF data long
         dataTFR.trialinfo = trialinfo;
         cfg = [];
         cfg.latency = [0 2]; % Time window for N-back task
-        data = ft_selectdata(cfg, data);
+        dataEEG = ft_selectdata(cfg, dataEEG);
         dataet = ft_selectdata(cfg, dataet);
         dataet.trialinfo = trialinfo;
 
@@ -282,8 +332,10 @@ for subj = 1:length(subjects)
         cfg = [];
         cfg.reref   = 'yes';
         cfg.refchannel = 'all';
-        data = ft_preprocessing(cfg,data);
-        data.trialinfo = trialinfo;
+        dataTFR = ft_preprocessing(cfg,dataTFR);
+        dataTFR.trialinfo = trialinfo;
+        dataEEG = ft_preprocessing(cfg,dataEEG);
+        dataEEG.trialinfo = trialinfo;
 
         %% Compute gaze metric data
         % 1-back gaze metrics average across trials
@@ -302,6 +354,7 @@ for subj = 1:length(subjects)
         blinks_3back = sum(blink_3back(:)) / sum(trl_3back(:));
 
         %% Save data
+        clc
         if ispc == 1
             savepathEEG = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\');
         else
@@ -309,7 +362,9 @@ for subj = 1:length(subjects)
         end
         mkdir(savepathEEG)
         cd(savepathEEG)
-        save dataEEG_nback data
+        disp('SAVING dataEEG_nback...')
+        save dataEEG_nback dataEEG
+        disp('SAVING dataEEG_TFR_nback...')
         save dataEEG_TFR_nback dataTFR
         if ispc == 1
             savepathET = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\gaze\');
@@ -318,7 +373,9 @@ for subj = 1:length(subjects)
         end
         mkdir(savepathET)
         cd(savepathET)
+        disp('SAVING dataET_nback...')
         save dataET_nback dataet dataETlong
+        disp('SAVING gaze_metrics_nback...')
         save gaze_metrics_nback saccades_1back fixations_1back blinks_1back ...
             saccades_2back fixations_2back blinks_2back ...
             saccades_3back fixations_3back blinks_3back
@@ -328,9 +385,8 @@ for subj = 1:length(subjects)
         else
             disp(['Subject AOC ' num2str(subjects{subj})  ' (' num2str(subj) '/' num2str(length(subjects)) ') done. Loading next subject...'])
         end
-    % else
-    %    disp(['Subject ', num2str(subjects{subj}), ' already done. SKIPPING...'])
-    % end
+    else
+        disp(['Subject ', num2str(subjects{subj}), ' already done. SKIPPING...'])
+    end
 end
 toc;
-%finishedScriptMail;

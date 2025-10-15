@@ -163,7 +163,7 @@ for subj = 1:length(subjects)
             T_base = sum(isfinite(vel_base(1,:)) & isfinite(vel_base(2,:))) / fsample;
             if T_base > 0
                 [~, msb] = detect_microsaccades(fsample, vel_base, size(vel_base,2));
-                ms_count_b = numel(msb.Onset); % assume your struct has onsets
+                ms_count_b = numel(msb.Onset);
                 ms_rate_base = ms_count_b / T_base;
                 if ~isfinite(ms_rate_base) || ms_rate_base <= 0
                     ms_rate_base = NaN;

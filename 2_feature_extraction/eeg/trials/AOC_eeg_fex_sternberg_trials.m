@@ -43,7 +43,10 @@ for subj = 1:length(subjects)
         cfg.pad        = 'maxperlen';
         cfg.keeptrials = 'yes';
 
-        freq_all = ft_freqanalysis(cfg, dataTFR); % dimord: rpt_chan_freq_time
+        tfr_all = ft_freqanalysis(cfg, dataTFR); % dimord: rpt_chan_freq_time
+
+        % Save raw trial-by-trial TFR data
+        save tfr_stern_trials tfr_all
 
         % ----------------------
         % BASELINE (dB)
@@ -51,15 +54,15 @@ for subj = 1:length(subjects)
         cfgb = [];
         cfgb.baseline     = [-0.5 -0.25];
         cfgb.baselinetype = 'db';
-        freq_all_bl = ft_freqbaseline(cfgb, freq_all);
+        tfr_all_bl = ft_freqbaseline(cfgb, tfr_all);
 
         % ----------------------
         % EARLY (0-1 s)
         % ----------------------
         cfgsel = [];
         cfgsel.latency = [0 1];
-        early_raw = ft_selectdata(cfgsel, freq_all);
-        early_db  = ft_selectdata(cfgsel, freq_all_bl);
+        early_raw = ft_selectdata(cfgsel, tfr_all);
+        early_db  = ft_selectdata(cfgsel, tfr_all_bl);
 
         % mean over time (4th dim), keep rpt-chan-freq
         early_raw.powspctrm = mean(early_raw.powspctrm, 4);
@@ -87,8 +90,8 @@ for subj = 1:length(subjects)
         % ----------------------
         cfgsel = [];
         cfgsel.latency = [1 2];
-        late_raw = ft_selectdata(cfgsel, freq_all);
-        late_db  = ft_selectdata(cfgsel, freq_all_bl);
+        late_raw = ft_selectdata(cfgsel, tfr_all);
+        late_db  = ft_selectdata(cfgsel, tfr_all_bl);
 
         late_raw.powspctrm = mean(late_raw.powspctrm, 4);
         late_db.powspctrm  = mean(late_db.powspctrm, 4);

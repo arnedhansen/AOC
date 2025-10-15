@@ -31,83 +31,81 @@ for subj = 1:length(subjects)
         globalTrialID6 = globalTrialID(ind6);
 
         % ----------------------
-        % Frequency analysis EARLY  (0-1 s) RAW
-        % ----------------------
-        % Select data
-        cfg = [];                      % Empty configuration
-        cfg.latency = [0 1];           % Segmentation for early retention interval
-        dataEarly = ft_selectdata(cfg, dataTFR);
-
-        % Analysis settings
-        cfg = [];                      % Empty configuration
-        cfg.output = 'pow';            % Estimate power only
-        cfg.method = 'mtmfft';         % Multi-taper FFT method
-        cfg.taper = 'dpss';            % Multiple tapers (discrete prolate spheroidal sequences)
-        cfg.tapsmofrq = 1;             % Smoothening frequency around foi
-        cfg.foilim = [3 30];           % Frequencies of interest
-        cfg.keeptrials = 'yes';        % Keep trial information
-        cfg.pad = 5;                   % Zero-padding
-
-        % Conduct frequency analysis for each condition separately
-        cfg.trials = ind2;
-        powload2_early = ft_freqanalysis(cfg, dataEarly);
-        cfg.trials = ind4;
-        powload4_early = ft_freqanalysis(cfg, dataEarly);
-        cfg.trials = ind6;
-        powload6_early = ft_freqanalysis(cfg, dataEarly);
-      
-        % ----------------------
-        % Frequency analysis EARLY (0-1 s) BASELINED
+        % Common time–frequency transform
         % ----------------------
         cfg = [];
-        cfg.baseline = [-.5 -.25];
-        cfg.baselinetype = 'db';
-        powload2_early_bl = ft_freqbaseline(cfg, powload2_early);
-        powload4_early_bl = ft_freqbaseline(cfg, powload4_early);
-        powload6_early_bl = ft_freqbaseline(cfg, powload6_early);
+        cfg.method     = 'mtmconvol';
+        cfg.output     = 'pow';
+        cfg.taper      = 'hanning';
+        cfg.foi        = 3:1:30;                % 1-Hz bins
+        cfg.t_ftimwin  = ones(size(cfg.foi))*1; % 1 s windows
+        cfg.toi        = -1.5:0.05:3;           % as requested
+        cfg.pad        = 'maxperlen';
+        cfg.keeptrials = 'yes';
 
-        % Save early trial-wise power spectra
+        freq_all = ft_freqanalysis(cfg, dataTFR); % dimord: rpt_chan_freq_time
+
+        % ----------------------
+        % BASELINE (dB)
+        % ----------------------
+        cfgb = [];
+        cfgb.baseline     = [-0.5 -0.25];
+        cfgb.baselinetype = 'db';
+        freq_all_bl = ft_freqbaseline(cfgb, freq_all);
+
+        % ----------------------
+        % EARLY (0–1 s)
+        % ----------------------
+        cfgsel = [];
+        cfgsel.latency = [0 1];
+        early_raw = ft_selectdata(cfgsel, freq_all);
+        early_db  = ft_selectdata(cfgsel, freq_all_bl);
+
+        % mean over time (4th dim), keep rpt×chan×freq
+        early_raw.powspctrm = mean(early_raw.powspctrm, 4);
+        early_db.powspctrm  = mean(early_db.powspctrm, 4);
+        if isfield(early_raw, 'time'); early_raw = rmfield(early_raw,'time'); end
+        if isfield(early_db,  'time'); early_db  = rmfield(early_db, 'time'); end
+        early_raw.dimord = 'rpt_chan_freq';
+        early_db.dimord  = 'rpt_chan_freq';
+
+        % Split by condition (preserves trial order)
+        powload2_early     = ft_selectdata(struct('trials', ind2), early_raw);
+        powload4_early     = ft_selectdata(struct('trials', ind4), early_raw);
+        powload6_early     = ft_selectdata(struct('trials', ind6), early_raw);
+        powload2_early_bl  = ft_selectdata(struct('trials', ind2), early_db);
+        powload4_early_bl  = ft_selectdata(struct('trials', ind4), early_db);
+        powload6_early_bl  = ft_selectdata(struct('trials', ind6), early_db);
+
+        % Save EARLY trial-wise power spectra
         cd(datapath)
         save power_stern_early_trials powload2_early powload4_early powload6_early ...
             powload2_early_bl powload4_early_bl powload6_early_bl
 
         % ----------------------
-        % Frequency analysis LATE (1-2 s) RAW = Registered Retention
+        % LATE (1–2 s)
         % ----------------------
-        % Select data
-        cfg = [];
-        cfg.latency = [1 2];               % Segmentation for registered retention interval
-        dataLate = ft_selectdata(cfg, dataTFR); % Select data
+        cfgsel = [];
+        cfgsel.latency = [1 2];
+        late_raw = ft_selectdata(cfgsel, freq_all);
+        late_db  = ft_selectdata(cfgsel, freq_all_bl);
 
-        % Analysis settings
-        cfg = [];                      % Empty configuration
-        cfg.output = 'pow';            % Estimate power only
-        cfg.method = 'mtmfft';         % Multi-taper FFT method
-        cfg.taper = 'dpss';            % Multiple tapers (discrete prolate spheroidal sequences)
-        cfg.tapsmofrq = 1;             % Smoothening frequency around foi
-        cfg.foilim = [3 30];           % Frequencies of interest
-        cfg.keeptrials = 'yes';        % Keep trial information
-        cfg.pad = 5;                   % Zero-padding
+        late_raw.powspctrm = mean(late_raw.powspctrm, 4);
+        late_db.powspctrm  = mean(late_db.powspctrm, 4);
+        if isfield(late_raw, 'time'); late_raw = rmfield(late_raw,'time'); end
+        if isfield(late_db,  'time'); late_db  = rmfield(late_db, 'time'); end
+        late_raw.dimord = 'rpt_chan_freq';
+        late_db.dimord  = 'rpt_chan_freq';
 
-        % Conduct frequency analysis for each condition separately
-        cfg.trials = ind2;
-        powload2_late = ft_freqanalysis(cfg, dataLate);
-        cfg.trials = ind4;
-        powload4_late = ft_freqanalysis(cfg, dataLate);
-        cfg.trials = ind6;
-        powload6_late = ft_freqanalysis(cfg, dataLate);
+        % Split by condition
+        powload2_late     = ft_selectdata(struct('trials', ind2), late_raw);
+        powload4_late     = ft_selectdata(struct('trials', ind4), late_raw);
+        powload6_late     = ft_selectdata(struct('trials', ind6), late_raw);
+        powload2_late_bl  = ft_selectdata(struct('trials', ind2), late_db);
+        powload4_late_bl  = ft_selectdata(struct('trials', ind4), late_db);
+        powload6_late_bl  = ft_selectdata(struct('trials', ind6), late_db);
 
-        % ----------------------
-        % Frequency analysis LATE (1-2 s) BASELINED
-        % ----------------------
-        cfg = [];
-        cfg.baseline = [-.5 -.25];
-        cfg.baselinetype = 'db';
-        powload2_late_bl  = ft_freqbaseline(cfg, powload2_late);
-        powload4_late_bl  = ft_freqbaseline(cfg, powload4_late);
-        powload6_late_bl  = ft_freqbaseline(cfg, powload6_late);
-
-        % Save late trial-wise spectra
+        % Save LATE trial-wise spectra
         cd(datapath)
         save power_stern_late_trials powload2_late powload4_late powload6_late ...
             powload2_late_bl powload4_late_bl powload6_late_bl
@@ -178,10 +176,14 @@ for subj = 1:length(subjects)
         % Load trial-wise spectra
         load('power_stern_early_trials.mat');
         load('power_stern_late_trials.mat');
-        load('power_stern_baseline_period_trials.mat');
 
         % Channel selection
         channelIdx = find(ismember(powload2_early.label, channels));
+
+        % Rebuild global trial IDs for this subject from the saved trialinfo
+        globalTrialID2 = powload2_late.trialinfo(:,2);
+        globalTrialID4 = powload4_late.trialinfo(:,2);
+        globalTrialID6 = powload6_late.trialinfo(:,2);
 
         % ----------------------
         % Subject-level IAF (from late retention, trial-averaged ROI)
@@ -219,7 +221,11 @@ for subj = 1:length(subjects)
             IAF_band = [(IAF_subj-4) (IAF_subj+2)];
         else
             IAF_band = [NaN NaN];
-        end        
+        end
+        if any(isnan(IAF_band))
+            IAF_band = alphaRange;  % fallback 8–14 Hz if no clear IAF
+        end
+
 
         % ----------------------
         % Trial-wise Alpha Power (EARLY/LATE, RAW/BASELINED) at IAF band
@@ -427,8 +433,8 @@ end
 %             cfg.taper        = 'hanning';
 %             cfg.foi          = 3:1:30;                         % 3 to 30 Hz in steps of 1 Hz
 %             cfg.t_ftimwin    = ones(length(cfg.foi),1).*0.5;   % 0.5 s windows
-%             cfg.toi          = -1.5:0.1:3;                     % throttle to 100 ms steps to reduce FOOOF load
-%             cfg.keeptrials   = 'no';                            % average for FOOOF robustness
+%             cfg.toi          = -1.5:0.05:3;                     
+%             cfg.keeptrials   = 'no';                            
 %
 %             cfg.trials = ind2;
 %             tfr2 = ft_freqanalysis(cfg, dataTFR);

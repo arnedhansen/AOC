@@ -3,7 +3,7 @@
 %% Setup
 startup
 clear
-[subjects, path, ~ , ~] = setup('AOC');
+[~, ~, ~ , ~] = setup('AOC');
 if ispc == 1
     path = 'W:\Students\Arne\AOC\data\merged\';
 else
@@ -73,9 +73,6 @@ for subj = 1:length(subjects)
             fprintf('No Sternberg data... SKIPPING processing of Subject %s\n....', subjects{subj})
             continue;
         end
-
-        %% Add trialinfo (condition) and trial ID (actual number of trial in squence)
-        %
 
         %% Segment data into epochs -2s before and 3.5s after stim onset and
         %  convert to Fieldtrip data structure AND extract gaze metrics from raw EEG data
@@ -237,11 +234,6 @@ for subj = 1:length(subjects)
             end
         end
 
-        %% Equalize labels
-        % update_labels(data2);
-        % update_labels(data4);
-        % update_labels(data6);
-
         %% Remove empty blocks
         data2 = data2(~cellfun(@(x) isempty(fieldnames(x)), data2));
         data4 = data4(~cellfun(@(x) isempty(fieldnames(x)), data4));
@@ -328,7 +320,7 @@ for subj = 1:length(subjects)
         dataet = ft_selectdata(cfg,dataet); % ET data
         dataet.trialinfo = trialinfo;
 
-        % Early and late retention interval data
+        % Split early and late retention interval data
         cfg = [];
         cfg.latency = [0 1]; % Early
         dataETearly = ft_selectdata(cfg,dataet);

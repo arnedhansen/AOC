@@ -1,9 +1,9 @@
 %% AOC EEG Feature Extraction Sternberg TRIAL-BY-TRIAL
 %
 % Extracted features:
-%   Power Spectrum (Early, Late (= Registered Retention), Baseline Period)  [trial-by-trial]
-%   IAF (subject-level), Power at IAF (trial-wise), and Lateralization Index (trial-wise, ridge stabilised)
-%   TFR (Raw, FOOOF and Baselined)  [with safer, throttled FOOOF]
+%   Power Spectrum (Early, Late (= Registered Retention))  [trial-by-trial]
+%   IAF (subject-level), Power at IAF (trial-wise), and Lateralization Index (trial-wise)
+%   TFR (Raw, FOOOF and Baselined)
 
 %% POWSPCTRM (Early, Late (= Registered Retention), Baseline Period) - TRIAL-BY-TRIAL
 % Setup
@@ -31,7 +31,7 @@ for subj = 1:length(subjects)
         globalTrialID6 = globalTrialID(ind6);
 
         % ----------------------
-        % Frequency analysis EARLY  (0-1 s)
+        % Frequency analysis EARLY  (0-1 s) RAW
         % ----------------------
         % Select data
         cfg = [];                      % Empty configuration
@@ -56,12 +56,25 @@ for subj = 1:length(subjects)
         cfg.trials = ind6;
         powload6_early = ft_freqanalysis(cfg, dataEarly);
 
-        % Save early trial-wise power spectra
-        cd(datapath)
-        save power_stern_early_trials powload2_early powload4_early powload6_early
+       
 
         % ----------------------
-        % Frequency analysis LATE  (1-2 s)  = Registered Retention
+        % Frequency analysis EARLY (0-1 s) BASELINED
+        % ----------------------
+        cfg = [];
+        cfg.baseline = [-.5 -.25];
+        cfg.baselinetype = 'db';
+        powload2_early_bl = ft_freqbaseline(cfg, powload2_early);
+        powload4_early_bl = ft_freqbaseline(cfg, powload4_early);
+        powload6_early_bl = ft_freqbaseline(cfg, powload6_early);
+
+        % Save early trial-wise power spectra
+        cd(datapath)
+        save power_stern_early_trials powload2_early powload4_early powload6_early ...
+            powload2_early_bl powload4_early_bl powload6_early_bl
+
+        % ----------------------
+        % Frequency analysis LATE (1-2 s) RAW = Registered Retention
         % ----------------------
         % Select data
         cfg = [];
@@ -86,41 +99,20 @@ for subj = 1:length(subjects)
         cfg.trials = ind6;
         powload6_late = ft_freqanalysis(cfg, dataLate);
 
+        % ----------------------
+        % Frequency analysis LATE (1-2 s) BASELINED
+        % ----------------------
+        cfg = [];
+        cfg.baseline = [-.5 -.25];
+        cfg.baselinetype = 'db';
+        powload2_late_bl  = ft_freqbaseline(cfg, powload2_late);
+        powload4_late_bl  = ft_freqbaseline(cfg, powload4_late);
+        powload6_late_bl  = ft_freqbaseline(cfg, powload6_late);
+
         % Save late trial-wise spectra
         cd(datapath)
-        save power_stern_late_trials powload2_late powload4_late powload6_late
-
-        % ----------------------
-        % Frequency analysis BASELINE PERIOD  (-0.5-.25 s)
-        % ----------------------
-        % Select data
-        cfg = [];                      % Empty configuration
-        cfg.latency = [-.5 -.25];         % Baseline period
-        dataBaselinePeriod = ft_selectdata(cfg, dataTFR);
-
-        % Analysis settings
-        cfg = [];                      % Empty configuration
-        cfg.output = 'pow';            % Estimate power only
-        cfg.method = 'mtmfft';         % Multi-taper FFT method
-        cfg.taper = 'dpss';            % Multiple tapers (discrete prolate spheroidal sequences)
-        cfg.tapsmofrq = 4;             % Smoothening frequency around foi
-        disp('BASELINED VALUES MAKE NO SENSE IN TRIALS ANALYSES BECAUSE FREQUENCY SMOOTHING IN BASELINE IS 4HZ');
-        cfg.foilim = [3 30];           % Frequencies of interest
-        cfg.keeptrials = 'yes';        % Keep trial information for trial-wise baseline
-        cfg.pad = 5;                   % Zero-padding
-
-        % Conduct frequency analysis for each condition separately
-        cfg.trials = ind2;
-        powload2_baseline_period = ft_freqanalysis(cfg, dataBaselinePeriod);
-        cfg.trials = ind4;
-        powload4_baseline_period = ft_freqanalysis(cfg, dataBaselinePeriod);
-        cfg.trials = ind6;
-        powload6_baseline_period = ft_freqanalysis(cfg, dataBaselinePeriod);
-
-        % Save baseline trial-wise spectra
-        cd(datapath)
-        save power_stern_baseline_period_trials ...
-            powload2_baseline_period powload4_baseline_period powload6_baseline_period
+        save power_stern_late_trials powload2_late powload4_late powload6_late ...
+            powload2_late_bl powload4_late_bl powload6_late_bl
 
     catch ME
         ME.message
@@ -229,18 +221,7 @@ for subj = 1:length(subjects)
             IAF_band = [(IAF_subj-4) (IAF_subj+2)];
         else
             IAF_band = [NaN NaN];
-        end
-
-        % ----------------------
-        % Baseline-relative (per-trial) conversion for EARLY and LATE windows
-        % ----------------------
-        powload2_late_db  = per_trial_db(powload2_late,  powload2_baseline_period);
-        powload4_late_db  = per_trial_db(powload4_late,  powload4_baseline_period);
-        powload6_late_db  = per_trial_db(powload6_late,  powload6_baseline_period);
-
-        powload2_early_db = per_trial_db(powload2_early, powload2_baseline_period);
-        powload4_early_db = per_trial_db(powload4_early, powload4_baseline_period);
-        powload6_early_db = per_trial_db(powload6_early, powload6_baseline_period);
+        end        
 
         % ----------------------
         % Trial-wise Alpha Power (EARLY/LATE, RAW/BASELINED) at IAF band
@@ -250,24 +231,24 @@ for subj = 1:length(subjects)
         AlphaPowerEarly4   = bandpower_trials(powload4_early,  channelIdx, powload4_early.freq,  IAF_band);
         AlphaPowerEarly6   = bandpower_trials(powload6_early,  channelIdx, powload6_early.freq,  IAF_band);
         % EARLY BL (dB)
-        AlphaPowerEarlyBL2 = bandpower_trials(powload2_early_db, channelIdx, powload2_early_db.freq, IAF_band);
-        AlphaPowerEarlyBL4 = bandpower_trials(powload4_early_db, channelIdx, powload4_early_db.freq, IAF_band);
-        AlphaPowerEarlyBL6 = bandpower_trials(powload6_early_db, channelIdx, powload6_early_db.freq, IAF_band);
+        AlphaPowerEarlyBL2 = bandpower_trials(powload2_early_bl, channelIdx, powload2_early_bl.freq, IAF_band);
+        AlphaPowerEarlyBL4 = bandpower_trials(powload4_early_bl, channelIdx, powload4_early_bl.freq, IAF_band);
+        AlphaPowerEarlyBL6 = bandpower_trials(powload6_early_bl, channelIdx, powload6_early_bl.freq, IAF_band);
         % LATE RAW
         AlphaPowerLate2    = bandpower_trials(powload2_late,   channelIdx,  powload2_late.freq,   IAF_band);
         AlphaPowerLate4    = bandpower_trials(powload4_late,   channelIdx,  powload4_late.freq,   IAF_band);
         AlphaPowerLate6    = bandpower_trials(powload6_late,   channelIdx,  powload6_late.freq,   IAF_band);
         % LATE BL (dB)
-        AlphaPowerLateBL2  = bandpower_trials(powload2_late_db, channelIdx,  powload2_late_db.freq, IAF_band);
-        AlphaPowerLateBL4  = bandpower_trials(powload4_late_db, channelIdx,  powload4_late_db.freq, IAF_band);
-        AlphaPowerLateBL6  = bandpower_trials(powload6_late_db, channelIdx,  powload6_late_db.freq, IAF_band);
+        AlphaPowerLateBL2  = bandpower_trials(powload2_late_bl, channelIdx,  powload2_late_bl.freq, IAF_band);
+        AlphaPowerLateBL4  = bandpower_trials(powload4_late_bl, channelIdx,  powload4_late_bl.freq, IAF_band);
+        AlphaPowerLateBL6  = bandpower_trials(powload6_late_bl, channelIdx,  powload6_late_bl.freq, IAF_band);
 
         % ----------------------
         % Trial-wise Lateralization Index (use LATE BL by default)
         % ----------------------
-        [LI2_trials, ~] = lateralization_trials(powload2_late_db, left_channels, right_channels, powload2_late_db.freq, IAF_band, ridgeFrac, epsP);
-        [LI4_trials, ~] = lateralization_trials(powload4_late_db, left_channels, right_channels, powload4_late_db.freq, IAF_band, ridgeFrac, epsP);
-        [LI6_trials, ~] = lateralization_trials(powload6_late_db, left_channels, right_channels, powload6_late_db.freq, IAF_band, ridgeFrac, epsP);
+        [LI2_trials, ~] = lateralization_trials(powload2_late_bl, left_channels, right_channels, powload2_late_bl.freq, IAF_band, ridgeFrac, epsP);
+        [LI4_trials, ~] = lateralization_trials(powload4_late_bl, left_channels, right_channels, powload4_late_bl.freq, IAF_band, ridgeFrac, epsP);
+        [LI6_trials, ~] = lateralization_trials(powload6_late_bl, left_channels, right_channels, powload6_late_bl.freq, IAF_band, ridgeFrac, epsP);
 
         % ----------------------
         % Build subject trial-wise structure array (now with 4 alpha-power fields)

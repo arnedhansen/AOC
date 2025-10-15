@@ -23,12 +23,12 @@ for subj = 1:length(subjects)
 
         % Identify indices of trials belonging to conditions
         globalTrialID = dataTFR.trialinfo(:,2);
-        ind2 = find(dataTFR.trialinfo(:, 1) == 22); % WM load 2
-        ind4 = find(dataTFR.trialinfo(:, 1) == 24); % WM load 4
-        ind6 = find(dataTFR.trialinfo(:, 1) == 26); % WM load 6
+        ind1 = find(dataTFR.trialinfo(:, 1) == 21); % 1-back
+        ind2 = find(dataTFR.trialinfo(:, 1) == 22); % 2-back
+        ind3 = find(dataTFR.trialinfo(:, 1) == 23); % 3-back
+        globalTrialID1 = globalTrialID(ind1);
         globalTrialID2 = globalTrialID(ind2);
-        globalTrialID4 = globalTrialID(ind4);
-        globalTrialID6 = globalTrialID(ind6);
+        globalTrialID3 = globalTrialID(ind3);
 
         % ----------------------
         % Common time-frequency transform
@@ -70,16 +70,16 @@ for subj = 1:length(subjects)
         early_db.dimord  = 'rpt_chan_freq';
 
         % Split by condition (preserves trial order)
-        powload1_early     = ft_selectdata(struct('trials', ind2), early_raw);
-        powload2_early     = ft_selectdata(struct('trials', ind4), early_raw);
-        powload3_early     = ft_selectdata(struct('trials', ind6), early_raw);
-        powload1_early_bl  = ft_selectdata(struct('trials', ind2), early_db);
-        powload2_early_bl  = ft_selectdata(struct('trials', ind4), early_db);
-        powload3_early_bl  = ft_selectdata(struct('trials', ind6), early_db);
+        powload1_early     = ft_selectdata(struct('trials', ind1), early_raw);
+        powload2_early     = ft_selectdata(struct('trials', ind2), early_raw);
+        powload3_early     = ft_selectdata(struct('trials', ind3), early_raw);
+        powload1_early_bl  = ft_selectdata(struct('trials', ind1), early_db);
+        powload2_early_bl  = ft_selectdata(struct('trials', ind2), early_db);
+        powload3_early_bl  = ft_selectdata(struct('trials', ind3), early_db);
 
         % Save EARLY trial-wise power spectra
         cd(datapath)
-        save power_stern_early_trials powload1_early powload2_early powload3_early ...
+        save power_nback_early_trials powload1_early powload2_early powload3_early ...
             powload1_early_bl powload2_early_bl powload3_early_bl
 
         % ----------------------
@@ -98,16 +98,16 @@ for subj = 1:length(subjects)
         late_db.dimord  = 'rpt_chan_freq';
 
         % Split by condition
-        powload1_late     = ft_selectdata(struct('trials', ind2), late_raw);
-        powload2_late     = ft_selectdata(struct('trials', ind4), late_raw);
-        powload3_late     = ft_selectdata(struct('trials', ind6), late_raw);
-        powload1_late_bl  = ft_selectdata(struct('trials', ind2), late_db);
-        powload2_late_bl  = ft_selectdata(struct('trials', ind4), late_db);
-        powload3_late_bl  = ft_selectdata(struct('trials', ind6), late_db);
+        powload1_late     = ft_selectdata(struct('trials', ind1), late_raw);
+        powload2_late     = ft_selectdata(struct('trials', ind2), late_raw);
+        powload3_late     = ft_selectdata(struct('trials', ind3), late_raw);
+        powload1_late_bl  = ft_selectdata(struct('trials', ind1), late_db);
+        powload2_late_bl  = ft_selectdata(struct('trials', ind2), late_db);
+        powload3_late_bl  = ft_selectdata(struct('trials', ind3), late_db);
 
         % Save LATE trial-wise spectra
         cd(datapath)
-        save power_stern_late_trials powload1_late powload2_late powload3_late ...
+        save power_nback_late_trials powload1_late powload2_late powload3_late ...
             powload1_late_bl powload2_late_bl powload3_late_bl
 
         % ----------------------
@@ -126,16 +126,16 @@ for subj = 1:length(subjects)
         full_db.dimord  = 'rpt_chan_freq';
 
         % Split by condition
-        powload1_full     = ft_selectdata(struct('trials', ind2), full_raw);
-        powload2_full     = ft_selectdata(struct('trials', ind4), full_raw);
-        powload3_full     = ft_selectdata(struct('trials', ind6), full_raw);
-        powload1_full_bl  = ft_selectdata(struct('trials', ind2), full_db);
-        powload2_full_bl  = ft_selectdata(struct('trials', ind4), full_db);
-        powload3_full_bl  = ft_selectdata(struct('trials', ind6), full_db);
+        powload1_full     = ft_selectdata(struct('trials', ind1), full_raw);
+        powload2_full     = ft_selectdata(struct('trials', ind2), full_raw);
+        powload3_full     = ft_selectdata(struct('trials', ind3), full_raw);
+        powload1_full_bl  = ft_selectdata(struct('trials', ind1), full_db);
+        powload2_full_bl  = ft_selectdata(struct('trials', ind2), full_db);
+        powload3_full_bl  = ft_selectdata(struct('trials', ind3), full_db);
 
-        % Save LATE trial-wise spectra
+        % Save FULL trial-wise spectra
         cd(datapath)
-        save power_stern_late_trials powload1_full powload2_full powload3_full ...
+        save power_nback_full_trials powload1_full powload2_full powload3_full ...
             powload1_full_bl powload2_full_bl powload3_full_bl
 
     catch ME
@@ -205,13 +205,17 @@ for subj = 1:length(subjects)
         load('power_nback_early_trials.mat');
         load('power_nback_late_trials.mat');
         load('power_nback_full_trials.mat');
-        load('power_nback_baseline_period_trials.mat');
 
         % Channel selection
         channelIdx = find(ismember(powload1_early.label, channels));
 
+        % Rebuild global trial IDs for this subject from the saved trialinfo
+        globalTrialID1 = powload1_full.trialinfo(:,2);
+        globalTrialID2 = powload2_full.trialinfo(:,2);
+        globalTrialID3 = powload3_full.trialinfo(:,2);
+
         % ----------------------
-        % Subject-level IAF (from late retention, trial-averaged ROI)
+        % Subject-level IAF (trial-averaged ROI)
         % ----------------------
         % Build subject-level ROI-averaged spectra (average across trials, then across ROI channels)
         % We average trials first to stabilise the IAF estimate.
@@ -247,6 +251,9 @@ for subj = 1:length(subjects)
         else
             IAF_band = [NaN NaN];
         end
+        if any(isnan(IAF_band))
+            IAF_band = alphaRange;  % fallback 8-14 Hz if no clear IAF
+        end
 
         % ----------------------
         % Trial-wise Alpha Power (EARLY/LATE, RAW/BASELINED) at IAF band
@@ -277,11 +284,11 @@ for subj = 1:length(subjects)
         AlphaPowerFullBL3  = bandpower_trials(powload3_full_bl, channelIdx,  powload3_full_bl.freq, IAF_band);
 
         % ----------------------
-        % Trial-wise Lateralization Index (use LATE BL by default)
+        % Trial-wise Lateralization Index
         % ----------------------
-        [LI1_trials, ~] = lateralization_trials(powload1_full_bl, left_channels, right_channels, powload1_late_bl.freq, IAF_band, ridgeFrac, epsP);
-        [LI2_trials, ~] = lateralization_trials(powload2_full_bl, left_channels, right_channels, powload2_late_bl.freq, IAF_band, ridgeFrac, epsP);
-        [LI3_trials, ~] = lateralization_trials(powload3_full_bl, left_channels, right_channels, powload3_late_bl.freq, IAF_band, ridgeFrac, epsP);
+        [LI1_trials, ~] = lateralization_trials(powload1_full_bl, left_channels, right_channels, powload1_full_bl.freq, IAF_band, ridgeFrac, epsP);
+        [LI2_trials, ~] = lateralization_trials(powload2_full_bl, left_channels, right_channels, powload2_full_bl.freq, IAF_band, ridgeFrac, epsP);
+        [LI3_trials, ~] = lateralization_trials(powload3_full_bl, left_channels, right_channels, powload3_full_bl.freq, IAF_band, ridgeFrac, epsP);
 
         % ----------------------
         % Build subject trial-wise structure array (now with 4 alpha-power fields)
@@ -291,13 +298,12 @@ for subj = 1:length(subjects)
         n2 = size(powload2_full.powspctrm,1);
         n3 = size(powload3_full.powspctrm,1);
 
-        trl1  = (1:n1)';  trl2  = (1:n2)';  trl3  = (1:n3)';
         IAFr1 = repmat(IAF_subj, n1, 1);
         IAFr2 = repmat(IAF_subj, n2, 1);
         IAFr3 = repmat(IAF_subj, n3, 1);
 
         subj_data_eeg_trials_1 = struct( ...
-            'Trial',              num2cell(trl1), ...
+            'Trial',              num2cell(globalTrialID1), ...
             'ID',                 num2cell(repmat(subID, n1, 1)), ...
             'Condition',          num2cell(repmat(1, n1, 1)), ...
             'AlphaPowerEarly',    num2cell(AlphaPowerEarly1), ...
@@ -310,7 +316,7 @@ for subj = 1:length(subjects)
             'Lateralization',     num2cell(LI1_trials) );
 
         subj_data_eeg_trials_2 = struct( ...
-            'Trial',              num2cell(trl2), ...
+            'Trial',              num2cell(globalTrialID2), ...
             'ID',                 num2cell(repmat(subID, n2, 1)), ...
             'Condition',          num2cell(repmat(2, n2, 1)), ...
             'AlphaPowerEarly',    num2cell(AlphaPowerEarly2), ...
@@ -323,7 +329,7 @@ for subj = 1:length(subjects)
             'Lateralization',     num2cell(LI2_trials) );
 
         subj_data_eeg_trials_3 = struct( ...
-            'Trial',              num2cell(trl3), ...
+            'Trial',              num2cell(globalTrialID3), ...
             'ID',                 num2cell(repmat(subID, n3, 1)), ...
             'Condition',          num2cell(repmat(3, n3, 1)), ...
             'AlphaPowerEarly',    num2cell(AlphaPowerEarly3), ...
@@ -367,6 +373,3 @@ if ispc == 1
 else
     save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/eeg_matrix_nback_trials eeg_data_nback_trials
 end
-
-%% ADAPT SSTTERNBERG FOOOFING
-%

@@ -9,12 +9,13 @@ startup
 clear
 clc
 close all
-path = '/Volumes/methlab_data/OCC/AOC/data/';
+path = '/Volumes/g_psyplafor_methlab_data$/OCC/AOC/data/';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 subjects = exclude_subjects(subjects, 'AOC');
 behav_data_nback = struct('ID', {}, 'Condition', {}, 'Accuracy', {}, 'ReactionTime', {});
+behav_data_nback_trials = struct('Trial', {}, 'ID', {}, 'Condition', {}, 'Accuracy', {}, 'ReactionTime', {}, 'Stimuli', {}, 'Match', {});
 
 %% Read data
 for subj = 1:length(subjects)
@@ -74,17 +75,17 @@ for subj = 1:length(subjects)
     reaction_time(reaction_time > 2) = NaN;
 
     %% Create a structure array for this subject
-    subj_data_behav_trial = struct('ID', subject_id, 'Trial', num2cell(trial_num), 'Condition', condition, ...
+    subj_data_behav_trials = struct('ID', subject_id, 'Trial', num2cell(trial_num), 'Condition', condition, ...
         'Accuracy', num2cell(accuracy), 'ReactionTime', num2cell(reaction_time), 'Stimuli', num2cell(stimuli), 'Match', num2cell(match));
 
     %% Calculate subject-specific Acc and RT by condition
-    l1 = subj_data_behav_trial([subj_data_behav_trial.Condition] == 1);
+    l1 = subj_data_behav_trials([subj_data_behav_trials.Condition] == 1);
     l1acc = sum([l1.Accuracy], 'omitnan')/length(l1)*100;
     l1rt = mean([l1.ReactionTime], 'omitnan');
-    l2 = subj_data_behav_trial([subj_data_behav_trial.Condition] == 2);
+    l2 = subj_data_behav_trials([subj_data_behav_trials.Condition] == 2);
     l2acc = sum([l2.Accuracy], 'omitnan')/length(l2)*100;
     l2rt = mean([l2.ReactionTime], 'omitnan');
-    l3 = subj_data_behav_trial([subj_data_behav_trial.Condition] == 3);
+    l3 = subj_data_behav_trials([subj_data_behav_trials.Condition] == 3);
     l3acc = sum([l3.Accuracy], 'omitnan')/length(l3)*100;
     l3rt = mean([l3.ReactionTime], 'omitnan');
 
@@ -93,10 +94,10 @@ for subj = 1:length(subjects)
         'Accuracy', num2cell([l1acc; l2acc; l3acc]), 'ReactionTime', num2cell([l1rt; l2rt; l3rt]));
 
     %% Save
-    savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/behavioral/');
+    savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/',subjects{subj}, '/behavioral/');
     mkdir(savepath)
     cd(savepath)
-    save behavioral_matrix_nback_subj_trial subj_data_behav_trial
+    save behavioral_matrix_nback_subj_trials subj_data_behav_trials
     save behavioral_matrix_nback_subj subj_data_behav
     save acc_nback l1acc l2acc l3acc
     save rt_nback l1rt l2rt l3rt
@@ -104,6 +105,8 @@ for subj = 1:length(subjects)
     disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' done.'])
 
     % Append to the final structure array
+    behav_data_nback_trials = [behav_data_nback_trials; subj_data_behav_trials];
     behav_data_nback = [behav_data_nback; subj_data_behav];
 end
-save /Volumes/methlab/Students/Arne/AOC/data/features/behavioral_matrix_nback behav_data_nback
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/behavioral_matrix_nback_trials behav_data_nback_trials
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/behavioral_matrix_nback behav_data_nback

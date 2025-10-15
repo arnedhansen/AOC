@@ -55,9 +55,7 @@ for subj = 1:length(subjects)
         powload4_early = ft_freqanalysis(cfg, dataEarly);
         cfg.trials = ind6;
         powload6_early = ft_freqanalysis(cfg, dataEarly);
-
-       
-
+      
         % ----------------------
         % Frequency analysis EARLY (0-1 s) BASELINED
         % ----------------------

@@ -31,7 +31,7 @@ for subj = 1:length(subjects)
         globalTrialID6 = globalTrialID(ind6);
 
         % ----------------------
-        % Common time–frequency transform
+        % Common time-frequency transform
         % ----------------------
         cfg = [];
         cfg.method     = 'mtmconvol';
@@ -54,14 +54,14 @@ for subj = 1:length(subjects)
         freq_all_bl = ft_freqbaseline(cfgb, freq_all);
 
         % ----------------------
-        % EARLY (0–1 s)
+        % EARLY (0-1 s)
         % ----------------------
         cfgsel = [];
         cfgsel.latency = [0 1];
         early_raw = ft_selectdata(cfgsel, freq_all);
         early_db  = ft_selectdata(cfgsel, freq_all_bl);
 
-        % mean over time (4th dim), keep rpt×chan×freq
+        % mean over time (4th dim), keep rpt-chan-freq
         early_raw.powspctrm = mean(early_raw.powspctrm, 4);
         early_db.powspctrm  = mean(early_db.powspctrm, 4);
         if isfield(early_raw, 'time'); early_raw = rmfield(early_raw,'time'); end
@@ -83,7 +83,7 @@ for subj = 1:length(subjects)
             powload2_early_bl powload4_early_bl powload6_early_bl
 
         % ----------------------
-        % LATE (1–2 s)
+        % LATE (1-2 s)
         % ----------------------
         cfgsel = [];
         cfgsel.latency = [1 2];
@@ -223,7 +223,7 @@ for subj = 1:length(subjects)
             IAF_band = [NaN NaN];
         end
         if any(isnan(IAF_band))
-            IAF_band = alphaRange;  % fallback 8–14 Hz if no clear IAF
+            IAF_band = alphaRange;  % fallback 8-14 Hz if no clear IAF
         end
 
 

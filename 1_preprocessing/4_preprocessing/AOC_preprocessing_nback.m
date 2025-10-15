@@ -355,6 +355,7 @@ for subj = 1:length(subjects)
 
         %% Save data
         clc
+        disp(['Saving Data for Subject AOC ', num2str(subjects{subj})])
         if ispc == 1
             savepathEEG = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\');
         else

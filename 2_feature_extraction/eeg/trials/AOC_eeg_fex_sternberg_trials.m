@@ -226,7 +226,6 @@ for subj = 1:length(subjects)
             IAF_band = alphaRange;  % fallback 8-14 Hz if no clear IAF
         end
 
-
         % ----------------------
         % Trial-wise Alpha Power (EARLY/LATE, RAW/BASELINED) at IAF band
         % ----------------------
@@ -248,14 +247,14 @@ for subj = 1:length(subjects)
         AlphaPowerLateBL6  = bandpower_trials(powload6_late_bl, channelIdx,  powload6_late_bl.freq, IAF_band);
 
         % ----------------------
-        % Trial-wise Lateralization Index (use LATE BL by default)
+        % Trial-wise Lateralization Index (with LATE BL)
         % ----------------------
         [LI2_trials, ~] = lateralization_trials(powload2_late_bl, left_channels, right_channels, powload2_late_bl.freq, IAF_band, ridgeFrac, epsP);
         [LI4_trials, ~] = lateralization_trials(powload4_late_bl, left_channels, right_channels, powload4_late_bl.freq, IAF_band, ridgeFrac, epsP);
         [LI6_trials, ~] = lateralization_trials(powload6_late_bl, left_channels, right_channels, powload6_late_bl.freq, IAF_band, ridgeFrac, epsP);
 
         % ----------------------
-        % Build subject trial-wise structure array (now with 4 alpha-power fields)
+        % Build subject trial-wise structure array
         % ----------------------
         subID = str2double(subjects{subj});
         n2 = size(powload2_late.powspctrm,1);

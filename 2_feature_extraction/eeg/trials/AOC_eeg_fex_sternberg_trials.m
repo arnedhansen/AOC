@@ -207,14 +207,15 @@ for subj = 1:length(subjects)
         % Load trial-wise spectra
         load('power_stern_early_trials.mat');
         load('power_stern_late_trials.mat');
+        load('power_stern_full_trials.mat');
 
         % Channel selection
-        channelIdx = find(ismember(powload2_early.label, channels));
+        channelIdx = find(ismember(powload2_full.label, channels));
 
         % Rebuild global trial IDs for this subject from the saved trialinfo
-        globalTrialID2 = powload2_late.trialinfo(:,2);
-        globalTrialID4 = powload4_late.trialinfo(:,2);
-        globalTrialID6 = powload6_late.trialinfo(:,2);
+        globalTrialID2 = powload2_full.trialinfo(:,2);
+        globalTrialID4 = powload4_full.trialinfo(:,2);
+        globalTrialID6 = powload6_full.trialinfo(:,2);
 
         % ----------------------
         % Subject-level IAF (from full retention, trial-averaged ROI)

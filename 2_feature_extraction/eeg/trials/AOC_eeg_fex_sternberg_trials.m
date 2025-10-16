@@ -113,6 +113,34 @@ for subj = 1:length(subjects)
         save power_stern_late_trials powload2_late powload4_late powload6_late ...
             powload2_late_bl powload4_late_bl powload6_late_bl
 
+        % ----------------------
+        % FULL (0-2 s)
+        % ----------------------
+        cfgsel = [];
+        cfgsel.latency = [0 2];
+        full_raw = ft_selectdata(cfgsel, tfr_all);
+        full_db  = ft_selectdata(cfgsel, tfr_all_bl);
+
+        full_raw.powspctrm = mean(full_raw.powspctrm, 4);
+        full_db.powspctrm  = mean(full_db.powspctrm, 4);
+        if isfield(full_raw, 'time'); full_raw = rmfield(full_raw,'time'); end
+        if isfield(full_db,  'time'); full_db  = rmfield(full_db, 'time'); end
+        full_raw.dimord = 'rpt_chan_freq';
+        full_db.dimord  = 'rpt_chan_freq';
+
+        % Split by condition
+        powload2_full     = ft_selectdata(struct('trials', ind2), full_raw);
+        powload4_full     = ft_selectdata(struct('trials', ind4), full_raw);
+        powload6_full     = ft_selectdata(struct('trials', ind6), full_raw);
+        powload2_full_bl  = ft_selectdata(struct('trials', ind2), full_db);
+        powload4_full_bl  = ft_selectdata(struct('trials', ind4), full_db);
+        powload6_full_bl  = ft_selectdata(struct('trials', ind6), full_db);
+
+        % Save full trial-wise spectra
+        cd(datapath)
+        save power_stern_full_trials powload2_full powload4_full powload6_full ...
+            powload2_full_bl powload4_full_bl powload6_full_bl
+
     catch ME
         ME.message
         error(['ERROR extracting trial-wise power for Subject ' num2str(subjects{subj}) '!'])
@@ -189,16 +217,16 @@ for subj = 1:length(subjects)
         globalTrialID6 = powload6_late.trialinfo(:,2);
 
         % ----------------------
-        % Subject-level IAF (from late retention, trial-averaged ROI)
+        % Subject-level IAF (from full retention, trial-averaged ROI)
         % ----------------------
         % Build subject-level ROI-averaged spectra (average across trials, then across ROI channels)
         % We average trials first to stabilise the IAF estimate.
         % Ensure dims: rpt x chan x freq
-        S2 = squeeze(mean(powload2_late.powspctrm(:, channelIdx, :), 2));   % [rpt x freq]
-        S4 = squeeze(mean(powload4_late.powspctrm(:, channelIdx, :), 2));   % [rpt x freq]
-        S6 = squeeze(mean(powload6_late.powspctrm(:, channelIdx, :), 2));   % [rpt x freq]
+        S2 = squeeze(mean(powload2_full.powspctrm(:, channelIdx, :), 2));   % [rpt x freq]
+        S4 = squeeze(mean(powload4_full.powspctrm(:, channelIdx, :), 2));   % [rpt x freq]
+        S6 = squeeze(mean(powload6_full.powspctrm(:, channelIdx, :), 2));   % [rpt x freq]
         subjSpec = nanmean([S2; S4; S6], 1);                                      % pooled across trials & loads
-        freqs = powload2_late.freq(:)';
+        freqs = powload2_full.freq(:)';
 
         % Find IAF with guards (smooth slightly, edges excluded)
         alphaMask  = (freqs >= alphaRange(1)) & (freqs <= alphaRange(2));
@@ -248,6 +276,14 @@ for subj = 1:length(subjects)
         AlphaPowerLateBL2  = bandpower_trials(powload2_late_bl, channelIdx,  powload2_late_bl.freq, IAF_band);
         AlphaPowerLateBL4  = bandpower_trials(powload4_late_bl, channelIdx,  powload4_late_bl.freq, IAF_band);
         AlphaPowerLateBL6  = bandpower_trials(powload6_late_bl, channelIdx,  powload6_late_bl.freq, IAF_band);
+        % FULL RAW
+        AlphaPowerFull2    = bandpower_trials(powload2_full,   channelIdx,  powload2_full.freq,   IAF_band);
+        AlphaPowerFull4    = bandpower_trials(powload4_full,   channelIdx,  powload4_full.freq,   IAF_band);
+        AlphaPowerFull6    = bandpower_trials(powload6_full,   channelIdx,  powload6_full.freq,   IAF_band);
+        % FULL BL (dB)full
+        AlphaPowerFullBL2  = bandpower_trials(powload2_full_bl, channelIdx,  powload2_full_bl.freq, IAF_band);
+        AlphaPowerFullBL4  = bandpower_trials(powload4_full_bl, channelIdx,  powload4_full_bl.freq, IAF_band);
+        AlphaPowerFullBL6  = bandpower_trials(powload6_full_bl, channelIdx,  powload6_full_bl.freq, IAF_band);
 
         % ----------------------
         % Trial-wise Lateralization Index (with LATE BL)
@@ -276,6 +312,8 @@ for subj = 1:length(subjects)
             'AlphaPowerEarlyBL',  num2cell(AlphaPowerEarlyBL2), ...
             'AlphaPowerLate',     num2cell(AlphaPowerLate2), ...
             'AlphaPowerLateBL',   num2cell(AlphaPowerLateBL2), ...
+            'AlphaPowerFull',     num2cell(AlphaPowerFull2), ...
+            'AlphaPowerFullBL',   num2cell(AlphaPowerFullBL2), ...
             'IAF',                num2cell(IAFr2), ...
             'Lateralization',     num2cell(LI2_trials) );
 
@@ -287,6 +325,8 @@ for subj = 1:length(subjects)
             'AlphaPowerEarlyBL',  num2cell(AlphaPowerEarlyBL4), ...
             'AlphaPowerLate',     num2cell(AlphaPowerLate4), ...
             'AlphaPowerLateBL',   num2cell(AlphaPowerLateBL4), ...
+            'AlphaPowerFull',     num2cell(AlphaPowerFull4), ...
+            'AlphaPowerFullBL',   num2cell(AlphaPowerFullBL4), ...
             'IAF',                num2cell(IAFr4), ...
             'Lateralization',     num2cell(LI4_trials) );
 
@@ -298,6 +338,8 @@ for subj = 1:length(subjects)
             'AlphaPowerEarlyBL',  num2cell(AlphaPowerEarlyBL6), ...
             'AlphaPowerLate',     num2cell(AlphaPowerLate6), ...
             'AlphaPowerLateBL',   num2cell(AlphaPowerLateBL6), ...
+            'AlphaPowerFull',     num2cell(AlphaPowerFull6), ...
+            'AlphaPowerFullBL',   num2cell(AlphaPowerFullBL6), ...
             'IAF',                num2cell(IAFr6), ...
             'Lateralization',     num2cell(LI6_trials) );
 

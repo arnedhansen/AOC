@@ -390,6 +390,36 @@ xlim([time_series(1) time_series(end)])
 box on
 set(gca, 'FontSize', 25)
 legend({'LOW SPL ± SEM','HIGH SPL ± SEM'}, 'Location','northwest')
+
+% Paired t-tests (HIGH vs LOW) with FDR correction using mafdr
+N = size(scan_low, 1);
+T = size(scan_low, 2);
+
+pvals = nan(1, T);
+for t = 1:T
+    [~, pvals(t)] = ttest(scan_high(:,t), scan_low(:,t));
+end
+
+% FDR correction (Benjamini–Hochberg)
+qvals = mafdr(pvals, 'BHFDR', true);
+sig_mask = qvals < 0.05;
+
+% Add significance bar
+ax = gca;
+yl = ylim(ax);
+yr = yl(2) - yl(1);
+ybar = yl(1) + 0.03*yr;
+
+d_sig   = diff([0, sig_mask, 0]);
+on_sig  = find(d_sig == 1);
+off_sig = find(d_sig == -1) - 1;
+
+for k = 1:numel(on_sig)
+    x0 = t_plot(on_sig(k));
+    x1 = t_plot(off_sig(k));
+    plot([x0 x1], [ybar ybar], 'k-', 'LineWidth', 12)
+end
+
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_scanPathLength_LOWvsHIGH_SPL.png')
 
 %% Grand-average Scan Path Length time-course (LOW vs HIGH SPL) WITH STATS
@@ -422,7 +452,6 @@ title('Alpha Power over Time — HIGH SPL trials')
 grid on
 xlim([-.5 2])
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_AlphaPowerOverTime_SPL_trials.png')
-
 
 %% Done
 disp('Completed LOW/HIGH SPL median-split TFRs and SPL time-course plots.')

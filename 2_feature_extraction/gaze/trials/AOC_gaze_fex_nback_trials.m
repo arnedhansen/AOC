@@ -26,9 +26,8 @@
 % - Min valid samples per window: threshold applied after blink removal and bounds filtering
 
 %% Setup
-clear
-clc
-close all
+startup
+setup('AOC');
 
 path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
 dirs = dir(path);
@@ -462,3 +461,6 @@ for subj = 1:length(subjects)
     trialinfo = dataETlong.trialinfo';
     save([savepath 'gaze_series_nback_trials.mat'], 'gaze_x', 'gaze_y', 'trialinfo', 'ScanPathSeriesT', 'ScanPathSeries', 'ScanPathSeriesBins');
 end
+
+% Grand save across subjects
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/gaze_matrix_nback_trials gaze_data_nback_trials

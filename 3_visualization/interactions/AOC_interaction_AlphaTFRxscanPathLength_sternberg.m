@@ -198,7 +198,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4); % 0–2 s × 8–14 Hz
 set(gca, 'FontSize', fontSize);
 title('Sternberg TFR — LOW Alpha trials');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_TFR_LOWalpha_late_trials.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_TFR_LOWalpha_late_trials.png');
 
 % Plot HIGH-alpha TFR
 figure
@@ -212,7 +212,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4);
 set(gca, 'FontSize', fontSize);
 title('Sternberg TFR — HIGH Alpha trials');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_TFR_HIGHalpha_late_trials.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_TFR_HIGHalpha_late_trials.png');
 
 %% Grand-average Scan Path Length (LOW vs HIGH alpha) with SEM
 grand_low = nanmean(scan_low, 1);
@@ -232,7 +232,7 @@ xlim([t_series(1) t_series(end)])
 box on
 set(gca, 'FontSize', 25)
 legend({'LOW Alpha ± SEM','HIGH Alpha ± SEM'}, 'Location','northwest')
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/scanPathLength/AOC_scanPathLength_LOWvsHIGHalpha_late.png')
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_scanPathLength_LOWvsHIGHalpha_late.png')
 
 %% Done
 disp('Completed LOW/HIGH alpha median-split TFRs and scan path length plots.')

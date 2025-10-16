@@ -1,20 +1,26 @@
 %% AOC Gaze Feature Extraction Sternberg TRIAL-BY-TRIAL
 %
 % Extracted features (trial-wise):
-%   GazeDeviationEarly / GazeDeviationEarlyBL (dB)
-%   GazeDeviationLate  / GazeDeviationLateBL  (dB)
-%   ScanPathLengthEarly / ScanPathLengthEarlyBL (dB)
-%   ScanPathLengthLate  / ScanPathLengthLateBL  (dB)
-%   PupilSizeEarly / PupilSizeEarlyBL (%)
-%   PupilSizeLate  / PupilSizeLateBL  (%)
-%   MSRateEarly / MSRateEarlyBL (dB, events/s)
-%   MSRateLate  / MSRateLateBL  (dB, events/s)
-%   ScanPathSeries (step length time series, px)
+% GazeDeviationEarly / GazeDeviationEarlyBL (dB)
+% GazeDeviationLate / GazeDeviationLateBL (dB)
+% GazeDeviationFull / GazeDeviationFullBL (dB)
+% ScanPathLengthEarly / ScanPathLengthEarlyBL (dB)
+% ScanPathLengthLate / ScanPathLengthLateBL (dB)
+% ScanPathLengthFull / ScanPathLengthFullBL (dB)
+% PupilSizeEarly / PupilSizeEarlyBL (%)
+% PupilSizeLate / PupilSizeLateBL (%)
+% PupilSizeFull / PupilSizeFullBL (%)
+% MSRateEarly / MSRateEarlyBL (dB, events/s)
+% MSRateLate / MSRateLateBL (dB, events/s)
+% MSRateFull / MSRateFullBL (dB, events/s)
+% Additionally saved per trial:
+% ScanPathSeriesT (time vector, -0.5:2 s) and ScanPathSeries (step length time series, px)
 %
 % Notes:
 % - Baseline window: [-0.5 -0.25] s (trial-specific)
-% - Early window:    [0 1] s
-% - Late window:     [1 2] s
+% - Early window: [0 1] s
+% - Late window: [1 2] s
+% - Full window: [0 2] s
 % - Screen: 800x600 px, centre (400,300); Y inverted
 % - Blink removal: remove_blinks(data, win_size) before any windowing
 % - Min valid samples per window: threshold applied after blink removal and bounds filtering
@@ -30,34 +36,37 @@ subjects = {folders.name};
 
 gaze_data_sternberg_trials = struct('Trial', {}, 'ID', {}, 'Condition', {}, ...
     'GazeDeviationEarly', {}, 'GazeDeviationEarlyBL', {}, ...
-    'GazeDeviationLate',  {}, 'GazeDeviationLateBL',  {}, ...
+    'GazeDeviationLate', {}, 'GazeDeviationLateBL', {}, ...
+    'GazeDeviationFull', {}, 'GazeDeviationFullBL', {}, ...
     'ScanPathLengthEarly', {}, 'ScanPathLengthEarlyBL', {}, ...
-    'ScanPathLengthLate',  {}, 'ScanPathLengthLateBL',  {}, ...
+    'ScanPathLengthLate', {}, 'ScanPathLengthLateBL', {}, ...
+    'ScanPathLengthFull', {}, 'ScanPathLengthFullBL', {}, ...
     'PupilSizeEarly', {}, 'PupilSizeEarlyBL', {}, ...
-    'PupilSizeLate',  {}, 'PupilSizeLateBL',  {}, ...
+    'PupilSizeLate', {}, 'PupilSizeLateBL', {}, ...
+    'PupilSizeFull', {}, 'PupilSizeFullBL', {}, ...
     'MSRateEarly', {}, 'MSRateEarlyBL', {}, ...
-    'MSRateLate',  {}, 'MSRateLateBL',  {}, ...
-    'ScanPathSeriesBins', {}, 'ScanPathSeries', {});
+    'MSRateLate', {}, 'MSRateLateBL', {}, ...
+    'MSRateFull', {}, 'MSRateFullBL', {});
 
 %% Parameters
-fsample = 500;                       % Hz
+fsample = 500; % Hz
 screenW = 800; screenH = 600;
-centreX = 400;  centreY = 300;
-blink_win = 50;                      % samples (+/-) for removal in your helper
-min_valid_samples = 100;             % per window after cleaning
+centreX = 400; centreY = 300;
+blink_win = 50; % samples (+/-) for removal in your helper
+min_valid_samples = 100; % per window after cleaning
 bounds_x = [0 screenW];
 bounds_y = [0 screenH];
 
 t_base = [-0.5 -0.25];
 t_early = [0 1];
-t_late  = [1 2];
-t_series = [-0.5 2];                 % for scan-path time series
+t_late = [1 2];
+t_full = [0 2];
+t_series = [-0.5 2]; % for scan-path time series
 
 %% Load all eye movements
 for subj = 1:length(subjects)
     datapath = strcat(path, subjects{subj}, '/gaze');
     load([datapath, filesep, 'dataET_sternberg'])
-
     nTrials = size(dataETlong.trialinfo,1);
 
     %% Preallocate per-subject arrays
@@ -69,30 +78,38 @@ for subj = 1:length(subjects)
     GazeDeviationEarlyBL  = nan(nTrials,1);
     GazeDeviationLate     = nan(nTrials,1);
     GazeDeviationLateBL   = nan(nTrials,1);
+    GazeDeviationFull     = nan(nTrials,1);
+    GazeDeviationFullBL   = nan(nTrials,1);
 
     ScanPathLengthEarly   = nan(nTrials,1);
     ScanPathLengthEarlyBL = nan(nTrials,1);
     ScanPathLengthLate    = nan(nTrials,1);
     ScanPathLengthLateBL  = nan(nTrials,1);
+    ScanPathLengthFull    = nan(nTrials,1);
+    ScanPathLengthFullBL  = nan(nTrials,1);
 
     PupilSizeEarly        = nan(nTrials,1);
     PupilSizeEarlyBL      = nan(nTrials,1);   % percent
     PupilSizeLate         = nan(nTrials,1);
     PupilSizeLateBL       = nan(nTrials,1);   % percent
+    PupilSizeFull         = nan(nTrials,1);
+    PupilSizeFullBL       = nan(nTrials,1);   % percent
 
     MSRateEarly           = nan(nTrials,1);   % events/s
     MSRateEarlyBL         = nan(nTrials,1);   % dB
     MSRateLate            = nan(nTrials,1);   % events/s
     MSRateLateBL          = nan(nTrials,1);   % dB
+    MSRateFull            = nan(nTrials,1);   % events/s
+    MSRateFullBL          = nan(nTrials,1);   % dB
 
-    ScanPathSeriesBins    = cell(nTrials,1);
+    ScanPathSeriesT       = cell(nTrials,1);
     ScanPathSeries        = cell(nTrials,1);
 
     gaze_x = cell(1,nTrials);
     gaze_y = cell(1,nTrials);
 
     trial_num = dataETlong.trialinfo(:,2);        % global trial ID
-    cond_code = dataETlong.trialinfo(:,1) - 20;   % 22/24/26 -> 2/4/6
+    cond_code = dataETlong.trialinfo(:,1) - 20;   % 22/24/26
 
     %% Get trial-by-trial gaze data
     for trl = 1:nTrials
@@ -116,18 +133,21 @@ for subj = 1:length(subjects)
         idx_base  = t >= t_base(1)  & t <= t_base(2);
         idx_early = t >= t_early(1) & t <= t_early(2);
         idx_late  = t >= t_late(1)  & t <= t_late(2);
+        idx_full  = t >= t_full(1)  & t <= t_full(2);
         idx_series= t >= t_series(1)& t <= t_series(2);
 
         % Extract windows
         dat_base  = raw_dat(:, idx_base);
         dat_early = raw_dat(:, idx_early);
         dat_late  = raw_dat(:, idx_late);
+        dat_full  = raw_dat(:, idx_full);
         dat_series= raw_dat(:, idx_series);
 
         % Minimum valid-sample threshold per window (post-cleaning)
         ok_base  = sum(all(isfinite(dat_base(1:2,:)),1))  >= min_valid_samples;
         ok_early = sum(all(isfinite(dat_early(1:2,:)),1)) >= min_valid_samples;
         ok_late  = sum(all(isfinite(dat_late(1:2,:)),1))  >= min_valid_samples;
+        ok_full  = sum(all(isfinite(dat_full(1:2,:)),1))  >= min_valid_samples;
 
         %% Baseline metrics (per trial)
         % Gaze deviation baseline (mean Euclidean distance from centre)
@@ -161,7 +181,7 @@ for subj = 1:length(subjects)
             T_base = sum(isfinite(vel_base(1,:)) & isfinite(vel_base(2,:))) / fsample;
             if T_base > 0
                 [~, msb] = detect_microsaccades(fsample, vel_base, size(vel_base,2));
-                ms_count_b = numel(msb.Onset);
+                ms_count_b = numel(msb.Onset); % assume your struct has onsets
                 ms_rate_base = ms_count_b / T_base;
                 if ~isfinite(ms_rate_base) || ms_rate_base <= 0
                     ms_rate_base = NaN;
@@ -271,7 +291,56 @@ for subj = 1:length(subjects)
             pup_late_bl = NaN;
         end
 
-        % Scan-path time series over [-0.5, 2]
+        %% Full window
+        if ok_full
+            xf = dat_full(1,:); yf = dat_full(2,:);
+            dxf = xf - centreX; dyf = yf - centreY;
+            gd_full = nanmean( sqrt(dxf.^2 + dyf.^2) );
+
+            dxf_s = diff(xf); dyf_s = diff(yf);
+            spl_full = nansum( sqrt(dxf_s.^2 + dyf_s.^2) );
+
+            pup_full = nanmean(dat_full(3,:));
+
+            vel_full = [xf; yf];
+            T_full = sum(isfinite(xf) & isfinite(yf)) / fsample;
+            if T_full> 0
+                [~, msf] = detect_microsaccades(fsample, vel_full, size(vel_full,2));
+                ms_full = numel(msf.Onset) / T_full;  % events/s
+                if ~isfinite(ms_full); ms_full = NaN; end
+            else
+                ms_full = NaN;
+            end
+        else
+            gd_full = NaN; spl_full = NaN; pup_full = NaN; ms_full = NaN;
+        end
+
+        % Baseline-correct full (dB for GD/SPL/MS; % for pupil)
+        if isfinite(gd_full) && isfinite(gaze_dev_base) && gaze_dev_base > 0
+            gd_full_bl = 10*log10(gd_full/ gaze_dev_base);
+        else
+            gd_full_bl = NaN;
+        end
+
+        if isfinite(spl_full) && isfinite(spl_base) && spl_base > 0
+            spl_full_bl = 10*log10(spl_full/ spl_base);
+        else
+            spl_full_bl = NaN;
+        end
+
+        if isfinite(ms_full) && isfinite(ms_rate_base) && ms_rate_base > 0
+            ms_full_bl = 10*log10(ms_full/ ms_rate_base);
+        else
+            ms_full_bl = NaN;
+        end
+
+        if isfinite(pup_full) && isfinite(pupil_base) && pupil_base ~= 0
+            pup_full_bl = 100 * (pup_full- pupil_base) / pupil_base;
+        else
+            pup_full_bl = NaN;
+        end
+
+        %% Scan-path time series over [-0.5, 2]
         xs = dat_series(1,:); ys = dat_series(2,:);
         ts = t(idx_series);
 
@@ -301,10 +370,11 @@ for subj = 1:length(subjects)
         end
 
         % Store binned data
+        ScanPathSeriesT{trl}    = time_steps;
         ScanPathSeriesBins{trl} = step_series_bin;   % averaged step lengths per 50 ms bin
-        ScanPathSeries{trl}     = time_bins;         % their corresponding time centres
+        ScanPathSeries{trl}     = step_series;         % their corresponding time centres
 
-        % Save trial-wise values
+        %% Save trial-wise values
         ID(trl)        = str2double(subjects{subj});
         Trial(trl)     = trial_num(trl);
         Condition(trl) = cond_code(trl);
@@ -313,21 +383,29 @@ for subj = 1:length(subjects)
         GazeDeviationEarlyBL(trl)  = gd_early_bl;
         GazeDeviationLate(trl)     = gd_late;
         GazeDeviationLateBL(trl)   = gd_late_bl;
+        GazeDeviationFull(trl)     = gd_full;
+        GazeDeviationFullBL(trl)   = gd_full_bl;
 
         ScanPathLengthEarly(trl)   = spl_early;
         ScanPathLengthEarlyBL(trl) = spl_early_bl;
         ScanPathLengthLate(trl)    = spl_late;
         ScanPathLengthLateBL(trl)  = spl_late_bl;
+        ScanPathLengthFull(trl)    = spl_full;
+        ScanPathLengthFullBL(trl)  = spl_full_bl;
 
         PupilSizeEarly(trl)        = pup_early;     % raw_dat units
         PupilSizeEarlyBL(trl)      = pup_early_bl;  % percent
         PupilSizeLate(trl)         = pup_late;
         PupilSizeLateBL(trl)       = pup_late_bl;
+        PupilSizeFull(trl)         = pup_full;
+        PupilSizeFullBL(trl)       = pup_full_bl;
 
         MSRateEarly(trl)           = ms_early;      % events/s
         MSRateEarlyBL(trl)         = ms_early_bl;   % dB
-        MSRateLate(trl)            = ms_late;      % events/s
-        MSRateLateBL(trl)          = ms_late_bl;   % dB
+        MSRateLate(trl)            = ms_late;       % events/s
+        MSRateLateBL(trl)          = ms_late_bl;    % dB
+        MSRateFull(trl)            = ms_full;       % events/s
+        MSRateFullBL(trl)          = ms_full_bl;    % dB
 
         % Also store cleaned gaze x/y for the series window
         gaze_x{trl} = xs;
@@ -343,21 +421,26 @@ for subj = 1:length(subjects)
         'GazeDeviationEarlyBL', num2cell(GazeDeviationEarlyBL), ...
         'GazeDeviationLate', num2cell(GazeDeviationLate), ...
         'GazeDeviationLateBL', num2cell(GazeDeviationLateBL), ...
+        'GazeDeviationFull', num2cell(GazeDeviationFull), ...
+        'GazeDeviationFullBL', num2cell(GazeDeviationFullBL), ...
         'ScanPathLengthEarly', num2cell(ScanPathLengthEarly), ...
         'ScanPathLengthEarlyBL', num2cell(ScanPathLengthEarlyBL), ...
         'ScanPathLengthLate', num2cell(ScanPathLengthLate), ...
         'ScanPathLengthLateBL', num2cell(ScanPathLengthLateBL), ...
+        'ScanPathLengthFull', num2cell(ScanPathLengthFull), ...
+        'ScanPathLengthFullBL', num2cell(ScanPathLengthFullBL), ...
         'PupilSizeEarly', num2cell(PupilSizeEarly), ...
         'PupilSizeEarlyBL', num2cell(PupilSizeEarlyBL), ...
         'PupilSizeLate', num2cell(PupilSizeLate), ...
         'PupilSizeLateBL', num2cell(PupilSizeLateBL), ...
+        'PupilSizeFull', num2cell(PupilSizeFull), ...
+        'PupilSizeFullBL', num2cell(PupilSizeFullBL), ...
         'MSRateEarly', num2cell(MSRateEarly), ...
         'MSRateEarlyBL', num2cell(MSRateEarlyBL), ...
         'MSRateLate', num2cell(MSRateLate), ...
         'MSRateLateBL', num2cell(MSRateLateBL), ...
-        'ScanPathSeriesBins', ScanPathSeriesBins, ...
-        'ScanPathSeries',  ScanPathSeries ...
-        );
+        'MSRateFull', num2cell(MSRateFull), ...
+        'MSRateFullBL', num2cell(MSRateFullBL));
 
     %% Save data
     savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
@@ -369,11 +452,11 @@ for subj = 1:length(subjects)
     disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' done.'])
 
     % Append to the final structure array
-    gaze_data_sternberg_trials = [gaze_data_sternberg_trials; subj_data_gaze_trials]; %#ok<AGROW>
+    gaze_data_sternberg_trials = [gaze_data_sternberg_trials; subj_data_gaze_trials];
 
     % Also save per-trial gaze series and trialinfo (for convenience)
     trialinfo = dataETlong.trialinfo';
-    save([savepath 'gaze_series_sternberg_trials.mat'], 'gaze_x', 'gaze_y', 'trialinfo', 'ScanPathSeriesBins', 'ScanPathSeries')
+    save([savepath 'gaze_series_sternberg_trials.mat'], 'gaze_x', 'gaze_y', 'trialinfo', 'ScanPathSeriesT', 'ScanPathSeries', 'ScanPathSeriesBins');
 end
 
 % Grand save across subjects

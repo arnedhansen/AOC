@@ -11,7 +11,7 @@ fontSize = 36;
 
 % Common reference grid for gaze step-length series
 fs = 500; % Hz
-t_series = -0.5:1/fs:2; % reference grid (matches your gaze pipeline)
+t_series = linspace(-0.5, 2, 51);
 T = numel(t_series) - 1; % step series align to t_series(2:end)
 
 % Preallocate
@@ -22,6 +22,7 @@ scan_high = nan(length(subjects), T); % per-subject HIGH-alpha scan-path series 
 
 %% Per-subject split and aggregation
 for s = 1:length(subjects)
+    clc
     subjID = str2double(subjects{s});
     fprintf('Subject %s (%d/%d)\n', subjects{s}, s, length(subjects));
 
@@ -107,25 +108,26 @@ for s = 1:length(subjects)
     end
 
     % Gaze scan-path series — average LOW/HIGH trials
-    ScanPathSeries  = {};
+    ScanPathSeriesBins  = {};
     ScanPathSeriesT = {};
     trialinfo = [];
     try
         datapath_gaze = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', subjects{s}, 'gaze', 'gaze_series_sternberg_trials.mat');
-        load(datapath_gaze, 'ScanPathSeries', 'ScanPathSeriesT', 'trialinfo')
+        load(datapath_gaze, 'ScanPathSeriesBins', 'ScanPathSeriesT', 'trialinfo')
     catch
         warning('Missing gaze series for subject %s, skipping gaze part.', subjects{s})
     end
 
-    if ~isempty(ScanPathSeries)
+    if ~isempty(ScanPathSeriesBins)
         if size(trialinfo,2) < 2
             warning('Unexpected gaze trialinfo shape for subject %s. Skipping gaze part.', subjects{s})
         else
+            ScanPathSeriesT = linspace(-0.5, 2, 50);
             % Interpolate each trial to the common grid
-            subj_trials = nan(numel(ScanPathSeries), T);
-            for trl = 1:numel(ScanPathSeries)
-                srl = ScanPathSeries{trl};
-                tt  = ScanPathSeriesT{trl};
+            subj_trials = nan(numel(ScanPathSeriesBins), T);
+            for trl = 1:numel(ScanPathSeriesBins)
+                srl = ScanPathSeriesBins{trl};
+                tt  = ScanPathSeriesT;
                 if isempty(srl) || numel(tt) ~= numel(srl)
                     continue
                 end
@@ -136,7 +138,7 @@ for s = 1:length(subjects)
                 end
             end
 
-            gazeTrials = trialinfo(:,2);  % your convention: column 2 = Trial
+            gazeTrials = trialinfo(:,2);
             lowMask  = ismember(gazeTrials,  lowTrials);
             highMask = ismember(gazeTrials, highTrials);
 
@@ -182,7 +184,7 @@ time_idx = gatfr_low.time >= 0 & gatfr_low.time <= 2;
 low_alpha_power = mean(gatfr_low.powspctrm(ch_low_idx, alpha_idx, time_idx), 1:3, 'omitnan');
 high_alpha_power = mean(gatfr_high.powspctrm(ch_high_idx, alpha_idx, time_idx), 1:3, 'omitnan');
 max_spctrm = max([low_alpha_power(:); high_alpha_power(:)]);
-max_spctrm = 2.75
+max_spctrm = 5.75
 clim = [0 max_spctrm];
 
 % Plot LOW-alpha TFR
@@ -198,7 +200,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4); % 0–2 s × 8–14 Hz
 set(gca, 'FontSize', fontSize);
 title('Sternberg TFR — LOW Alpha trials');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_TFR_LOWalpha_late_trials.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_TFR_LOWalpha_late_trials_BINNEDSPL.png');
 
 % Plot HIGH-alpha TFR
 figure
@@ -212,7 +214,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4);
 set(gca, 'FontSize', fontSize);
 title('Sternberg TFR — HIGH Alpha trials');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_TFR_HIGHalpha_late_trials.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_TFR_HIGHalpha_late_trials_BINNEDSPL.png');
 
 %% Grand-average Scan Path Length (LOW vs HIGH alpha) with SEM
 grand_low = nanmean(scan_low, 1);
@@ -232,7 +234,7 @@ xlim([t_series(1) t_series(end)])
 box on
 set(gca, 'FontSize', 25)
 legend({'LOW Alpha ± SEM','HIGH Alpha ± SEM'}, 'Location','northwest')
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/scanPathLength/AOC_scanPathLength_LOWvsHIGHalpha_late.png')
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_scanPathLength_LOWvsHIGHalpha_late_BINNEDSPL.png')
 
 %% Done
 disp('Completed LOW/HIGH alpha median-split TFRs and scan path length plots.')

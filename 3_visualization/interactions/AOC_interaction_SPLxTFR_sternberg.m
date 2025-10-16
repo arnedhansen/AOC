@@ -79,7 +79,6 @@ for subj = 1:length(subjects)
     % saveas(gcf, fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/subjects/', ['AOC_sternberg_SPL_binned_medianSplit_' subjects{subj} '.png']))
 
     %% EEG: TFR LOW/HIGH-SPL
-    
     tfr_all = [];
     disp('Extracting EEG: TFR LOW/HIGH-SPL')
     try
@@ -266,11 +265,11 @@ N = numel(low_tfr_subs);
 assert(N == numel(high_tfr_subs), 'LOW/HIGH cell arrays must be same length.');
 
 % Neighbours (EEG): derive from electrode positions
-cfg_n              = [];
-cfg_n.method       = 'distance';          % safe default if you have .elec
-cfg_n.neighbourdist= 0.12;                % ~12 cm; tweak to your cap geometry
-cfg_n.elec         = low_tfr_subs{1}.elec;
-neighbours         = ft_prepare_neighbours(cfg_n);
+cfg_n               = [];
+cfg_n.method        = 'distance';          % safe default if you have .elec
+cfg_n.neighbourdist = 0.035;            % ~3.5 cm for ANT 128
+cfg_n.elec          = low_tfr_subs{1}.elec;
+neighbours          = ft_prepare_neighbours(cfg_n);
 
 % Design (within-subject)
 design = zeros(2, 2*N);

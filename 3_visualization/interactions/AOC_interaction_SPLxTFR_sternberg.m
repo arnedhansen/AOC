@@ -3,6 +3,8 @@
 %% Setup
 startup
 [subjects, path, ~, ~] = setup('AOC');
+%subjects = subjects(1:20)
+
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat') % FieldTrip layout
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/merged_data_sternberg_trials.mat')
 
@@ -22,13 +24,6 @@ high_tfr_subs = cell(1, length(subjects)); % per-subject HIGH-SPL TFR (avg over 
 scan_low = nan(length(subjects), T); % per-subject LOW-SPL scan-path series (avg over trials)
 scan_high = nan(length(subjects), T); % per-subject HIGH-SPL scan-path series (avg over trials)
 
-
-
-
-
-
-
-
 %% Per-subject split (by SPL) and aggregation of EEG TFRs + SPL series
 for s = 1:length(subjects)
     clc
@@ -40,7 +35,7 @@ for s = 1:length(subjects)
     spl  = rows.ScanPathLengthFull;  % total scan path length per trial (Full window)
     trlN = rows.Trial;
 
-    good = isfinite(spl) & isfinite(trlN);
+    good = isfinite(spl) & isfinite(trlN) & spl < 1200;
     if ~any(good)
         warning('No finite SPL for subject %s. Skipping subject.', subjects{s})
         continue
@@ -60,8 +55,24 @@ for s = 1:length(subjects)
     lowTrials  = trl_sorted(1:nHalf);
     highTrials = trl_sorted(nHalf+1:end);
 
-    % ----------------------
-    % EEG: TFR LOW/HIGH-SPL
+    %% Check median split
+    % close all
+    % figure; set(gcf, 'Color', 'w', 'Position', [0 0 2000 1200]); 
+    % hold on
+    % [spl_sorted, ord] = sort(spl_sub, 'ascend');
+    % x = 1:numel(spl_sorted);
+    % plot(x, spl_sorted, '-', 'Color', 0.85*[1 1 1], 'LineWidth', 3)
+    % scatter(x(1:nHalf), spl_sorted(1:nHalf), 60, colors(1,:), 'filled')
+    % scatter(x(nHalf+1:end), spl_sorted(nHalf+1:end), 60, colors(3,:), 'filled')
+    % yl = ylim; plot([nHalf+0.5 nHalf+0.5], yl, '--k', 'LineWidth', 2)
+    % m = median(spl_sub, 'omitnan'); 
+    % plot([1 numel(spl_sorted)], [m m], ':k', 'LineWidth', 2)
+    % xlabel('Trials (ranked by SPL)'); ylabel('Scan Path Length (Full) [px]')
+    % title(sprintf('Subject %s — within-subject median split (LOW=%d, HIGH=%d)', subjects{s}, nHalf, numel(spl_sorted)-nHalf))
+    % set(gca, 'FontSize', fontSize-6), box on
+    % saveas(gcf, fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/subjects/', ['AOC_sternberg_SPL_binned_medianSplit_' subjects{s} '.png']))
+
+    %% EEG: TFR LOW/HIGH-SPL
     % ----------------------
     tfr_all = [];
     try
@@ -137,6 +148,7 @@ for s = 1:length(subjects)
         else
             % Interpolate each trial to the common grid of step times (t_series(2:end))
             subj_trials = nan(numel(ScanPathSeriesBins), T);
+            ScanPathSeriesT = linspace(-0.5,2,50);
             for trl = 1:numel(ScanPathSeriesBins)
                 srl = ScanPathSeriesBins{trl};
                 tt  = ScanPathSeriesT;
@@ -177,12 +189,12 @@ end
 gatfr_low = ft_freqgrandaverage([], low_tfr_subs{:});
 gatfr_high = ft_freqgrandaverage([], high_tfr_subs{:});
 
-%% Plot settings (FieldTrip singleplotTFR)
+%% Plot Alpha Power TFRs
 cfg = [];
 cfg.channel = gatfr_low.label; % already restricted per subject to occipital
 cfg.colorbar = 'yes';
 cfg.zlim = 'maxabs';
-cfg.xlim = [0 2];
+cfg.xlim = [-.5 2];
 cfg.ylim = [4 30];
 cfg.layout = layANThead;
 
@@ -196,9 +208,10 @@ time_idx = gatfr_low.time >= 0 & gatfr_low.time <= 2;
 low_alpha_power = mean(gatfr_low.powspctrm(ch_low_idx, alpha_idx, time_idx), 1:3, 'omitnan');
 high_alpha_power = mean(gatfr_high.powspctrm(ch_high_idx, alpha_idx, time_idx), 1:3, 'omitnan');
 max_spctrm = max([low_alpha_power(:); high_alpha_power(:)]);
+max_spctrm = 4.15
 clim = [0 max_spctrm];
 
-%% Plot LOW-SPL TFR
+% Plot LOW-SPL TFR
 close all
 figure
 set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
@@ -213,7 +226,7 @@ set(gca, 'FontSize', fontSize);
 title('Sternberg TFR — LOW SPL trials');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_TFR_LOW_SPL_trials.png');
 
-%% Plot HIGH-SPL TFR
+% Plot HIGH-SPL TFR
 figure
 set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr_high);

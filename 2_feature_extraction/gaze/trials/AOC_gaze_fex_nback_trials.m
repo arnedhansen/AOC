@@ -47,8 +47,7 @@ gaze_data_nback_trials = struct('Trial', {}, 'ID', {}, 'Condition', {}, ...
     'PupilSizeFull', {}, 'PupilSizeFullBL', {}, ...
     'MSRateEarly', {}, 'MSRateEarlyBL', {}, ...
     'MSRateLate', {}, 'MSRateLateBL', {}, ...
-    'MSRateFull', {}, 'MSRateFullBL', {}, ...
-    'ScanPathSeriesT', {}, 'ScanPathSeries', {});
+    'MSRateFull', {}, 'MSRateFullBL', {});
 
 %% Parameters
 fsample = 500; % Hz
@@ -111,7 +110,7 @@ for subj = 1:length(subjects)
     gaze_y = cell(1,nTrials);
 
     trial_num = dataETlong.trialinfo(:,2);        % global trial ID
-    cond_code = dataETlong.trialinfo(:,1) - 20;   % 21/22/23 -> 1/2/3 (OK as-is)
+    cond_code = dataETlong.trialinfo(:,1) - 20;   % 21/22/23 -> 1/2/3
 
     %% Get trial-by-trial gaze data
     for trl = 1:nTrials
@@ -342,20 +341,41 @@ for subj = 1:length(subjects)
             pup_full_bl = NaN;
         end
 
-        % Scan-path time series over [-0.5, 2]
+        %% Scan-path time series over [-0.5, 2]
         xs = dat_series(1,:); ys = dat_series(2,:);
         ts = t(idx_series);
+
         % Keep indices that are finite for both x and y
         valid_series = isfinite(xs) & isfinite(ys);
         xs(~valid_series) = NaN; ys(~valid_series) = NaN;
+
         % Step-wise path length (px) aligned to ts(2:end)
         dxs = diff(xs); dys = diff(ys);
-        step_series = sqrt(dxs.^2 + dys.^2);
-        % Note: step_series(i) spans ts(i)->ts(i+1); store ts(2:end)
-        ScanPathSeriesT{trl} = ts(2:end);
-        ScanPathSeries{trl}  = step_series;
+        step_series = sqrt(dxs.^2 + dys.^2);    % one value per sample step
+        time_steps  = ts(2:end);
 
-        % Save trial-wise values
+        % Bin parameters
+        win_samp = round(0.05 * fsample);       % 50 ms → 25 samples
+        n_bins   = floor(numel(step_series) / win_samp);
+
+        % Preallocate binned series and times
+        step_series_bin = nan(1, n_bins);
+        time_bins       = nan(1, n_bins);
+
+        for b = 1:n_bins
+            idx_start = (b-1)*win_samp + 1;
+            idx_end   = b*win_samp;
+            segment   = step_series(idx_start:idx_end);
+            step_series_bin(b) = nanmean(segment);               % mean step length per 50 ms
+            time_bins(b) = mean(time_steps(idx_start:idx_end));  % centre time of that bin
+        end
+
+        % Store binned data
+        ScanPathSeriesT{trl}    = time_steps;
+        ScanPathSeriesBins{trl} = step_series_bin;   % averaged step lengths per 50 ms bin
+        ScanPathSeries{trl}     = step_series;         % their corresponding time centres
+
+        %% Save trial-wise values
         ID(trl)        = str2double(subjects{subj});
         Trial(trl)     = trial_num(trl);
         Condition(trl) = cond_code(trl);
@@ -440,5 +460,5 @@ for subj = 1:length(subjects)
 
     % Also save per-trial gaze series and trialinfo (for convenience)
     trialinfo = dataETlong.trialinfo';
-    save([savepath 'gaze_series_nback_trials.mat'], 'gaze_x', 'gaze_y', 'trialinfo', 'ScanPathSeriesT', 'ScanPathSeries')
+    save([savepath 'gaze_series_nback_trials.mat'], 'gaze_x', 'gaze_y', 'trialinfo', 'ScanPathSeriesT', 'ScanPathSeries', 'ScanPathSeriesBins');
 end

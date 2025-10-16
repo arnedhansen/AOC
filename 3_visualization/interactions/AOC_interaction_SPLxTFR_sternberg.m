@@ -73,7 +73,7 @@ for subj = 1:length(subjects)
     % saveas(gcf, fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/subjects/', ['AOC_sternberg_SPL_binned_medianSplit_' subjects{subj} '.png']))
 
     %% EEG: TFR LOW/HIGH-SPL
-    % ----------------------
+    
     tfr_all = [];
     disp('Extracting EEG: TFR LOW/HIGH-SPL')
     try
@@ -130,9 +130,7 @@ for subj = 1:length(subjects)
         end
     end
 
-    % -----------------------------------
     % Gaze: SPL time-series LOW/HIGH-SPL
-    % -----------------------------------
     ScanPathSeriesBins = {};
     ScanPathSeriesT    = {};
     trialinfo          = [];
@@ -257,29 +255,18 @@ set(gca, 'FontSize', fontSize);
 title('Sternberg TFR — DIFF (HIGH SPL - LOW SPL trials)');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_TFR_DIFF_SPL_trials.png');
 
-%% TFR STATS
-%% AOC Sternberg — Cluster-based stats: LOW vs HIGH SPL (FieldTrip)
-
-%% Inputs assumed:
-% low_tfr_subs  : 1×N cell of freq structs (per subject, LOW SPL)
-% high_tfr_subs : 1×N cell of freq structs (per subject, HIGH SPL)
-% color_map, clim, fontSize available from your plotting code (optional)
-
+%% TFR DIFF STATS (CBPT)
 N = numel(low_tfr_subs);
 assert(N == numel(high_tfr_subs), 'LOW/HIGH cell arrays must be same length.');
 
-% ----------------------
 % Neighbours (EEG): derive from electrode positions
-% ----------------------
 cfg_n              = [];
 cfg_n.method       = 'distance';          % safe default if you have .elec
 cfg_n.neighbourdist= 0.12;                % ~12 cm; tweak to your cap geometry
 cfg_n.elec         = low_tfr_subs{1}.elec;
 neighbours         = ft_prepare_neighbours(cfg_n);
 
-% ----------------------
 % Design (within-subject)
-% ----------------------
 design = zeros(2, 2*N);
 design(1, :) = [1:N,           1:N          ]; % subject id
 design(2, :) = [ones(1, N),    2*ones(1, N) ]; % condition code
@@ -300,13 +287,13 @@ cfgs.design        = design;
 cfgs.uvar          = 1;                    % unit of observation = subject
 cfgs.ivar          = 2;                    % independent variable = condition
 cfgs.channel       = 'all';                % or e.g., occipital ROI
-% cfgs.latency     = [ -0.5 2 ];           % optionally restrict time window
-% cfgs.frequency   = [  4 40 ];            % optionally restrict frequency range
+cfgs.latency       = [ 0  2 ];           % optionally restrict time window
+cfgs.frequency     = [ 4 30 ];            % optionally restrict frequency range
 
 % Run stats across the full TFR (space × freq × time)
 stat_tfr = ft_freqstatistics(cfgs, low_tfr_subs{:}, high_tfr_subs{:});
 
-%% Grand averages for plotting (and DIFF)
+% Grand averages for plotting (and DIFF)
 cfgGA          = [];
 cfgGA.parameter= 'powspctrm';
 ga_low         = ft_freqgrandaverage(cfgGA,  low_tfr_subs{:});
@@ -317,7 +304,7 @@ ga_diff.powspctrm = ga_high.powspctrm - ga_low.powspctrm;
 % Attach mask from stats (significant clusters)
 ga_diff.mask   = stat_tfr.mask; % logical mask time×freq×chan re-ordered internally by FT
 
-%% Plot masked DIFF TFR (average over chosen channels)
+% Plot masked DIFF TFR (average over chosen channels)
 cfgp                  = [];
 cfgp.parameter        = 'powspctrm';
 cfgp.maskparameter    = 'mask';
@@ -338,40 +325,6 @@ set(gca, 'FontSize', fontSize);
 title('Sternberg TFR — DIFF (HIGH - LOW), significant clusters outlined')
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_TFR_DIFF_SPL_trials_STATS.png');
 
-%% Optional: alpha-band specific stats (8–14 Hz, averaged over frequency)
-cfgs_alpha               = cfgs;
-cfgs_alpha.frequency     = [8 14];
-cfgs_alpha.avgoverfreq   = 'yes';     % collapses freq -> tests in chan × time
-stat_alpha = ft_freqstatistics(cfgs_alpha, low_tfr_subs{:}, high_tfr_subs{:});
-
-% For an “alpha over time” plot (channel average), derive GA and collapse freq
-cfg_sel            = [];
-cfg_sel.frequency  = [8 14];
-cfg_sel.avgoverfreq= 'yes';
-ga_low_alpha  = ft_selectdata(cfg_sel, ga_low);
-ga_high_alpha = ft_selectdata(cfg_sel, ga_high);
-
-% Average over channels for visualisation (stats already considered chan × time)
-cfg_chan               = [];
-cfg_chan.channel       = 'all';       % or ROI
-cfg_chan.avgoverchan   = 'yes';
-low_alpha_time  = ft_selectdata(cfg_chan, ga_low_alpha);
-high_alpha_time = ft_selectdata(cfg_chan, ga_high_alpha);
-
-figure
-set(gcf, 'Position', [100, 200, 1200, 500], 'Color', 'w');
-plot(low_alpha_time.time, squeeze(low_alpha_time.powspctrm), 'LineWidth', 3); hold on
-plot(high_alpha_time.time, squeeze(high_alpha_time.powspctrm), 'LineWidth', 3);
-xlabel('Time [s]'); ylabel('Alpha power [\muV^2/Hz]');
-set(gca, 'FontSize', fontSize);
-legend({'LOW SPL','HIGH SPL'}, 'Location', 'best'); box off
-title('Alpha (8–14 Hz) over time')
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_alpha_timecourse_LOW_vs_HIGH.png');
-
-% You can visualise significant time clusters by shading stat_alpha.mask after
-% averaging across channels (e.g., proportion of significant channels per time bin).
-
-
 %% Grand-average Scan Path Length time-course (LOW vs HIGH SPL)
 grand_low = nanmean(scan_low, 1);
 grand_high = nanmean(scan_high, 1);
@@ -379,7 +332,7 @@ sem_low = nanstd(scan_low, [], 1) ./ sqrt(sum(isfinite(scan_low), 1));
 sem_high = nanstd(scan_high, [], 1) ./ sqrt(sum(isfinite(scan_high), 1));
 t_plot = time_series(2:end);
 
-figure
+figure;
 set(gcf, 'Color', 'w', 'Position', [0 0 2000 1200]); hold on
 shadedErrorBar(t_plot, grand_low, sem_low, 'lineProps', {'-','Color',colors(1,:),'LineWidth',2.5}, 'transparent', true);
 shadedErrorBar(t_plot, grand_high, sem_high, 'lineProps', {'-','Color',colors(3,:),'LineWidth',2.5}, 'transparent', true);
@@ -414,6 +367,7 @@ d_sig   = diff([0, sig_mask, 0]);
 on_sig  = find(d_sig == 1);
 off_sig = find(d_sig == -1) - 1;
 
+hold on
 for k = 1:numel(on_sig)
     x0 = t_plot(on_sig(k));
     x1 = t_plot(off_sig(k));
@@ -422,15 +376,7 @@ end
 
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_scanPathLength_LOWvsHIGH_SPL.png')
 
-%% Grand-average Scan Path Length time-course (LOW vs HIGH SPL) WITH STATS
-
-
-
-
-
-
 %% SPL and Alpha Power over Time
-close all
 alpha_band = [8 14]; % Hz
 cfg = [];
 cfg.frequency = alpha_band;
@@ -439,19 +385,38 @@ cfg.avgoverchan = 'yes';
 gatfr_low_alpha = ft_selectdata(cfg, gatfr_low);
 gatfr_high_alpha = ft_selectdata(cfg, gatfr_high);
 
-% Plot alpha power over time
+%%
+close all
 figure;
-set(gcf, 'Position', [0, 0, 2000, 1200], 'Color', 'w');
-plot(gatfr_low_alpha.time, squeeze(gatfr_low_alpha.powspctrm), 'LineWidth', 5, 'Color', colors(1, :));
-hold on
-plot(gatfr_high_alpha.time, squeeze(gatfr_high_alpha.powspctrm), 'LineWidth', 5, 'Color', colors(3, :));
+set(gcf, 'Color', 'w', 'Position', [0 0 2000 1200]); hold on
+
+% Plot scan path length
+yyaxis left
+shadedErrorBar(t_plot, grand_low, sem_low, 'lineProps', {'-','Color',colors(1,:),'LineWidth',2.5}, 'transparent', true);
+shadedErrorBar(t_plot, grand_high, sem_high, 'lineProps', {'-','Color',colors(3,:),'LineWidth',2.5}, 'transparent', true);
 xlabel('Time [s]')
-ylabel('Alpha Power [\muV^2/Hz]')
-set(gca, 'FontSize', fontSize)
-title('Alpha Power over Time — HIGH SPL trials')
-grid on
+ylabel('Scan Path Length [px]')
+title('Sternberg — Scan Path Length over time (LOW vs HIGH SPL trials)')
 xlim([-.5 2])
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_AlphaPowerOverTime_SPL_trials.png')
+box on
+hold on
+set(gca, 'YColor', [0 0 0])
+for k = 1:numel(on_sig)
+    x0 = t_plot(on_sig(k));
+    x1 = t_plot(off_sig(k));
+    plot([x0 x1], [ybar ybar], 'k-', 'LineWidth', 12)
+end
+
+% Plot alpha power over time
+yyaxis right
+plot(gatfr_low_alpha.time, squeeze(gatfr_low_alpha.powspctrm), 'LineWidth', 5, 'Color', colors(1, :), 'LineStyle', '--');
+plot(gatfr_high_alpha.time, squeeze(gatfr_high_alpha.powspctrm), 'LineWidth', 5, 'Color', colors(3, :), 'LineStyle', '--');
+set(gca, 'FontSize', fontSize)
+xlim([-.5 2])
+ylabel('Alpha Power [\muV^2/Hz]')
+set(gca, 'YColor', [0 0 0])
+legend({'LOW SPL ± SEM','HIGH SPL ± SEM', 'Alpha Power LOW SLP Trials', 'Alpha Power HIGH SLP Trials'}, 'Location','northwest', 'FontSize', fontSize-10)
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_SPLOverTime_AlphaPowerOverTime_SPL_trials.png')
 
 %% Done
 disp('Completed LOW/HIGH SPL median-split TFRs and SPL time-course plots.')

@@ -1,4 +1,4 @@
-%% AOC Sternberg — Median-split by within-subject Scan Path Length (SPL) to compare TFRs
+%% AOC Sternberg — Median-split by within-subject Scan Path Length (SPL) to compare TFRs & SPL time-course
 
 %% Setup
 startup
@@ -12,18 +12,24 @@ fontSize = 36;
 % Plot colormap
 color_map = cbrewer('seq', 'Reds', 64);
 
+% Common reference grid for gaze step-length series
+t_series = linspace(-0.5, 2, 51); % 51 points -> 50 steps
+T = numel(t_series) - 1; % step series aligns to t_series(2:end)
 
-
-subjects = subjects(1:10)
-
-
-
-
-%% Preallocate holders for subject-level TFRs
+%% Preallocate holders for subject-level TFRs and SPL time-courses
 low_tfr_subs = cell(1, length(subjects)); % per-subject LOW-SPL TFR (avg over trials)
 high_tfr_subs = cell(1, length(subjects)); % per-subject HIGH-SPL TFR (avg over trials)
+scan_low = nan(length(subjects), T); % per-subject LOW-SPL scan-path series (avg over trials)
+scan_high = nan(length(subjects), T); % per-subject HIGH-SPL scan-path series (avg over trials)
 
-%% Per-subject split (by SPL) and aggregation of EEG TFRs
+
+
+
+
+
+
+
+%% Per-subject split (by SPL) and aggregation of EEG TFRs + SPL series
 for s = 1:length(subjects)
     clc
     subjID = str2double(subjects{s});
@@ -47,76 +53,114 @@ for s = 1:length(subjects)
     spl_rand = spl_sub(rp);
     trl_rand = trl_sub(rp);
 
-    [spl_sorted, idx_sorted] = sort(spl_rand, 'ascend'); %#ok<ASGLU> % keep order for index
+    [~, idx_sorted] = sort(spl_rand, 'ascend');
     trl_sorted = trl_rand(idx_sorted);
 
-    nHalf = floor(numel(trl_sorted)/2);
+    nHalf      = floor(numel(trl_sorted)/2);
     lowTrials  = trl_sorted(1:nHalf);
     highTrials = trl_sorted(nHalf+1:end);
 
-    % Load EEG TFR and average LOW/HIGH-SPL trials over repetitions (occipital channels)
+    % ----------------------
+    % EEG: TFR LOW/HIGH-SPL
+    % ----------------------
     tfr_all = [];
     try
         datapath_eeg = fullfile(path, subjects{s}, 'eeg');
         cd(datapath_eeg)
         load tfr_stern_trials   % -> tfr_all (dimord 'rpt_chan_freq_time'), trialinfo(:,2) = Trial
     catch
-        warning('Missing EEG TFR for subject %s, skipping.', subjects{s})
-        continue
+        warning('Missing EEG TFR for subject %s, skipping EEG part.', subjects{s})
     end
 
-    if isempty(tfr_all)
-        warning('Empty tfr_all for subject %s, skipping.', subjects{s})
-        continue
-    end
+    if ~isempty(tfr_all)
+        % Occipital channel heuristic (labels containing 'O' or 'I'); fallback to all
+        occ_channels = {};
+        for i = 1:length(tfr_all.label)
+            lab = tfr_all.label{i};
+            if contains(lab, {'O'}) || contains(lab, {'I'})
+                occ_channels{end+1} = lab; %#ok<AGROW>
+            end
+        end
+        if isempty(occ_channels)
+            occ_channels = tfr_all.label;
+        end
 
-    % Occipital channel heuristic (labels containing 'O' or 'I'); fallback to all
-    occ_channels = {};
-    for i = 1:length(tfr_all.label)
-        lab = tfr_all.label{i};
-        if contains(lab, {'O'}) || contains(lab, {'I'})
-            occ_channels{end+1} = lab; %#ok<AGROW>
+        if size(tfr_all.trialinfo,2) < 2
+            warning('tfr_all.trialinfo missing Trial column for subject %s. Skipping EEG part.', subjects{s})
+        else
+            eegTrials = tfr_all.trialinfo(:,2);
+
+            idxLow  = ismember(eegTrials,  lowTrials);
+            idxHigh = ismember(eegTrials, highTrials);
+
+            if any(idxLow)
+                cfgS = [];
+                cfgS.trials     = find(idxLow);
+                cfgS.channel    = occ_channels;
+                cfgS.avgoverrpt = 'yes';
+                low_tfr  = ft_selectdata(cfgS, tfr_all);
+            else
+                low_tfr = [];
+            end
+
+            if any(idxHigh)
+                cfgS = [];
+                cfgS.trials     = find(idxHigh);
+                cfgS.channel    = occ_channels;
+                cfgS.avgoverrpt = 'yes';
+                high_tfr = ft_selectdata(cfgS, tfr_all);
+            else
+                high_tfr = [];
+            end
+
+            low_tfr_subs{s}  = low_tfr;
+            high_tfr_subs{s} = high_tfr;
         end
     end
-    if isempty(occ_channels)
-        occ_channels = tfr_all.label;
+
+    % -----------------------------------
+    % Gaze: SPL time-series LOW/HIGH-SPL
+    % -----------------------------------
+    ScanPathSeriesBins = {};
+    ScanPathSeriesT    = {};
+    trialinfo          = [];
+    try
+        datapath_gaze = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', subjects{s}, 'gaze', 'gaze_series_sternberg_trials.mat');
+        load(datapath_gaze, 'ScanPathSeriesBins', 'ScanPathSeriesT', 'trialinfo')
+    catch
+        warning('Missing gaze series for subject %s, skipping gaze part.', subjects{s})
     end
 
-    if size(tfr_all.trialinfo,2) < 2
-        warning('tfr_all.trialinfo missing Trial column for subject %s. Skipping.', subjects{s})
-        continue
-    end
+    if ~isempty(ScanPathSeriesBins)
+        if size(trialinfo,2) < 2
+            warning('Unexpected gaze trialinfo shape for subject %s. Skipping gaze part.', subjects{s})
+        else
+            % Interpolate each trial to the common grid of step times (t_series(2:end))
+            subj_trials = nan(numel(ScanPathSeriesBins), T);
+            for trl = 1:numel(ScanPathSeriesBins)
+                srl = ScanPathSeriesBins{trl};
+                tt  = ScanPathSeriesT;
+                if isempty(srl) || isempty(tt) || numel(tt) ~= numel(srl)
+                    continue
+                end
+                try
+                    subj_trials(trl,:) = interp1(tt, srl, t_series(2:end), 'linear', NaN);
+                catch
+                    % leave as NaN
+                end
+            end
 
-    eegTrials = tfr_all.trialinfo(:,2);
+            gazeTrials = trialinfo(:,2);
+            lowMask  = ismember(gazeTrials,  lowTrials);
+            highMask = ismember(gazeTrials, highTrials);
 
-    idxLow  = ismember(eegTrials,  lowTrials);
-    idxHigh = ismember(eegTrials, highTrials);
-
-    low_tfr  = [];
-    high_tfr = [];
-
-    if any(idxLow)
-        cfgS = [];
-        cfgS.trials     = find(idxLow);
-        cfgS.channel    = occ_channels;
-        cfgS.avgoverrpt = 'yes';
-        low_tfr  = ft_selectdata(cfgS, tfr_all);
-    end
-
-    if any(idxHigh)
-        cfgS = [];
-        cfgS.trials     = find(idxHigh);
-        cfgS.channel    = occ_channels;
-        cfgS.avgoverrpt = 'yes';
-        high_tfr = ft_selectdata(cfgS, tfr_all);
-    end
-
-    % Store per-subject results (skip if either side is empty)
-    if ~isempty(low_tfr)
-        low_tfr_subs{s} = low_tfr;
-    end
-    if ~isempty(high_tfr)
-        high_tfr_subs{s} = high_tfr;
+            if any(lowMask)
+                scan_low(s,:)  = nanmean(subj_trials(lowMask,:), 1);
+            end
+            if any(highMask)
+                scan_high(s,:) = nanmean(subj_trials(highMask,:), 1);
+            end
+        end
     end
 
 
@@ -183,5 +227,25 @@ set(gca, 'FontSize', fontSize);
 title('Sternberg TFR — HIGH SPL trials');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_TFR_HIGH_SPL_trials.png');
 
+%% Grand-average Scan Path Length time-course (LOW vs HIGH SPL) with SEM
+grand_low = nanmean(scan_low, 1);
+grand_high = nanmean(scan_high, 1);
+sem_low = nanstd(scan_low, [], 1) ./ sqrt(sum(isfinite(scan_low), 1));
+sem_high = nanstd(scan_high, [], 1) ./ sqrt(sum(isfinite(scan_high), 1));
+t_plot = t_series(2:end);
+
+figure
+set(gcf, 'Color', 'w', 'Position', [0 0 2000 1200]); hold on
+shadedErrorBar(t_plot, grand_low, sem_low, 'lineProps', {'-','Color',colors(1,:),'LineWidth',2.5}, 'transparent', true);
+shadedErrorBar(t_plot, grand_high, sem_high, 'lineProps', {'-','Color',colors(3,:),'LineWidth',2.5}, 'transparent', true);
+xlabel('Time [s]')
+ylabel('Scan Path Length [px]')
+title('Sternberg — Scan Path Length over time (LOW vs HIGH SPL trials)')
+xlim([t_series(1) t_series(end)])
+box on
+set(gca, 'FontSize', 25)
+legend({'LOW SPL ± SEM','HIGH SPL ± SEM'}, 'Location','northwest')
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_scanPathLength_LOWvsHIGH_SPL.png')
+
 %% Done
-disp('Completed LOW/HIGH SPL median-split TFRs.')
+disp('Completed LOW/HIGH SPL median-split TFRs and SPL time-course plots.')

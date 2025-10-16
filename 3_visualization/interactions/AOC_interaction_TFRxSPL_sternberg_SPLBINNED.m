@@ -22,6 +22,7 @@ scan_high = nan(length(subjects), T); % per-subject HIGH-alpha scan-path series 
 
 %% Per-subject split and aggregation
 for s = 1:length(subjects)
+    clc
     subjID = str2double(subjects{s});
     fprintf('Subject %s (%d/%d)\n', subjects{s}, s, length(subjects));
 
@@ -126,7 +127,7 @@ for s = 1:length(subjects)
             subj_trials = nan(numel(ScanPathSeriesBins), T);
             for trl = 1:numel(ScanPathSeriesBins)
                 srl = ScanPathSeriesBins{trl};
-                tt  = ScanPathSeriesT{trl};
+                tt  = ScanPathSeriesT;
                 if isempty(srl) || numel(tt) ~= numel(srl)
                     continue
                 end
@@ -137,7 +138,7 @@ for s = 1:length(subjects)
                 end
             end
 
-            gazeTrials = trialinfo(:,2);  % your convention: column 2 = Trial
+            gazeTrials = trialinfo(:,2);
             lowMask  = ismember(gazeTrials,  lowTrials);
             highMask = ismember(gazeTrials, highTrials);
 
@@ -183,7 +184,7 @@ time_idx = gatfr_low.time >= 0 & gatfr_low.time <= 2;
 low_alpha_power = mean(gatfr_low.powspctrm(ch_low_idx, alpha_idx, time_idx), 1:3, 'omitnan');
 high_alpha_power = mean(gatfr_high.powspctrm(ch_high_idx, alpha_idx, time_idx), 1:3, 'omitnan');
 max_spctrm = max([low_alpha_power(:); high_alpha_power(:)]);
-max_spctrm = 2.75
+max_spctrm = 5.75
 clim = [0 max_spctrm];
 
 % Plot LOW-alpha TFR

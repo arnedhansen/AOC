@@ -1,4 +1,4 @@
-%% AOC Sternberg — Median-split by within-subject Alpha (early) to compare Scan Path Length & TFR
+%% AOC Sternberg — Median-split by within-subject Scan Path Length to compare with Alpha TFRs
 
 %% Setup
 startup
@@ -11,57 +11,65 @@ fontSize = 36;
 
 % Common reference grid for gaze step-length series
 fs = 500; % Hz
-t_series = -0.5:1/fs:2; % reference grid (matches your gaze pipeline)
+t_series = -0.5:1/fs:2; % reference grid
 T = numel(t_series) - 1; % step series align to t_series(2:end)
 
 % Preallocate
-low_tfr_subs = cell(1, length(subjects)); % per-subject LOW-alpha TFR (avg over trials)
-high_tfr_subs = cell(1, length(subjects)); % per-subject HIGH-alpha TFR (avg over trials)
-scan_low = nan(length(subjects), T); % per-subject LOW-alpha scan-path series (avg over trials)
-scan_high = nan(length(subjects), T); % per-subject HIGH-alpha scan-path series (avg over trials)
+low_tfr_subs = cell(1, length(subjects)); % per-subject LOW-SPL TFR (avg over trials)
+high_tfr_subs = cell(1, length(subjects)); % per-subject HIGH-SPL TFR (avg over trials)
+scan_low = nan(length(subjects), T); % per-subject LOW-SPL scan-path series (avg over trials)
+scan_high = nan(length(subjects), T); % per-subject HIGH-SPL scan-path series (avg over trials)
 
 %% Per-subject split and aggregation
-for s = 1:length(subjects)
+for s = 1:10%%%%%length(subjects)
 subjID = str2double(subjects{s});
 fprintf('Subject %s (%d/%d)\n', subjects{s}, s, length(subjects));
 
-% Alpha (early) per-trial values and trial numbers for this subject
+% Total Scan Path Length per trial = Early + Late (row-wise, ignore NaNs)
 rows = merged_data_sternberg_trials(merged_data_sternberg_trials.ID == subjID, :);
-ap   = rows.AlphaPowerEarly;
-trlN = rows.Trial;
+if isempty(rows)
+    warning('No merged rows for subject %s. Skipping.', subjects{s})
+    continue
+end
 
-good = isfinite(ap) & isfinite(trlN);
+% Row-wise sum with NaN omission (requires numeric matrix)
+spl_mat = [rows.ScanPathLengthEarly, rows.ScanPathLengthLate];
+total_spl = sum(spl_mat, 2, 'omitnan');     % px
+trlN      = rows.Trial;
+
+good = isfinite(total_spl) & isfinite(trlN);
 if ~any(good)
-    warning('No finite AlphaPowerEarly for subject %s. Skipping subject.', subjects{s})
+    warning('No finite total SPL for subject %s. Skipping subject.', subjects{s})
     continue
 end
 
 % Random tie-breaking median split (within-subject)
-ap_sub   = ap(good);
+spl_sub  = total_spl(good);
 trl_sub  = trlN(good);
-rp       = randperm(numel(ap_sub));             % random permutation to break ties stably
-ap_rand  = ap_sub(rp);
-trl_rand = trl_sub(rp);
 
-[ap_sorted, idx_sorted] = sort(ap_rand, 'ascend');
+rp        = randperm(numel(spl_sub));      % random permutation to break ties stably
+spl_rand  = spl_sub(rp);
+trl_rand  = trl_sub(rp);
+
+[spl_sorted, idx_sorted] = sort(spl_rand, 'ascend'); %#ok<NASGU>
 trl_sorted = trl_rand(idx_sorted);
 
-nHalf = floor(numel(ap_sorted)/2);
+nHalf      = floor(numel(trl_sorted)/2);
 lowTrials  = trl_sorted(1:nHalf);
 highTrials = trl_sorted(nHalf+1:end);
 
-% EEG TFR — average LOW/HIGH trials over repetitions (occipital channels)
+% EEG TFR — average LOW/HIGH SPL trials over repetitions (occipital channels)
 tfr_all = [];
 try
     datapath_eeg = fullfile(path, subjects{s}, 'eeg');
     cd(datapath_eeg)
-    load tfr_stern_trials   % -> tfr_all (dimord 'rpt_chan_freq_time'), trialinfo(:,2) = Trial
+    load tfr_stern_trials   % -> tfr_all
 catch
     warning('Missing EEG TFR for subject %s, skipping EEG part.', subjects{s})
 end
 
 if ~isempty(tfr_all)
-    % Occipital channel set by label name (contains 'O' or 'I')
+    % Occipital set by label name (contains 'O' or 'I'); fallback to all
     occ_channels = {};
     for i = 1:length(tfr_all.label)
         lab = tfr_all.label{i};
@@ -70,7 +78,7 @@ if ~isempty(tfr_all)
         end
     end
     if isempty(occ_channels)
-        occ_channels = tfr_all.label; % fallback
+        occ_channels = tfr_all.label;
     end
 
     if size(tfr_all.trialinfo,2) < 2
@@ -106,7 +114,7 @@ if ~isempty(tfr_all)
     end
 end
 
-% Gaze scan-path series — average LOW/HIGH trials
+% Gaze scan-path series — average LOW/HIGH SPL trials
 ScanPathSeries  = {};
 ScanPathSeriesT = {};
 trialinfo = [];
@@ -136,7 +144,7 @@ if ~isempty(ScanPathSeries)
             end
         end
 
-        gazeTrials = trialinfo(:,2);  % your convention: column 2 = Trial
+        gazeTrials = trialinfo(:,2);  % column 2 = Trial
         lowMask  = ismember(gazeTrials,  lowTrials);
         highMask = ismember(gazeTrials, highTrials);
 
@@ -152,7 +160,7 @@ end
 
 end
 
-%% Grand-average TFRs (LOW vs HIGH alpha)
+%% Grand-average TFRs (LOW vs HIGH SPL)
 low_tfr_subs = low_tfr_subs(~cellfun(@isempty, low_tfr_subs));
 high_tfr_subs = high_tfr_subs(~cellfun(@isempty, high_tfr_subs));
 
@@ -163,7 +171,7 @@ end
 gatfr_low = ft_freqgrandaverage([], low_tfr_subs{:});
 gatfr_high = ft_freqgrandaverage([], high_tfr_subs{:});
 
-% Plot settings (FieldTrip singleplotTFR)
+% Plot config (FieldTrip singleplotTFR)
 cfg = [];
 cfg.channel = gatfr_low.label; % already restricted to occipital in per-subject step
 cfg.colorbar = 'yes';
@@ -174,7 +182,7 @@ cfg.layout = layANThead;
 
 color_map = cbrewer('seq', 'Reds', 64);
 
-% Common colour scaling from alpha range (8–14 Hz) and 0–2 s window
+% Common colour scaling from alpha band (8–14 Hz) and 0–2 s
 alpha_idx = gatfr_low.freq >= 8 & gatfr_low.freq <= 14;
 time_idx = gatfr_low.time >= 0 & gatfr_low.time <= 2;
 
@@ -186,7 +194,7 @@ high_alpha_power = mean(gatfr_high.powspctrm(ch_high_idx, alpha_idx, time_idx), 
 max_spctrm = max([low_alpha_power(:); high_alpha_power(:)]);
 clim = [0 max_spctrm];
 
-% Plot LOW-alpha TFR
+%% Plot TFR — LOW SPL trials
 close all
 figure
 set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
@@ -198,10 +206,10 @@ xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4); % 0–2 s × 8–14 Hz
 set(gca, 'FontSize', fontSize);
-title('Sternberg TFR — LOW Alpha (early) trials');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_TFR_LOWalpha_trials.png');
+title('Sternberg TFR — LOW Scan Path Length trials');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_TFR_LOWscanpath_trials.png');
 
-% Plot HIGH-alpha TFR
+%% Plot TFR — HIGH SPL trials
 figure
 set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr_high);
@@ -212,10 +220,10 @@ xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4);
 set(gca, 'FontSize', fontSize);
-title('Sternberg TFR — HIGH Alpha (early) trials');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_TFR_HIGHalpha_trials.png');
+title('Sternberg TFR — HIGH Scan Path Length trials');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_TFR_HIGHscanpath_trials.png');
 
-%% Grand-average Scan Path Length (LOW vs HIGH alpha) with SEM
+%% Grand-average Scan Path Length series (LOW vs HIGH SPL) with SEM
 grand_low = nanmean(scan_low, 1);
 grand_high = nanmean(scan_high, 1);
 sem_low = nanstd(scan_low, [], 1) ./ sqrt(sum(isfinite(scan_low), 1));
@@ -228,12 +236,12 @@ shadedErrorBar(t_plot, grand_low, sem_low, 'lineProps', {'-','Color',colors(1,:)
 shadedErrorBar(t_plot, grand_high, sem_high, 'lineProps', {'-','Color',colors(3,:),'LineWidth',2.5}, 'transparent', true);
 xlabel('Time (s)')
 ylabel('Scan Path Length (px)')
-title('Sternberg — Scan Path Length over time (LOW vs HIGH Alpha trials)')
+title('Sternberg — Scan Path Length over time (LOW vs HIGH total SPL trials)')
 xlim([t_series(1) t_series(end)])
 box on
 set(gca, 'FontSize', 25)
-legend({'LOW Alpha (early) ± SEM','HIGH Alpha (early) ± SEM'}, 'Location','northwest')
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/scanPathLength/AOC_scanPathLength_LOWvsHIGHalpha.png')
+legend({'LOW total SPL ± SEM','HIGH total SPL ± SEM'}, 'Location','northwest')
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_scanPathSeries_LOWvsHIGHtotalSPL.png')
 
 %% Done
-disp('Completed LOW/HIGH alpha median-split TFRs and scan path length plots.')
+disp('Completed LOW/HIGH Scan Path Length median-split TFRs and scan path plots.')

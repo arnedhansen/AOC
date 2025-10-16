@@ -3,12 +3,12 @@
 %% Setup
 startup
 [subjects, path, ~, ~] = setup('AOC');
-subjects = subjects(1:10)
+%subjects = subjects(1:10)
 
 % aesthetics
 color_map = cbrewer('seq', 'Reds', 64);
 colors = color_def('AOC');
-fontSize = 36;
+fontSize = 30;
 
 % Common reference grid for gaze step-length series
 time_series = linspace(-0.5, 2, 51); % 51 points -> 50 steps
@@ -35,9 +35,15 @@ for subj = 1:length(subjects)
     spl  = subjTable.ScanPathLengthFull;  % total scan path length per trial (Full window)
     trlN = subjTable.Trial;
 
-    good_idx = isfinite(spl) & isfinite(trlN) & spl < 1200;
+    % Exclude NaNs
+    good_idx = isfinite(spl) & isfinite(trlN);
+
+    % Compute subject-specific z-scores and remove trials beyond 3 SD
+    z_spl = (spl - nanmean(spl)) ./ nanstd(spl);
+    good_idx = good_idx & abs(z_spl) <= 3; 
+
     if ~any(good_idx)
-        warning('No finite SPL for subject %subj. Skipping subject.', subjects{subj})
+        warning('No valid SPL for subject %s. Skipping subject.', subjects{subj})
         continue
     end
 
@@ -385,8 +391,6 @@ cfg.avgoverchan = 'yes';
 gatfr_low_alpha = ft_selectdata(cfg, gatfr_low);
 gatfr_high_alpha = ft_selectdata(cfg, gatfr_high);
 
-%%
-fontSize = 30;
 close all
 figure
 set(gcf, 'Color', 'w', 'Position', [0 0 2000 1200])
@@ -436,7 +440,3 @@ yyaxis left
 set(gca, 'YColor', 'none', 'YTick', [])
 
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_SPLOverTime_AlphaPower_Subplots.png')
-
-
-%% Done
-disp('Completed LOW/HIGH SPL median-split TFRs and SPL time-course plots.')

@@ -25,99 +25,99 @@ high_tfr_subs = cell(1, length(subjects)); % per-subject HIGH-SPL TFR (avg over 
 
 %% Per-subject split (by SPL) and aggregation of EEG TFRs
 for s = 1:length(subjects)
-clc
-subjID = str2double(subjects{s});
-fprintf('Subject %s (%d/%d)\n', subjects{s}, s, length(subjects));
+    clc
+    subjID = str2double(subjects{s});
+    fprintf('Subject %s (%d/%d)\n', subjects{s}, s, length(subjects));
 
-% Get per-trial SPL and trial numbers for this subject
-rows = merged_data_sternberg_trials(merged_data_sternberg_trials.ID == subjID, :);
-spl  = rows.ScanPathLengthFull;  % total scan path length per trial (Full window)
-trlN = rows.Trial;
+    % Get per-trial SPL and trial numbers for this subject
+    rows = merged_data_sternberg_trials(merged_data_sternberg_trials.ID == subjID, :);
+    spl  = rows.ScanPathLengthFull;  % total scan path length per trial (Full window)
+    trlN = rows.Trial;
 
-good = isfinite(spl) & isfinite(trlN);
-if ~any(good)
-    warning('No finite SPL for subject %s. Skipping subject.', subjects{s})
-    continue
-end
-
-% Random tie-breaking median split (within-subject, by SPL)
-spl_sub  = spl(good);
-trl_sub  = trlN(good);
-rp       = randperm(numel(spl_sub));  % random permutation to break ties stably
-spl_rand = spl_sub(rp);
-trl_rand = trl_sub(rp);
-
-[spl_sorted, idx_sorted] = sort(spl_rand, 'ascend'); %#ok<ASGLU> % keep order for index
-trl_sorted = trl_rand(idx_sorted);
-
-nHalf = floor(numel(trl_sorted)/2);
-lowTrials  = trl_sorted(1:nHalf);
-highTrials = trl_sorted(nHalf+1:end);
-
-% Load EEG TFR and average LOW/HIGH-SPL trials over repetitions (occipital channels)
-tfr_all = [];
-try
-    datapath_eeg = fullfile(path, subjects{s}, 'eeg');
-    cd(datapath_eeg)
-    load tfr_stern_trials   % -> tfr_all (dimord 'rpt_chan_freq_time'), trialinfo(:,2) = Trial
-catch
-    warning('Missing EEG TFR for subject %s, skipping.', subjects{s})
-    continue
-end
-
-if isempty(tfr_all)
-    warning('Empty tfr_all for subject %s, skipping.', subjects{s})
-    continue
-end
-
-% Occipital channel heuristic (labels containing 'O' or 'I'); fallback to all
-occ_channels = {};
-for i = 1:length(tfr_all.label)
-    lab = tfr_all.label{i};
-    if contains(lab, {'O'}) || contains(lab, {'I'})
-        occ_channels{end+1} = lab; %#ok<AGROW>
+    good = isfinite(spl) & isfinite(trlN);
+    if ~any(good)
+        warning('No finite SPL for subject %s. Skipping subject.', subjects{s})
+        continue
     end
-end
-if isempty(occ_channels)
-    occ_channels = tfr_all.label;
-end
 
-if size(tfr_all.trialinfo,2) < 2
-    warning('tfr_all.trialinfo missing Trial column for subject %s. Skipping.', subjects{s})
-    continue
-end
+    % Random tie-breaking median split (within-subject, by SPL)
+    spl_sub  = spl(good);
+    trl_sub  = trlN(good);
+    rp       = randperm(numel(spl_sub));  % random permutation to break ties stably
+    spl_rand = spl_sub(rp);
+    trl_rand = trl_sub(rp);
 
-eegTrials = tfr_all.trialinfo(:,2);
+    [spl_sorted, idx_sorted] = sort(spl_rand, 'ascend'); %#ok<ASGLU> % keep order for index
+    trl_sorted = trl_rand(idx_sorted);
 
-idxLow  = ismember(eegTrials,  lowTrials);
-idxHigh = ismember(eegTrials, highTrials);
+    nHalf = floor(numel(trl_sorted)/2);
+    lowTrials  = trl_sorted(1:nHalf);
+    highTrials = trl_sorted(nHalf+1:end);
 
-low_tfr  = [];
-high_tfr = [];
+    % Load EEG TFR and average LOW/HIGH-SPL trials over repetitions (occipital channels)
+    tfr_all = [];
+    try
+        datapath_eeg = fullfile(path, subjects{s}, 'eeg');
+        cd(datapath_eeg)
+        load tfr_stern_trials   % -> tfr_all (dimord 'rpt_chan_freq_time'), trialinfo(:,2) = Trial
+    catch
+        warning('Missing EEG TFR for subject %s, skipping.', subjects{s})
+        continue
+    end
 
-if any(idxLow)
-    cfgS = [];
-    cfgS.trials     = find(idxLow);
-    cfgS.channel    = occ_channels;
-    cfgS.avgoverrpt = 'yes';
-    low_tfr  = ft_selectdata(cfgS, tfr_all);
-end
+    if isempty(tfr_all)
+        warning('Empty tfr_all for subject %s, skipping.', subjects{s})
+        continue
+    end
 
-if any(idxHigh)
-    cfgS = [];
-    cfgS.trials     = find(idxHigh);
-    cfgS.channel    = occ_channels;
-    cfgS.avgoverrpt = 'yes';
-    high_tfr = ft_selectdata(cfgS, tfr_all);
-end
+    % Occipital channel heuristic (labels containing 'O' or 'I'); fallback to all
+    occ_channels = {};
+    for i = 1:length(tfr_all.label)
+        lab = tfr_all.label{i};
+        if contains(lab, {'O'}) || contains(lab, {'I'})
+            occ_channels{end+1} = lab; %#ok<AGROW>
+        end
+    end
+    if isempty(occ_channels)
+        occ_channels = tfr_all.label;
+    end
 
-% Store per-subject results (skip if either side is empty)
-if ~isempty(low_tfr)
-    low_tfr_subs{s} = low_tfr;
-end
-if ~isempty(high_tfr)
-    high_tfr_subs{s} = high_tfr;
-end
+    if size(tfr_all.trialinfo,2) < 2
+        warning('tfr_all.trialinfo missing Trial column for subject %s. Skipping.', subjects{s})
+        continue
+    end
+
+    eegTrials = tfr_all.trialinfo(:,2);
+
+    idxLow  = ismember(eegTrials,  lowTrials);
+    idxHigh = ismember(eegTrials, highTrials);
+
+    low_tfr  = [];
+    high_tfr = [];
+
+    if any(idxLow)
+        cfgS = [];
+        cfgS.trials     = find(idxLow);
+        cfgS.channel    = occ_channels;
+        cfgS.avgoverrpt = 'yes';
+        low_tfr  = ft_selectdata(cfgS, tfr_all);
+    end
+
+    if any(idxHigh)
+        cfgS = [];
+        cfgS.trials     = find(idxHigh);
+        cfgS.channel    = occ_channels;
+        cfgS.avgoverrpt = 'yes';
+        high_tfr = ft_selectdata(cfgS, tfr_all);
+    end
+
+    % Store per-subject results (skip if either side is empty)
+    if ~isempty(low_tfr)
+        low_tfr_subs{s} = low_tfr;
+    end
+    if ~isempty(high_tfr)
+        high_tfr_subs{s} = high_tfr;
+    end
 
 
 end
@@ -127,7 +127,7 @@ low_tfr_subs = low_tfr_subs(~cellfun(@isempty, low_tfr_subs));
 high_tfr_subs = high_tfr_subs(~cellfun(@isempty, high_tfr_subs));
 
 if isempty(low_tfr_subs) || isempty(high_tfr_subs)
-error('No subject TFRs available for grand average (LOW/HIGH SPL).')
+    error('No subject TFRs available for grand average (LOW/HIGH SPL).')
 end
 
 gatfr_low = ft_freqgrandaverage([], low_tfr_subs{:});

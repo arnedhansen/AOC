@@ -34,14 +34,15 @@ for subj = 1:length(subjects)
         dat = ft_selectdata(cfg, dataEEG); % Select data
 
         % Analysis settings
-        cfg = [];                      % Empty configuration
-        cfg.output = 'pow';            % Estimate power only
-        cfg.method = 'mtmfft';         % Multi-taper FFT method
-        cfg.taper = 'dpss';            % Multiple tapers (discrete prolate spheroidal sequences)
-        cfg.tapsmofrq = 1;             % Smoothening frequency around foi
-        cfg.foilim = [3 30];           % Frequencies of interest
-        cfg.keeptrials = 'no';         % Discard trial information
-        cfg.pad = 5;                   % Add zero-padding
+        cfg            = [];                           % Empty configuration
+        cfg.output     = 'pow';                        % Estimate power only
+        cfg.method     = 'mtmconvol';                  % convolution
+        cfg.taper      = 'hanning';                    % Single 500ms hanning taper
+        cfg.foi        = 2:1:40;                       % analysis 2 to 40 Hz in steps of 1 Hz
+        cfg.t_ftimwin  = ones(length(cfg.foi),1).*0.5; % length of time window = 0.5 sec
+        cfg.toi        = -1.5:0.05:3;  
+        cfg.keeptrials = 'no';                         % Discard trial information
+        cfg.pad        = 5;                            % Add zero-padding
 
         % Conduct frequency analysis for each condition separately
         cfg.trials = ind2;

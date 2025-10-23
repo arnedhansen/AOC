@@ -23,9 +23,9 @@ for subj = 1:length(subjects)
         load dataEEG_sternberg
 
         % Identify indices of trials belonging to conditions
-        ind2 = find(dataEEG.trialinfo == 22); % WM load 2
-        ind4 = find(dataEEG.trialinfo == 24); % WM load 4
-        ind6 = find(dataEEG.trialinfo == 26); % WM load 6
+        ind2 = find(dataEEG.trialinfo(:, 1) == 22); % WM load 2
+        ind4 = find(dataEEG.trialinfo(:, 1) == 24); % WM load 4
+        ind6 = find(dataEEG.trialinfo(:, 1) == 26); % WM load 6
 
         % Frequency analysis for retention interval = 1000 ms - 2000ms after stimulus presentation
         % Select data

@@ -1,21 +1,23 @@
 %% AOC Gaze Feature Extraction Sternberg TRIAL-BY-TRIAL
 %
 % Extracted features (trial-wise):
-% GazeDeviationEarly / GazeDeviationEarlyBL (dB)
-% GazeDeviationLate / GazeDeviationLateBL (dB)
-% GazeDeviationFull / GazeDeviationFullBL (dB)
-% ScanPathLengthEarly / ScanPathLengthEarlyBL (dB)
-% ScanPathLengthLate / ScanPathLengthLateBL (dB)
-% ScanPathLengthFull / ScanPathLengthFullBL (dB)
-% PupilSizeEarly / PupilSizeEarlyBL (%)
-% PupilSizeLate / PupilSizeLateBL (%)
-% PupilSizeFull / PupilSizeFullBL (%)
-% MSRateEarly / MSRateEarlyBL (dB, events/s)
-% MSRateLate / MSRateLateBL (dB, events/s)
-% MSRateFull / MSRateFullBL (dB, events/s)
-% Additionally saved per trial:
-% ScanPathSeriesT (time vector, -0.5:2 s) and ScanPathSeries (step length time series, px)
-%
+% - GazeDeviationEarly / GazeDeviationEarlyBL (dB)
+% - GazeDeviationLate / GazeDeviationLateBL (dB)
+% - GazeDeviationFull / GazeDeviationFullBL (dB)
+% - ScanPathLengthEarly / ScanPathLengthEarlyBL (dB)
+% - ScanPathLengthLate / ScanPathLengthLateBL (dB)
+% - ScanPathLengthFull / ScanPathLengthFullBL (dB)
+% - PupilSizeEarly / PupilSizeEarlyBL (%)
+% - PupilSizeLate / PupilSizeLateBL (%)
+% - PupilSizeFull / PupilSizeFullBL (%)
+% - MSRateEarly / MSRateEarlyBL (dB, events/s)
+% - MSRateLate / MSRateLateBL (dB, events/s)
+% - MSRateFull / MSRateFullBL (dB, events/s)
+% - MSSeries (MS Rate time series, events/s)
+% - ScanPathSeriesT (time vector, -0.5:2 s)
+% - ScanPathSeries (step length time series, px)
+% - ScanPathSeriesBins (SPL in 50ms bins, px)
+
 % Notes:
 % - Baseline window: [-0.5 -0.25] s (trial-specific)
 % - Early window: [0 1] s
@@ -101,6 +103,7 @@ for subj = 1:length(subjects)
     MSRateLateBL          = nan(nTrials,1);   % dB
     MSRateFull            = nan(nTrials,1);   % events/s
     MSRateFullBL          = nan(nTrials,1);   % dB
+    MSSeries              = nan(nTrials,50);   % events/s/bin
 
     ScanPathSeriesT       = cell(nTrials,1);
     ScanPathSeries        = cell(nTrials,1);
@@ -340,7 +343,7 @@ for subj = 1:length(subjects)
             pup_full_bl = NaN;
         end
 
-        %% Scan-path time series over [-0.5, 2]
+        %% Scan-path time series [-0.5, 2]
         xs = dat_series(1,:); ys = dat_series(2,:);
         ts = t(idx_series);
 
@@ -365,7 +368,7 @@ for subj = 1:length(subjects)
             idx_start = (b-1)*win_samp + 1;
             idx_end   = b*win_samp;
             segment   = step_series(idx_start:idx_end);
-            step_series_bin(b) = nanmean(segment);               % mean step length per 50 ms
+            step_series_bin(b) = nansum(segment);               % summed step length per 50 ms
             time_bins(b) = mean(time_steps(idx_start:idx_end));  % centre time of that bin
         end
 
@@ -373,6 +376,67 @@ for subj = 1:length(subjects)
         ScanPathSeriesT{trl}    = time_steps;
         ScanPathSeriesBins{trl} = step_series_bin;   % averaged step lengths per 50 ms bin
         ScanPathSeries{trl}     = step_series;         % their corresponding time centres
+
+        %% Microsaccade Time Series [-0.5, 2]
+        % Parameters for MS time course
+        bin_size    = 0.05; % 50 ms
+        bin_samples = round(bin_size * fsample);
+        n_bins      = length(t_series(1):bin_size:t_series(2))-1;
+        MSTime      = linspace(-0.5 + bin_size/2, 2 - bin_size/2, n_bins);
+
+        % Per-trial microsaccade series
+        % (inside your trial loop; 'trl' is the trial index within participant)
+        xpos_series = dat_series(1,:);
+        ypos_series = dat_series(2,:);
+        vel_full    = [xpos_series; ypos_series];
+
+        valid_xy = isfinite(xpos_series) & isfinite(ypos_series);
+        T_full   = sum(valid_xy) / fsample;
+
+        if T_full > 0
+            [~, msf] = detect_microsaccades(fsample, vel_full, size(vel_full,2));
+
+            % Binary onset vector
+            ms_onsets = zeros(1, length(xpos_series));
+            if ~isempty(msf) && isfield(msf, 'Onset') && ~isempty(msf.Onset)
+                % Clip to bounds just in case
+                onsets = msf.Onset(msf.Onset >= 1 & msf.Onset <= length(ms_onsets));
+                ms_onsets(onsets) = 1;
+            end
+
+            % Compute events/s per bin, robust to missing data
+            MSSeries_trl = nan(1, n_bins);
+            for b = 1:n_bins
+                idx_start = (b-1)*bin_samples + 1;
+                idx_end   = b*bin_samples;
+
+                % Guard against any rounding edge cases
+                if idx_end > length(ms_onsets)
+                    idx_end = length(ms_onsets);
+                end
+
+                n_events = sum(ms_onsets(idx_start:idx_end));
+                n_valid  = sum(valid_xy(idx_start:idx_end));
+                eff_sec  = n_valid / fsample;        % effective bin duration
+
+                if eff_sec > 0
+                    MSSeries_trl(b) = n_events;   % events per second
+                else
+                    MSSeries_trl(b) = NaN;
+                end
+            end
+
+            MSSeries(trl, :) = MSSeries_trl;
+            % clc
+            % disp(['MS Series computed for trial ', num2str(trl)])
+            % disp(nansum(MSSeries_trl))
+            % pause(0.5)
+        else
+            % clc
+            % disp('T_full < 0!')
+            % pause(0.5)
+            MSSeries(trl, :) = nan(1, n_bins);
+        end
 
         %% Save trial-wise values
         ID(trl)        = str2double(subjects{subj});
@@ -387,7 +451,7 @@ for subj = 1:length(subjects)
         GazeDeviationFullBL(trl)   = gd_full_bl;
 
         ScanPathLengthEarly(trl)   = spl_early;
-        ScanPathLengthEarlyBL(trl) = spl_early_bl;
+        ScanPathLengthEarlyBL(trl) = spl_early_bl; 
         ScanPathLengthLate(trl)    = spl_late;
         ScanPathLengthLateBL(trl)  = spl_late_bl;
         ScanPathLengthFull(trl)    = spl_full;
@@ -456,7 +520,7 @@ for subj = 1:length(subjects)
 
     % Also save per-trial gaze series and trialinfo (for convenience)
     trialinfo = dataETlong.trialinfo';
-    save([savepath 'gaze_series_sternberg_trials.mat'], 'gaze_x', 'gaze_y', 'trialinfo', 'ScanPathSeriesT', 'ScanPathSeries', 'ScanPathSeriesBins');
+    save([savepath 'gaze_series_sternberg_trials.mat'], 'gaze_x', 'gaze_y', 'trialinfo', 'ScanPathSeriesT', 'ScanPathSeries', 'ScanPathSeriesBins', 'MSSeries');
 end
 
 % Grand save across subjects

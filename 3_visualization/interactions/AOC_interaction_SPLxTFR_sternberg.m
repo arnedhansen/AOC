@@ -23,6 +23,14 @@ high_tfr_subs = cell(1, length(subjects)); % per-subject HIGH-SPL TFR (avg over 
 scan_low = nan(length(subjects), T); % per-subject LOW-SPL scan-path series (avg over trials)
 scan_high = nan(length(subjects), T); % per-subject HIGH-SPL scan-path series (avg over trials)
 
+% Full-resolution holders for stats (common full grid defined below)
+fs_full     = 500;                                  % matches your gaze pipeline
+t_full      = -0.5:1/fs_full:2;                     % sample grid incl. endpoints
+t_plot_full = t_full(2:end);                        % step series aligns to t_full(2:end)
+Tf          = numel(t_plot_full);                   % full-resolution length
+scan_low_full  = nan(length(subjects), Tf);         % per-subject LOW-SPL full series
+scan_high_full = nan(length(subjects), Tf);         % per-subject HIGH-SPL full series
+
 %% Per-subject split (by SPL) and aggregation of EEG TFRs + SPL series
 for subj = 1:length(subjects)
     clc
@@ -40,7 +48,7 @@ for subj = 1:length(subjects)
 
     % Compute subject-specific z-scores and remove trials beyond 3 SD
     z_spl = (spl - nanmean(spl)) ./ nanstd(spl);
-    good_idx = good_idx & abs(z_spl) <= 3; 
+    good_idx = good_idx & abs(z_spl) <= 3;
 
     if ~any(good_idx)
         warning('No valid SPL for subject %s. Skipping subject.', subjects{subj})
@@ -142,7 +150,7 @@ for subj = 1:length(subjects)
     disp('Extracting Gaze: SPL time-series LOW/HIGH-SPL')
     try
         datapath_gaze = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', subjects{subj}, 'gaze', 'gaze_series_sternberg_trials.mat');
-        load(datapath_gaze, 'ScanPathSeriesBins', 'ScanPathSeriesT', 'trialinfo')
+        load(datapath_gaze, 'ScanPathSeries', 'ScanPathSeriesBins', 'ScanPathSeriesT', 'trialinfo')
     catch
         warning('Missing gaze series for subject %subj, skipping gaze part.', subjects{subj})
     end
@@ -167,7 +175,7 @@ for subj = 1:length(subjects)
                 end
             end
 
-            gazeTrials = trialinfo(:,2);
+            gazeTrials = trialinfo(2,:);
             lowMask  = ismember(gazeTrials,  lowTrials);
             highMask = ismember(gazeTrials, highTrials);
 
@@ -177,11 +185,81 @@ for subj = 1:length(subjects)
             if any(highMask)
                 scan_high(subj,:) = nanmean(subj_trials(highMask,:), 1);
             end
+            % Interpolate each trial also to the common FULL grid of step times (t_full(2:end))
+            subj_trials_full = nan(numel(ScanPathSeries), Tf);
+
+            for trl = 1:numel(ScanPathSeries)
+                srl_full = ScanPathSeries{trl}; % full-resolution step-length series for this trial
+                tt_full  = linspace(-0.5,2,1250); % its time vector (same length as srl_full+1 samples)
+
+                if isempty(srl_full) || isempty(tt_full)
+                    continue
+                end
+
+                % IMPORTANT: step series aligns to 2:end of the time vector
+                try
+                    subj_trials_full(trl, :) = interp1(tt_full, srl_full, t_plot_full, 'linear', NaN);
+                catch
+                    % leave as NaN
+                end
+            end
+
+            % Use the same lowMask/highMask you already computed
+            if any(lowMask)
+                scan_low_full(subj, :)  = nanmean(subj_trials_full(lowMask , :), 1);
+            end
+            if any(highMask)
+                scan_high_full(subj, :) = nanmean(subj_trials_full(highMask, :), 1);
+            end
         end
     end
 
+    % Collect LOW trials into long table
+    if any(lowMask)
+        trl_idx = find(lowMask);
+        for r = 1:numel(trl_idx)
+            tr = trl_idx(r);
+            y  = subj_trials_full(tr, :);                % 1 x Tf
+            good = isfinite(y);
+            if any(good)
+                n  = nnz(good);
+                datTS_ID   = [datTS_ID;   repmat(subjID, n, 1)];
+                datTS_Trial= [datTS_Trial; repmat(gazeTrials(tr), n, 1)];
+                datTS_Cond = [datTS_Cond;  repmat({'LOW'}, n, 1)];
+                datTS_tidx = [datTS_tidx;  find(good)'];
+                datTS_t    = [datTS_t;     t_plot_full(good)'];
+                datTS_SPL  = [datTS_SPL;   y(good)'];
+            end
+        end
+    end
+
+    % Collect HIGH trials into long table
+    if any(highMask)
+        trl_idx = find(highMask);
+        for r = 1:numel(trl_idx)
+            tr = trl_idx(r);
+            y  = subj_trials_full(tr, :);
+            good = isfinite(y);
+            if any(good)
+                n  = nnz(good);
+                datTS_ID   = [datTS_ID;   repmat(subjID, n, 1)];
+                datTS_Trial= [datTS_Trial; repmat(gazeTrials(tr), n, 1)];
+                datTS_Cond = [datTS_Cond;  repmat({'HIGH'}, n, 1)];
+                datTS_tidx = [datTS_tidx;  find(good)'];
+                datTS_t    = [datTS_t;     t_plot_full(good)'];
+                datTS_SPL  = [datTS_SPL;   y(good)'];
+            end
+        end
+    end
 
 end
+datTS = table;
+datTS.ID     = datTS_ID;
+datTS.Trial  = datTS_Trial;
+datTS.Condition = categorical(datTS_Cond, {'LOW','HIGH'});  % set LOW as reference
+datTS.t_index   = datTS_tidx;                               % 1..Tf
+datTS.Time      = datTS_t;                                   % seconds
+datTS.SPL       = datTS_SPL;
 
 %% Grand-average TFRs (LOW vs HIGH SPL)
 low_tfr_subs = low_tfr_subs(~cellfun(@isempty, low_tfr_subs));
@@ -193,6 +271,10 @@ end
 
 gatfr_low = ft_freqgrandaverage([], low_tfr_subs{:});
 gatfr_high = ft_freqgrandaverage([], high_tfr_subs{:});
+
+%% Save VARIABLES
+save '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_interaction_SPLxTFR_sternberg' ...
+     gatfr_low gatfr_high scan_low scan_high scan_low_full scan_high_full time_series datTS t_plot_full
 
 %% Plot Alpha Power TFRs
 cfg = [];
@@ -249,8 +331,10 @@ gatfr_diff = gatfr_high;
 gatfr_diff.powspctrm = gatfr_high.powspctrm - gatfr_low.powspctrm;
 figure
 set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
-ft_singleplotTFR(cfg, gatfr_high);
-colormap(color_map);
+ft_singleplotTFR(cfg, gatfr_diff);
+color_mapBlRd = customcolormap_preset('red-white-blue');
+colormap(color_mapBlRd);
+clim = ([-.5 .5]);
 set(gca, 'CLim', clim);
 cb = colorbar; ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
@@ -261,76 +345,79 @@ title('Sternberg TFR — DIFF (HIGH SPL - LOW SPL trials)');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_TFR_DIFF_SPL_trials.png');
 
 %% TFR DIFF STATS (CBPT)
-N = numel(low_tfr_subs);
-assert(N == numel(high_tfr_subs), 'LOW/HIGH cell arrays must be same length.');
+% N = numel(low_tfr_subs);
+% assert(N == numel(high_tfr_subs), 'LOW/HIGH cell arrays must be same length.');
+% 
+% % Neighbours (EEG): derive from electrode positions
+% cfg_n               = [];
+% cfg_n.method        = 'distance';          % safe default if you have .elec
+% cfg_n.neighbourdist = 0.035;            % ~3.5 cm for ANT 128
+% cfg_n.elec          = low_tfr_subs{1}.elec;
+% neighbours          = ft_prepare_neighbours(cfg_n);
+% 
+% % Design (within-subject)
+% design = zeros(2, 2*N);
+% design(1, :) = [1:N,           1:N          ]; % subject id
+% design(2, :) = [ones(1, N),    2*ones(1, N) ]; % condition code
+% cfgs               = [];
+% cfgs.parameter     = 'powspctrm';
+% cfgs.method        = 'montecarlo';
+% cfgs.statistic     = 'ft_statfun_depsamplesT';
+% cfgs.correctm      = 'cluster';
+% cfgs.clusteralpha  = 0.05;
+% cfgs.clusterstatistic = 'maxsum';
+% cfgs.minnbchan     = 2;                    % require ≥2 neighbouring chans in a cluster
+% cfgs.neighbours    = neighbours;
+% cfgs.tail          = 0;                    % two-sided
+% cfgs.clustertail   = 0;
+% cfgs.alpha         = 0.025;                % report threshold (two-sided)
+% cfgs.numrandomization = 2000;              % increase if you want more precision
+% cfgs.design        = design;
+% cfgs.uvar          = 1;                    % unit of observation = subject
+% cfgs.ivar          = 2;                    % independent variable = condition
+% cfgs.channel       = 'all';                % or e.g., occipital ROI
+% cfgs.latency       = [ 0  2 ];           % optionally restrict time window
+% cfgs.frequency     = [ 4 30 ];            % optionally restrict frequency range
+% 
+% % Run stats across the full TFR (space × freq × time)
+% stat_tfr = ft_freqstatistics(cfgs, low_tfr_subs{:}, high_tfr_subs{:});
+% 
+% % Grand averages for plotting (and DIFF)
+% cfgGA          = [];
+% cfgGA.parameter= 'powspctrm';
+% ga_low         = ft_freqgrandaverage(cfgGA,  low_tfr_subs{:});
+% ga_high        = ft_freqgrandaverage(cfgGA, high_tfr_subs{:});
+% ga_diff        = ga_high; % copy metadata
+% ga_diff.powspctrm = ga_high.powspctrm - ga_low.powspctrm;
+% ga_diff.powspctrm = ga_diff.powspctrm(1:24, 1:27, find(ga_diff.time ==0):find(ga_diff.time ==2));
+% 
+% % Attach mask from stats (significant clusters)
+% ga_diff.mask   = stat_tfr.mask; % logical mask time×freq×chan re-ordered internally by FT
+% 
+% % Plot masked DIFF TFR (average over chosen channels)
+% cfgp                  = [];
+% cfgp.parameter        = 'powspctrm';
+% cfgp.maskparameter    = 'mask';
+% cfgp.maskstyle        = 'outline';
+% cfgp.zlim             = clim;           % reuse your colour limits
+% cfgp.colormap         = color_map;
+% cfgp.channel          = 'all';          % or a ROI like {'O1','Oz','O2','POz',...}
+% cfgp.figure           = 'gcf';
+% 
+% close all
+% figure
+% set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
+% ft_singleplotTFR(cfgp, ga_diff);
+% cb = colorbar; ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
+% xlabel('Time [s]'); ylabel('Frequency [Hz]');
+% rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4); % 0–2 s × 8–14 Hz
+% set(gca, 'FontSize', fontSize);
+% title('Sternberg TFR — DIFF (HIGH - LOW), significant clusters outlined')
+% saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_TFR_DIFF_SPL_trials_STATS.png');
 
-% Neighbours (EEG): derive from electrode positions
-cfg_n               = [];
-cfg_n.method        = 'distance';          % safe default if you have .elec
-cfg_n.neighbourdist = 0.035;            % ~3.5 cm for ANT 128
-cfg_n.elec          = low_tfr_subs{1}.elec;
-neighbours          = ft_prepare_neighbours(cfg_n);
-
-% Design (within-subject)
-design = zeros(2, 2*N);
-design(1, :) = [1:N,           1:N          ]; % subject id
-design(2, :) = [ones(1, N),    2*ones(1, N) ]; % condition code
-cfgs               = [];
-cfgs.parameter     = 'powspctrm';
-cfgs.method        = 'montecarlo';
-cfgs.statistic     = 'ft_statfun_depsamplesT';
-cfgs.correctm      = 'cluster';
-cfgs.clusteralpha  = 0.05;
-cfgs.clusterstatistic = 'maxsum';
-cfgs.minnbchan     = 2;                    % require ≥2 neighbouring chans in a cluster
-cfgs.neighbours    = neighbours;
-cfgs.tail          = 0;                    % two-sided
-cfgs.clustertail   = 0;
-cfgs.alpha         = 0.025;                % report threshold (two-sided)
-cfgs.numrandomization = 2000;              % increase if you want more precision
-cfgs.design        = design;
-cfgs.uvar          = 1;                    % unit of observation = subject
-cfgs.ivar          = 2;                    % independent variable = condition
-cfgs.channel       = 'all';                % or e.g., occipital ROI
-cfgs.latency       = [ 0  2 ];           % optionally restrict time window
-cfgs.frequency     = [ 4 30 ];            % optionally restrict frequency range
-
-% Run stats across the full TFR (space × freq × time)
-stat_tfr = ft_freqstatistics(cfgs, low_tfr_subs{:}, high_tfr_subs{:});
-
-% Grand averages for plotting (and DIFF)
-cfgGA          = [];
-cfgGA.parameter= 'powspctrm';
-ga_low         = ft_freqgrandaverage(cfgGA,  low_tfr_subs{:});
-ga_high        = ft_freqgrandaverage(cfgGA, high_tfr_subs{:});
-ga_diff        = ga_high; % copy metadata
-ga_diff.powspctrm = ga_high.powspctrm - ga_low.powspctrm;
-
-% Attach mask from stats (significant clusters)
-ga_diff.mask   = stat_tfr.mask; % logical mask time×freq×chan re-ordered internally by FT
-
-% Plot masked DIFF TFR (average over chosen channels)
-cfgp                  = [];
-cfgp.parameter        = 'powspctrm';
-cfgp.maskparameter    = 'mask';
-cfgp.maskstyle        = 'outline';
-cfgp.zlim             = clim;           % reuse your colour limits
-cfgp.colormap         = color_map;
-cfgp.channel          = 'all';          % or a ROI like {'O1','Oz','O2','POz',...}
-cfgp.figure           = 'gcf';
-
+%% Scan Path Length time-course (LOW vs HIGH SPL) TTEST
 close all
-figure
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
-ft_singleplotTFR(cfgp, ga_diff);
-cb = colorbar; ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
-xlabel('Time [s]'); ylabel('Frequency [Hz]');
-rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4); % 0–2 s × 8–14 Hz
-set(gca, 'FontSize', fontSize);
-title('Sternberg TFR — DIFF (HIGH - LOW), significant clusters outlined')
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_TFR_DIFF_SPL_trials_STATS.png');
-
-%% Grand-average Scan Path Length time-course (LOW vs HIGH SPL)
+clc
 grand_low = nanmean(scan_low, 1);
 grand_high = nanmean(scan_high, 1);
 sem_low = nanstd(scan_low, [], 1) ./ sqrt(sum(isfinite(scan_low), 1));
@@ -347,39 +434,109 @@ title('Sternberg — Scan Path Length over time (LOW vs HIGH SPL trials)')
 xlim([time_series(1) time_series(end)])
 box on
 set(gca, 'FontSize', 25)
-legend({'LOW SPL ± SEM','HIGH SPL ± SEM'}, 'Location','northwest')
 
 % Paired t-tests (HIGH vs LOW) with FDR correction using mafdr
-N = size(scan_low, 1);
-T = size(scan_low, 2);
+N  = size(scan_low_full, 1);         % subjects
+Tf = size(scan_low_full, 2);         % full-resolution time points
 
-pvals = nan(1, T);
-for t = 1:T
-    [~, pvals(t)] = ttest(scan_high(:,t), scan_low(:,t));
+pvals = nan(1, Tf);
+for t = 1:Tf
+    [~, pvals(t)] = ttest(scan_high_full(:, t), scan_low_full(:, t));
 end
 
-% FDR correction (Benjamini–Hochberg)
-qvals = mafdr(pvals, 'BHFDR', true);
+% FDR correction (Benjamini–Hochberg) on full-res p-values
+qvals    = mafdr(pvals, 'BHFDR', true);
 sig_mask = qvals < 0.05;
 
-% Add significance bar
-ax = gca;
-yl = ylim(ax);
-yr = yl(2) - yl(1);
-ybar = yl(1) + 0.03*yr;
-
+% Convert the full-res significance mask into contiguous intervals (using t_plot_full)
 d_sig   = diff([0, sig_mask, 0]);
 on_sig  = find(d_sig == 1);
 off_sig = find(d_sig == -1) - 1;
 
+% y-position for the bar stays the same; only the x-locations change to full-res time
 hold on
+signBarHight = 0.15;
 for k = 1:numel(on_sig)
-    x0 = t_plot(on_sig(k));
-    x1 = t_plot(off_sig(k));
-    plot([x0 x1], [ybar ybar], 'k-', 'LineWidth', 12)
+    x0 = t_plot_full(on_sig(k));
+    x1 = t_plot_full(off_sig(k));
+    plot([x0 x1], [signBarHight signBarHight], 'k-', 'LineWidth', 12)
 end
+legend({'LOW SPL ± SEM','HIGH SPL ± SEM'}, 'Location','northwest')
 
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_scanPathLength_LOWvsHIGH_SPL.png')
+
+%% Scan Path Length time-course (LOW vs HIGH SPL) LMM
+
+%Optional: light trimming of extreme SPL at trial-level (robustness)
+keep = isfinite(datTS.SPL) & abs(normalize(datTS.SPL, 'zscore')) <= 4;
+datTS = datTS(keep, :);
+
+% Per-timepoint LMMs: SPL ~ Condition + (1|ID)   [trial-level, full-res]
+Tf = numel(t_plot_full);
+p_lmm  = nan(1, Tf);
+t_lmm  = nan(1, Tf);
+b_lmm  = nan(1, Tf);  % fixed effect estimate for Condition HIGH vs LOW
+
+for ti = 1:Tf
+    idx = datTS.t_index == ti;
+    if ~any(idx), continue; end
+
+    tbl = datTS(idx, {'SPL','Condition','ID'});
+    % Require at least some data in both levels to fit a contrast
+    haveLOW  = any(tbl.Condition == 'LOW');
+    haveHIGH = any(tbl.Condition == 'HIGH');
+    if ~(haveLOW && haveHIGH), continue; end
+
+    % Mixed model at this timepoint
+    lme = fitlme(tbl, 'SPL ~ Condition + (1|ID)');
+
+    % Extract the Condition effect (HIGH vs LOW)
+    coefTab = lme.Coefficients;
+    row = strcmp(coefTab.Name, 'Condition_HIGH'); 
+    if any(row)
+        b_lmm(ti) = coefTab.Estimate(row);
+        t_lmm(ti) = coefTab.tStat(row);
+        p_lmm(ti) = coefTab.pValue(row);
+    end
+end
+
+% Multiple-comparisons control across time (BH-FDR)
+q_lmm  = mafdr(p_lmm, 'BHFDR', true);
+sig_lmm = q_lmm < 0.05;
+
+% Find contiguous significant segments in full-res time
+d_sig   = diff([0, sig_lmm, 0]);
+on_sig  = find(d_sig == 1);
+off_sig = find(d_sig == -1) - 1;
+
+% Plot grand average of binned data
+close all
+clc
+grand_low = nanmean(scan_low, 1);
+grand_high = nanmean(scan_high, 1);
+sem_low = nanstd(scan_low, [], 1) ./ sqrt(sum(isfinite(scan_low), 1));
+sem_high = nanstd(scan_high, [], 1) ./ sqrt(sum(isfinite(scan_high), 1));
+t_plot = time_series(2:end);
+
+figure;
+set(gcf, 'Color', 'w', 'Position', [0 0 2000 1200]); hold on
+shadedErrorBar(t_plot, grand_low, sem_low, 'lineProps', {'-','Color',colors(1,:),'LineWidth',2.5}, 'transparent', true);
+shadedErrorBar(t_plot, grand_high, sem_high, 'lineProps', {'-','Color',colors(3,:),'LineWidth',2.5}, 'transparent', true);
+xlabel('Time [s]')
+ylabel('Scan Path Length [px]')
+title('Sternberg — Scan Path Length over time (LOW vs HIGH SPL trials)')
+xlim([time_series(1) time_series(end)])
+box on
+set(gca, 'FontSize', 25)
+
+% Plot significance indication
+hold on
+signBarHight = 0.15;
+for k = 1:numel(on_sig)
+    x0 = t_plot_full(on_sig(k));
+    x1 = t_plot_full(off_sig(k));
+    plot([x0 x1], [signBarHight signBarHight], 'k-', 'LineWidth', 12)
+end
 
 %% SPL and Alpha Power over Time
 alpha_band = [8 14]; % Hz
@@ -406,7 +563,7 @@ shadedErrorBar(t_plot, grand_high, sem_high, ...
 for k = 1:numel(on_sig)
     x0 = t_plot(on_sig(k));
     x1 = t_plot(off_sig(k));
-    plot([x0 x1], [ybar ybar], 'k-', 'LineWidth', 12)
+    plot([x0 x1], [signBarHight signBarHight], 'k-', 'LineWidth', 12)
 end
 
 ylabel('Scan Path Length [px]')

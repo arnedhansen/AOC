@@ -31,6 +31,13 @@ Tf          = numel(t_plot_full);                   % full-resolution length
 scan_low_full  = nan(length(subjects), Tf);         % per-subject LOW-SPL full series
 scan_high_full = nan(length(subjects), Tf);         % per-subject HIGH-SPL full series
 
+datTS_ID    = [];
+datTS_Trial = [];
+datTS_Cond  = [];
+datTS_tidx  = [];
+datTS_t     = [];
+datTS_SPL   = [];
+
 %% Per-subject split (by SPL) and aggregation of EEG TFRs + SPL series
 for subj = 1:length(subjects)
     clc
@@ -56,6 +63,7 @@ for subj = 1:length(subjects)
     end
 
     % Random tie-breaking median split (within-subject, by SPL)
+    rng(subjID, 'twister');
     spl_sub  = spl(good_idx);
     trl_sub  = trlN(good_idx);
     rp       = randperm(numel(spl_sub));  % random permutation to break ties stably
@@ -107,7 +115,7 @@ for subj = 1:length(subjects)
             end
         end
         if isempty(occ_channels)
-            occ_channels = tfr_all.label;
+            error('ERROR IN CHANNEL SELECTION')
         end
 
         if size(tfr_all.trialinfo,2) < 2
@@ -161,10 +169,10 @@ for subj = 1:length(subjects)
         else
             % Interpolate each trial to the common grid of step times (time_series(2:end))
             subj_trials = nan(numel(ScanPathSeriesBins), T);
-            ScanPathSeriesT = linspace(-0.5,2,50);
+            ScanPathSeriesTBins = linspace(-0.5,2,50);
             for trl = 1:numel(ScanPathSeriesBins)
                 srl = ScanPathSeriesBins{trl};
-                tt  = ScanPathSeriesT;
+                tt  = ScanPathSeriesTBins;
                 if isempty(srl) || isempty(tt) || numel(tt) ~= numel(srl)
                     continue
                 end
@@ -190,13 +198,13 @@ for subj = 1:length(subjects)
 
             for trl = 1:numel(ScanPathSeries)
                 srl_full = ScanPathSeries{trl}; % full-resolution step-length series for this trial
-                tt_full  = linspace(-0.5,2,1250); % its time vector (same length as srl_full+1 samples)
+                tt_full  = ScanPathSeriesT{trl}; % its time vector (same length as srl_full+1 samples)
 
                 if isempty(srl_full) || isempty(tt_full)
                     continue
                 end
 
-                % IMPORTANT: step series aligns to 2:end of the time vector
+                % step series align to time vector
                 try
                     subj_trials_full(trl, :) = interp1(tt_full, srl_full, t_plot_full, 'linear', NaN);
                 catch
@@ -206,7 +214,7 @@ for subj = 1:length(subjects)
 
             % Use the same lowMask/highMask you already computed
             if any(lowMask)
-                scan_low_full(subj, :)  = nanmean(subj_trials_full(lowMask , :), 1);
+                scan_low_full(subj, :)  = nanmean(subj_trials_full(lowMask, :), 1);
             end
             if any(highMask)
                 scan_high_full(subj, :) = nanmean(subj_trials_full(highMask, :), 1);
@@ -223,12 +231,12 @@ for subj = 1:length(subjects)
             good = isfinite(y);
             if any(good)
                 n  = nnz(good);
-                datTS_ID   = [datTS_ID;   repmat(subjID, n, 1)];
-                datTS_Trial= [datTS_Trial; repmat(gazeTrials(tr), n, 1)];
-                datTS_Cond = [datTS_Cond;  repmat({'LOW'}, n, 1)];
-                datTS_tidx = [datTS_tidx;  find(good)'];
-                datTS_t    = [datTS_t;     t_plot_full(good)'];
-                datTS_SPL  = [datTS_SPL;   y(good)'];
+                datTS_ID    = [datTS_ID;   repmat(subjID, n, 1)];
+                datTS_Trial = [datTS_Trial; repmat(gazeTrials(tr), n, 1)];
+                datTS_Cond  = [datTS_Cond;  repmat({'LOW'}, n, 1)];
+                datTS_tidx  = [datTS_tidx;  find(good)'];
+                datTS_t     = [datTS_t;     t_plot_full(good)'];
+                datTS_SPL   = [datTS_SPL;   y(good)'];
             end
         end
     end
@@ -242,20 +250,20 @@ for subj = 1:length(subjects)
             good = isfinite(y);
             if any(good)
                 n  = nnz(good);
-                datTS_ID   = [datTS_ID;   repmat(subjID, n, 1)];
-                datTS_Trial= [datTS_Trial; repmat(gazeTrials(tr), n, 1)];
-                datTS_Cond = [datTS_Cond;  repmat({'HIGH'}, n, 1)];
-                datTS_tidx = [datTS_tidx;  find(good)'];
-                datTS_t    = [datTS_t;     t_plot_full(good)'];
-                datTS_SPL  = [datTS_SPL;   y(good)'];
+                datTS_ID    = [datTS_ID;   repmat(subjID, n, 1)];
+                datTS_Trial = [datTS_Trial; repmat(gazeTrials(tr), n, 1)];
+                datTS_Cond  = [datTS_Cond;  repmat({'HIGH'}, n, 1)];
+                datTS_tidx  = [datTS_tidx;  find(good)'];
+                datTS_t     = [datTS_t;     t_plot_full(good)'];
+                datTS_SPL   = [datTS_SPL;   y(good)'];
             end
         end
     end
 
 end
-datTS = table;
-datTS.ID     = datTS_ID;
-datTS.Trial  = datTS_Trial;
+datTS           = table;
+datTS.ID        = datTS_ID;
+datTS.Trial     = datTS_Trial;
 datTS.Condition = categorical(datTS_Cond, {'LOW','HIGH'});  % set LOW as reference
 datTS.t_index   = datTS_tidx;                               % 1..Tf
 datTS.Time      = datTS_t;                                   % seconds
@@ -488,7 +496,9 @@ for ti = 1:Tf
     if ~(haveLOW && haveHIGH), continue; end
 
     % Mixed model at this timepoint
-    lme = fitlme(tbl, 'SPL ~ Condition + (1|ID)');
+    lme = fitlme(tbl, 'SPL ~ Condition + (1 + Condition | ID)');
+    % estimate the population-level effect of Condition (HIGH vs LOW)
+    % and allow each participant to have their own intercept and their own Condition slope
 
     % Extract the Condition effect (HIGH vs LOW)
     coefTab = lme.Coefficients;
@@ -560,11 +570,19 @@ shadedErrorBar(t_plot, grand_high, sem_high, ...
     'lineProps', {'-','Color',colors(3,:),'LineWidth',2.5}, 'transparent', true);
 
 % Mark significant intervals
+
+
+
+% maybe use t_plot_full??
 for k = 1:numel(on_sig)
     x0 = t_plot(on_sig(k));
     x1 = t_plot(off_sig(k));
     plot([x0 x1], [signBarHight signBarHight], 'k-', 'LineWidth', 12)
 end
+
+
+
+
 
 ylabel('Scan Path Length [px]')
 title('Sternberg — Scan Path Length and Alpha Power over time (LOW vs HIGH SPL trials)')

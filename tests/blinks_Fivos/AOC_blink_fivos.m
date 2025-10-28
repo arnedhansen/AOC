@@ -155,9 +155,9 @@ bar(centres, aggCounts, 'BarWidth', 1.0, 'FaceColor', colors(2,:), 'EdgeColor', 
 xline(0,'k--','LineWidth',2)          % stimulus
 xline(probeLatencyS,'k--','LineWidth',2)  % nominal probe at +3 s
 xlim(twin)
-text(-0.15, -50, 'STIMULUS', 'FontSize', 15, 'FontWeight', 'bold')
-text(2.9, -50, 'PROBE', 'FontSize', 15, 'FontWeight', 'bold')
-text(3.25, 330, ['N = ', num2str(nValid), ' Subjects'], 'FontSize', 15, 'FontWeight', 'bold')
+text(-0.175, -300, 'STIMULUS', 'FontSize', 15, 'FontWeight', 'bold')
+text(2.875, -300, 'PROBE', 'FontSize', 15, 'FontWeight', 'bold')
+text(3.5, 2110, ['N = ', num2str(nValid), ' Subjects'], 'FontSize', 15, 'FontWeight', 'bold')
 xlabel('Time [s]')
 ylabel('Pooled Blink Count')
 title('Aggregated Blinks')
@@ -171,12 +171,12 @@ plot(centres, meanPerSubj - semPerSubj, '-', 'LineWidth', 1.5, 'Color', 'k')
 xline(0,'k--','LineWidth',2)
 xline(probeLatencyS,'k--','LineWidth',2)
 xlim(twin)
-text(-0.15, -0.0125, 'STIMULUS', 'FontSize', 15, 'FontWeight', 'bold')
-text(2.9, -0.0125, 'PROBE', 'FontSize', 15, 'FontWeight', 'bold')
+text(-0.175, -0.01, 'STIMULUS', 'FontSize', 15, 'FontWeight', 'bold')
+text(2.875, -0.01, 'PROBE', 'FontSize', 15, 'FontWeight', 'bold')
 xlabel('Time [s]')
 ylabel('Averaged Binned Blinks')
 title('Averaged Blinks')
 set(gca,'FontSize',fontSize)
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/tests/AOC_sternberg_blink_hist.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/blinks/AOC_sternberg_blink_hist.png');

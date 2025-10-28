@@ -47,6 +47,8 @@ dat$ID = as.factor(dat$ID)
 dat$Trial = as.factor(dat$Trial)
 dat$Condition = as.factor(dat$Condition)
 
+z-score within participant
+
 # When you include (1 | ID) or (1 + Condition | ID) in your GLMM, 
 # you’re already accounting for the fact that multiple trials belong 
 # to the same participant. The model therefore implicitly handles 

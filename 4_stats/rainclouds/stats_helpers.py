@@ -14,21 +14,40 @@ def p_to_signif(p):
         return "*"
     else:
         return "n.s."
+def _mask_series(s: pd.Series) -> pd.Series:
+    """1.5×IQR mask within one group; outliers -> NaN."""
+    if s.size == 0:
+        return s
+    x = s.to_numpy(dtype=float, copy=False)
+    if np.sum(~np.isnan(x)) < 3:
+        return s
 
-def iqr_outlier_filter(df, variables, by="Condition"):
+    q1 = np.nanpercentile(x, 25)
+    q3 = np.nanpercentile(x, 75)
+    iqr = q3 - q1
+    if not np.isfinite(iqr) or iqr == 0:
+        return s
+
+    lower = q1 - 1.5 * iqr
+    upper = q3 + 1.5 * iqr
+    keep = s.isna() | ((s >= lower) & (s <= upper))
+    return s.where(keep)
+
+def iqr_outlier_filter(df: pd.DataFrame, variables, by):
+    """
+    Set outliers to NaN per group for each variable via 1.5×IQR.
+    Uses SeriesGroupBy.apply with group_keys=False to keep the original row index.
+    """
     out = df.copy()
-    # per condition and per variable, set outliers to NaN (1.5×IQR)
+    if isinstance(by, str):
+        by = [by]
+
+    g = out.groupby(by, observed=True, sort=False, dropna=False, group_keys=False)
+
     for v in variables:
-        def _mask(group):
-            x = group[v].to_numpy()
-            q1 = np.nanpercentile(x, 25)
-            q3 = np.nanpercentile(x, 75)
-            iqr = q3 - q1
-            lo = q1 - 1.5 * iqr
-            hi = q3 + 1.5 * iqr
-            mask = (x < lo) | (x > hi)
-            return pd.Series(np.where(mask, np.nan, x), index=group.index)
-        out[v] = out.groupby(by, observed=True, sort=False, dropna=False, group_keys=False).apply(_mask)
+        masked = g[v].apply(_mask_series)                 # no FutureWarning
+        out[v] = masked.reindex(out.index)                # align defensively
+
     return out
 
 def _mixedlm_fit(df, value_col, group_col, id_col):

@@ -1,9 +1,3 @@
-import os
-import matplotlib.pyplot as plt
-
-def ensure_dir(path):
-    os.makedirs(path, exist_ok=True)
-
 def _xpos_for_category_from_ticks(ax, category):
     """
     Infer the x position for a categorical label from current tick labels.

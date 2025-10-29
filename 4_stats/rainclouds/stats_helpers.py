@@ -1,6 +1,5 @@
 import numpy as np
 import pandas as pd
-import statsmodels.api as sm
 import statsmodels.formula.api as smf
 from scipy.stats import norm
 from statsmodels.stats.multitest import multipletests

@@ -63,7 +63,7 @@ save_names = ["acc", "rt", "gazedev", "ms", "fix", "sacc", "pow", "iaf"]
 # Manual y ticks and ylims per variable
 yticks_map = {
     "Accuracy"     : np.arange(60, 101, 5),
-    "ReactionTime" : np.arange(0.3, 1.31, 0.1),
+    "ReactionTime" : np.arange(0.3, 1.35, 0.1),
     "GazeDeviation": np.arange(0, 125, 10),
     "MSRate"       : np.arange(0, 4.1, 0.5),
     "Fixations"    : np.arange(0, 8.5, 1),
@@ -73,7 +73,7 @@ yticks_map = {
 }
 ylims_map = {
     "Accuracy"     : (60, 102),
-    "ReactionTime" : (0.3, 1.3),
+    "ReactionTime" : (0.3, 1.35),
     "GazeDeviation": (0, 125),
     "MSRate"       : (0, 4.1),
     "Fixations"    : (0, 8.5),
@@ -234,29 +234,31 @@ for task in tasks:
                 continue
 
             # VIOLIN (left half)
-            try:
-                kde = gaussian_kde(yvals, bw_method=bw_method)
-                y_min = np.nanmin(yvals)
-                y_max = np.nanmax(yvals)
-                if not np.isfinite(y_min) or not np.isfinite(y_max) or y_min == y_max:
-                    y_grid = np.linspace(y_min - 1e-6, y_max + 1e-6, 50)
-                else:
-                    pad = 0.075 * (y_max - y_min) if (y_max - y_min) > 0 else 1.0
-                    y_grid = np.linspace(lower_bound - pad, upper_bound + pad, 200)
+            # Determine hard cap for this variable
+            ymax_cap = ylims_map[var][1] if var in ylims_map else float(dvar[var].max())
+            ymin_cap = ylims_map[var][0] if var in ylims_map else float(dvar[var].min())
+            yr = ymax_cap - ymin_cap
 
-                dens = kde(y_grid)
-                scale = (max_violsw / np.nanmax(dens)) if np.nanmax(dens) > 0 else 0.0
+            pad_top = min(0.02 * yr, 0.3)
+            y_grid_top = ymin_cap + yr + pad_top
 
-                x_left  = xpos[cond_lab] + cloud_offset - dens * scale
-                x_right = np.full_like(y_grid, xpos[cond_lab] + cloud_offset)
+            # build KDE
+            kde = gaussian_kde(yvals, bw_method=bw_method)  # <-- REINSERT THIS LINE
 
-                poly_x = np.concatenate([x_right, x_left[::-1]])
-                poly_y = np.concatenate([y_grid, y_grid[::-1]])
-                ax.fill(poly_x, poly_y, facecolor=pal_dict[cond_lab], edgecolor="none", alpha=viol_alpha)
+            # grid
+            y_grid = np.linspace(ymin_cap, y_grid_top, 400)
 
-            except Exception:
-                ax.scatter([xpos[cond_lab] + cloud_offset], [np.nanmean(yvals)],
-                           s=60, facecolor=pal_dict[cond_lab], edgecolor="none", alpha=viol_alpha)
+            dens = kde(y_grid)
+            scale = (max_violsw / np.nanmax(dens)) if np.nanmax(dens) > 0 else 0.0
+
+            x_left  = xpos[cond_lab] + cloud_offset - dens * scale
+            x_right = np.full_like(y_grid, xpos[cond_lab] + cloud_offset)
+
+            poly_x = np.concatenate([x_right, x_left[::-1]])
+            poly_y = np.concatenate([y_grid, y_grid[::-1]])
+            ax.fill(poly_x, poly_y,
+                    facecolor=pal_dict[cond_lab], edgecolor="none",
+                    alpha=viol_alpha, clip_on=True)
 
             # DOTS
             x_jit = xpos[cond_lab] + rng.uniform(-box_width / 2, box_width / 2, size=yvals.size)

@@ -176,6 +176,53 @@ for task in tasks:
     # Outlier removal per condition & variable (1.5×IQR)
     dat = iqr_outlier_filter(dat, variables, by="Condition")
 
+    # %% Descriptive statistics per condition (save as CSV)
+    desc_rows = []
+
+    for var in variables:
+        if var not in dat.columns:
+            continue
+
+        subdat = dat.loc[~dat[var].isna(), ["ID", "Condition", var]].copy()
+        if subdat.empty:
+            continue
+
+        # Group by Condition (subjects already collapsed to one row per condition)
+        for cond_lab, g in subdat.groupby("Condition"):
+            if g.empty:
+                continue
+
+            vals = g[var].to_numpy()
+
+            n     = vals.size
+            mean  = np.nanmean(vals)
+            sd    = np.nanstd(vals, ddof=1)
+            sem   = sd / np.sqrt(n) if n > 0 else np.nan
+            med   = np.nanmedian(vals)
+            q1    = np.nanpercentile(vals, 25)
+            q3    = np.nanpercentile(vals, 75)
+            iqr   = q3 - q1
+
+            desc_rows.append([
+                task["name"], var, cond_lab, n,
+                round(mean, 2), round(sd, 2), round(sem, 2),
+                round(med, 2), round(q1, 2), round(q3, 2), round(iqr, 2)
+            ])
+
+    desc_table = pd.DataFrame(
+        desc_rows,
+        columns=[
+            "Task", "Variable", "Condition", "N",
+            "Mean", "SD", "SEM",
+            "Median", "Q1", "Q3", "IQR"
+        ]
+    )
+
+    # Save descriptive summary for the task
+    out_csv = os.path.join(output_dir, f"AOC_descriptives_{task['name']}.csv")
+    desc_table.to_csv(out_csv, index=False)
+    print(f"Saved descriptives → {out_csv}")
+
     # Category order / palette mapping
     condition_order = list(dat["Condition"].dropna().unique())
     pal_dict = dict(zip(condition_order, pal))

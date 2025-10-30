@@ -4,25 +4,45 @@
 clear
 clc
 close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/automagic_nohp';
+path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/automagic_nohp';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
 %% Load data
 % Demographics from methlab_vp
-demog_data_nback = readtable('/Volumes/methlab_vp/OCC/AOC/AOC_VPs.xlsx');
+demog_data_nback = readtable('/Volumes/g_psyplafor_methlab$/VP/OCC/AOC/AOC_VPs.xlsx');
 demog_data_nback = demog_data_nback(:, {'ID', 'Gender', 'Alter', 'H_ndigkeit', 'OcularDominance'});
 demog_data_nback = table2struct(demog_data_nback(1:120, :));
 
 % Behavioral
-load('/Volumes/methlab/Students/Arne/AOC/data/features/behavioral_matrix_nback.mat');
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/behavioral_matrix_nback.mat');
 
 % EEG
-load('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_nback.mat');
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/eeg_matrix_nback.mat');
 
 % Gaze
-load('/Volumes/methlab/Students/Arne/AOC/data/features/gaze_matrix_nback.mat');
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/gaze_matrix_nback.mat');
+
+%% Identify common subjects
+IDs_behav = [behav_data_nback.ID];
+IDs_eeg   = [eeg_data_nback.ID];
+IDs_gaze  = [gaze_data_nback.ID];
+IDs_demo  = [demog_data_nback.ID];
+
+common_IDs = intersect(intersect(intersect(IDs_behav, IDs_eeg), IDs_gaze), IDs_demo);
+
+% Filter behaviour
+behav_data_nback = behav_data_nback(ismember(IDs_behav, common_IDs));
+
+% Filter EEG
+eeg_data_nback   = eeg_data_nback(ismember(IDs_eeg, common_IDs));
+
+% Filter Gaze
+gaze_data_nback  = gaze_data_nback(ismember(IDs_gaze, common_IDs));
+
+% Filter demographics
+demog_data_nback = demog_data_nback(ismember(IDs_demo, common_IDs));
 
 %% Merge structures
 demoIDs = [demog_data_nback.ID];
@@ -57,9 +77,9 @@ merged_data_nback = struct( ...
     'Lateralization', {eeg_data_nback.Lateralization});
 
 %% Save as .mat
-save /Volumes/methlab/Students/Arne/AOC/data/features/merged_data_nback.mat merged_data_nback
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/merged_data_nback.mat merged_data_nback
 
 %% Save as .csv
 merged_table = struct2table(merged_data_nback);
-csv_filename = '/Volumes/methlab/Students/Arne/AOC/data/features/merged_data_nback.csv';
+csv_filename = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/merged_data_nback.csv';
 writetable(merged_table, csv_filename);

@@ -80,13 +80,13 @@ for subj = 1:length(subjects)
 
     %% Calculate subject-specific Acc and RT by condition
     l1 = subj_data_behav_trials([subj_data_behav_trials.Condition] == 1);
-    l1acc = sum([l1.Accuracy], 'omitnan')/length(l1)*100;
+    l1acc = sum([l1.Accuracy], 'omitnan')/(length(l1)-2)*100;
     l1rt = mean([l1.ReactionTime], 'omitnan');
     l2 = subj_data_behav_trials([subj_data_behav_trials.Condition] == 2);
-    l2acc = sum([l2.Accuracy], 'omitnan')/length(l2)*100;
+    l2acc = sum([l2.Accuracy], 'omitnan')/(length(l2)-4)*100;
     l2rt = mean([l2.ReactionTime], 'omitnan');
     l3 = subj_data_behav_trials([subj_data_behav_trials.Condition] == 3);
-    l3acc = sum([l3.Accuracy], 'omitnan')/length(l3)*100;
+    l3acc = sum([l3.Accuracy], 'omitnan')/(length(l3)-6)*100;
     l3rt = mean([l3.ReactionTime], 'omitnan');
 
     %% Create across condition structure

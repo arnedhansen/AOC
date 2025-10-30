@@ -322,8 +322,8 @@ for task in tasks:
         for i in range(len(task["comparisons"])):
             y_positions.append(start + i * step)
 
-        # y-label at data midpoint (use global cap for the upper anchor)
-        ymin_cur, ymax_cur = ax.get_ylim()
+        # y-label at data midpoint
+        ymin_cur, ymax_cur = ylims_map[var]
         ymid = (ymin_cur + ymax_cap) / 2.0
         ax.set_ylabel("")
         ax.yaxis.get_label().set_visible(False)
@@ -342,6 +342,13 @@ for task in tasks:
         for (g1, g2) in task["comparisons"]:
             row = pw.loc[(pw["group1"] == g1) & (pw["group2"] == g2)]
             labels.append("n.s." if row.empty else p_to_signif(float(row["p_adj"].iloc[0])))
+
+        # --- FIX: slightly increase bracket spacing only for Accuracy in N-back
+        if (task["name"] == "nback") and (var == "Accuracy"):
+            yr = ax.get_ylim()[1] - ax.get_ylim()[0]
+            # assume you already computed y_positions; just spread them a bit more
+            step_bump = 0.025 * yr   # +2.5% of axis range on each successive bracket
+            y_positions = [y + i * step_bump for i, y in enumerate(y_positions)]
 
         add_stat_brackets(
             ax=ax,

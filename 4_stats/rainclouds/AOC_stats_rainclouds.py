@@ -65,7 +65,7 @@ yticks_map = {
     "Accuracy"     : np.arange(60, 101, 5),
     "ReactionTime" : np.arange(0.3, 1.31, 0.1),
     "GazeDeviation": np.arange(0, 125, 10),
-    "MSRate"       : np.arange(0, 4, 0.5),
+    "MSRate"       : np.arange(0, 4.1, 0.5),
     "Fixations"    : np.arange(0, 8.5, 1),
     "Saccades"     : np.arange(0, 4.25, 1),
     "AlphaPower"   : np.arange(0, 1.52, 0.25),
@@ -81,7 +81,6 @@ ylims_map = {
     "AlphaPower"   : (0, 1.6),
     "IAF"          : (8, 14),
 }
-
 
 # %% Task configurations
 

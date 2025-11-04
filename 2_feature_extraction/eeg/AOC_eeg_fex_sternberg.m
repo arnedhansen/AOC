@@ -10,7 +10,6 @@
 % Setup
 startup
 [subjects, path, ~ , ~] = setup('AOC');
-
 for subj = 1:length(subjects)
     clc
     disp(['Processing Retention POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
@@ -20,7 +19,8 @@ for subj = 1:length(subjects)
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all
-        load dataEEG_sternberg
+        load dataEEG_TFR_sternberg
+        dataEEG = dataTFR;
 
         % Identify indices of trials belonging to conditions
         ind2 = find(dataEEG.trialinfo(:, 1) == 22); % WM load 2
@@ -33,20 +33,21 @@ for subj = 1:length(subjects)
         cfg.method     = 'mtmconvol';
         cfg.taper      = 'hanning';
         cfg.foi        = 2:1:40;                        % 2–40 Hz (1-Hz steps)
-        cfg.t_ftimwin  = 0.5 * ones(numel(cfg.foi),1);  % 500 ms windows
+        cfg.t_ftimwin  = ones(length(cfg.foi),1).*0.5;   % length of time window = 0.5 sec
         cfg.toi        = -1.5:0.05:3;
         cfg.keeptrials = 'no';
-        cfg.pad        = 5;
+        cfg.pad        = 6;
 
         cfg.trials = ind2; powload2 = ft_freqanalysis(cfg, dataEEG);
         cfg.trials = ind4; powload4 = ft_freqanalysis(cfg, dataEEG);
         cfg.trials = ind6; powload6 = ft_freqanalysis(cfg, dataEEG);
 
-        % Save full TFR (time retained)
-        save('stern_TFR_raw.mat', 'powload2', 'powload4', 'powload6', '-v7.3')
+        % Save TFR (chan x freq x time)
+        save('tfr_stern_raw.mat', 'powload2', 'powload4', 'powload6', '-v7.3')
 
         % Time-collapsed power spectrum over retention (1–2 s)
         % Average over the retention window, remove time, fix dimord
+        % (chan x freq)
         cfgP = [];
         cfgP.latency      = [1 2];
         cfgP.avgovertime  = 'yes';
@@ -63,7 +64,7 @@ for subj = 1:length(subjects)
         powload4.dimord = 'chan_freq';
         powload6.dimord = 'chan_freq';
 
-        save('power_stern.mat', 'powload2', 'powload4', 'powload6', '-v7.3')
+        save('power_stern_raw.mat', 'powload2', 'powload4', 'powload6', '-v7.3')
 
     catch ME
         disp(ME.message)

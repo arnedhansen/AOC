@@ -198,7 +198,7 @@ for subj = 1:length(subjects)
     try
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath);
-        load('power_stern.mat');
+        load('power_stern_raw.mat');
 
         % Channel selection
         channelIdx = find(ismember(powload2.label, channels));

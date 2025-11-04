@@ -1,4 +1,4 @@
-%% AOC Alpha Power Sternberg Topos
+%% AOC Alpha Power N-back Topos
 startup
 [subjects, path, colors, headmodel] = setup('AOC');
 
@@ -9,26 +9,26 @@ for subj = 1:length(subjects)
     clc
     disp('LOADING DATA...')
     disp(subj)
-    load power_stern_raw
+    load power_nback
+    powl1{subj} = powload1;
     powl2{subj} = powload2;
-    powl4{subj} = powload4;
-    powl6{subj} = powload6;
+    powl3{subj} = powload3;
 end
 
 % Compute grand avg of raw powspctrm data
+gapow1 = ft_freqgrandaverage([],powl1{:});
 gapow2 = ft_freqgrandaverage([],powl2{:});
-gapow4 = ft_freqgrandaverage([],powl4{:});
-gapow6 = ft_freqgrandaverage([],powl6{:});
+gapow3 = ft_freqgrandaverage([],powl3{:});
 
 %% Define channels
 subj = 1;
 datapath = strcat(path, subjects{subj}, filesep, 'eeg');
 cd(datapath);
-load('power_stern_raw.mat');
+load('power_nback.mat');
 % Occipital channels
 occ_channels = {};
-for i = 1:length(powload2.label)
-    label = powload2.label{i};
+for i = 1:length(powload1.label)
+    label = powload1.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
@@ -60,12 +60,23 @@ cfg.colormap = cmap;
 cfg.gridscale = 300;
 cfg.comment = 'no';
 cfg.xlim = [8 14];
-[~, channel_idx] = ismember(channels, gapow2.label);
-freq_idx = find(gapow2.freq >= 8 & gapow2.freq <= 14);
-max_spctrm = max([mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow4.powspctrm(channel_idx, freq_idx), 2); mean(gapow6.powspctrm(channel_idx, freq_idx), 2)]);
+[~, channel_idx] = ismember(channels, gapow1.label);
+freq_idx = find(gapow1.freq >= 8 & gapow1.freq <= 14);
+max_spctrm = max([mean(gapow1.powspctrm(channel_idx, freq_idx), 2); mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow3.powspctrm(channel_idx, freq_idx), 2)]);
 cfg.zlim = [0 max_spctrm];
 
-% Plot WM load 2
+% Plot 1-back
+figure('Color', 'w');
+set(gcf, 'Position', [0, 0, 2000, 1200]);
+ft_topoplotER(cfg, gapow1);
+title('');
+cb = colorbar;
+set(cb, 'FontSize', 20);
+ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
+title('1-back', 'FontSize', 40);
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_nback_topo1.png');
+
+% Plot 2-back
 figure('Color', 'w');
 set(gcf, 'Position', [0, 0, 2000, 1200]);
 ft_topoplotER(cfg, gapow2);
@@ -73,38 +84,27 @@ title('');
 cb = colorbar;
 set(cb, 'FontSize', 20);
 ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
-title('WM load 2', 'FontSize', 40);
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_sternberg_topo2.png');
+title('2-back', 'FontSize', 40);
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_nback_topo2.png');
 
-% Plot WM load 4
+% Plot 3-back
 figure('Color', 'w');
 set(gcf, 'Position', [0, 0, 2000, 1200]);
-ft_topoplotER(cfg, gapow4);
+ft_topoplotER(cfg, gapow3);
 title('');
 cb = colorbar;
 set(cb, 'FontSize', 20);
 ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
-title('WM load 4', 'FontSize', 40);
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_sternberg_topo4.png');
-
-% Plot WM load 6
-figure('Color', 'w');
-set(gcf, 'Position', [0, 0, 2000, 1200]);
-ft_topoplotER(cfg, gapow6);
-title('');
-cb = colorbar;
-set(cb, 'FontSize', 20);
-ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
-title('WM load 6', 'FontSize', 40);
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_sternberg_topo6.png');
+title('3-back', 'FontSize', 40);
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_nback_topo3.png');
 
 %% Plot alpha power TOPOS DIFFERENCE
 close all
 clc
 
-% Calculate the difference between the conditions (WM load 6 - WM load 2)
-ga_diff = gapow6;
-ga_diff.powspctrm = gapow6.powspctrm - gapow2.powspctrm;
+% Calculate the difference between the conditions (3-back - 1-back)
+ga_diff = gapow3;
+ga_diff.powspctrm = gapow3.powspctrm - gapow1.powspctrm;
 
 % Plot
 figure('Color', 'w');
@@ -135,8 +135,8 @@ cfg.xlim = [8 14];
 cfg.zlim = 'maxabs';
 set(cb, 'FontSize', 20);
 ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
-title('Sternberg Task Alpha Power Difference (WM load 6 - WM load 2)', 'FontSize', 25);
+title('N-back Task Alpha Power Difference (3-back - 1-back)', 'FontSize', 25);
 ft_topoplotER(cfg, ga_diff);
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_sternberg_topo_diff.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_nback_topo_diff.png');

@@ -11,7 +11,7 @@
 startup
 [subjects, path, ~ , ~] = setup('AOC');
 
-for subj = 1%:length(subjects)
+for subj = 1:length(subjects)
     clc
     disp(['Processing Retention POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
 

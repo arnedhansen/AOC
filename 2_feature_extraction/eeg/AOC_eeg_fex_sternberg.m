@@ -31,24 +31,25 @@ for subj = 1:length(subjects)
         cfg.latency = [1 2];               % Segmentation for retention interval 1000ms - 2000ms
         dat = ft_selectdata(cfg, dataEEG); % Select data
 
-        % TFR across full analysis window (-1.5 to 3 s)
-        cfg            = [];
-        cfg.output     = 'pow';
-        cfg.method     = 'mtmfft'; % analyses an entire spectrum for the entire data length, implements multitaper frequency transformation
-        cfg.taper      = 'hanning';
-        cfg.foi        = 2:1:40;                        % 2–40 Hz (1-Hz steps)
-        cfg.t_ftimwin  = ones(length(cfg.foi),1).*0.5;   % length of time window = 0.5 sec
-        % cfg.toi        = -1.5:0.05:3;
-        cfg.keeptrials = 'no';
-        cfg.pad        = 2;
+        % Frequency analysis settings
+        cfg = [];% empty config
+        cfg.output = 'pow';% estimates power only
+        cfg.method = 'mtmfft';% multi taper fft method
+        cfg.taper = 'dpss';% multiple tapers
+        cfg.tapsmofrq = 1;% smoothening frequency around foi
+        cfg.foilim = [3 30];% frequencies of interest (foi)
+        cfg.keeptrials = 'no';% do not keep single trials in output
+        cfg.pad = 5;
 
         cfg.trials = ind2; 
-        powload2 = ft_freqanalysis(cfg, dataEEG);
+        powload2 = ft_freqanalysis(cfg, dat);
         cfg.trials = ind4; 
-        powload4 = ft_freqanalysis(cfg, dataEEG);
+        powload4 = ft_freqanalysis(cfg, dat);
         cfg.trials = ind6; 
-        powload6 = ft_freqanalysis(cfg, dataEEG);
+        powload6 = ft_freqanalysis(cfg, dat);
 
+        % Save raw power spectra
+        cd(datapath)
         save('power_stern_raw.mat', 'powload2', 'powload4', 'powload6')
 
     catch ME

@@ -9,9 +9,9 @@ for subj= 1:length(subjects)
     datapath = strcat(path,subjects{subj}, '/eeg');
     cd(datapath)
     load tfr_nback
-    l1{subj} = tfr1%%%%%_bl;
-    l2{subj} = tfr2%%%%%_bl;
-    l3{subj} = tfr3%%%%%_bl;
+    l1{subj} = tfr1;
+    l2{subj} = tfr2;
+    l3{subj} = tfr3;
     disp(['Subject ' num2str(subjects{subj}) ' TFR data loaded.'])
 end
 
@@ -34,19 +34,17 @@ channels = occ_channels;
 
 %% Plot TFR for each individual condition
 close all
-fontSize = 40;
+fontSize = 50;
 
 % Define the common configuration
 cfg = [];
 cfg.channel = channels; % specify the channels to include
 cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
-%cfg.xlim = [-.5 2]; % Time axis limits in seconds
-cfg.xlim = [0 2]
-cfg.ylim = [7 20];
-load('/Volumes/methlab/Students/Arne/toolboxes/headmodel/layANThead.mat');
+cfg.xlim = [-.5 2]; % Time axis limits in seconds
+cfg.ylim = [5 30];
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat');
 cfg.layout = layANThead; % your specific layout
-%color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
 color_map = cbrewer('seq', 'Reds', 64); % 'RdBu' for blue to red diverging color map
 
 % Find maximum deviation across conditions
@@ -55,8 +53,7 @@ max_spctrm = max([
     max(abs(gatfr1.powspctrm(channel_idx, :, :)), [], 'all'), ...
     max(abs(gatfr2.powspctrm(channel_idx, :, :)), [], 'all'), ...
     max(abs(gatfr3.powspctrm(channel_idx, :, :)), [], 'all')]);
-max_spctrm = 10
-%clim = [-max_spctrm, max_spctrm];
+max_spctrm = 9.5
 clim = [0 max_spctrm];
  
 % 1-back
@@ -71,9 +68,9 @@ ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+title('1-back', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
-title('1-back TFR', 'FontSize', 30);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_1back.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_1back.png');
 
 % 2-back
 figure;
@@ -87,9 +84,9 @@ ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
-title('2-back TFR', 'FontSize', 30);
+title('2-back', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_2back.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_2back.png');
 
 % 3-back
 figure;
@@ -103,13 +100,13 @@ ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
-title('3-back TFR', 'FontSize', 30);
+title('3-back', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_3back.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_3back.png');
 
 %% Compute the difference between condition 3 and condition 1
 close all
-load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat');
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat');
 
 % Plot the difference
 diff = gatfr3;
@@ -122,14 +119,14 @@ cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
 cfg.xlim = [-.5 2]; % Time axis limits in secon
 cfg.ylim = [7 20];
-load('/Volumes/methlab/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
 cfg.layout = layANThead; % your specific layout
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
 
 % Find maximum deviation
 [~, channel_idx] = ismember(channels, gatfr1.label);
 max_spctrm = max(abs(diff.powspctrm(channel_idx, :, :)), [], 'all');
-max_spctrm = 3
+max_spctrm = 2
 clim = double([-max_spctrm, max_spctrm]);
 
 % Plot: Difference (Condition 3 minus Condition 1) - Time-Frequency Response
@@ -151,4 +148,4 @@ title('N-back TFR Difference (3-back minus 1-back)', 'FontName', 'Arial', 'FontS
 set(gca, 'FontSize', fontSize);
 
 % Save the figure
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_nback_diff.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_nback_diff.png');

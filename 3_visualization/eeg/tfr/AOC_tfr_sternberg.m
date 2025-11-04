@@ -32,7 +32,7 @@ for i = 1:length(tfr2.label)
 end
 channels = occ_channels;
 
-%% Plot TFR for each individual condition
+%% Plot TFR for each condition
 close all
 fontSize = 50;
 
@@ -41,12 +41,10 @@ cfg = [];
 cfg.channel = channels; % specify the channels to include
 cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
-%cfg.xlim = [-.5 2]; % Time axis limits in seconds
-cfg.xlim = [0 2]
-cfg.ylim = [7 20];
+cfg.xlim = [-.5 2];
+cfg.ylim = [5 30];
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
-cfg.layout = layANThead; % your specific layout
-%color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
+cfg.layout = layANThead;
 color_map = cbrewer('seq', 'Reds', 64); % 'RdBu' for blue to red diverging color map
 
 % Find maximum deviation across conditions
@@ -56,8 +54,7 @@ max_spctrm = max([mean(gatfr2.powspctrm(channel_idx, freq_idx), 'omitnan'); ...
                   mean(gatfr4.powspctrm(channel_idx, freq_idx), 'omitnan'); ...
                   mean(gatfr6.powspctrm(channel_idx, freq_idx), 'omitnan')]);
 max_spctrm = max(abs(max_spctrm));
-%max_spctrm = 8
-%clim = [-max_spctrm, max_spctrm];
+max_spctrm = 6.75
 clim = [0 max_spctrm];
 
 % WM load 2
@@ -73,7 +70,7 @@ xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
-title('Sternberg WM load 2 TFR');
+title('WM load 2');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_2.png');
 
 % WM load 4
@@ -89,7 +86,7 @@ xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
-title('Sternberg WM load 4 TFR');
+title('WM load 4');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_4.png');
 
 % WM load 6
@@ -105,7 +102,7 @@ xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
-title('Sternberg WM load 6 TFR');
+title('WM load 6');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_6.png');
 
 %% Plot the grand averages for the difference between condition 3 and condition 1

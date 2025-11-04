@@ -19,52 +19,37 @@ for subj = 1:length(subjects)
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all
-        load dataEEG_TFR_sternberg
-        dataEEG = dataTFR;
+        load dataEEG_sternberg
 
         % Identify indices of trials belonging to conditions
         ind2 = find(dataEEG.trialinfo(:, 1) == 22); % WM load 2
         ind4 = find(dataEEG.trialinfo(:, 1) == 24); % WM load 4
         ind6 = find(dataEEG.trialinfo(:, 1) == 26); % WM load 6
 
+        % Select data
+        cfg = [];                          
+        cfg.latency = [1 2];               % Segmentation for retention interval 1000ms - 2000ms
+        dat = ft_selectdata(cfg, dataEEG); % Select data
+
         % TFR across full analysis window (-1.5 to 3 s)
         cfg            = [];
         cfg.output     = 'pow';
-        cfg.method     = 'mtmconvol';
+        cfg.method     = 'mtmfft'; % analyses an entire spectrum for the entire data length, implements multitaper frequency transformation
         cfg.taper      = 'hanning';
         cfg.foi        = 2:1:40;                        % 2–40 Hz (1-Hz steps)
         cfg.t_ftimwin  = ones(length(cfg.foi),1).*0.5;   % length of time window = 0.5 sec
-        cfg.toi        = -1.5:0.05:3;
+        % cfg.toi        = -1.5:0.05:3;
         cfg.keeptrials = 'no';
-        cfg.pad        = 6;
+        cfg.pad        = 2;
 
-        cfg.trials = ind2; powload2 = ft_freqanalysis(cfg, dataEEG);
-        cfg.trials = ind4; powload4 = ft_freqanalysis(cfg, dataEEG);
-        cfg.trials = ind6; powload6 = ft_freqanalysis(cfg, dataEEG);
+        cfg.trials = ind2; 
+        powload2 = ft_freqanalysis(cfg, dataEEG);
+        cfg.trials = ind4; 
+        powload4 = ft_freqanalysis(cfg, dataEEG);
+        cfg.trials = ind6; 
+        powload6 = ft_freqanalysis(cfg, dataEEG);
 
-        % Save TFR (chan x freq x time)
-        save('tfr_stern_raw.mat', 'powload2', 'powload4', 'powload6', '-v7.3')
-
-        % Time-collapsed power spectrum over retention (1–2 s)
-        % Average over the retention window, remove time, fix dimord
-        % (chan x freq)
-        cfgP = [];
-        cfgP.latency      = [1 2];
-        cfgP.avgovertime  = 'yes';
-
-        powload2 = ft_selectdata(cfgP, powload2);
-        powload4 = ft_selectdata(cfgP, powload4);
-        powload6 = ft_selectdata(cfgP, powload6);
-
-        if isfield(powload2, 'time'); powload2 = rmfield(powload2, 'time'); end
-        if isfield(powload4, 'time'); powload4 = rmfield(powload4, 'time'); end
-        if isfield(powload6, 'time'); powload6 = rmfield(powload6, 'time'); end
-
-        powload2.dimord = 'chan_freq';
-        powload4.dimord = 'chan_freq';
-        powload6.dimord = 'chan_freq';
-
-        save('power_stern_raw.mat', 'powload2', 'powload4', 'powload6', '-v7.3')
+        save('power_stern_raw.mat', 'powload2', 'powload4', 'powload6')
 
     catch ME
         disp(ME.message)
@@ -166,7 +151,7 @@ startup
 subj = 1;
 datapath = strcat(path, subjects{subj}, filesep, 'eeg');
 cd(datapath);
-load('power_stern.mat');
+load('power_stern_raw.mat');
 % Occipital channels
 occ_channels = {};
 for i = 1:length(powload2.label)

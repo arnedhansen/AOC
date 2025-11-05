@@ -23,20 +23,20 @@ for subj = 1:length(subjects)
         load dataEEG_nback
 
         % Identify indices of trials belonging to conditions
-        ind1 = find(data.trialinfo == 21);
-        ind1 = find(data.trialinfo == 22);
-        ind3 = find(data.trialinfo == 23);
+        ind1 = find(dataEEG.trialinfo(:, 1) == 21);
+        ind2 = find(dataEEG.trialinfo(:, 1) == 22);
+        ind3 = find(dataEEG.trialinfo(:, 1) == 23);
 
         % Select data
         cfg = [];
         cfg.latency = [0 2]; % Segment from 0 to 2 [seconds]
-        dat = ft_selectdata(cfg,data);
+        dat = ft_selectdata(cfg, dataEEG);
 
         % Frequency analysis settings
         cfg = [];% empty config
         cfg.output = 'pow';% estimates power only
         cfg.method = 'mtmfft';% multi taper fft method
-        cfg.taper = 'dpss';% multiple tapers
+        cfg.taper = 'hanning';% multiple tapers
         cfg.tapsmofrq = 1;% smoothening frequency around foi
         cfg.foilim = [3 30];% frequencies of interest (foi)
         cfg.keeptrials = 'no';% do not keep single trials in output
@@ -45,7 +45,7 @@ for subj = 1:length(subjects)
         % Frequency analysis settings
         cfg.trials = ind1;
         powload1 = ft_freqanalysis(cfg,dat);
-        cfg.trials = ind1;
+        cfg.trials = ind2;
         powload2 = ft_freqanalysis(cfg,dat);
         cfg.trials = ind3;
         powload3 = ft_freqanalysis(cfg,dat);
@@ -210,7 +210,7 @@ for subj = 1:length(subjects)
         if ispc == 1
             savepath = strcat('W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\');
         else
-            savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
+            savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
         end
         mkdir(savepath)
         cd(savepath)
@@ -231,7 +231,7 @@ end
 if ispc == 1
     save W:\Students\Arne\AOC\data\features\eeg_matrix_nback eeg_data_nback
 else
-    save /Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_nback eeg_data_nback
+    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/eeg_matrix_nback eeg_data_nback
 end
 
 %% POWER TRIAL-BY-TRIAL

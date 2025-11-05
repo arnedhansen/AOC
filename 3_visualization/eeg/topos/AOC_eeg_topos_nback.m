@@ -1,6 +1,8 @@
 %% AOC Alpha Power N-back Topos
 startup
 [subjects, path, colors, headmodel] = setup('AOC');
+% exclude subject 364 because of faulty data in electrode Cz
+subjects = setdiff(subjects, {'361'});
 
 %% Load raw powerspctrm data
 for subj = 1:length(subjects)
@@ -35,9 +37,61 @@ for i = 1:length(powload1.label)
 end
 channels = occ_channels;
 
+%% Data check: Histogram / bar plot of CZ alpha power per subject
+% close all
+% clc
+% 
+% % Which condition to inspect (powl3)
+% data_cond = powl3; 
+% 
+% % Electrode to check
+% target_ch = 'Cz';
+% 
+% % Frequency window
+% f_low = 8; 
+% f_high = 14;
+% 
+% alpha_vals = nan(length(subjects),1);
+% 
+% for subj = 1:length(subjects)
+%     % extract subject freq data
+%     freq = data_cond{subj};
+% 
+%     % find channel index
+%     ch_idx = find(strcmp(freq.label, target_ch));
+%     if isempty(ch_idx)
+%         warning(['Channel ', target_ch, ' not found for subject ', num2str(subjects{subj})]);
+%         continue
+%     end
+% 
+%     % find freq indices
+%     f_idx = freq.freq >= f_low & freq.freq <= f_high;
+% 
+%     % average alpha power (averaged across freq and time collapsed already)
+%     % If powspctrm is chans x freqs, use:
+%     alpha_vals(subj) = mean(freq.powspctrm(ch_idx, f_idx), 'omitnan');
+% 
+%     if alpha_vals(subj) > 1
+%         disp(subj)
+%         disp(subjects{subj})
+%         disp(alpha_vals(subj))
+%     end
+% end
+% 
+% % Plot
+% figure('Color','w');
+% set(gcf, 'Position', [200 200 1400 500])
+% bar(alpha_vals, 'FaceColor', [0.4 0.4 0.9])
+% xlabel('Subject')
+% ylabel(['Alpha Power at ', target_ch, ' (', num2str(f_low), '-', num2str(f_high), ' Hz)'])
+% title(['Cz Alpha Power Across Subjects (Condition = data\_cond)'])
+% set(gca, 'FontSize', 18)
+% set(gca, "YScale", "log")
+
 %% Plot alpha power TOPOS
 close all;
 clc;
+fontSize = 50;
 
 cfg = [];
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/layANThead.mat');
@@ -60,42 +114,48 @@ cfg.colormap = cmap;
 cfg.gridscale = 300;
 cfg.comment = 'no';
 cfg.xlim = [8 14];
+
+% Global alpha zlim across all channels & conditions (robust)
 [~, channel_idx] = ismember(channels, gapow1.label);
 freq_idx = find(gapow1.freq >= 8 & gapow1.freq <= 14);
-max_spctrm = max([mean(gapow1.powspctrm(channel_idx, freq_idx), 2); mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow3.powspctrm(channel_idx, freq_idx), 2)]);
-cfg.zlim = [0 max_spctrm];
+A1 = mean(gapow1.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
+A2 = mean(gapow2.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
+A3 = mean(gapow3.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
+all_alpha = [A1(:); A2(:); A3(:)];
+global_max = prctile(all_alpha,99);
+cfg.zlim = [0 global_max];
 
 % Plot 1-back
 figure('Color', 'w');
-set(gcf, 'Position', [0, 0, 2000, 1200]);
+set(gcf, 'Position', [0, 0, 2000, 2000]);
 ft_topoplotER(cfg, gapow1);
 title('');
 cb = colorbar;
-set(cb, 'FontSize', 20);
-ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
-title('1-back', 'FontSize', 40);
+set(gca, 'FontSize', fontSize)
+ylabel(cb, 'Power [\muV^2/Hz]');
+title('1-back');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_nback_topo1.png');
 
 % Plot 2-back
 figure('Color', 'w');
-set(gcf, 'Position', [0, 0, 2000, 1200]);
+set(gcf, 'Position', [0, 0, 2000, 2000]);
 ft_topoplotER(cfg, gapow2);
 title('');
 cb = colorbar;
-set(cb, 'FontSize', 20);
-ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
-title('2-back', 'FontSize', 40);
+set(gca, 'FontSize', fontSize)
+ylabel(cb, 'Power [\muV^2/Hz]');
+title('2-back');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_nback_topo2.png');
 
 % Plot 3-back
 figure('Color', 'w');
-set(gcf, 'Position', [0, 0, 2000, 1200]);
+set(gcf, 'Position', [0, 0, 2000, 2000]);
 ft_topoplotER(cfg, gapow3);
 title('');
 cb = colorbar;
-set(cb, 'FontSize', 20);
-ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
-title('3-back', 'FontSize', 40);
+set(gca, 'FontSize', fontSize)
+ylabel(cb, 'Power [\muV^2/Hz]');
+title('3-back');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_nback_topo3.png');
 
 %% Plot alpha power TOPOS DIFFERENCE

@@ -38,6 +38,7 @@ channels = occ_channels;
 %% Plot alpha power TOPOS
 close all;
 clc;
+fontSize = 50;
 
 cfg = [];
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/layANThead.mat');
@@ -60,42 +61,48 @@ cfg.colormap = cmap;
 cfg.gridscale = 300;
 cfg.comment = 'no';
 cfg.xlim = [8 14];
-[~, channel_idx] = ismember(channels, gapow2.label);
-freq_idx = find(gapow2.freq >= 8 & gapow2.freq <= 14);
-max_spctrm = max([mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow4.powspctrm(channel_idx, freq_idx), 2); mean(gapow6.powspctrm(channel_idx, freq_idx), 2)]);
-cfg.zlim = [0 max_spctrm];
+
+% Global alpha zlim across all channels & conditions
+[~, channel_idx] = ismember(channels, gapow1.label);
+freq_idx = find(gapow2.freq >= 8 & gapow1.freq <= 14);
+A2 = mean(gapow2.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
+A4 = mean(gapow6.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
+A6 = mean(gapow3.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
+all_alpha = [A2(:); A4(:); A6(:)];
+global_max = prctile(all_alpha,99);
+cfg.zlim = [0 global_max];
 
 % Plot WM load 2
 figure('Color', 'w');
-set(gcf, 'Position', [0, 0, 2000, 1200]);
+set(gcf, 'Position', [0, 0, 2000, 2000]);
 ft_topoplotER(cfg, gapow2);
 title('');
 cb = colorbar;
-set(cb, 'FontSize', 20);
-ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
-title('WM load 2', 'FontSize', 40);
+set(gca, 'FontSize', fontSize)
+ylabel(cb, 'Power [\muV^2/Hz]');
+title('WM load 2');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_sternberg_topo2.png');
 
 % Plot WM load 4
 figure('Color', 'w');
-set(gcf, 'Position', [0, 0, 2000, 1200]);
+set(gcf, 'Position', [0, 0, 2000, 2000]);
 ft_topoplotER(cfg, gapow4);
 title('');
 cb = colorbar;
-set(cb, 'FontSize', 20);
-ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
-title('WM load 4', 'FontSize', 40);
+set(gca, 'FontSize', fontSize)
+ylabel(cb, 'Power [\muV^2/Hz]');
+title('WM load 4');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_sternberg_topo4.png');
 
 % Plot WM load 6
 figure('Color', 'w');
-set(gcf, 'Position', [0, 0, 2000, 1200]);
+set(gcf, 'Position', [0, 0, 2000, 2000]);
 ft_topoplotER(cfg, gapow6);
 title('');
 cb = colorbar;
-set(cb, 'FontSize', 20);
-ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', 25);
-title('WM load 6', 'FontSize', 40);
+set(gca, 'FontSize', fontSize)
+ylabel(cb, 'Power [\muV^2/Hz]');
+title('WM load 6');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_sternberg_topo6.png');
 
 %% Plot alpha power TOPOS DIFFERENCE

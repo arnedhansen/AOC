@@ -8,6 +8,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import gaussian_kde
+from statsmodels.stats.anova import AnovaRM
 
 from rainclouds_stats_helpers import (
     iqr_outlier_filter,
@@ -52,6 +53,8 @@ sns.set_style("white")  # clean white background, no grey panel
 # %% I/O Paths
 base_dir   = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC"
 output_dir = f"{base_dir}/figures/stats/rainclouds"
+output_dir_stats = f"{base_dir}/data/stats"
+anova_dir = f"{base_dir}/data/stats/anova"
 
 # %% Variables and labelling
 
@@ -219,7 +222,6 @@ for task in tasks:
     )
 
     # Save descriptive summary for the task
-    output_dir_stats = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/stats'
     out_csv = os.path.join(output_dir_stats, f"AOC_descriptives_{task['name']}.csv")
     desc_table.to_csv(out_csv, index=False)
     print(f"Saved descriptives → {out_csv}")
@@ -228,6 +230,9 @@ for task in tasks:
     condition_order = list(dat["Condition"].dropna().unique())
     pal_dict = dict(zip(condition_order, pal))
 
+    anova_rows = []               # collects ANOVA rows for this task
+    pairwise_effsize_rows = []    # collects pairwise effect sizes for this task
+
     # --- Loop variables
     for var, ttl, ylab, sname in zip(variables, titles, y_labels, save_names):
 
@@ -235,7 +240,28 @@ for task in tasks:
         if dvar.empty:
             continue
 
+        # Ensure categorical ordering
         dvar["Condition"] = pd.Categorical(dvar["Condition"], categories=condition_order, ordered=True)
+
+        # --- Repeated-measures ANOVA (within-subject: Condition)
+        # balance subjects: keep only subjects present in all conditions for this var
+        present = dvar.groupby('ID')['Condition'].nunique()
+        keep_ids = present[present == len(condition_order)].index
+        dvar_bal = dvar[dvar['ID'].isin(keep_ids)].copy()
+
+        # run ANOVA on the balanced panel
+        if dvar_bal['ID'].nunique() >= 2:
+            aov = AnovaRM(data=dvar_bal, depvar=var, subject='ID', within=['Condition']).fit()
+            aov_tab = aov.anova_table.reset_index().rename(columns={'index': 'Effect'})
+            for _, r in aov_tab.iterrows():
+                F   = float(r['F Value'])
+                df1 = float(r['Num DF'])
+                df2 = float(r['Den DF'])
+                p   = float(r['Pr > F'])
+                etap = (F * df1) / (F * df1 + df2) if np.isfinite(F) else np.nan
+                anova_rows.append([task['name'], var, r['Effect'], df1, df2, F, p, etap])
+        else:
+            anova_rows.append([task['name'], var, 'Condition', np.nan, np.nan, np.nan, np.nan, np.nan])
 
         # Data bounds (used to size violins and brackets)
         lower_bound = float(dvar[var].min())
@@ -249,6 +275,38 @@ for task in tasks:
             id_col="ID",
             p_adjust="bonferroni"
         )
+
+        # --- Pairwise within-subject effect sizes (Cohen's dz) + 95% CI of mean difference
+        # build wide table to get paired diffs
+        wide = dvar.pivot(index='ID', columns='Condition', values=var)
+        for (g1, g2) in task["comparisons"]:
+            if (g1 in wide.columns) and (g2 in wide.columns):
+                diffs = (wide[g2] - wide[g1]).dropna()
+                n = diffs.shape[0]
+                if n >= 2 and np.nanstd(diffs, ddof=1) > 0:
+                    md   = float(np.nanmean(diffs))
+                    sd_d = float(np.nanstd(diffs, ddof=1))
+                    dz   = md / sd_d
+                    # 95% CI for mean difference (paired t): md ± t*sd_d/sqrt(n)
+                    from scipy import stats
+                    tcrit = stats.t.ppf(0.975, df=n-1)
+                    se_md = sd_d / np.sqrt(n)
+                    ci_lo = md - tcrit * se_md
+                    ci_hi = md + tcrit * se_md
+                else:
+                    md = dz = ci_lo = ci_hi = np.nan
+                    n = int(n)
+                # attach adjusted p if available
+                padj = np.nan
+                row = pw.loc[(pw["group1"] == g1) & (pw["group2"] == g2)]
+                if not row.empty and "p_adj" in row:
+                    try:
+                        padj = float(row["p_adj"].iloc[0])
+                    except Exception:
+                        padj = np.nan
+                pairwise_effsize_rows.append([
+                    task["name"], var, g1, g2, n, md, dz, ci_lo, ci_hi, padj
+                ])
 
         # === Figure
         fig, ax = plt.subplots(figsize=(8, 6), facecolor="white")
@@ -427,3 +485,22 @@ for task in tasks:
             edgecolor=fig.get_edgecolor() if hasattr(fig, "get_edgecolor") else "white"
         )
         plt.close(fig)
+
+    # Save ANOVA for this task
+    anova_df = pd.DataFrame(
+        anova_rows,
+        columns=["Task", "Variable", "Effect", "DF_num", "DF_den", "F", "p", "eta_p2"]
+    )
+    anova_csv = os.path.join(anova_dir, f"AOC_anova_{task['name']}.csv")
+    anova_df.to_csv(anova_csv, index=False)
+    print(f"Saved ANOVA → {anova_csv}")
+
+    # Save pairwise effect sizes for this task (kept separate from descriptives)
+    pw_eff_df = pd.DataFrame(
+        pairwise_effsize_rows,
+        columns=["Task", "Variable", "Group1", "Group2", "N", "MeanDiff", "Cohens_dz", "CI95_low", "CI95_high", "p_adj"]
+    )
+    pw_csv = os.path.join(output_dir_stats, f"AOC_pairwise_effectsizes_{task['name']}.csv")
+    pw_eff_df.to_csv(pw_csv, index=False)
+    print(f"Saved pairwise effect sizes → {pw_csv}")
+

@@ -219,7 +219,8 @@ for task in tasks:
     )
 
     # Save descriptive summary for the task
-    out_csv = os.path.join(output_dir, f"AOC_descriptives_{task['name']}.csv")
+    output_dir_stats = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/stats'
+    out_csv = os.path.join(output_dir_stats, f"AOC_descriptives_{task['name']}.csv")
     desc_table.to_csv(out_csv, index=False)
     print(f"Saved descriptives → {out_csv}")
 

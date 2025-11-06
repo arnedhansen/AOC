@@ -8,6 +8,7 @@
 % AOC 351 - No N-back data
 % AOC 358 - no data (triggers bug)
 % AOC 360 - N-back only block 1, no Sternberg data
+% AOC 361 - Extreme values
 % AOC 378 - N-back block 1-5, Sternberg only block 1
 % AOC 380 - N-back only block 1
 % AOC 381 - no Sternberg data 
@@ -16,7 +17,6 @@
 % AOC 407 - N-back only block 1
 % AOC 408 - N-back only block 1, no Sternberg data
 % AOC 412 - N-back only block 1-3, no Sternberg data
-% AOC 414 - 
 
 %% Setup
 startup

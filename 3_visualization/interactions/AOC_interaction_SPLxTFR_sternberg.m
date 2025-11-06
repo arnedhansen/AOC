@@ -474,8 +474,9 @@ legend({'LOW SPL ± SEM','HIGH SPL ± SEM'}, 'Location','northwest')
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_scanPathLength_LOWvsHIGH_SPL.png')
 
 %% Scan Path Length time-course (LOW vs HIGH SPL) LMM
+close all
 
-%Optional: light trimming of extreme SPL at trial-level (robustness)
+% Optional: light trimming of extreme SPL at trial-level (robustness)
 keep = isfinite(datTS.SPL) & abs(normalize(datTS.SPL, 'zscore')) <= 4;
 datTS = datTS(keep, :);
 
@@ -556,13 +557,14 @@ cfg.avgoverfreq = 'yes';
 cfg.avgoverchan = 'yes';
 gatfr_low_alpha = ft_selectdata(cfg, gatfr_low);
 gatfr_high_alpha = ft_selectdata(cfg, gatfr_high);
+fontSize = 25
 
 close all
 figure
 set(gcf, 'Color', 'w', 'Position', [0 0 2000 1200])
 
 % Top subplot — Scan Path Length
-subplot(3,1,1:2)
+subplot(4,1,1:2)
 hold on
 shadedErrorBar(t_plot, grand_low, sem_low, ...
     'lineProps', {'-','Color',colors(1,:),'LineWidth',2.5}, 'transparent', true);
@@ -570,44 +572,43 @@ shadedErrorBar(t_plot, grand_high, sem_high, ...
     'lineProps', {'-','Color',colors(3,:),'LineWidth',2.5}, 'transparent', true);
 
 % Mark significant intervals
-
-
-
-% maybe use t_plot_full??
 for k = 1:numel(on_sig)
-    x0 = t_plot(on_sig(k));
-    x1 = t_plot(off_sig(k));
-    plot([x0 x1], [signBarHight signBarHight], 'k-', 'LineWidth', 12)
+    x0 = t_plot_full(on_sig(k));
+    x1 = t_plot_full(off_sig(k));
+    %plot([x0 x1], [signBarHight signBarHight], 'k-', 'LineWidth', 12)
 end
-
-
-
-
 
 ylabel('Scan Path Length [px]')
 title('Sternberg — Scan Path Length and Alpha Power over time (LOW vs HIGH SPL trials)')
-xlim([time_series(1) time_series(end)])
+xlim([-.5 2])
 set(gca, 'FontSize', fontSize)
 box on
 legend({'LOW SPL ± SEM','HIGH SPL ± SEM'}, 'Location','northwest', 'FontSize', fontSize*0.6)
 set(gca, 'XColor', 'none')  % remove x-axis
 
 % Bottom subplot — Alpha Power
-subplot(3,1,3)
+subplot(4,1,3:4)
 hold on
 yyaxis right   % activate right axis
-
-plot(gatfr_low_alpha.time, squeeze(gatfr_low_alpha.powspctrm), ...
-    'LineWidth', 5, 'Color', colors(1,:), 'LineStyle', '--');
-plot(gatfr_high_alpha.time, squeeze(gatfr_high_alpha.powspctrm), ...
-    'LineWidth', 5, 'Color', colors(3,:), 'LineStyle', '--');
+gatfr_diffs = gatfr_high_alpha;
+gatfr_diffs.powspctrm = ((gatfr_high_alpha.powspctrm - gatfr_low_alpha.powspctrm) ./ (gatfr_high_alpha.powspctrm + gatfr_low_alpha.powspctrm)) * 100 ;
+plot(gatfr_diffs.time, squeeze(gatfr_diffs.powspctrm), ...
+    'LineWidth', 3, 'Color', 'k')%, 'LineStyle', '--');
+% plot(gatfr_low_alpha.time, squeeze(gatfr_low_alpha.powspctrm), ...
+%     'LineWidth', 5, 'Color', colors(1,:), 'LineStyle', '--');
+% plot(gatfr_high_alpha.time, squeeze(gatfr_high_alpha.powspctrm), ...
+%     'LineWidth', 5, 'Color', colors(3,:), 'LineStyle', '--');
 
 set(gca, 'YColor', [0 0 0])          % colour of right y-axis
-ylabel('Alpha Power [\muV^2/Hz]')
+% ylabel('Alpha Power [\muV^2/Hz]')
 xlabel('Time [s]')
 xlim([-.5 2])
+ylabel('Relative Alpha Power Difference [%]')
+ylim([-5.5 5.5])
+yticks([-5 -2.5 0 2.5 5])
+yline(0, 'LineWidth', 1, 'LineStyle', '--')
 set(gca, 'FontSize', fontSize)
-legend({'Alpha Power of LOW SPL Trials','Alpha Power of HIGH SPL Trials'}, 'Location','northwest', 'FontSize', fontSize*0.6)
+legend({'Alpha Power Difference (HIGH-LOW SPL Trials)'}, 'Location','northeast', 'FontSize', fontSize*0.6)
 
 % hide the left y-axis entirely
 yyaxis left

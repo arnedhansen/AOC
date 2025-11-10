@@ -1,6 +1,7 @@
 # %% AOC Stats Rainclouds — Combined (Sternberg + N-back)
 
 # %% Imports
+import sys
 import os
 import numpy as np
 import pandas as pd
@@ -9,16 +10,17 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import gaussian_kde
 from statsmodels.stats.anova import AnovaRM
+import statsmodels.formula.api as smf
 
-from AOC_stats_helpers import (
+from functions.stats_helpers import (
     iqr_outlier_filter,
     mixedlm_pairwise_contrasts,
     p_to_signif
 )
 
-from AOC_rainclouds_plotting_helpers import (
-    add_stat_brackets,
-)
+from functions.rainclouds_plotting_helpers import add_stat_brackets
+
+from functions.export_model_table import export_model_table
 
 # %% Parameters
 

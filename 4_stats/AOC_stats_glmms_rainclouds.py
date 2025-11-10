@@ -10,13 +10,13 @@ import seaborn as sns
 from scipy.stats import gaussian_kde
 from statsmodels.stats.anova import AnovaRM
 
-from rainclouds_stats_helpers import (
+from AOC_stats_helpers import (
     iqr_outlier_filter,
     mixedlm_pairwise_contrasts,
     p_to_signif
 )
 
-from rainclouds_plotting_helpers import (
+from AOC_rainclouds_plotting_helpers import (
     add_stat_brackets,
 )
 

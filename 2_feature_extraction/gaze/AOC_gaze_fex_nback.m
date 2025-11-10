@@ -19,7 +19,7 @@ folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 gaze_data_nback = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, ...
     'GazeStdX', {}, 'GazeStdY', {}, 'PupilSize', {}, 'MSRate', {}, ...
-    'Blinks', {}, 'Fixations', {}, 'Saccades', {});
+    'Blinks', {}, 'Fixations', {}, 'Saccades', {}, 'ScanPathLength', {});
 
 %% Load all eye movements
 for subj = 1:length(subjects)
@@ -86,6 +86,11 @@ for subj = 1:length(subjects)
         [microsaccade_rate, microsaccade_details] = detect_microsaccades(fsample, velData, trlLength);
         ms_data(trl) = microsaccade_details;
 
+        %% Compute Scan Path Length
+        dxf_s = diff(x_coords);
+        dyf_s = diff(y_coords);
+        spl = sum(sqrt(dxf_s.^2 + dyf_s.^2), 'omitnan');
+
         %% Append data for this trial
         subject_id = [subject_id; str2num(subjects{subj})];
         trial_num = [trial_num; trl];
@@ -95,6 +100,8 @@ for subj = 1:length(subjects)
         gazeSDy = [gazeSDy; gaze_standard_deviation_y];
         pupilSize = [pupilSize; pups];
         microsaccadeRate = [microsaccadeRate; microsaccade_rate];
+        scanPathLength = [scanPathLength; spl];
+
     end
 
     %% Check data by visualizing raw gaze data
@@ -132,7 +139,8 @@ for subj = 1:length(subjects)
         'GazeStdX', num2cell(gazeSDx), ...
         'GazeStdY', num2cell(gazeSDy), ...
         'PupilSize', num2cell(pupilSize), ...
-        'MSRate', num2cell(microsaccadeRate));
+        'MSRate', num2cell(microsaccadeRate), ...
+        'ScanPathLength', num2cell(scanPathLength));
 
     %% Calculate subject-specific data by condition (GazeDev, PupilSize, MSRate)
     l1 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 1);
@@ -141,6 +149,7 @@ for subj = 1:length(subjects)
     l1gSDy = mean([l1.GazeStdY], 'omitnan');
     l1pups = mean([l1.PupilSize], 'omitnan');
     l1msrate = mean([l1.MSRate], 'omitnan');
+    l1spl = mean([l1.ScanPathLength], 'omitnan');
 
     l2 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 2);
     l2gdev = mean([l2.GazeDeviation], 'omitnan');
@@ -148,6 +157,7 @@ for subj = 1:length(subjects)
     l2gSDy = mean([l2.GazeStdY], 'omitnan');
     l2pups = mean([l2.PupilSize], 'omitnan');
     l2msrate = mean([l2.MSRate], 'omitnan');
+    l2spl = mean([l2.ScanPathLength], 'omitnan');
 
     l3 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 3);
     l3gdev = mean([l3.GazeDeviation], 'omitnan');
@@ -155,6 +165,7 @@ for subj = 1:length(subjects)
     l3gSDy = mean([l3.GazeStdY], 'omitnan');
     l3pups = mean([l3.PupilSize], 'omitnan');
     l3msrate = mean([l3.MSRate], 'omitnan');
+    l3spl = mean([l3.ScanPathLength], 'omitnan');
 
     %% Load gaze metrics (extracted in GCP_preprocessing.m)
     load([datapath, filesep, 'gaze_metrics_nback'])
@@ -169,7 +180,8 @@ for subj = 1:length(subjects)
         'MSRate', num2cell([l1msrate; l2msrate; l3msrate]), ...
         'Blinks', num2cell([blinks_1back; blinks_2back; blinks_3back]), ...
         'Fixations', num2cell([fixations_1back; fixations_2back; fixations_3back]), ...
-        'Saccades', num2cell([saccades_1back; saccades_2back; saccades_3back]));
+        'Saccades', num2cell([saccades_1back; saccades_2back; saccades_3back]), ...
+        'ScanPathLength', num2cell([l1spl; l2spl; l3spl]));
 
     %% Save
     savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/gaze/');

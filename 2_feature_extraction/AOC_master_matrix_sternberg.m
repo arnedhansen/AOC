@@ -4,25 +4,25 @@
 clear
 clc
 close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/automagic_nohp';
+path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/automagic';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
 %% Load data
 % Demographics from methlab_vp
-demog_data_sternberg = readtable('/Volumes/methlab_vp/OCC/AOC/AOC_VPs.xlsx');
+demog_data_sternberg = readtable('/Volumes/g_psyplafor_methlab$/VP/OCC/AOC/AOC_VPs.xlsx');
 demog_data_sternberg = demog_data_sternberg(:, {'ID', 'Gender', 'Alter', 'H_ndigkeit', 'OcularDominance'});
 demog_data_sternberg = table2struct(demog_data_sternberg(1:120, :));
 
 % Behavioral
-load('/Volumes/methlab/Students/Arne/AOC/data/features/behavioral_matrix_sternberg.mat');
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/behavioral_matrix_sternberg.mat');
 
 % EEG
-load('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg.mat');
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/eeg_matrix_sternberg.mat');
 
 % Gaze
-load('/Volumes/methlab/Students/Arne/AOC/data/features/gaze_matrix_sternberg.mat');
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/gaze_matrix_sternberg.mat');
 
 %% Merge structures
 demoIDs = [demog_data_sternberg.ID];
@@ -52,14 +52,15 @@ merged_data_sternberg = struct( ...
     'Blinks', {gaze_data_sternberg.Blinks}, ...
     'Fixations', {gaze_data_sternberg.Fixations}, ...
     'Saccades', {gaze_data_sternberg.Saccades}, ...
+    'ScanPathLength', {gaze_data_sternberg.ScanPathLength}, ...
     'AlphaPower', {eeg_data_sternberg.AlphaPower}, ...
     'IAF', {eeg_data_sternberg.IAF},...
     'Lateralization', {eeg_data_sternberg.Lateralization});
 
 %% Save as .mat
-save /Volumes/methlab/Students/Arne/AOC/data/features/merged_data_sternberg.mat merged_data_sternberg
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/merged_data_sternberg.mat merged_data_sternberg
 
 %% Save as .csv
 merged_table = struct2table(merged_data_sternberg);
-csv_filename = '/Volumes/methlab/Students/Arne/AOC/data/features/merged_data_sternberg.csv';
+csv_filename = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/merged_data_sternberg.csv';
 writetable(merged_table, csv_filename);

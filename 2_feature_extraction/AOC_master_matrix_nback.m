@@ -1,13 +1,7 @@
 %% AOC MASTER Matrix Nback
-
-%% Setup
 clear
 clc
 close all
-path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/automagic_nohp';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
 
 %% Load data
 % Demographics from methlab_vp
@@ -23,26 +17,6 @@ load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/eeg_matrix_n
 
 % Gaze
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/gaze_matrix_nback.mat');
-
-%% Identify common subjects
-IDs_behav = [behav_data_nback.ID];
-IDs_eeg   = [eeg_data_nback.ID];
-IDs_gaze  = [gaze_data_nback.ID];
-IDs_demo  = [demog_data_nback.ID];
-
-common_IDs = intersect(intersect(intersect(IDs_behav, IDs_eeg), IDs_gaze), IDs_demo);
-
-% Filter behaviour
-behav_data_nback = behav_data_nback(ismember(IDs_behav, common_IDs));
-
-% Filter EEG
-eeg_data_nback   = eeg_data_nback(ismember(IDs_eeg, common_IDs));
-
-% Filter Gaze
-gaze_data_nback  = gaze_data_nback(ismember(IDs_gaze, common_IDs));
-
-% Filter demographics
-demog_data_nback = demog_data_nback(ismember(IDs_demo, common_IDs));
 
 %% Merge structures
 demoIDs = [demog_data_nback.ID];
@@ -72,6 +46,7 @@ merged_data_nback = struct( ...
     'Blinks', {gaze_data_nback.Blinks}, ...
     'Fixations', {gaze_data_nback.Fixations}, ...
     'Saccades', {gaze_data_nback.Saccades}, ...
+    'ScanPathLength', {gaze_data_nback.ScanPathLength}, ...
     'AlphaPower', {eeg_data_nback.AlphaPower}, ...
     'IAF', {eeg_data_nback.IAF},...
     'Lateralization', {eeg_data_nback.Lateralization});

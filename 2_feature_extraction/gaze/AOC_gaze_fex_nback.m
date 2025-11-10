@@ -13,7 +13,7 @@
 clear
 clc
 close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
+path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
@@ -36,6 +36,7 @@ for subj = 1:length(subjects)
     gazeSDy = [];
     pupilSize = [];
     microsaccadeRate = [];
+    scanPathLength = [];
 
     %% Get trial-by-trial gaze data
     for trl = 1:length(dataet.trialinfo)
@@ -184,7 +185,7 @@ for subj = 1:length(subjects)
         'ScanPathLength', num2cell([l1spl; l2spl; l3spl]));
 
     %% Save
-    savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/features/',subjects{subj}, '/gaze/');
+    savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/',subjects{subj}, '/gaze/');
     mkdir(savepath)
     cd(savepath)
     save gaze_matrix_nback_trial subj_data_gaze_trial
@@ -199,5 +200,5 @@ for subj = 1:length(subjects)
     % Append to the final structure array
     gaze_data_nback = [gaze_data_nback; subj_data_gaze];
 end
-save /Volumes/methlab/Students/Arne/AOC/data/features/gaze_nback gaze_x gaze_y
-save /Volumes/methlab/Students/Arne/AOC/data/features/gaze_matrix_nback gaze_data_nback
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/gaze_nback gaze_x gaze_y
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/gaze_matrix_nback gaze_data_nback

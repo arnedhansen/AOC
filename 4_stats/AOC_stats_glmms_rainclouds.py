@@ -60,31 +60,33 @@ anova_dir = f"{base_dir}/data/stats/anova"
 
 # %% Variables and labelling
 
-variables  = ["Accuracy", "ReactionTime", "GazeDeviation", "MSRate", "Fixations", "Saccades", "AlphaPower", "IAF"]
-titles     = ["Accuracy", "Reaction Time", "GazeDeviation", "Microsaccade Rate", "Fixations", "Saccades", "Alpha Power", "IAF"]
-y_labels   = ["Accuracy [%]", "Reaction Time [s]", "Gaze Deviation [px]", "Microsaccade Rate [MS/s]", "Fixations", "Saccades", "Alpha Power [\u03BCV²/Hz]", "IAF [Hz]"]
-save_names = ["acc", "rt", "gazedev", "ms", "fix", "sacc", "pow", "iaf"]
+variables  = ["Accuracy", "ReactionTime", "GazeDeviation", "MSRate", "Fixations", "Saccades", "ScanPathLength", "AlphaPower", "IAF"]
+titles     = ["Accuracy", "Reaction Time", "Gaze Deviation", "Microsaccade Rate", "Fixations", "Saccades", "Scan Path Length", "Alpha Power", "IAF"]
+y_labels   = ["Accuracy [%]", "Reaction Time [s]", "Gaze Deviation [px]", "Microsaccade Rate [MS/s]", "Fixations", "Saccades", "Scan Path Length [px]", "Alpha Power [\u03BCV²/Hz]", "IAF [Hz]"]
+save_names = ["acc", "rt", "gazedev", "ms", "fix", "sacc", "spl", "pow", "iaf"]
 
 # Manual y ticks and ylims per variable
 yticks_map = {
-    "Accuracy"     : np.arange(60, 101, 5),
-    "ReactionTime" : np.arange(0.3, 1.35, 0.1),
-    "GazeDeviation": np.arange(0, 125, 10),
-    "MSRate"       : np.arange(0, 4.1, 0.5),
-    "Fixations"    : np.arange(0, 8.5, 1),
-    "Saccades"     : np.arange(0, 4.25, 1),
-    "AlphaPower"   : np.arange(0, 1.52, 0.25),
-    "IAF"          : np.arange(8, 14, 1),
+    "Accuracy"      : np.arange(60, 101, 5),
+    "ReactionTime"  : np.arange(0.3, 1.35, 0.1),
+    "GazeDeviation" : np.arange(0, 65, 10),
+    "MSRate"        : np.arange(0, 4.1, 0.5),
+    "Fixations"     : np.arange(0, 8.5, 1),
+    "Saccades"      : np.arange(0, 4.25, 1),
+    "ScanPathLength": np.arange(0, 410, 50),
+    "AlphaPower"    : np.arange(0, 1.52, 0.25),
+    "IAF"           : np.arange(8, 14, 1),
 }
 ylims_map = {
-    "Accuracy"     : (60, 102),
-    "ReactionTime" : (0.3, 1.35),
-    "GazeDeviation": (0, 125),
-    "MSRate"       : (0, 4.1),
-    "Fixations"    : (0, 8.5),
-    "Saccades"     : (0, 4.25),
-    "AlphaPower"   : (0, 1.6),
-    "IAF"          : (8, 14),
+    "Accuracy"      : (60, 102),
+    "ReactionTime"  : (0.3, 1.35),
+    "GazeDeviation" : (0, 65),
+    "MSRate"        : (0, 4.1),
+    "Fixations"     : (0, 8.5),
+    "Saccades"      : (0, 4.25),
+    "ScanPathLength": (0, 410),
+    "AlphaPower"    : (0, 1.6),
+    "IAF"           : (8, 14),
 }
 
 # %% Task configurations
@@ -150,13 +152,13 @@ for _task in tasks:
 
 for task in tasks:
 
-    # --- Load
+    # %% Load
     dat = pd.read_csv(task["input_csv"])
 
     # Remove impossible values
     dat.loc[dat["Accuracy"] > 100, "Accuracy"] = np.nan
 
-    # --- Condition labelling (robust to numeric or already-labelled strings)
+    # %% Condition labelling (robust to numeric or already-labelled strings)
     cond = dat["Condition"]
     if np.issubdtype(cond.dtype, np.number):
         uniq = sorted(pd.unique(cond.dropna()).tolist())
@@ -235,7 +237,7 @@ for task in tasks:
     anova_rows = []               # collects ANOVA rows for this task
     pairwise_effsize_rows = []    # collects pairwise effect sizes for this task
 
-    # --- Loop variables
+    # %% Loop variables
     for var, ttl, ylab, sname in zip(variables, titles, y_labels, save_names):
 
         dvar = dat.loc[~dat[var].isna(), ["ID", "Condition", var]].copy()
@@ -245,7 +247,7 @@ for task in tasks:
         # Ensure categorical ordering
         dvar["Condition"] = pd.Categorical(dvar["Condition"], categories=condition_order, ordered=True)
 
-        # --- Repeated-measures ANOVA (within-subject: Condition)
+        # %% Repeated-measures ANOVA (within-subject: Condition)
         # balance subjects: keep only subjects present in all conditions for this var
         present = dvar.groupby('ID')['Condition'].nunique()
         keep_ids = present[present == len(condition_order)].index
@@ -278,7 +280,7 @@ for task in tasks:
             p_adjust="bonferroni"
         )
 
-        # --- Pairwise within-subject effect sizes (Cohen's dz) + 95% CI of mean difference
+        # %% Pairwise within-subject effect sizes (Cohen's dz) + 95% CI of mean difference
         # build wide table to get paired diffs
         wide = dvar.pivot(index='ID', columns='Condition', values=var)
         for (g1, g2) in task["comparisons"]:
@@ -310,13 +312,47 @@ for task in tasks:
                     task["name"], var, g1, g2, n, md, dz, ci_lo, ci_hi, padj
                 ])
 
-        # === Figure
+        # %% Fit mixed model to export as a Word table
+        # Random-intercept model (subjects), Condition as fixed effect.
+        import statsmodels.formula.api as smf
+
+        dvar_m = dvar.rename(columns={var: "value"}).copy()
+        # Ensure Condition is categorical with your order (already set above)
+        dvar_m["Condition"] = pd.Categorical(dvar_m["Condition"],
+                                            categories=condition_order, ordered=True)
+
+        # Use treatment coding with the FIRST level as reference (your ordered categories)
+        # reml=False -> so the reported log-likelihood is comparable across models.
+        # If it struggles to converge, it will fall back to random-intercepts only and try a different optimizer.
+        model_result = None
+        try:
+            # Random intercepts only
+            m = smf.mixedlm("value ~ C(Condition, Treatment(reference=condition_order[0]))",
+                            data=dvar_m, groups=dvar_m["ID"])
+            model_result = m.fit(method="lbfgs", reml=False, maxiter=200, disp=False)
+        except Exception as e1:
+            try:
+                # Try Nelder-Mead as a fallback
+                model_result = m.fit(method="nm", reml=False, maxiter=400, disp=False)
+            except Exception as e2:
+                # Final fallback: simple OLS (no random effects), so you still get a table
+                m_ols = smf.ols("value ~ C(Condition, Treatment(reference=condition_order[0]))",
+                                data=dvar_m).fit()
+                model_result = m_ols
+
+        # Export to Word
+        doc_name = f"AOC_modeltable_{sname}_{task['name']}.docx"
+        doc_path = os.path.join(output_dir_stats, doc_name)
+        export_model_table(model_result, doc_path)
+        print(f"Saved model table → {doc_path}")
+
+        # %% Figure
         fig, ax = plt.subplots(figsize=(8, 6), facecolor="white")
         fig.patch.set_alpha(1.0)
         ax.patch.set_alpha(1.0)
         ax.set_facecolor("white")
 
-        # --- Manual raincloud parameters
+        # %% Manual raincloud parameters
         viol_alpha  = 0.60
         dot_alpha   = 0.50
         dot_size    = 30
@@ -335,7 +371,7 @@ for task in tasks:
         # Deterministic jitter
         rng = np.random.default_rng(12345)
 
-        # --- Draw per condition
+        # %% Draw per condition
         for cond_lab in condition_order:
             yvals = dvar.loc[dvar["Condition"] == cond_lab, var].dropna().to_numpy()
             if yvals.size == 0:
@@ -415,7 +451,7 @@ for task in tasks:
                 ha="center", va="top"
             )
 
-        # --- Bracket layout with shared (global) ymax per variable
+        # %% Bracket layout with shared (global) ymax per variable
         ymin = float(dvar[var].min()) if np.isfinite(dvar[var].min()) else 0.0
         ymax_data_local = float(dvar[var].max()) if np.isfinite(dvar[var].max()) else ymin
         ymax_cap = global_upper.get(var, np.nan)
@@ -453,7 +489,7 @@ for task in tasks:
             row = pw.loc[(pw["group1"] == g1) & (pw["group2"] == g2)]
             labels.append("n.s." if row.empty else p_to_signif(float(row["p_adj"].iloc[0])))
 
-        # --- FIX: slightly increase bracket spacing only for Accuracy in N-back
+        # %% slightly increase bracket spacing only for Accuracy in N-back
         if (task["name"] == "nback") and (var == "Accuracy"):
             yr = ax.get_ylim()[1] - ax.get_ylim()[0]
             # assume you already computed y_positions; just spread them a bit more
@@ -469,7 +505,7 @@ for task in tasks:
             xmap=xpos
         )
 
-        # --- Manual y-ticks (identical for both tasks)
+        # %% Manual y-ticks (identical for both tasks)
         if var in yticks_map:
             ax.set_yticks(yticks_map[var])
 
@@ -477,7 +513,7 @@ for task in tasks:
             ymin_set, ymax_set = ylims_map[var]
             ax.set_ylim(ymin_set, ymax_set)
 
-        # --- Save
+        # %% Save raincloud figure for each variable
         fig.tight_layout()
         fig.savefig(
             os.path.join(output_dir, f"AOC_stats_rainclouds_{sname}_{task['name']}_stats.png"),
@@ -497,7 +533,7 @@ for task in tasks:
     anova_df.to_csv(anova_csv, index=False)
     print(f"Saved ANOVA → {anova_csv}")
 
-    # Save pairwise effect sizes for this task (kept separate from descriptives)
+    # Save pairwise effect sizes for this task
     pw_eff_df = pd.DataFrame(
         pairwise_effsize_rows,
         columns=["Task", "Variable", "Group1", "Group2", "N", "MeanDiff", "Cohens_dz", "CI95_low", "CI95_high", "p_adj"]
@@ -505,4 +541,3 @@ for task in tasks:
     pw_csv = os.path.join(output_dir_stats, f"AOC_pairwise_effectsizes_{task['name']}.csv")
     pw_eff_df.to_csv(pw_csv, index=False)
     print(f"Saved pairwise effect sizes → {pw_csv}")
-

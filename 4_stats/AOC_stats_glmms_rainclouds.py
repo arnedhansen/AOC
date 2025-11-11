@@ -153,6 +153,7 @@ for _task in tasks:
                 global_upper[var] = float(vmax)
 
 # %% Processing + plotting
+outputs = {}
 
 for task in tasks:
 
@@ -232,6 +233,7 @@ for task in tasks:
     # Save descriptive summary for the task
     out_csv = os.path.join(output_dir_stats, f"AOC_descriptives_{task['name']}.csv")
     desc_table.to_csv(out_csv, index=False)
+    outputs[f"descriptives_{task['name']}"] = desc_table.copy()
     print(f"Saved descriptives → {out_csv}")
 
     # Category order / palette mapping
@@ -537,6 +539,7 @@ for task in tasks:
     )
     anova_csv = os.path.join(anova_dir, f"AOC_anova_{task['name']}.csv")
     anova_df.to_csv(anova_csv, index=False)
+    outputs[f"anova_{task['name']}"] = anova_df.copy()
     print(f"Saved ANOVA → {anova_csv}")
 
     # Save pairwise effect sizes for this task
@@ -546,6 +549,7 @@ for task in tasks:
     )
     pw_csv = os.path.join(output_dir_stats, f"AOC_pairwise_effectsizes_{task['name']}.csv")
     pw_eff_df.to_csv(pw_csv, index=False)
+    outputs[f"pairwise_effect_sizes_{task['name']}"] = pw_eff_df.copy()
     print(f"Saved pairwise effect sizes → {pw_csv}")
 
 # %% Alpha ~ Gaze * Condition + (1|ID) — run twice (GazeDeviation, MSRate)
@@ -558,6 +562,7 @@ for task in tasks:
 
     # Harmonise Condition labels and order (same logic as above)
     cond = dat["Condition"]
+    ref_level = task["categories"][0]
     if np.issubdtype(cond.dtype, np.number):
         uniq = sorted(pd.unique(cond.dropna()).tolist())
         applied_map = None
@@ -601,7 +606,9 @@ for task in tasks:
 
         # MixedLM (REML=False for LRT comparability)
         # Full model with interaction
-        formula_full = f"AlphaPower ~ {gaze_var}_c * C(Condition, Treatment(reference=task['categories'][0]))"
+        formula_full = (
+            f'AlphaPower ~ {gaze_var}_c * C(Condition, Treatment(reference="{ref_level}"))'
+        )
         try:
             full_res = fit_mixedlm(formula_full, data=sub, group="ID", reml=False)
         except Exception as e:
@@ -609,7 +616,9 @@ for task in tasks:
             full_res = fit_mixedlm(formula_full, data=sub, group="ID", reml=False, method="nm", maxiter=800)
 
         # Reduced (drop interaction)
-        formula_red = f"AlphaPower ~ {gaze_var}_c + C(Condition, Treatment(reference=task['categories'][0]))"
+        formula_red = (
+            f'AlphaPower ~ {gaze_var}_c + C(Condition, Treatment(reference="{ref_level}"))'
+        )        
         try:
             red_res = fit_mixedlm(formula_red, data=sub, group="ID", reml=False)
         except Exception as e:
@@ -639,19 +648,24 @@ for task in tasks:
         #   - Condition main effect (all C(Condition) dummies)
         #   - Gaze main effect (single term)
         #   - Interaction terms (if kept)
+        cond_prefix = f'C(Condition, Treatment(reference="{ref_level}"))[T.'
         term_sets = [
-            ("Condition", [f"C(Condition, Treatment(reference=task['categories'][0]))[T."]),
+            ("Condition", [cond_prefix]),         # all dummy terms that start with this prefix
             (gaze_var + "_c", [gaze_var + "_c"])
         ]
         if interaction_kept:
-            term_sets.append(("Interaction", [gaze_var + "_c:C(Condition, Treatment(reference=task['categories'][0]))[T."]))
+            inter_prefix = f'{gaze_var}_c:C(Condition, Treatment(reference="{ref_level}"))[T.'
+            term_sets.append(("Interaction", [inter_prefix]))
         wald_df = wald_table_for_terms(final_res, term_sets)
         wald_df.insert(0, "Task", task["name"])
         wald_df.insert(1, "GazePredictor", gaze_var)
 
         # Pairwise contrasts across Condition at mean gaze (centred = 0)
         cond_levels = list(sub["Condition"].cat.categories)
-        contrast_df = pairwise_condition_contrasts_at_mean_gaze(final_res, cond_levels, design_prefix="C(Condition, Treatment(reference=task['categories'][0]))")
+        design_prefix = f'C(Condition, Treatment(reference="{ref_level}"))'
+        contrast_df = pairwise_condition_contrasts_at_mean_gaze(
+            final_res, cond_levels, design_prefix=design_prefix
+        )        
         contrast_df.insert(0, "Task", task["name"])
         contrast_df.insert(1, "GazePredictor", gaze_var)
 
@@ -668,4 +682,14 @@ for task in tasks:
         lrt_df.to_csv(lrt_csv, index=False)
         wald_df.to_csv(wald_csv, index=False)
         contrast_df.to_csv(con_csv, index=False)
+        outputs[f"alpha_drop1_{gaze_var.lower()}_{task['name']}"] = lrt_df.copy()
+        outputs[f"alpha_wald_{gaze_var.lower()}_{task['name']}"] = wald_df.copy()
+        outputs[f"alpha_contrasts_{gaze_var.lower()}_{task['name']}"] = contrast_df.copy()
         print(f"Saved LRT/Wald/Contrasts → {os.path.basename(lrt_csv)}, {os.path.basename(wald_csv)}, {os.path.basename(con_csv)}")
+
+# %% Display all stored dataframes
+print("\n=== Output DataFrames ===\n")
+for name, df in outputs.items():
+    print(f"{name}: {df.shape[0]} rows × {df.shape[1]} columns")
+    print(df.head(10))
+    print("\n")

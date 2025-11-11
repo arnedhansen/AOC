@@ -63,11 +63,11 @@ cfg.comment = 'no';
 cfg.xlim = [8 14];
 
 % Global alpha zlim across all channels & conditions
-[~, channel_idx] = ismember(channels, gapow1.label);
-freq_idx = find(gapow2.freq >= 8 & gapow1.freq <= 14);
+[~, channel_idx] = ismember(channels, gapow2.label);
+freq_idx = find(gapow2.freq >= 8 & gapow2.freq <= 14);
 A2 = mean(gapow2.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
-A4 = mean(gapow6.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
-A6 = mean(gapow3.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
+A4 = mean(gapow4.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
+A6 = mean(gapow6.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
 all_alpha = [A2(:); A4(:); A6(:)];
 global_max = prctile(all_alpha,99);
 cfg.zlim = [0 global_max];
@@ -76,7 +76,6 @@ cfg.zlim = [0 global_max];
 figure('Color', 'w');
 set(gcf, 'Position', [0, 0, 2000, 2000]);
 ft_topoplotER(cfg, gapow2);
-title('');
 cb = colorbar;
 set(gca, 'FontSize', fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');
@@ -87,7 +86,6 @@ saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/A
 figure('Color', 'w');
 set(gcf, 'Position', [0, 0, 2000, 2000]);
 ft_topoplotER(cfg, gapow4);
-title('');
 cb = colorbar;
 set(gca, 'FontSize', fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');
@@ -98,7 +96,6 @@ saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/A
 figure('Color', 'w');
 set(gcf, 'Position', [0, 0, 2000, 2000]);
 ft_topoplotER(cfg, gapow6);
-title('');
 cb = colorbar;
 set(gca, 'FontSize', fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');

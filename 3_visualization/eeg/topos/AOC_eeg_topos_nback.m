@@ -91,7 +91,7 @@ channels = occ_channels;
 %% Plot alpha power TOPOS
 close all;
 clc;
-fontSize = 50;
+fontSize = 75;
 
 cfg = [];
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/layANThead.mat');
@@ -114,6 +114,7 @@ cfg.colormap = cmap;
 cfg.gridscale = 300;
 cfg.comment = 'no';
 cfg.xlim = [8 14];
+%cfg.fontsize = fontSize*100;
 
 % Global alpha zlim across all channels & conditions (robust)
 [~, channel_idx] = ismember(channels, gapow1.label);
@@ -129,9 +130,8 @@ cfg.zlim = [0 global_max];
 figure('Color', 'w');
 set(gcf, 'Position', [0, 0, 2000, 2000]);
 ft_topoplotER(cfg, gapow1);
-title('');
 cb = colorbar;
-set(gca, 'FontSize', fontSize)
+set(findall(gcf,'Type','axes'),'FontSize',fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');
 title('1-back');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_nback_topo1.png');
@@ -140,9 +140,8 @@ saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/A
 figure('Color', 'w');
 set(gcf, 'Position', [0, 0, 2000, 2000]);
 ft_topoplotER(cfg, gapow2);
-title('');
 cb = colorbar;
-set(gca, 'FontSize', fontSize)
+set(findall(gcf,'Type','axes'),'FontSize',fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');
 title('2-back');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_nback_topo2.png');
@@ -151,9 +150,8 @@ saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/A
 figure('Color', 'w');
 set(gcf, 'Position', [0, 0, 2000, 2000]);
 ft_topoplotER(cfg, gapow3);
-title('');
 cb = colorbar;
-set(gca, 'FontSize', fontSize)
+set(findall(gcf,'Type','axes'),'FontSize',fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');
 title('3-back');
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_nback_topo3.png');

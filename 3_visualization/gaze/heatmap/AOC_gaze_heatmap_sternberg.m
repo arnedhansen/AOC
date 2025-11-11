@@ -102,6 +102,7 @@ cfg.zlim = [0 robustMax];
 ft_singleplotTFR(cfg, datLateGA2);
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(colMapRaw);
@@ -123,6 +124,7 @@ cfg.figure = 'gcf';
 ft_singleplotTFR(cfg, datLateGA4);
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(colMapRaw);
@@ -144,6 +146,7 @@ cfg.figure = 'gcf';
 ft_singleplotTFR(cfg, datLateGA6);
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(colMapRaw);
@@ -164,21 +167,22 @@ cfg = [];
 cfg.figure = 'gcf';
 diff = datLateGA6;
 diff.powspctrm = datLateGA6.powspctrm - datLateGA2.powspctrm;
-robustLim = prctile(abs(diff.powspctrm(:)), 99.5);   % robust symmetric limit
+robustLim = prctile(abs(diff.powspctrm(:)), 99.5);
 cfg.zlim = [-robustLim robustLim];
 ft_singleplotTFR(cfg, diff);
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colMap = customcolormap_preset('red-white-blue');
 colormap(colMap);
 cb = colorbar;
-ylabel(cb, '\Delta Gaze density [a.u.]', 'FontSize', overallFontSize);
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
 set(gca, 'FontSize', overallFontSize);
-title('Difference (WM6-WM2) Heatmap', 'FontSize', 30)
+title('Difference Heatmap', 'FontSize', 50)
 
 % Save
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_raw_diff.png');
@@ -268,6 +272,7 @@ subplot(3,1,1);
 ft_singleplotTFR(cfg,stat2late);
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(colMap);
@@ -285,6 +290,7 @@ subplot(3,1,2);
 ft_singleplotTFR(cfg,stat4late);
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(colMap);
@@ -302,6 +308,7 @@ subplot(3,1,3);
 ft_singleplotTFR(cfg,stat6late);
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(colMap);
@@ -322,20 +329,21 @@ close all
 figure;
 set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
 ft_singleplotTFR(cfg,statDIFF);
-overallFontSize = 30;
+overallFontSize = 40;
 xlim([0 800]);
 ylim([0 600]);
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
+yticks([0 150 300 450 600])
 colormap(colMap);
 colB = colorbar;
 colB.LineWidth = 1;
-colB.Ticks = [-.5 0 .5];
-title(colB,'Effect size \itd')
+colB.Ticks = [-.5 -.25 0 .25 .5];
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 set(gca, 'FontSize', overallFontSize);
-title('Difference (WM6 vs. WM2) Gaze Heatmap', 'FontSize', overallFontSize*1.25)
+title(colB,'Effect size \itd', 'FontSize', overallFontSize*0.8)
+title('Statistical Difference Heatmap', 'FontSize', overallFontSize*1.25)
 
 % Save
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_stats_DIFF_late6vs2.png')

@@ -90,8 +90,8 @@ overallFontSize = 40;
 centerX = 800 / 2;
 centerY = 600 / 2;
 colMapRaw = customcolormap_preset('white-red');
-maxval = max([max(datFullGA1.powspctrm(:)), max(datFullGA4.powspctrm(:)) , max(datFullGA6.powspctrm(:))]);
-robustMax = prctile([datFullGA1.powspctrm(:); datFullGA4.powspctrm(:); datFullGA6.powspctrm(:)], 99.9995); 
+maxval = max([max(datFullGA1.powspctrm(:)), max(datFullGA2.powspctrm(:)) , max(datFullGA3.powspctrm(:))]);
+robustMax = prctile([datFullGA1.powspctrm(:); datFullGA2.powspctrm(:); datFullGA3.powspctrm(:)], 99.9995); 
 
 % Plot RAW heatmap 1-back
 figure;
@@ -102,6 +102,7 @@ cfg.zlim = [0 robustMax];
 ft_singleplotTFR(cfg, datFullGA1);
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(colMapRaw);
@@ -110,7 +111,7 @@ ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
 set(gca, 'FontSize', overallFontSize);
-title('WM load 2 Gaze Heatmap', 'FontSize', 30)
+title('1-back Gaze Heatmap', 'FontSize', 30)
 
 % Save
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_raw_1.png');
@@ -123,6 +124,7 @@ cfg.figure = 'gcf';
 ft_singleplotTFR(cfg, datFullGA2);
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(colMapRaw);
@@ -131,7 +133,7 @@ ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
 set(gca, 'FontSize', overallFontSize);
-title('WM load 4 Gaze Heatmap', 'FontSize', 30)
+title('2-back Gaze Heatmap', 'FontSize', 30)
 
 % Save
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_raw_2.png');
@@ -144,6 +146,7 @@ cfg.figure = 'gcf';
 ft_singleplotTFR(cfg, datFullGA3);
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(colMapRaw);
@@ -152,7 +155,7 @@ ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
 set(gca, 'FontSize', overallFontSize);
-title('WM load 6 Gaze Heatmap', 'FontSize', 30)
+title('3-back Gaze Heatmap', 'FontSize', 30)
 
 % Save
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_raw_3.png');
@@ -162,23 +165,24 @@ figure;
 set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
 cfg = [];
 cfg.figure = 'gcf';
-diff = datFullGA6;
-diff.powspctrm = datFullGA6.powspctrm - datFullGA2.powspctrm;
+diff = datFullGA3;
+diff.powspctrm = datFullGA3.powspctrm - datFullGA1.powspctrm;
 robustLim = prctile(abs(diff.powspctrm(:)), 99.5);   % robust symmetric limit
 cfg.zlim = [-robustLim robustLim];
 ft_singleplotTFR(cfg, diff);
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colMap = customcolormap_preset('red-white-blue');
 colormap(colMap);
 cb = colorbar;
-ylabel(cb, '\Delta Gaze density [a.u.]', 'FontSize', overallFontSize);
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
 set(gca, 'FontSize', overallFontSize);
-title('Difference (3-back - 1-back) Heatmap', 'FontSize', 30)
+title('Difference Heatmap', 'FontSize', 30)
 
 % Save
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_raw_diff.png');
@@ -268,6 +272,7 @@ subplot(3,1,1);
 ft_singleplotTFR(cfg,stat2late);
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(colMap);
@@ -285,6 +290,7 @@ subplot(3,1,2);
 ft_singleplotTFR(cfg,stat4late);
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(colMap);
@@ -302,6 +308,7 @@ subplot(3,1,3);
 ft_singleplotTFR(cfg,stat6late);
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(colMap);
@@ -322,20 +329,21 @@ close all
 figure;
 set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
 ft_singleplotTFR(cfg,statDIFF);
-overallFontSize = 30;
+overallFontSize = 40;
 xlim([0 800]);
 ylim([0 600]);
+yticks([0 150 300 450 600])
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 colormap(colMap);
 colB = colorbar;
 colB.LineWidth = 1;
-colB.Ticks = [-.5 0 .5];
-title(colB,'Effect size \itd')
+colB.Ticks = [-.5 -.25 0 .25 .5];
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 set(gca, 'FontSize', overallFontSize);
-title('Difference (3-back vs. 1-back) Gaze Heatmap', 'FontSize', overallFontSize*1.25)
+title(colB,'Effect size \itd', 'FontSize', overallFontSize*0.8)
+title('Statistical Difference Heatmap', 'FontSize', overallFontSize*1.2)
 
 % Save
 saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_stats_DIFF_stim3vs1.png')

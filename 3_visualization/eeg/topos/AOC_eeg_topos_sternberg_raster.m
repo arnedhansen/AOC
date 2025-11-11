@@ -47,13 +47,21 @@ freq_bands = {
 freqs = size(freq_bands, 1);
 timepoints = 0:0.25:2;
 timepnts = length(timepoints)-1;
+nCols = timepnts + 1;
 
 % Plot
-figure('Color', 'w', 'Position', [100, 100, 2000, 1200]);
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
 title('Sternberg WM load 6 Theta, Alpha, and Beta Topolots over Time', 'FontSize', 25)
 for f = 1:freqs
     freqband_name = freq_bands{f, 1};
     freqband_range = freq_bands{f, 2};
+
+    % Find max power value for frequency band
+    freq_idx = find(gatfr6.freq >= freqband_range(1) & gatfr6.freq <= freqband_range(2));
+    timepnts_idx = find(gatfr6.time == 0) : find(gatfr6.time == 2); % Timepoints over entire interval
+    dat = gatfr6.powspctrm(1:125, freq_idx, timepnts_idx);
+    dat = abs(dat(:));
+    max_spctrm = prctile(dat, 95);
 
     for tp = 1:timepnts
         ax = subplot(freqs, timepnts, (f-1)*timepnts + tp);
@@ -79,6 +87,7 @@ for f = 1:freqs
         cfg.colormap = cmap;
         cfg.gridscale = 300;
         cfg.ylim = freqband_range;
+        cfg.zlim = [-max_spctrm max_spctrm];
         %if mod((f-1)*timepnts + tp, 8) == 0
             cb = colorbar;
         %    set(cb, 'FontSize', 15);
@@ -90,23 +99,15 @@ for f = 1:freqs
         endTmpnt = find(gatfr6.time == timepoints(tp+1));
         cfg.xlim = [gatfr6.time(startTmpnt) gatfr6.time(endTmpnt)];
 
-        % Find max power value for frequency band
-        freq_idx = find(gatfr6.freq >= freqband_range(1) & gatfr6.freq <= freqband_range(2));
-        timepnts_idx = find(gatfr6.time == 0) : find(gatfr6.time == 2); % Timepoints over entire interval
-        submat = gatfr6.powspctrm(1:end-3, freq_idx, timepnts_idx); % [chan x freq x time]
-        max_spctrm = max(submat(:), [], 'omitnan');
-        max_spctrm = 1.2      %abs(max_spctrm);
-        %cfg.zlim = [-max_spctrm max_spctrm];
-
         % Create Topoplot
         ft_topoplotTFR(cfg, gatfr6);
         title(sprintf('%.0f - %.0f ms', 1000*timepoints(tp), 1000*timepoints(tp+1)), 'FontSize', 15);
 
     end
 end
-text(-10, 3.75, "Theta (4-8Hz)", 'FontSize', 30, 'FontWeight', 'bold', 'Rotation', 90);
-text(-10, 1.5, "Alpha (8-14Hz)", 'FontSize', 30, 'FontWeight', 'bold', 'Rotation', 90);
-text(-10, -0.75, "Beta (14-30Hz)", 'FontSize', 30, 'FontWeight', 'bold', 'Rotation', 90);
+text(-12.5, 4.5, "Theta (4-8Hz)", 'FontSize', 20, 'FontWeight', 'bold', 'Rotation', 90);
+text(-12.5, 2, "Alpha (8-14Hz)", 'FontSize', 20, 'FontWeight', 'bold', 'Rotation', 90);
+text(-12.5, -1, "Beta (14-30Hz)", 'FontSize', 20, 'FontWeight', 'bold', 'Rotation', 90);
 
 % Save figure
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/topos/raster/AOC_alpha_power_sternberg_rasterplot_WM6.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/raster/AOC_alpha_power_sternberg_rasterplot_WM6.png');

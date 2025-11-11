@@ -1,8 +1,8 @@
 # %% AOC Stats Rainclouds — Combined (Sternberg + N-back)
 
 # %% Imports
-import sys
-import os
+import sys, os
+sys.path.insert(0, os.path.expanduser("/Users/Arne/Documents/GitHub"))
 import numpy as np
 import pandas as pd
 import matplotlib as mpl
@@ -13,14 +13,16 @@ from statsmodels.stats.anova import AnovaRM
 import statsmodels.formula.api as smf
 
 from functions.stats_helpers import (
-    iqr_outlier_filter,
-    mixedlm_pairwise_contrasts,
-    p_to_signif
+    iqr_outlier_filter, mixedlm_pairwise_contrasts, p_to_signif
 )
 
 from functions.rainclouds_plotting_helpers import add_stat_brackets
 
 from functions.export_model_table import export_model_table
+
+from functions.mixedlm_helpers import (
+    fit_mixedlm, drop1_lrt, wald_table_for_terms, pairwise_condition_contrasts_at_mean_gaze
+)
 
 # %% Parameters
 
@@ -60,10 +62,10 @@ anova_dir = f"{base_dir}/data/stats/anova"
 
 # %% Variables and labelling
 
-variables  = ["Accuracy", "ReactionTime", "GazeDeviation", "MSRate", "Fixations", "Saccades", "ScanPathLength", "AlphaPower", "IAF"]
-titles     = ["Accuracy", "Reaction Time", "Gaze Deviation", "Microsaccade Rate", "Fixations", "Saccades", "Scan Path Length", "Alpha Power", "IAF"]
-y_labels   = ["Accuracy [%]", "Reaction Time [s]", "Gaze Deviation [px]", "Microsaccade Rate [MS/s]", "Fixations", "Saccades", "Scan Path Length [px]", "Alpha Power [\u03BCV²/Hz]", "IAF [Hz]"]
-save_names = ["acc", "rt", "gazedev", "ms", "fix", "sacc", "spl", "pow", "iaf"]
+variables  = ["Accuracy", "ReactionTime", "GazeDeviation", "MSRate", "Fixations", "Saccades", "PupilSize", "ScanPathLength", "AlphaPower", "IAF"]
+titles     = ["Accuracy", "Reaction Time", "Gaze Deviation", "Microsaccade Rate", "Fixations", "Saccades", "Pupil Size", "Scan Path Length", "Alpha Power", "IAF"]
+y_labels   = ["Accuracy [%]", "Reaction Time [s]", "Gaze Deviation [px]", "Microsaccade Rate [MS/s]", "Fixations", "Saccades", "Pupil Size [a.u.]", "Scan Path Length [px]", "Alpha Power [\u03BCV²/Hz]", "IAF [Hz]"]
+save_names = ["acc", "rt", "gazedev", "ms", "fix", "sacc", "pupil", "spl", "pow", "iaf"]
 
 # Manual y ticks and ylims per variable
 yticks_map = {
@@ -73,6 +75,7 @@ yticks_map = {
     "MSRate"        : np.arange(0, 3.8, 0.5),
     "Fixations"     : np.arange(0, 8.5, 1),
     "Saccades"      : np.arange(0, 4.25, 1),
+    "PupilSize"     : np.arange(0, 5.5, 1),
     "ScanPathLength": np.arange(0, 410, 50),
     "AlphaPower"    : np.arange(0, 1.52, 0.25),
     "IAF"           : np.arange(8, 14, 1),
@@ -84,6 +87,7 @@ ylims_map = {
     "MSRate"        : (0, 3.8),
     "Fixations"     : (0, 8.5),
     "Saccades"      : (0, 4.25),
+    "PupilSize"     : (0, 5.5),
     "ScanPathLength": (0, 410),
     "AlphaPower"    : (0, 1.6),
     "IAF"           : (8, 14),
@@ -344,7 +348,7 @@ for task in tasks:
         doc_name = f"AOC_modeltable_{sname}_{task['name']}.docx"
         doc_path = os.path.join(output_dir_stats, doc_name)
         export_model_table(model_result, doc_path)
-        print(f"Saved model table → {doc_path}")
+        print(f"Saved model table    → {doc_name}")
 
         # %% Figure
         fig, ax = plt.subplots(figsize=(8, 6), facecolor="white")
@@ -516,13 +520,15 @@ for task in tasks:
         # %% Save raincloud figure for each variable
         fig.tight_layout()
         fig.savefig(
-            os.path.join(output_dir, f"AOC_stats_rainclouds_{sname}_{task['name']}_stats.png"),
+            os.path.join(output_dir, f"AOC_stats_rainclouds_{sname}_{task['name']}.png"),
             dpi=300,
             transparent=False,
             facecolor=fig.get_facecolor(),
             edgecolor=fig.get_edgecolor() if hasattr(fig, "get_edgecolor") else "white"
         )
         plt.close(fig)
+        saveNameFig = os.path.join(f"AOC_stats_rainclouds_{sname}_{task['name']}.png")
+        print(f"Saved raincloud fig. → {saveNameFig}")
 
     # Save ANOVA for this task
     anova_df = pd.DataFrame(
@@ -541,3 +547,125 @@ for task in tasks:
     pw_csv = os.path.join(output_dir_stats, f"AOC_pairwise_effectsizes_{task['name']}.csv")
     pw_eff_df.to_csv(pw_csv, index=False)
     print(f"Saved pairwise effect sizes → {pw_csv}")
+
+# %% Alpha ~ Gaze * Condition + (1|ID) — run twice (GazeDeviation, MSRate)
+print("\n=== Alpha ~ Gaze * Condition mixed models (per task) ===")
+
+for task in tasks:
+    print(f"\nTask: {task['name']}")
+    dat = pd.read_csv(task["input_csv"])
+    dat.loc[dat["Accuracy"] > 100, "Accuracy"] = np.nan
+
+    # Harmonise Condition labels and order (same logic as above)
+    cond = dat["Condition"]
+    if np.issubdtype(cond.dtype, np.number):
+        uniq = sorted(pd.unique(cond.dropna()).tolist())
+        applied_map = None
+        for cand in task["cond_to_label_numeric"]:
+            if set(uniq).issubset(set(cand.keys())):
+                applied_map = cand
+                break
+        if applied_map is None:
+            applied_map = {val: task["categories"][i] for i, val in enumerate(uniq[:len(task["categories"])])}
+        dat["Condition"] = dat["Condition"].map(applied_map)
+    else:
+        dat["Condition"] = dat["Condition"].astype(str).str.replace(r"\s+", " ", regex=True).str.strip()
+
+    dat["Condition"] = pd.Categorical(dat["Condition"], categories=task["categories"], ordered=True)
+    if dat["ID"].dtype != "O":
+        dat["ID"] = dat["ID"].astype(str)
+
+    # Apply same outlier handling
+    dat = iqr_outlier_filter(dat, variables, by="Condition")
+
+    # Keep essential columns
+    cols_needed = ["ID", "Condition", "AlphaPower", "GazeDeviation", "MSRate"]
+    dat = dat[[c for c in cols_needed if c in dat.columns]].copy()
+
+    # Drop rows with missing DV or predictors
+    # We'll do this separately for each gaze predictor
+    for gaze_var in ["GazeDeviation", "MSRate"]:
+        if gaze_var not in dat.columns:
+            print(f" - {gaze_var} not present. Skipping.")
+            continue
+
+        sub = dat[["ID", "Condition", "AlphaPower", gaze_var]].dropna().copy()
+
+        # Ensure we have all condition levels for at least some subjects
+        if sub.empty or sub["ID"].nunique() < 2:
+            print(f" - Not enough data for {gaze_var}. Skipping.")
+            continue
+
+        # Mean-centre gaze within task (keeps units; recommended to reduce collinearity)
+        sub[gaze_var + "_c"] = sub[gaze_var] - sub[gaze_var].mean()
+
+        # MixedLM (REML=False for LRT comparability)
+        # Full model with interaction
+        formula_full = f"AlphaPower ~ {gaze_var}_c * C(Condition, Treatment(reference=task['categories'][0]))"
+        try:
+            full_res = fit_mixedlm(formula_full, data=sub, group="ID", reml=False)
+        except Exception as e:
+            # Fallback: try different optimiser
+            full_res = fit_mixedlm(formula_full, data=sub, group="ID", reml=False, method="nm", maxiter=800)
+
+        # Reduced (drop interaction)
+        formula_red = f"AlphaPower ~ {gaze_var}_c + C(Condition, Treatment(reference=task['categories'][0]))"
+        try:
+            red_res = fit_mixedlm(formula_red, data=sub, group="ID", reml=False)
+        except Exception as e:
+            red_res = fit_mixedlm(formula_red, data=sub, group="ID", reml=False, method="nm", maxiter=800)
+
+        # drop1-style LRT for interaction
+        lrt = drop1_lrt(full_res, red_res)
+        lrt_df = pd.DataFrame([{
+            "Task": task["name"],
+            "GazePredictor": gaze_var,
+            "LL_full": lrt["LL_full"], "LL_reduced": lrt["LL_reduced"],
+            "df_full": lrt["df_full"], "df_reduced": lrt["df_reduced"],
+            "df_diff": lrt["df_diff"], "LR": lrt["LR"], "p": lrt["p"]
+        }])
+
+        # Select final model based on LRT
+        if np.isfinite(lrt["p"]) and (lrt["p"] < 0.05):
+            final_res = full_res
+            final_formula = formula_full
+            interaction_kept = True
+        else:
+            final_res = red_res
+            final_formula = formula_red
+            interaction_kept = False
+
+        # Wald "ANOVA" style joint tests:
+        #   - Condition main effect (all C(Condition) dummies)
+        #   - Gaze main effect (single term)
+        #   - Interaction terms (if kept)
+        term_sets = [
+            ("Condition", [f"C(Condition, Treatment(reference=task['categories'][0]))[T."]),
+            (gaze_var + "_c", [gaze_var + "_c"])
+        ]
+        if interaction_kept:
+            term_sets.append(("Interaction", [gaze_var + "_c:C(Condition, Treatment(reference=task['categories'][0]))[T."]))
+        wald_df = wald_table_for_terms(final_res, term_sets)
+        wald_df.insert(0, "Task", task["name"])
+        wald_df.insert(1, "GazePredictor", gaze_var)
+
+        # Pairwise contrasts across Condition at mean gaze (centred = 0)
+        cond_levels = list(sub["Condition"].cat.categories)
+        contrast_df = pairwise_condition_contrasts_at_mean_gaze(final_res, cond_levels, design_prefix="C(Condition, Treatment(reference=task['categories'][0]))")
+        contrast_df.insert(0, "Task", task["name"])
+        contrast_df.insert(1, "GazePredictor", gaze_var)
+
+        # Export model table (DOCX)
+        doc_name = f"AOC_alpha_mixedlm_{gaze_var.lower()}_{task['name']}.docx"
+        doc_path = os.path.join(output_dir_stats, doc_name)
+        export_model_table(final_res, doc_path)
+        print(f"Saved model table → {doc_name}")
+
+        # Save LRT, Wald table, and contrasts
+        lrt_csv = os.path.join(output_dir_stats, f"AOC_alpha_drop1_{gaze_var.lower()}_{task['name']}.csv")
+        wald_csv = os.path.join(output_dir_stats, f"AOC_alpha_wald_{gaze_var.lower()}_{task['name']}.csv")
+        con_csv  = os.path.join(output_dir_stats, f"AOC_alpha_contrasts_{gaze_var.lower()}_{task['name']}.csv")
+        lrt_df.to_csv(lrt_csv, index=False)
+        wald_df.to_csv(wald_csv, index=False)
+        contrast_df.to_csv(con_csv, index=False)
+        print(f"Saved LRT/Wald/Contrasts → {os.path.basename(lrt_csv)}, {os.path.basename(wald_csv)}, {os.path.basename(con_csv)}")

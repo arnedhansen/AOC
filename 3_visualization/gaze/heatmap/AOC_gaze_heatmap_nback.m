@@ -13,9 +13,9 @@ for subj = 1:length(subjects)
 
     %% Segment data in split latencies and conditions, filter and compute heatmaps
     % Find condition indexes for each trial
-    ind1 = find(dataet.trialinfo == 21);
-    ind2 = find(dataet.trialinfo == 22);
-    ind3 = find(dataet.trialinfo == 23);
+    ind1 = find(dataet.trialinfo(:, 1) == 21);
+    ind2 = find(dataet.trialinfo(:, 1) == 22);
+    ind3 = find(dataet.trialinfo(:, 1) == 23);
 
     % Common config
     cfg = [];
@@ -74,13 +74,114 @@ datBaseGA1    = ft_freqgrandaverage([],dataBase1Allsubs{:});
 datBaseGA2    = ft_freqgrandaverage([],dataBase2Allsubs{:});
 datBaseGA3    = ft_freqgrandaverage([],dataBase3Allsubs{:});
 
-datLateGA1    = ft_freqgrandaverage([],dataStim1Allsubs{:});
-datLateGA2    = ft_freqgrandaverage([],dataStim2Allsubs{:});
-datLateGA3    = ft_freqgrandaverage([],dataStim3Allsubs{:});
+datFullGA1    = ft_freqgrandaverage([],dataStim1Allsubs{:});
+datFullGA2    = ft_freqgrandaverage([],dataStim2Allsubs{:});
+datFullGA3    = ft_freqgrandaverage([],dataStim3Allsubs{:});
 
-datLateGA1_bl    = ft_freqgrandaverage([],dataStim1Allsubs_bl{:});
-datLateGA2_bl    = ft_freqgrandaverage([],dataStim2Allsubs_bl{:});
-datLateGA3_bl    = ft_freqgrandaverage([],dataStim3Allsubs_bl{:});
+datFullGA1_bl    = ft_freqgrandaverage([],dataStim1Allsubs_bl{:});
+datFullGA2_bl    = ft_freqgrandaverage([],dataStim2Allsubs_bl{:});
+datFullGA3_bl    = ft_freqgrandaverage([],dataStim3Allsubs_bl{:});
+
+%% Plot GRAND AVERAGE HEATMAPS RAW
+close all;
+overallFontSize = 40;
+
+% Common configuration
+centerX = 800 / 2;
+centerY = 600 / 2;
+colMapRaw = customcolormap_preset('white-red');
+maxval = max([max(datFullGA1.powspctrm(:)), max(datFullGA4.powspctrm(:)) , max(datFullGA6.powspctrm(:))]);
+robustMax = prctile([datFullGA1.powspctrm(:); datFullGA4.powspctrm(:); datFullGA6.powspctrm(:)], 99.9995); 
+
+% Plot RAW heatmap 1-back
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
+cfg = [];
+cfg.figure = 'gcf';
+cfg.zlim = [0 robustMax];
+ft_singleplotTFR(cfg, datFullGA1);
+xlim([0 800]);
+ylim([0 600]);
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colormap(colMapRaw);
+cb = colorbar;
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 2 Gaze Heatmap', 'FontSize', 30)
+
+% Save
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_raw_1.png');
+
+% Plot RAW heatmap 2-back
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
+cfg = [];
+cfg.figure = 'gcf';
+ft_singleplotTFR(cfg, datFullGA2);
+xlim([0 800]);
+ylim([0 600]);
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colormap(colMapRaw);
+cb = colorbar;
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 4 Gaze Heatmap', 'FontSize', 30)
+
+% Save
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_raw_2.png');
+
+% Plot RAW heatmap 3-back
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
+cfg = [];
+cfg.figure = 'gcf';
+ft_singleplotTFR(cfg, datFullGA3);
+xlim([0 800]);
+ylim([0 600]);
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colormap(colMapRaw);
+cb = colorbar;
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 6 Gaze Heatmap', 'FontSize', 30)
+
+% Save
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_raw_3.png');
+
+% Plot RAW heatmap DIFF (3-back - 1-back)
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
+cfg = [];
+cfg.figure = 'gcf';
+diff = datFullGA6;
+diff.powspctrm = datFullGA6.powspctrm - datFullGA2.powspctrm;
+robustLim = prctile(abs(diff.powspctrm(:)), 99.5);   % robust symmetric limit
+cfg.zlim = [-robustLim robustLim];
+ft_singleplotTFR(cfg, diff);
+xlim([0 800]);
+ylim([0 600]);
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colMap = customcolormap_preset('red-white-blue');
+colormap(colMap);
+cb = colorbar;
+ylabel(cb, '\Delta Gaze density [a.u.]', 'FontSize', overallFontSize);
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('Difference (3-back - 1-back) Heatmap', 'FontSize', 30)
+
+% Save
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_raw_diff.png');
 
 %% Set up stats
 cfg                    = [];
@@ -219,7 +320,7 @@ saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatma
 %% DIFF STATS Heatmap
 close all
 figure;
-set(gcf, 'Position', [0 0 2000 1200], 'Color', 'W');
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
 ft_singleplotTFR(cfg,statDIFF);
 overallFontSize = 30;
 xlim([0 800]);
@@ -248,4 +349,3 @@ saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatma
 % plotGazeHeatmap(stat6late, '3-back LATE [0 2] Gaze Heatmap', 'AOC_gaze_heatmap_nback_stats_late6');
 % plotGazeHeatmap(statCOMBearly, 'COMB EARLY [0 1] Gaze Heatmap', 'AOC_gaze_heatmap_nback_stats_early_COMB');
 % plotGazeHeatmap(statCOMBlate, 'COMB LATE [0 2] Gaze Heatmap', 'AOC_gaze_heatmap_nback_stats_late_COMB');
-

@@ -21,7 +21,7 @@ from functions.rainclouds_plotting_helpers import add_stat_brackets
 from functions.export_model_table import export_model_table
 
 from functions.mixedlm_helpers import (
-    fit_mixedlm, drop1_lrt, wald_table_for_terms, pairwise_condition_contrasts_at_mean_gaze
+    fit_mixedlm, drop1_lrt, pairwise_condition_contrasts_at_mean_gaze, mixedlm_fixed_effects_to_df, lr_effect_sizes
 )
 
 # %% Parameters
@@ -320,8 +320,6 @@ for task in tasks:
 
         # %% Fit mixed model to export as a Word table
         # Random-intercept model (subjects), Condition as fixed effect.
-        import statsmodels.formula.api as smf
-
         dvar_m = dvar.rename(columns={var: "value"}).copy()
         # Ensure Condition is categorical with your order (already set above)
         dvar_m["Condition"] = pd.Categorical(dvar_m["Condition"],
@@ -351,6 +349,20 @@ for task in tasks:
         doc_path = os.path.join(output_dir_stats, doc_name)
         export_model_table(model_result, doc_path)
         print(f"Saved model table    → {doc_name}")
+        
+        # Also save fixed effects (β, SE, z/t, p, CI) to CSV and outputs
+        from functions.mixedlm_helpers import mixedlm_fixed_effects_to_df
+
+        fe_df = mixedlm_fixed_effects_to_df(
+            model_result,
+            task=task["name"],
+            variable=var,
+            model_label="DV ~ Condition + (1|ID)"
+        )
+        fe_csv = os.path.join(output_dir_stats, f"AOC_mixedlm_fixed_{sname}_{task['name']}.csv")
+        fe_df.to_csv(fe_csv, index=False)
+        outputs[f"mixedlm_fixed_{sname}_{task['name']}"] = fe_df.copy()
+        print(f"Saved fixed effects  → {os.path.basename(fe_csv)}")
 
         # %% Figure
         fig, ax = plt.subplots(figsize=(8, 6), facecolor="white")
@@ -644,21 +656,83 @@ for task in tasks:
             final_formula = formula_red
             interaction_kept = False
 
-        # Wald "ANOVA" style joint tests:
-        #   - Condition main effect (all C(Condition) dummies)
-        #   - Gaze main effect (single term)
-        #   - Interaction terms (if kept)
-        cond_prefix = f'C(Condition, Treatment(reference="{ref_level}"))[T.'
-        term_sets = [
-            ("Condition", [cond_prefix]),         # all dummy terms that start with this prefix
-            (gaze_var + "_c", [gaze_var + "_c"])
-        ]
-        if interaction_kept:
-            inter_prefix = f'{gaze_var}_c:C(Condition, Treatment(reference="{ref_level}"))[T.'
-            term_sets.append(("Interaction", [inter_prefix]))
-        wald_df = wald_table_for_terms(final_res, term_sets)
-        wald_df.insert(0, "Task", task["name"])
-        wald_df.insert(1, "GazePredictor", gaze_var)
+        # LRT "ANOVA" style tests (all based on the no-interaction model red_res)
+        # - Interaction: already tested via lrt (full_res vs red_res)
+        # - Condition main effect: red_res vs model without Condition
+        # - Gaze main effect: red_res vs model without gaze
+        #
+        # red_res is the no-interaction model that is already fitted.
+        # lrt is still the LRT for the interaction (full_res vs red_res).
+        # lrt_cond and lrt_gaze are LRTs on the reduced model:
+        # Condition: compare AlphaPower ~ gaze_c + Condition vs AlphaPower ~ gaze_c
+        # Gaze: compare AlphaPower ~ gaze_c + Condition vs AlphaPower ~ Condition
+
+        # Model without Condition (keeps gaze only)
+        formula_nocond = (
+            f'AlphaPower ~ {gaze_var}_c'
+        )
+        try:
+            res_nocond = fit_mixedlm(formula_nocond, data=sub, group="ID", reml=False)
+        except Exception:
+            res_nocond = fit_mixedlm(formula_nocond, data=sub, group="ID",
+                                     reml=False, method="nm", maxiter=800)
+
+        lrt_cond = drop1_lrt(red_res, res_nocond)
+
+        # Model without gaze (keeps Condition only)
+        formula_nogaze = (
+            f'AlphaPower ~ C(Condition, Treatment(reference="{ref_level}"))'
+        )
+        try:
+            res_nogaze = fit_mixedlm(formula_nogaze, data=sub, group="ID", reml=False)
+        except Exception:
+            res_nogaze = fit_mixedlm(formula_nogaze, data=sub, group="ID",
+                                     reml=False, method="nm", maxiter=800)
+
+        lrt_gaze = drop1_lrt(red_res, res_nogaze)
+
+        # Build LRT table with LR-based effect sizes
+        rows_lrt = []
+        n_obs = sub.shape[0]
+
+        R2_cond, f2_cond = lr_effect_sizes(lrt_cond["LR"], lrt_cond["df_diff"], n_obs)
+        rows_lrt.append({
+            "Term": "Condition",
+            "df":   lrt_cond["df_diff"],
+            "LR_Chi2": lrt_cond["LR"],
+            "p":    lrt_cond["p"],
+            "R2_LR": R2_cond,
+            "f2_LR": f2_cond
+        })
+
+        R2_gaze, f2_gaze = lr_effect_sizes(lrt_gaze["LR"], lrt_gaze["df_diff"], n_obs)
+        rows_lrt.append({
+            "Term": f"{gaze_var}_c",
+            "df":   lrt_gaze["df_diff"],
+            "LR_Chi2": lrt_gaze["LR"],
+            "p":    lrt_gaze["p"],
+            "R2_LR": R2_gaze,
+            "f2_LR": f2_gaze
+        })
+
+        # Interaction row
+        if interaction_kept and np.isfinite(lrt["p"]):
+            R2_int, f2_int = lr_effect_sizes(lrt["LR"], lrt["df_diff"], n_obs)
+            rows_lrt.append({
+                "Term": "Interaction",
+                "df":   lrt["df_diff"],
+                "LR_Chi2": lrt["LR"],
+                "p":    lrt["p"],
+                "R2_LR": R2_int,
+                "f2_LR": f2_int
+            })
+
+        for row in rows_lrt:
+            row["N_obs"] = int(n_obs)
+
+        lrtTbl_df = pd.DataFrame(rows_lrt, columns=["Term", "df", "LR_Chi2", "p", "R2_LR", "f2_LR"])
+        lrtTbl_df.insert(0, "Task", task["name"])
+        lrtTbl_df.insert(1, "GazePredictor", gaze_var)
 
         # Pairwise contrasts across Condition at mean gaze (centred = 0)
         cond_levels = list(sub["Condition"].cat.categories)
@@ -675,21 +749,37 @@ for task in tasks:
         export_model_table(final_res, doc_path)
         print(f"Saved model table → {doc_name}")
 
-        # Save LRT, Wald table, and contrasts
+        # Also save fixed effects for the alpha ~ gaze * Condition model
+        fe_alpha_df = mixedlm_fixed_effects_to_df(
+            final_res,
+            task=task["name"],
+            variable="AlphaPower",
+            model_label=f"AlphaPower ~ {gaze_var}_c * Condition + (1|ID)" if interaction_kept
+                        else f"AlphaPower ~ {gaze_var}_c + Condition + (1|ID)"
+        )
+        fe_alpha_csv = os.path.join(output_dir_stats, f"AOC_alpha_fixed_{gaze_var.lower()}_{task['name']}.csv")
+        fe_alpha_df.to_csv(fe_alpha_csv, index=False)
+        outputs[f"alpha_fixed_{gaze_var.lower()}_{task['name']}"] = fe_alpha_df.copy()
+        print(f"Saved alpha fixed-effects → {os.path.basename(fe_alpha_csv)}")
+
+        # Save LRT, lrtTbl table, and contrasts
         lrt_csv = os.path.join(output_dir_stats, f"AOC_alpha_drop1_{gaze_var.lower()}_{task['name']}.csv")
-        wald_csv = os.path.join(output_dir_stats, f"AOC_alpha_wald_{gaze_var.lower()}_{task['name']}.csv")
+        lrtTbl_csv = os.path.join(output_dir_stats, f"AOC_alpha_lrtTbl_{gaze_var.lower()}_{task['name']}.csv")
         con_csv  = os.path.join(output_dir_stats, f"AOC_alpha_contrasts_{gaze_var.lower()}_{task['name']}.csv")
         lrt_df.to_csv(lrt_csv, index=False)
-        wald_df.to_csv(wald_csv, index=False)
+        lrtTbl_df.to_csv(lrtTbl_csv, index=False)
         contrast_df.to_csv(con_csv, index=False)
         outputs[f"alpha_drop1_{gaze_var.lower()}_{task['name']}"] = lrt_df.copy()
-        outputs[f"alpha_wald_{gaze_var.lower()}_{task['name']}"] = wald_df.copy()
+        outputs[f"alpha_lrtTbl_{gaze_var.lower()}_{task['name']}"] = lrtTbl_df.copy()
         outputs[f"alpha_contrasts_{gaze_var.lower()}_{task['name']}"] = contrast_df.copy()
-        print(f"Saved LRT/Wald/Contrasts → {os.path.basename(lrt_csv)}, {os.path.basename(wald_csv)}, {os.path.basename(con_csv)}")
+        print(f"Saved LRT/LRT Table/Contrasts → {os.path.basename(lrt_csv)}, {os.path.basename(lrtTbl_csv)}, {os.path.basename(con_csv)}")
 
 # %% Display all stored dataframes
+pd.set_option("display.max_rows", None)
+pd.set_option("display.max_columns", None)
+pd.set_option("display.width", 0)
 print("\n=== Output DataFrames ===\n")
 for name, df in outputs.items():
     print(f"{name}: {df.shape[0]} rows × {df.shape[1]} columns")
-    print(df.head(10))
+    print(df.to_string(index=False))
     print("\n")

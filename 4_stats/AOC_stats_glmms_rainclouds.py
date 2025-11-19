@@ -73,7 +73,7 @@ yticks_map = {
     "ReactionTime"  : np.arange(0.3, 1.35, 0.1),
     "GazeDeviation" : np.arange(0, 65, 10),
     "MSRate"        : np.arange(0, 3.8, 0.5),
-    "Fixations"     : np.arange(0, 8.5, 1),
+    "Fixations"     : np.arange(0, 6, 1),
     "Saccades"      : np.arange(0, 4.25, 1),
     "PupilSize"     : np.arange(0, 5.5, 1),
     "ScanPathLength": np.arange(0, 410, 50),
@@ -85,12 +85,12 @@ ylims_map = {
     "ReactionTime"  : (0.3, 1.35),
     "GazeDeviation" : (0, 65),
     "MSRate"        : (0, 3.8),
-    "Fixations"     : (0, 8.5),
+    "Fixations"     : (0, 6),
     "Saccades"      : (0, 4.25),
     "PupilSize"     : (0, 5.5),
     "ScanPathLength": (0, 410),
     "AlphaPower"    : (0, 1.6),
-    "IAF"           : (8, 14),
+    "IAF"           : (8, 14.1),
 }
 
 # %% Task configurations
@@ -470,14 +470,19 @@ for task in tasks:
             )
 
         # %% Bracket layout with shared (global) ymax per variable
-        ymin = float(dvar[var].min()) if np.isfinite(dvar[var].min()) else 0.0
-        ymax_data_local = float(dvar[var].max()) if np.isfinite(dvar[var].max()) else ymin
-        ymax_cap = global_upper.get(var, np.nan)
-        if not np.isfinite(ymax_cap):
-            ymax_cap = ymax_data_local  # fallback if pre-scan found nothing
+        # If manual limits exist, use them for bracket layout;
+        # otherwise fall back to the data/global upper.
+        if var in ylims_map:
+            ymin, ymax_cap = ylims_map[var]
+        else:
+            ymin = float(dvar[var].min()) if np.isfinite(dvar[var].min()) else 0.0
+            ymax_data_local = float(dvar[var].max()) if np.isfinite(dvar[var].max()) else ymin
+            ymax_cap = global_upper.get(var, np.nan)
+            if not np.isfinite(ymax_cap):
+                ymax_cap = ymax_data_local
 
-        # use the global cap for bracket baseline and ylim ceiling
         range_y = max(ymax_cap - ymin, 1.0)
+
         head = 0.02 * range_y
         step = 0.10 * range_y
 
@@ -488,7 +493,7 @@ for task in tasks:
 
         # y-label at data midpoint
         ymin_cur, ymax_cur = ylims_map[var]
-        ymid = (ymin_cur + ymax_cap) / 2.0
+        ymid = 0.5 * (ymin_cur + ymax_cur)
         ax.set_ylabel("")
         ax.yaxis.get_label().set_visible(False)
         ax.text(
@@ -529,7 +534,12 @@ for task in tasks:
 
         if var in ylims_map:
             ymin_set, ymax_set = ylims_map[var]
-            ax.set_ylim(ymin_set, ymax_set)
+            # extend a bit to make sure brackets are inside
+            extra = 0.12 * (ymax_set - ymin_set)
+            ax.set_ylim(ymin_set, ymax_set + extra)
+        else:
+            ax.set_ylim(ymin, ymax_cap + 0.15 * (ymax_cap - ymin))
+
 
         # %% Save raincloud figure for each variable
         fig.tight_layout()

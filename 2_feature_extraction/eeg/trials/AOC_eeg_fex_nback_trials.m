@@ -39,7 +39,7 @@ for subj = 1:length(subjects)
         cfg.taper      = 'hanning';
         cfg.foi        = 3:1:30;                % 1-Hz bins
         cfg.t_ftimwin  = ones(size(cfg.foi))*1; % 1 s windows
-        cfg.toi        = -1.5:0.05:3;           % as requested
+        cfg.toi        = -1.25:0.05:2.25;
         cfg.pad        = 'maxperlen';
         cfg.keeptrials = 'yes';
 

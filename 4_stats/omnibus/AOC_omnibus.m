@@ -1,3 +1,6 @@
+%% AOC Omnibus
+
+%% Setup
 clear all
 close all
 
@@ -9,27 +12,27 @@ base_dir = '/Volumes/Homestore/OCC/arne/merged';
 %% Loop over subjects
 for s = 1:length(subjects)
     subj = subjects{s};
-    subj_dir = fullfile(base_dir, subj);
-    cd(subj_dir)
-    load(strcat(subjects{s},'_Sternberg_cond22_fooof.mat'));
+    datapath = strcat(base_dir, subj, '/eeg');
+    cd(datapath)
+    load tfr_stern
     cfg = [];
     cfg.baseline     = [-Inf -.25];
-    cfg.baselinetype = 'absolute';
-    tfr = ft_freqbaseline(cfg,tfr_fooof);
-    load2{s}=tfr;
-    load(strcat(subjects{s},'_Sternberg_cond24_fooof.mat'));
+    cfg.baselinetype = 'db';
+    tfr  = ft_freqbaseline(cfg,tfr2_fooof);
+    load2{s}=tfr2_fooof;
     cfg = [];
     cfg.baseline     = [-Inf -.25];
-    cfg.baselinetype = 'absolute';
-    tfr = ft_freqbaseline(cfg,tfr_fooof);
-    load4{s}=tfr;
-    load(strcat(subjects{s},'_Sternberg_cond26_fooof.mat'));
+    cfg.baselinetype = 'db';
+    tfr  = ft_freqbaseline(cfg,tfr4_fooof);
+    load4{s}=tfr4_fooof;
     cfg = [];
     cfg.baseline     = [-Inf -.25];
-    cfg.baselinetype = 'absolute';
-    tfr = ft_freqbaseline(cfg,tfr_fooof);
-    load6{s} = tfr;
+    cfg.baselinetype = 'db';
+    tfr  = ft_freqbaseline(cfg,tfr6_fooof);
+    load6{s} = tfr6_fooof;
+    disp(subj)
 end
+
 %% compute diff stern
 for s = 1:length(load6)
     cfg = [];

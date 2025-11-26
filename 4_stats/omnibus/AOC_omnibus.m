@@ -10,33 +10,36 @@ startup
 [subjects, path, colors, headmodel] = setup('AOC');
 
 %% Load variables
+tic
+disp('Loading omnibus data...')
+toc
 load /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/omnibus_data.mat
 
-%%
-% close all
+%% Visualize N-back
+close all
 cfg = [];
 cfg.figure = 'gcf';
-cfg.ylim = [3 40];
-% cfg.zlim = [-2 2];
+%cfg.ylim = [3 40];
+%cfg.zlim = [-2 2];
 cfg.layout = headmodel.layANThead;
 figure; ft_multiplotTFR(cfg, ga_nb);
 
-%%
+%% Compute omnibus GA Sternberg vs. GA N-back
 cfg = [];
 cfg.operation = 'subtract';
 cfg.parameter = 'powspctrm';
 omnibus = ft_math(cfg,ga_sb,ga_nb);
 
-%%
+%% Visualize Omnibus
 close all
 cfg = [];
 cfg.figure = 'gcf';
 cfg.ylim = [3 40];
 % cfg.zlim = [-3 3];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 figure; ft_multiplotTFR(cfg, omnibus);
 
-%% sternberg per condition
+%% Sternberg per condition
 cfg = [];
 ga_sb_2 = ft_freqgrandaverage(cfg,load2{:});
 ga_sb_4 = ft_freqgrandaverage(cfg,load4{:});

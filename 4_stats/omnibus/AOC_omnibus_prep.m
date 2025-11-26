@@ -1,10 +1,11 @@
-%% AOC Omnibus
+%% AOC Omnibus Data Preparation
 %
 % Load subject list and task-specific TFR data (Sternberg: loads 2/4/6; N-back: loads 1/2/3)
 % Apply baseline correction to single-subject TFRs and compute high–low load contrasts per task
 % Compute grand average TFRs (per task and per load) and visualise time–frequency/topography patterns
 
 %% Setup
+tic
 startup
 [subjects, path, colors, headmodel] = setup('AOC');
 
@@ -18,17 +19,17 @@ for subj = 1:length(subjects)
     cfg.baseline     = [-Inf -.25];
     cfg.baselinetype = 'db';
     tfr  = ft_freqbaseline(cfg,tfr1_fooof);
-    load1{subj} = tfr;
+    load1nb{subj} = tfr;
     cfg = [];
     cfg.baseline     = [-Inf -.25];
     cfg.baselinetype = 'db';
     tfr  = ft_freqbaseline(cfg,tfr2_fooof);
-    load2{subj} = tfr;
+    load2nb{subj} = tfr;
     cfg = [];
     cfg.baseline     = [-Inf -.25];
     cfg.baselinetype = 'db';
     tfr  = ft_freqbaseline(cfg,tfr3_fooof);
-    load3{subj} = tfr;
+    load3nb{subj} = tfr;
 end
 
 %% Compute diff nback
@@ -38,7 +39,7 @@ for subj = 1:length(subjects)
     cfg = [];
     cfg.operation = 'subtract';
     cfg.parameter = 'powspctrm';
-    nb_high_low{subj} = ft_math(cfg,load3{subj},load1{subj});
+    nb_high_low{subj} = ft_math(cfg,load3nb{subj},load1nb{subj});
     cfg = [];
     cfg.latency = [-.5 2];
     nb_high_low{subj} = ft_selectdata(cfg,nb_high_low{subj});
@@ -90,10 +91,11 @@ ga_sb = ft_freqgrandaverage(cfg,sb_high_low{:});
 disp('Saving...')
 if ispc
     save W:\Students\Arne\AOC\data\features\omnibus_data.mat ...
-        load1 load2 load3 nb_high_low ga_nb ...
+        load1nb load2nb load3nb nb_high_low ga_nb ...
         load2 load4 load6 sb_high_low ga_sb
 else
     save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/omnibus_data.mat ...
-        load1 load2 load3 nb_high_low ga_nb ...
+        load1nb load2nb load3nb nb_high_low ga_nb ...
         load2 load4 load6 sb_high_low ga_sb
-end
+end 
+toc

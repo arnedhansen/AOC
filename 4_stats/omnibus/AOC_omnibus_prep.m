@@ -32,6 +32,8 @@ for subj = 1:length(subjects)
 end
 
 %% Compute diff nback
+clc
+disp('Computing N-back Diff')
 for subj = 1:length(subjects)
     cfg = [];
     cfg.operation = 'subtract';
@@ -66,6 +68,8 @@ for subj = 1:length(subjects)
 end
 
 %% Compute diff stern
+clc
+disp('Computing Sternberg Diff')
 for subj = 1:length(subjects)
     cfg = [];
     cfg.operation = 'subtract';
@@ -77,11 +81,13 @@ for subj = 1:length(subjects)
 end
 
 %% Grand average of differences
+disp('Computing Grand Averages')
 cfg = [];
 ga_nb = ft_freqgrandaverage(cfg,nb_high_low{:});
 ga_sb = ft_freqgrandaverage(cfg,sb_high_low{:});
 
 %% Save variables
+disp('Saving...')
 if ispc
     save W:\Students\Arne\AOC\data\features\omnibus_data.mat ...
         load1 load2 load3 nb_high_low ga_nb ...

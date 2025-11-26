@@ -75,9 +75,9 @@ end
 %         load dataEEG_TFR_sternberg
 %
 %         % Identify indices of trials belonging to conditions
-%         ind2 = find(dataTFR.trialinfo == 22); % WM load 2
-%         ind4 = find(dataTFR.trialinfo == 24); % WM load 4
-%         ind6 = find(dataTFR.trialinfo == 26); % WM load 6
+%         ind2 = find(dataTFR.trialinfo(:, 1) == 22); % WM load 2
+%         ind4 = find(dataTFR.trialinfo(:, 1) == 24); % WM load 4
+%         ind6 = find(dataTFR.trialinfo(:, 1) == 26); % WM load 6
 %
 %         % Frequency analysis
 %         % Select data
@@ -351,9 +351,9 @@ for subj = 1:length(subjects)
         load dataEEG_TFR_sternberg
 
         % Identify indices of trials belonging to conditions
-        ind2 = find(dataTFR.trialinfo == 22);
-        ind4 = find(dataTFR.trialinfo == 24);
-        ind6 = find(dataTFR.trialinfo == 26);
+        ind2 = find(dataTFR.trialinfo(:, 1) == 22);
+        ind4 = find(dataTFR.trialinfo(:, 1) == 24);
+        ind6 = find(dataTFR.trialinfo(:, 1) == 26);
 
         % Time frequency analysis
         cfg              = [];
@@ -382,9 +382,11 @@ for subj = 1:length(subjects)
             tfr = tfrs{1, tfr_conds};
 
             % Pre-allocate
-            nch = numel(tfr.label); nfr = numel(tfr.freq); nt = numel(tfr.time);
-            fspctrm = nan(nch, nfr, nt);
-            powspctrmff = nan(nch, nfr);
+            nchans = numel(tfr.label); 
+            nfreqs = numel(tfr.freq); 
+            ntimepnts = numel(tfr.time);
+            fspctrm = nan(nchans, nfreqs, ntimepnts);
+            powspctrmff = nan(nchans, nfreqs);
 
             % FOOOF settings
             settings = struct();
@@ -406,14 +408,34 @@ for subj = 1:length(subjects)
                 for chan = 1:length(tmp.label)
                     % Transpose, to make inputs row vectors
                     freqs = tmp.freq';
-                    psd = tmp.powspctrm(chan,:)';
+                    powspec = tmp.powspctrm(chan,:)';
 
                     % Run FOOOF
                     f_range = [tfr.freq(1), tfr.freq(end)];
                     freqs = orig_freq'; % Equidistant freq distribution
-                    fooof_results = fooof(freqs, psd, [min(freqs), max(freqs)], settings, true);
+                    fooof_results = fooof(freqs, powspec, [min(freqs), max(freqs)], settings, true);
                     powspctrmff(chan,:) = fooof_results.fooofed_spectrum - fooof_results.ap_fit;
+
+                    % Sanity check: visualize raw and fooofed powscptrm
+                    if randi(100) == 1
+                    close all
+                    figure();
+                    title(sprintf('Powspctrm: Subject %s Channel %d Timepoint %d', subjects{subj}, chan, t))
+                    set(gcf, 'Position', [0 0 1512 982], 'Color', 'W')
+                    subplot(1, 2, 1)
+                    title('Raw Powspctrm')
+                    plot(powspec)
+                    set(gca, 'YScale', 'log')
+                    subplot(1, 2, 2)
+                    title('FOOOFed Powspctrm')
+                    plot(powspctrmff)
+                    set(gca, 'YScale', 'log')
+                    saveName = sprintf('AOC_controls_FOOOF_powspctrm_subj%s_ch%d_t%d.png', subjects{subj}, chan, t);
+                    saveas(gcf, ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF', saveName]);
+                    end
+
                 end
+                % fspctrm chans x freqs x timepoints
                 fspctrm(:,:,t) = powspctrmff;
             end
             if tfr_conds == 1

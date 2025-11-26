@@ -11,6 +11,7 @@ startup
 
 %% Load N-back TFR FOOOF data and apply baseline
 for subj = 1:length(subjects)
+    clc
     disp(['Loading N-back TFR FOOOF data for Subject ', subjects{subj}])
     datapath = strcat(path, subjects{subj}, filesep, 'eeg');
     cd(datapath)
@@ -47,6 +48,7 @@ end
 
 %% Load Sternberg TFR FOOOF data and apply baseline
 for subj = 1:length(subjects)
+    clc
     disp(['Loading Sternberg TFR FOOOF data for Subject ', subjects{subj}])
     datapath = strcat(path, subjects{subj}, filesep, 'eeg');
     cd(datapath)
@@ -82,6 +84,7 @@ for subj = 1:length(subjects)
 end
 
 %% Grand average of differences
+clc
 disp('Computing Grand Averages')
 cfg = [];
 ga_nb = ft_freqgrandaverage(cfg,nb_high_low{:});

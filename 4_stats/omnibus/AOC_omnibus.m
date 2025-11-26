@@ -12,17 +12,17 @@ startup
 %% Load variables
 tic
 disp('Loading omnibus data...')
-toc
 load /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/omnibus_data.mat
+toc
 
 %% Visualize N-back
-close all
-cfg = [];
-cfg.figure = 'gcf';
-%cfg.ylim = [3 40];
-%cfg.zlim = [-2 2];
-cfg.layout = headmodel.layANThead;
-figure; ft_multiplotTFR(cfg, ga_nb);
+% close all
+% cfg = [];
+% cfg.figure = 'gcf';
+% %cfg.ylim = [3 40];
+% %cfg.zlim = [-2 2];
+% cfg.layout = headmodel.layANThead;
+% figure; ft_multiplotTFR(cfg, ga_nb);
 
 %% Compute omnibus GA Sternberg vs. GA N-back
 cfg = [];
@@ -31,24 +31,24 @@ cfg.parameter = 'powspctrm';
 omnibus = ft_math(cfg,ga_sb,ga_nb);
 
 %% Visualize Omnibus
-close all
-cfg = [];
-cfg.figure = 'gcf';
-cfg.ylim = [3 40];
-% cfg.zlim = [-3 3];
-cfg.layout = headmodel.layANThead;
-figure; ft_multiplotTFR(cfg, omnibus);
+% close all
+% cfg = [];
+% cfg.figure = 'gcf';
+% cfg.ylim = [3 40];
+% % cfg.zlim = [-3 3];
+% cfg.layout = headmodel.layANThead;
+% figure; ft_multiplotTFR(cfg, omnibus);
 
 %% Sternberg per condition
 cfg = [];
 ga_sb_2 = ft_freqgrandaverage(cfg,load2{:});
 ga_sb_4 = ft_freqgrandaverage(cfg,load4{:});
 ga_sb_6 = ft_freqgrandaverage(cfg,load6{:});
-ga_sb = ft_freqgrandaverage(cfg,load2{:},load4{:},load6{:});
-ga_nb_2 = ft_freqgrandaverage(cfg,load2nb{:});
-ga_nb_1 = ft_freqgrandaverage(cfg,load1{:});
-ga_nb_3 = ft_freqgrandaverage(cfg,load3{:});
-ga_nb = ft_freqgrandaverage(cfg,load1{:},load2nb{:},load3{:});
+ga_sb   = ft_freqgrandaverage(cfg,load2{:},load4{:},load6{:});
+ga_nb_2 = ft_freqgrandaverage(cfg,load1nb{:});
+ga_nb_1 = ft_freqgrandaverage(cfg,load2nb{:});
+ga_nb_3 = ft_freqgrandaverage(cfg,load3nb{:});
+ga_nb   = ft_freqgrandaverage(cfg,load1nb{:},load2nb{:},load3nb{:});
 
 %%
 close all

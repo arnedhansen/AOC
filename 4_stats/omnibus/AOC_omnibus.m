@@ -1,106 +1,105 @@
 %% AOC Omnibus
+% Load subject list and task-specific TFR data (Sternberg: loads 2/4/6; N-back: loads 1/2/3)
+% Apply baseline correction to single-subject TFRs and compute high–low load contrasts per task
+% Compute grand average TFRs (per task and per load) and visualise time–frequency/topography patterns
+% Extract posterior alpha-band power spectra (per load and task) and plot with SEM across subjects
+% Run cluster-based permutation statistics on N-back load TFRs (F-statistic) to identify load-sensitive clusters
+% Compute omnibus cluster-based comparison (Sternberg vs N-back high–low) with effect size maps over time–frequency–channels
+% Extract ROI-averaged alpha power (time–frequency windows from stats) and create raincloud/box/scatter plots per load
+% Perform paired t-tests between loads (within task) and annotate significance levels on the raincloud plots
 
 %% Setup
-clear all
-close all
+startup
+[subjects, path, colors, headmodel] = setup('AOC');
 
-% Subject IDs
-load('/Volumes/Homestore/OCC/arne/subjects.mat');
-
-base_dir = '/Volumes/Homestore/OCC/arne/merged';
-
-%% Loop over subjects
-for s = 1:length(subjects)
-    subj = subjects{s};
-    datapath = strcat(base_dir, subj, '/eeg');
+%% Load Sternberg TFR FOOOF data and apply baseline
+for subj = 1:length(subjects)
+    disp(['Loading Sternberg TFR FOOOF data for Subject ', subjects{subj}])
+    datapath = strcat(path, subjects{subj}, '/eeg');
     cd(datapath)
     load tfr_stern
     cfg = [];
     cfg.baseline     = [-Inf -.25];
     cfg.baselinetype = 'db';
     tfr  = ft_freqbaseline(cfg,tfr2_fooof);
-    load2{s}=tfr2_fooof;
+    load2{subj} = tfr;
     cfg = [];
     cfg.baseline     = [-Inf -.25];
     cfg.baselinetype = 'db';
     tfr  = ft_freqbaseline(cfg,tfr4_fooof);
-    load4{s}=tfr4_fooof;
+    load4{subj} = tfr;
     cfg = [];
     cfg.baseline     = [-Inf -.25];
     cfg.baselinetype = 'db';
     tfr  = ft_freqbaseline(cfg,tfr6_fooof);
-    load6{s} = tfr6_fooof;
-    disp(subj)
+    load6{subj} = tfr;
 end
 
-%% compute diff stern
-for s = 1:length(load6)
+%% Compute diff stern
+for subj = 1:length(subjects)
     cfg = [];
     cfg.operation = 'subtract';
     cfg.parameter = 'powspctrm';
-    sb_high_low{s} = ft_math(cfg,load6{s},load2{s});
-    % select retention
+    sb_high_low{subj} = ft_math(cfg,load6{subj},load2{subj});
     cfg = [];
-%     cfg.latency = [1.5 3];
-    cfg.latency = [-1 3];
-    sb_high_low{s} = ft_selectdata(cfg,sb_high_low{s});
+    cfg.latency = [-.5 2];
+    sb_high_low{subj} = ft_selectdata(cfg,sb_high_low{subj});
 end
-%% handle nback loop over subjects
-for s = 1:length(subjects)
-    subj = subjects{s};
-    subj_dir = fullfile(base_dir, subj);
-    cd(subj_dir)
-    load(strcat(subjects{s},'_Nback_cond21_fooof.mat'));
+
+%% Load N-back TFR FOOOF data and apply baseline
+for subj = 1:length(subjects)
+    disp(['Loading N-back TFR FOOOF data for Subject ', subjects{subj}])
+    datapath = strcat(path, subjects{subj}, '/eeg');
+    cd(datapath)
+    load tfr_nback
     cfg = [];
     cfg.baseline     = [-Inf -.25];
-    cfg.baselinetype = 'absolute';
-    tfr = ft_freqbaseline(cfg,tfr_fooof);
-    load1{s}=tfr;
-    load(strcat(subjects{s},'_Nback_cond22_fooof.mat'));
+    cfg.baselinetype = 'db';
+    tfr  = ft_freqbaseline(cfg,tfr1_fooof);
+    load1{subj} = tfr;
     cfg = [];
     cfg.baseline     = [-Inf -.25];
-    cfg.baselinetype = 'absolute';
-    tfr = ft_freqbaseline(cfg,tfr_fooof);
-    load2nb{s}=tfr;
-    load(strcat(subjects{s},'_Nback_cond23_fooof.mat'));
+    cfg.baselinetype = 'db';
+    tfr  = ft_freqbaseline(cfg,tfr2_fooof);
+    load2{subj} = tfr;
     cfg = [];
     cfg.baseline     = [-Inf -.25];
-    cfg.baselinetype = 'absolute';
-    tfr = ft_freqbaseline(cfg,tfr_fooof);
-    load3{s} = tfr;
+    cfg.baselinetype = 'db';
+    tfr  = ft_freqbaseline(cfg,tfr3_fooof);
+    load3{subj} = tfr;
 end
-%% compute diff nback
-for s = 1:length(load3)
+
+%% Compute diff nback
+for subj = 1:length(subjects)
     cfg = [];
     cfg.operation = 'subtract';
     cfg.parameter = 'powspctrm';
-    nb_high_low{s} = ft_math(cfg,load3{s},load1{s});
-    % select retention
+    nb_high_low{subj} = ft_math(cfg,load3{subj},load1{subj});
     cfg = [];
-%     cfg.latency = [.5 2];
-    cfg.latency = [-1 3];
-    nb_high_low{s} = ft_selectdata(cfg,nb_high_low{s});
-    % equalize time dim
-%     nb_high_low{s}.time = sb_high_low{s}.time;
+    cfg.latency = [-.5 2];
+    nb_high_low{subj} = ft_selectdata(cfg,nb_high_low{subj});
 end
-%%
-load('/Users/tpopov/Documents/DATA4FT/DeepEye/headmodel_ant/layANThead.mat');
+
+%% Grand average of differences
 cfg = [];
 ga_nb = ft_freqgrandaverage(cfg,nb_high_low{:});
 ga_sb = ft_freqgrandaverage(cfg,sb_high_low{:});
+
 %%
 % close all
 cfg = [];
 cfg.figure = 'gcf';
 cfg.ylim = [3 40];
 % cfg.zlim = [-2 2];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 figure; ft_multiplotTFR(cfg, ga_nb);
+
 %%
 cfg = [];
 cfg.operation = 'subtract';
 cfg.parameter = 'powspctrm';
 omnibus = ft_math(cfg,ga_sb,ga_nb);
+
 %%
 close all
 cfg = [];
@@ -109,6 +108,7 @@ cfg.ylim = [3 40];
 % cfg.zlim = [-3 3];
 cfg.layout = layANThead;
 figure; ft_multiplotTFR(cfg, omnibus);
+
 %% sternberg per condition
 cfg = [];
 ga_sb_2 = ft_freqgrandaverage(cfg,load2{:});
@@ -128,15 +128,16 @@ cfg.ylim = [3 40];
 % cfg.zlim = [-3 3];
 cfg.layout = layANThead;
 figure; ft_multiplotTFR(cfg, ga_nb);
+
 %% single 
 cfg = [];
 cfg.figure = 'gcf';
 cfg.zlim = [-.2 .2];
 cfg.xlim = [-1 2];
-cfg.channel = {'Pz', 'POz', 'P2', 'PPO2'};% sb
 cfg.channel = {'P3', 'P4', 'POz', 'PO3', 'PO4', 'PPO1', 'PPO2', 'PPO5h', 'PPO6h'};% nb
 cfg.layout = layANThead;
 figure; ft_singleplotTFR(cfg, ga_nb);
+
 %% plot SB tfr and topo
 figure;
 cfg = [];
@@ -151,7 +152,7 @@ meanpow = squeeze(mean(freq.powspctrm, 1));
 tim_interp = linspace(freq.time(1), freq.time(end), 500);
 freq_interp = linspace(1, 40, 500);
 % We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab's meshgrid() does this for us:
+% interpolated coordinates. Matlab'subj meshgrid() does this for us:
 [tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 
@@ -200,6 +201,7 @@ cfg.highlightsymbol    = '.';
  cfg.comment = 'no';
 % figure; 
 subplot(2,1,1);ft_topoplotTFR(cfg,ga_sb);
+
 %% plot NB tfr and topo
 figure;
 cfg = [];
@@ -214,7 +216,7 @@ meanpow = squeeze(mean(freq.powspctrm, 1));
 tim_interp = linspace(freq.time(1), freq.time(end), 500);
 freq_interp = linspace(1, 40, 500);
 % We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab's meshgrid() does this for us:
+% interpolated coordinates. Matlab'subj meshgrid() does this for us:
 [tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 
@@ -265,6 +267,7 @@ cfg.highlightsymbol    = '.';
  cfg.comment = 'no';
 % figure; 
 subplot(2,1,1);ft_topoplotTFR(cfg,ga_nb);
+
 %% plot SB posterior
 cfg = [];
 cfg.channel = {'Pz', 'POz', 'P2', 'PPO2'};
@@ -277,6 +280,7 @@ figure;
 subplot(3,1,1); ft_singleplotTFR(cfg,ga_sb_2);
 subplot(3,1,2); ft_singleplotTFR(cfg,ga_sb_4);
 subplot(3,1,3); ft_singleplotTFR(cfg,ga_sb_6);
+
 %% plot NB posterior
 cfg = [];
 % cfg.channel = {'Pz', 'POz', 'P2', 'PPO2'};
@@ -289,33 +293,35 @@ figure;
 subplot(3,1,1); ft_singleplotTFR(cfg,ga_nb_1);
 subplot(3,1,2); ft_singleplotTFR(cfg,ga_nb_2);
 subplot(3,1,3); ft_singleplotTFR(cfg,ga_nb_3);
+
 %% extract power spectra SB
 cfg = [];
 cfg.latency = [1 3];
 cfg.avgovertime = 'yes';
-for s = 1 :length(subjects)
-load2_pow{s}= ft_selectdata(cfg,load2{s});
-load4_pow{s}= ft_selectdata(cfg,load4{s});
-load6_pow{s}= ft_selectdata(cfg,load6{s});
-load2_pow{s}.dimord = 'chan_freq';
-load2_pow{s} = rmfield(load2_pow{s},'time');
-load4_pow{s}.dimord = 'chan_freq';
-load4_pow{s} = rmfield(load4_pow{s},'time');
-load6_pow{s}.dimord = 'chan_freq';
-load6_pow{s} = rmfield(load6_pow{s},'time');
+for subj = 1 :length(subjects)
+load2_pow{subj}= ft_selectdata(cfg,load2{subj});
+load4_pow{subj}= ft_selectdata(cfg,load4{subj});
+load6_pow{subj}= ft_selectdata(cfg,load6{subj});
+load2_pow{subj}.dimord = 'chan_freq';
+load2_pow{subj} = rmfield(load2_pow{subj},'time');
+load4_pow{subj}.dimord = 'chan_freq';
+load4_pow{subj} = rmfield(load4_pow{subj},'time');
+load6_pow{subj}.dimord = 'chan_freq';
+load6_pow{subj} = rmfield(load6_pow{subj},'time');
 end
 cfg.latency = [.5 2];
-for s = 1 :length(subjects)
-load1_pow{s}= ft_selectdata(cfg,load1{s});
-load2nb_pow{s}= ft_selectdata(cfg,load2nb{s});
-load3_pow{s}= ft_selectdata(cfg,load3{s});
-load1_pow{s}.dimord = 'chan_freq';
-load1_pow{s} = rmfield(load1_pow{s},'time');
-load2nb_pow{s}.dimord = 'chan_freq';
-load2nb_pow{s} = rmfield(load2nb_pow{s},'time');
-load3_pow{s}.dimord = 'chan_freq';
-load3_pow{s} = rmfield(load3_pow{s},'time');
+for subj = 1 :length(subjects)
+load1_pow{subj}= ft_selectdata(cfg,load1{subj});
+load2nb_pow{subj}= ft_selectdata(cfg,load2nb{subj});
+load3_pow{subj}= ft_selectdata(cfg,load3{subj});
+load1_pow{subj}.dimord = 'chan_freq';
+load1_pow{subj} = rmfield(load1_pow{subj},'time');
+load2nb_pow{subj}.dimord = 'chan_freq';
+load2nb_pow{subj} = rmfield(load2nb_pow{subj},'time');
+load3_pow{subj}.dimord = 'chan_freq';
+load3_pow{subj} = rmfield(load3_pow{subj},'time');
 end
+
 %% sternberg pow per condition
 cfg = [];
 cfg.keepindividual = 'yes';
@@ -334,6 +340,7 @@ cfg.figure = 'gcf';
 % cfg.zlim = [-3 3];
 cfg.layout = layANThead;
 figure; ft_multiplotER(cfg, ga_sb_2pow,ga_sb_4pow,ga_sb_6pow);
+
 %% plot with SE sternberg
 % close all
 figure;
@@ -503,7 +510,7 @@ clear design
 design = zeros(2,3*n_U);
 cfg.design(1,:)           = [ones(1,n_U), ones(1,n_P)*2,ones(1,n_N)*3]; % design matrix
 cfg.design(2,:)           = [1:n_U,1:n_P, 1:n_N]; 
-cfg.ivar                  = 1; % number or list with indices indicating the independent variable(s)
+cfg.ivar                  = 1; % number or list with indices indicating the independent variable(subj)
 cfg.uvar                  = 2;% units-of-observation (subjects or trials
 [statFnb] = ft_freqstatistics(cfg, ga_nb_1pow,ga_nb_2pow,ga_nb_3pow);
 % [statFsb] = ft_freqstatistics(cfg, ga_sb_2pow,ga_sb_4pow,ga_sb_6pow);
@@ -672,7 +679,7 @@ tim_interp = linspace(freq.time(1), freq.time(end), 500);
 freq_interp = linspace(2, 40, 500);
 mask_interp = linspace(2, 40, 500);
 % We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab's meshgrid() does this for us:
+% interpolated coordinates. Matlab'subj meshgrid() does this for us:
 [tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 
@@ -726,13 +733,13 @@ subplot(2,1,2);ft_topoplotTFR(cfg,stat);
 cfg = [];
 cfg.latency = [1 2];
 cfg.avgovertime = 'yes';
-for s = 1 :length(subjects)
-sb_hl_pow{s}= ft_selectdata(cfg,sb_high_low{s});
-nb_hl_pow{s}= ft_selectdata(cfg,nb_high_low{s});
-sb_hl_pow{s}.dimord = 'chan_freq';
-sb_hl_pow{s} = rmfield(sb_hl_pow{s},'time');
-nb_hl_pow{s}.dimord = 'chan_freq';
-nb_hl_pow{s} = rmfield(nb_hl_pow{s},'time');
+for subj = 1 :length(subjects)
+sb_hl_pow{subj}= ft_selectdata(cfg,sb_high_low{subj});
+nb_hl_pow{subj}= ft_selectdata(cfg,nb_high_low{subj});
+sb_hl_pow{subj}.dimord = 'chan_freq';
+sb_hl_pow{subj} = rmfield(sb_hl_pow{subj},'time');
+nb_hl_pow{subj}.dimord = 'chan_freq';
+nb_hl_pow{subj} = rmfield(nb_hl_pow{subj},'time');
 end
 %% sternberg pow per condition
 cfg = [];
@@ -802,7 +809,7 @@ xlim([1  40]);
 legend({'Sternberg high-low','N-back high-low'}, 'Location','southeast','Fontsize',20);
 
 %% extract values sternberg
-for s = 1:length(load6)
+for subj = 1:length(load6)
     % select retention
     cfg = [];
 %     cfg.latency = [0.2 0.6]+1.5;
@@ -816,14 +823,14 @@ cfg.channel = {'P5', 'PPO5h'};% based on F stat
     cfg.avgoverfreq = 'yes';
     cfg.avgovertime = 'yes';
     cfg.avgoverchan = 'yes';
-    val6{s} = ft_selectdata(cfg,load6{s});
-    sb6(s) = val6{s}.powspctrm;
+    val6{subj} = ft_selectdata(cfg,load6{subj});
+    sb6(subj) = val6{subj}.powspctrm;
     
-    val4{s} = ft_selectdata(cfg,load4{s});
-    sb4(s) = val4{s}.powspctrm;
+    val4{subj} = ft_selectdata(cfg,load4{subj});
+    sb4(subj) = val4{subj}.powspctrm;
     
-    val2{s} = ft_selectdata(cfg,load2{s});
-    sb2(s) = val2{s}.powspctrm;
+    val2{subj} = ft_selectdata(cfg,load2{subj});
+    sb2(subj) = val2{subj}.powspctrm;
 end
 %%
 figure(30); clf;
@@ -921,7 +928,7 @@ xlim([0 1.3])
 % 
 % ylim([min([sb2(:); sb4(:); sb6(:)]) - 5, y_max + 2]);
 %% extract values nback
-for s = 1:length(load6)
+for subj = 1:length(load6)
     % select retention
     cfg = [];
 %     cfg.latency = [0.2 0.6]+.5;
@@ -935,14 +942,14 @@ cfg.channel = {'P7', 'PPO9h'};% based on Fstat
     cfg.avgoverfreq = 'yes';
     cfg.avgovertime = 'yes';
     cfg.avgoverchan = 'yes';
-    val3{s} = ft_selectdata(cfg,load3{s});
-    nb3(s) = val3{s}.powspctrm;
+    val3{subj} = ft_selectdata(cfg,load3{subj});
+    nb3(subj) = val3{subj}.powspctrm;
     
-    val2nb{s} = ft_selectdata(cfg,load2nb{s});
-    nb2(s) = val2nb{s}.powspctrm;
+    val2nb{subj} = ft_selectdata(cfg,load2nb{subj});
+    nb2(subj) = val2nb{subj}.powspctrm;
     
-    val1{s} = ft_selectdata(cfg,load1{s});
-    nb1(s) = val1{s}.powspctrm;
+    val1{subj} = ft_selectdata(cfg,load1{subj});
+    nb1(subj) = val1{subj}.powspctrm;
 end
 %%
 % figure(31); clf;

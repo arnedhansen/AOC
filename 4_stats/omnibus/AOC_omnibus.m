@@ -1,7 +1,4 @@
 %% AOC Omnibus
-% Load subject list and task-specific TFR data (Sternberg: loads 2/4/6; N-back: loads 1/2/3)
-% Apply baseline correction to single-subject TFRs and compute high–low load contrasts per task
-% Compute grand average TFRs (per task and per load) and visualise time–frequency/topography patterns
 % Extract posterior alpha-band power spectra (per load and task) and plot with SEM across subjects
 % Run cluster-based permutation statistics on N-back load TFRs (F-statistic) to identify load-sensitive clusters
 % Compute omnibus cluster-based comparison (Sternberg vs N-back high–low) with effect size maps over time–frequency–channels
@@ -12,78 +9,8 @@
 startup
 [subjects, path, colors, headmodel] = setup('AOC');
 
-%% Load Sternberg TFR FOOOF data and apply baseline
-for subj = 1:length(subjects)
-    disp(['Loading Sternberg TFR FOOOF data for Subject ', subjects{subj}])
-    datapath = strcat(path, subjects{subj}, '/eeg');
-    cd(datapath)
-    load tfr_stern
-    cfg = [];
-    cfg.baseline     = [-Inf -.25];
-    cfg.baselinetype = 'db';
-    tfr  = ft_freqbaseline(cfg,tfr2_fooof);
-    load2{subj} = tfr;
-    cfg = [];
-    cfg.baseline     = [-Inf -.25];
-    cfg.baselinetype = 'db';
-    tfr  = ft_freqbaseline(cfg,tfr4_fooof);
-    load4{subj} = tfr;
-    cfg = [];
-    cfg.baseline     = [-Inf -.25];
-    cfg.baselinetype = 'db';
-    tfr  = ft_freqbaseline(cfg,tfr6_fooof);
-    load6{subj} = tfr;
-end
-
-%% Compute diff stern
-for subj = 1:length(subjects)
-    cfg = [];
-    cfg.operation = 'subtract';
-    cfg.parameter = 'powspctrm';
-    sb_high_low{subj} = ft_math(cfg,load6{subj},load2{subj});
-    cfg = [];
-    cfg.latency = [-.5 2];
-    sb_high_low{subj} = ft_selectdata(cfg,sb_high_low{subj});
-end
-
-%% Load N-back TFR FOOOF data and apply baseline
-for subj = 1:length(subjects)
-    disp(['Loading N-back TFR FOOOF data for Subject ', subjects{subj}])
-    datapath = strcat(path, subjects{subj}, '/eeg');
-    cd(datapath)
-    load tfr_nback
-    cfg = [];
-    cfg.baseline     = [-Inf -.25];
-    cfg.baselinetype = 'db';
-    tfr  = ft_freqbaseline(cfg,tfr1_fooof);
-    load1{subj} = tfr;
-    cfg = [];
-    cfg.baseline     = [-Inf -.25];
-    cfg.baselinetype = 'db';
-    tfr  = ft_freqbaseline(cfg,tfr2_fooof);
-    load2{subj} = tfr;
-    cfg = [];
-    cfg.baseline     = [-Inf -.25];
-    cfg.baselinetype = 'db';
-    tfr  = ft_freqbaseline(cfg,tfr3_fooof);
-    load3{subj} = tfr;
-end
-
-%% Compute diff nback
-for subj = 1:length(subjects)
-    cfg = [];
-    cfg.operation = 'subtract';
-    cfg.parameter = 'powspctrm';
-    nb_high_low{subj} = ft_math(cfg,load3{subj},load1{subj});
-    cfg = [];
-    cfg.latency = [-.5 2];
-    nb_high_low{subj} = ft_selectdata(cfg,nb_high_low{subj});
-end
-
-%% Grand average of differences
-cfg = [];
-ga_nb = ft_freqgrandaverage(cfg,nb_high_low{:});
-ga_sb = ft_freqgrandaverage(cfg,sb_high_low{:});
+%% Load variables
+load /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/omnibus_data.mat
 
 %%
 % close all

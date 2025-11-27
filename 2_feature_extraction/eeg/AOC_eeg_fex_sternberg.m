@@ -426,32 +426,18 @@ for subj = 1:length(subjects)
                 %% Sanity check: visualize raw and fooofed powspctrm
                 if randi(100) == 1
                     close all
-                    figure('Position', [0 0 1512 982], 'Color', 'w');
-
-                    subplot(1, 2, 1)
-                    yyaxis left
-                    plot(frequencies, powspec, 'LineWidth', 3)
-                    set(gca, 'YScale', 'log')
-                    title('Raw Powspctrm')
+                    figure('Position', [0 0 1512/2 982], 'Color', 'w');
+                    plot(frequencies, log10(powspec), 'LineWidth', 3)
                     ylabel('Power')
                     xlabel('Frequency')
                     set(gca, 'FontSize', 15)
-                    yyaxis right
-                    ap_lin = 10.^double(fooof_results.ap_fit);   % AP back to linear power
-                    plot(frequencies, ap_lin, 'LineWidth', 3)
+                    hold on
+                    plot(frequencies, fooof_results.fooofed_spectrum, 'LineWidth', 3, 'Color', 'r');
+                    plot(frequencies, fooof_results.ap_fit, 'LineWidth', 3, 'LineStyle', '--')
                     title('Aperiodic Fit')
                     set(gca, 'FontSize', 15)
-                    legend({'Raw Power', 'Aperiodic Fit'})
-
-                    subplot(1, 2, 2)
-                    plot(frequencies, powspctrmff(chan, :), 'LineWidth', 3)
-                    title('FOOOFed Powspctrm')
-                    ylabel('Power')
-                    xlabel('Frequency')
-                    set(gca, 'FontSize', 15)
-
-                    sgtitle(sprintf('Powspctrm: Subject %s Channel %d Timepoint %d', subjects{subj}, chan, t), 'FontSize', 25)
-
+                    legend({'Raw Power', 'Final Fit', 'Aperiodic Fit'})
+                    title(sprintf('Powspctrm: Subject %s Channel %d Timepoint %d', subjects{subj}, chan, t), 'FontSize', 20)
                     saveName = sprintf('AOC_controls_FOOOF_powspctrm_subj%s_ch%d_t%d.png', subjects{subj}, chan, t);
                     saveas(gcf, ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF', saveName]);
                 end

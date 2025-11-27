@@ -345,9 +345,10 @@ for subj = 1:length(subjects)
     %if ~isfile([datapath, filesep, 'power_stern_fooof.mat'])
     clc
     disp(['Processing TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
-    try
+    %try
         cd(datapath)
         close all
+        disp('Loading EEG TFR data')
         load dataEEG_TFR_sternberg
 
         % Identify indices of trials belonging to conditions
@@ -373,7 +374,7 @@ for subj = 1:length(subjects)
         tfr6 = ft_freqanalysis(cfg, dataTFR);
 
         % FOOOF
-        orig_freq = 2:1:40;
+        orig_freq = cfg.foi;
         tfrs = {tfr2, tfr4, tfr6};
         for tfr_conds = 1:3
             clc
@@ -390,10 +391,11 @@ for subj = 1:length(subjects)
 
             % FOOOF settings
             settings = struct();
-            settings.peak_width_limits = [2 12];
+            %settings.peak_width_limits = [2 12];
             settings.aperiodic_mode = 'fixed';
             settings.verbose = false;
 
+            % Run FOOOF over timepoints x channels
             for t = 1 : length(tfr.time)
                 % Output progress
                 clc
@@ -406,33 +408,37 @@ for subj = 1:length(subjects)
                 cfg.latency = tfr.time(t);
                 tmp = ft_selectdata(cfg,tfr);
                 for chan = 1:length(tmp.label)
-                    % Transpose, to make inputs row vectors
+
+                    % Python FOOOF config
                     freqs = tmp.freq';
                     powspec = tmp.powspctrm(chan,:)';
 
-                    % Run FOOOF
+                    % Fit FOOOF using the MATLAB wrapper
                     f_range = [tfr.freq(1), tfr.freq(end)];
                     freqs = orig_freq'; % Equidistant freq distribution
                     fooof_results = fooof(freqs, powspec, [min(freqs), max(freqs)], settings, true);
                     powspctrmff(chan,:) = fooof_results.fooofed_spectrum - fooof_results.ap_fit;
 
-                    % Sanity check: visualize raw and fooofed powscptrm
-                    if randi(100) == 1
+                    % Sanity check: visualize raw and fooofed powspctrm
+                    %if randi(100) == 1
                     close all
-                    figure();
+                    figure('Position', [0 0 1512 982], 'Color', 'W');
                     title(sprintf('Powspctrm: Subject %s Channel %d Timepoint %d', subjects{subj}, chan, t))
-                    set(gcf, 'Position', [0 0 1512 982], 'Color', 'W')
                     subplot(1, 2, 1)
                     title('Raw Powspctrm')
-                    plot(powspec)
+                    ylabel('Power')
+                    xlabel('Frequency')
+                    plot(powspec, 'LineWidth', 3)
                     set(gca, 'YScale', 'log')
                     subplot(1, 2, 2)
                     title('FOOOFed Powspctrm')
-                    plot(powspctrmff)
+                    ylabel('Power')
+                    xlabel('Frequency')
+                    plot(freqs, powspctrmff(chan, :))
                     set(gca, 'YScale', 'log')
                     saveName = sprintf('AOC_controls_FOOOF_powspctrm_subj%s_ch%d_t%d.png', subjects{subj}, chan, t);
                     saveas(gcf, ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF', saveName]);
-                    end
+                    %end
 
                 end
                 % fspctrm chans x freqs x timepoints
@@ -520,10 +526,10 @@ for subj = 1:length(subjects)
             pow2_fooof_bl_early pow4_fooof_bl_early pow6_fooof_bl_early ...
             pow2_fooof_bl_late pow4_fooof_bl_late pow6_fooof_bl_late
         clc
-    catch ME
-        ME.message
-        error(['ERROR extracting TFR for Subject ' num2str(subjects{subj}) '!'])
-    end
+    % catch ME
+    %     ME.message
+    %     error(['ERROR extracting TFR for Subject ' num2str(subjects{subj}) '!'])
+    % end
     %else
     %    disp(['TFR and FOOOFed POWSPCTRM already exists for Subject AOC ', num2str(subjects{subj})])
     %end

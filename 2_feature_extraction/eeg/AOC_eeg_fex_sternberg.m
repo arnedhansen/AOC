@@ -384,16 +384,16 @@ for subj = 1:length(subjects)
 
             % Pre-allocate
             nchans = numel(tfr.label); 
-            nfreqs = numel(tfr.freq); 
+            nfrequencies = numel(tfr.freq); 
             ntimepnts = numel(tfr.time);
-            fspctrm = nan(nchans, nfreqs, ntimepnts);
-            powspctrmff = nan(nchans, nfreqs);
+            fspctrm = nan(nchans, nfrequencies, ntimepnts);
+            powspctrmff = nan(nchans, nfrequencies);
 
             % FOOOF settings
             settings = struct();
-            %settings.peak_width_limits = [2 12];
-            settings.aperiodic_mode = 'fixed';
-            settings.verbose = false;
+            settings.peak_width_limits = [2 12];
+            %settings.aperiodic_mode = 'fixed';
+            %settings.verbose = false;
 
             % Run FOOOF over timepoints x channels
             for t = 1 : length(tfr.time)
@@ -410,13 +410,12 @@ for subj = 1:length(subjects)
                 for chan = 1:length(tmp.label)
 
                     % Python FOOOF config
-                    freqs = tmp.freq';
+                    f_range = [tfr.freq(1), tfr.freq(end)];
+                    frequencies = orig_freq'; % Equidistant freq distribution
                     powspec = tmp.powspctrm(chan,:)';
 
                     % Fit FOOOF using the MATLAB wrapper
-                    f_range = [tfr.freq(1), tfr.freq(end)];
-                    freqs = orig_freq'; % Equidistant freq distribution
-                    fooof_results = fooof(freqs, powspec, [min(freqs), max(freqs)], settings, true);
+                    fooof_results = fooof(frequencies, powspec, [min(frequencies), max(frequencies)], settings, true);
                     powspctrmff(chan,:) = fooof_results.fooofed_spectrum - fooof_results.ap_fit;
 
                     % Sanity check: visualize raw and fooofed powspctrm
@@ -434,14 +433,14 @@ for subj = 1:length(subjects)
                     title('FOOOFed Powspctrm')
                     ylabel('Power')
                     xlabel('Frequency')
-                    plot(freqs, powspctrmff(chan, :))
+                    plot(frequencies, powspctrmff(chan, :))
                     set(gca, 'YScale', 'log')
                     saveName = sprintf('AOC_controls_FOOOF_powspctrm_subj%s_ch%d_t%d.png', subjects{subj}, chan, t);
                     saveas(gcf, ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF', saveName]);
                     %end
 
                 end
-                % fspctrm chans x freqs x timepoints
+                % fspctrm chans x frequencies x timepoints
                 fspctrm(:,:,t) = powspctrmff;
             end
             if tfr_conds == 1

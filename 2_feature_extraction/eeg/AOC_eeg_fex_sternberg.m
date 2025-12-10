@@ -417,7 +417,7 @@ for subj = 1 : length(subjects)
                 clc
                 disp(['Subject    ' num2str(subj)])
                 disp(['Condition  ' num2str(tfr_conds)])
-                disp(['Timepoint  ' num2str(t)])
+                disp(['Timepoint  ' num2str(timePnt)])
                 disp(['Trial      ' num2str(trl)])
 
                 % FOOOF FieldTrip configs

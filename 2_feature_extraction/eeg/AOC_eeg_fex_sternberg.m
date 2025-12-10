@@ -389,10 +389,10 @@ for subj = 1 : length(subjects)
     nTimePnts = round((abs(toi_FOOOF(1))+toi_FOOOF(end))/steps_FOOOF)+1;
 
     % Parallel processing of conditions
-    parfor tfr_conds = 1 : 3
-        tmpfreq        = cell(nTimePnts, 1);
-        tmpfooofparams = cell(nTimePnts, 1);
-        allff          = cell(nTimePnts, 1);
+    for tfr_conds = 1 : 3 %parfor
+        tmpfreq        = [];
+        tmpfooofparams = [];
+        allff          = [];
         if tfr_conds == 1
             trlIdx = ind2;
             cfg.trials = trlIdx;
@@ -413,7 +413,12 @@ for subj = 1 : length(subjects)
             datTFR      = ft_selectdata(cfg, dataTFR);
 
             % Loop over trials
-            for trl = 1 : size(datTFR, 2)
+            for trl = 1 : numel(trlIdx)
+                clc
+                disp(['Subject    ' num2str(subj)])
+                disp(['Condition  ' num2str(tfr_conds)])
+                disp(['Timepoint  ' num2str(t)])
+                disp(['Trial      ' num2str(trl)])
 
                 % FOOOF FieldTrip configs
                 cfg            = [];
@@ -422,10 +427,10 @@ for subj = 1 : length(subjects)
                 cfg.foilim     = [2 40];
                 cfg.pad        = 5;
                 cfg.output     = 'fooof';
-                cfg.trials     = trlIdx(trl)
+                cfg.trials     = trlIdx(trl);
 
                 % Run FOOOF (settings Marius)
-                tmpfreq{trl} = ft_freqanalysis(cfg, datTFR); %_methlab_FOOOF
+                tmpfreq{trl} = ft_freqanalysis_Arne_FOOOF(cfg, datTFR); 
                 tmpfooofparams{trl, 1}  =  tmpfreq{trl}.fooofparams; % save fooof params
 
                 % Check fit
@@ -502,30 +507,6 @@ for subj = 1 : length(subjects)
         tfr_fooof_avg{tfr_conds} = tfr_ff;
         aperiodic_avg{tfr_conds} = aperiodic_mean;
         powspec_avg{tfr_conds}   = powspec_mean;
-
-        % %% Sanity check: visualize raw and fooofed powspctrm + aperiodic fit
-        % tfr_cond = tfr2_fooof;
-        % chan        = find(strcmp(tfr_cond.label, chan_label)); % or set chan = 30, etc.
-        % [~, tim]    = min(abs(tfr_cond.time - 0.5));            % time index closest to 0.5 s
-        % freq = tfr_cond.freq;
-        % raw_spec = squeeze(mean(tfr_cond.powspctrm(:, :, :, tim), 1));   % 1 x freq
-        % model_spec = squeeze(mean(tfr_cond.power_spectrum(:, :, :, tim), 1)); % 1 x freq
-        % offset = squeeze(mean(tfr_cond.fooofparams(:, :, 1, tim), 1));   % intercept
-        % slope  = squeeze(mean(tfr_cond.fooofparams(:, :, 2, tim), 1));   % slope
-        % aperiodic_fit = offset - slope .* log10(freq);
-        % figure('Position', [0 0 1512/2 982], 'Color', 'w');
-        % plot(freq, log10(raw_spec), 'LineWidth', 3) % Raw power (log10)
-        % hold on
-        % plot(freq, model_spec, 'LineWidth', 3, 'Color', 'r'); % FOOOF full model (already in log10 space)
-        % plot(freq, aperiodic_fit, 'LineWidth', 3, 'LineStyle', '--'); % Aperiodic fit
-        % ylabel('Power (log_{10})')
-        % xlabel('Frequency (Hz)')
-        % set(gca, 'FontSize', 15)
-        % legend({'Raw Power', 'Final Fit', 'Aperiodic Fit'}, 'Location', 'best')
-        % title(sprintf( ...
-        %     'Powspctrm: Subject %s | Cond 1 (set size 2) | t = %.2f s', ...
-        %     subjects{subj}, tfr_cond.time(tim)), ...
-        %     'FontSize', 20)
 
         % Save
         saveName = sprintf('AOC_controls_FOOOF_powspctrm_subj%s_cond1_ch%s_t%d.png', ...

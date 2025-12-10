@@ -390,18 +390,16 @@ for subj = 1 : length(subjects)
 
     % Parallel processing of conditions
     for tfr_conds = 1 : 3 %parfor
+        cfg            = [];
         tmpfreq        = [];
         tmpfooofparams = [];
         allff          = [];
         if tfr_conds == 1
             trlIdx = ind2;
-            cfg.trials = trlIdx;
         elseif tfr_conds == 2
             trlIdx = ind4;
-            cfg.trials = trlIdx;
         elseif tfr_conds == 3
             trlIdx = ind6;
-            cfg.trials = trlIdx;
         end
 
         % Loop over timepoints

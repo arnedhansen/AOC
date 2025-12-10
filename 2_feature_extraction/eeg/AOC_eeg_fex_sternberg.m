@@ -336,7 +336,6 @@ end
 % Setup
 startup
 [subjects, path, ~ , ~] = setup('AOC');
-%%
 
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1 : length(subjects)
@@ -390,9 +389,10 @@ for subj = 1 : length(subjects)
     nTimePnts = round((abs(toi_FOOOF(1))+toi_FOOOF(end))/steps_FOOOF)+1;
 
     % Parallel processing of conditions
-    tmpfreq = [];
-    tmpfooofparams = [];
     parfor tfr_conds = 1 : 3
+        tmpfreq        = cell(nTimePnts, 1);
+        tmpfooofparams = cell(nTimePnts, 1);
+        allff          = cell(nTimePnts, 1);
         if tfr_conds == 1
             trlIdx = ind2;
             cfg.trials = trlIdx;
@@ -408,9 +408,9 @@ for subj = 1 : length(subjects)
         for timePnt = 1 : nTimePnts
 
             % Select data
-            cfg = [];
+            cfg         = [];
             cfg.latency = startWin_FOOOF + 0.05 * (timePnt-1);
-            datTFR = ft_selectdata(cfg, dataTFR);
+            datTFR      = ft_selectdata(cfg, dataTFR);
 
             % Loop over trials
             for trl = 1 : size(datTFR, 2)
@@ -441,7 +441,7 @@ for subj = 1 : length(subjects)
         end
 
         % Concatenate data over time points
-        tfr_ff_trl        = tmpfreq{1};
+        tfr_ff_trl    = tmpfreq{1};
         fooofed_power = [];
         ff_foof       = {};
         for timePnt = 1 : length(allff)
@@ -492,112 +492,142 @@ for subj = 1 : length(subjects)
         % Average aperiodic parameters across trials as well
         aperiodic_avg       = squeeze(mean(tfr_ff_trl.fooofparams, 1, 'omitnan'));   % chan x 4 x time
         power_spectrum_avg  = squeeze(mean(tfr_ff_trl.power_spectrum, 1, 'omitnan')); % chan x freq x time
+        tfr_ff                    = [];
+        tfr_ff.avg_fooofparams    = aperiodic_avg;
+        tfr_ff.avg_power_spectrum = power_spectrum_avg;
+        tfr_ff.avg_powspctrm      = tfr_ff_avg.powspctrm;
 
-        % Store results
-        tfr_ff.avg_fooofparams      = aperiodic_avg;
-        tfr_ff.avg_power_spectrum   = power_spectrum_avg;
-        tfr_ff.avg_powspctrm        = tfr_ff_avg.powspctrm;
+        % Assign to sliced outputs for parfor
+        tfr_fooof_trl{tfr_conds} = tfr_ff_trl;
+        tfr_fooof_avg{tfr_conds} = tfr_ff;
+        aperiodic_avg{tfr_conds} = aperiodic_mean;
+        powspec_avg{tfr_conds}   = powspec_mean;
 
-        %% Sanity check: visualize raw and fooofed powspctrm + aperiodic fit
-        tfr_cond = tfr2_fooof;
-        chan        = find(strcmp(tfr_cond.label, chan_label)); % or set chan = 30, etc.
-        [~, tim]    = min(abs(tfr_cond.time - 0.5));            % time index closest to 0.5 s
-        freq = tfr_cond.freq;
-        raw_spec = squeeze(mean(tfr_cond.powspctrm(:, :, :, tim), 1));   % 1 x freq
-        model_spec = squeeze(mean(tfr_cond.power_spectrum(:, :, :, tim), 1)); % 1 x freq
-        offset = squeeze(mean(tfr_cond.fooofparams(:, :, 1, tim), 1));   % intercept
-        slope  = squeeze(mean(tfr_cond.fooofparams(:, :, 2, tim), 1));   % slope
-        aperiodic_fit = offset - slope .* log10(freq);
-        figure('Position', [0 0 1512/2 982], 'Color', 'w');
-        plot(freq, log10(raw_spec), 'LineWidth', 3) % Raw power (log10)
-        hold on
-        plot(freq, model_spec, 'LineWidth', 3, 'Color', 'r'); % FOOOF full model (already in log10 space)
-        plot(freq, aperiodic_fit, 'LineWidth', 3, 'LineStyle', '--'); % Aperiodic fit
-        ylabel('Power (log_{10})')
-        xlabel('Frequency (Hz)')
-        set(gca, 'FontSize', 15)
-        legend({'Raw Power', 'Final Fit', 'Aperiodic Fit'}, 'Location', 'best')
-        title(sprintf( ...
-            'Powspctrm: Subject %s | Cond 1 (set size 2) | t = %.2f s', ...
-            subjects{subj}, tfr_cond.time(tim)), ...
-            'FontSize', 20)
+        % %% Sanity check: visualize raw and fooofed powspctrm + aperiodic fit
+        % tfr_cond = tfr2_fooof;
+        % chan        = find(strcmp(tfr_cond.label, chan_label)); % or set chan = 30, etc.
+        % [~, tim]    = min(abs(tfr_cond.time - 0.5));            % time index closest to 0.5 s
+        % freq = tfr_cond.freq;
+        % raw_spec = squeeze(mean(tfr_cond.powspctrm(:, :, :, tim), 1));   % 1 x freq
+        % model_spec = squeeze(mean(tfr_cond.power_spectrum(:, :, :, tim), 1)); % 1 x freq
+        % offset = squeeze(mean(tfr_cond.fooofparams(:, :, 1, tim), 1));   % intercept
+        % slope  = squeeze(mean(tfr_cond.fooofparams(:, :, 2, tim), 1));   % slope
+        % aperiodic_fit = offset - slope .* log10(freq);
+        % figure('Position', [0 0 1512/2 982], 'Color', 'w');
+        % plot(freq, log10(raw_spec), 'LineWidth', 3) % Raw power (log10)
+        % hold on
+        % plot(freq, model_spec, 'LineWidth', 3, 'Color', 'r'); % FOOOF full model (already in log10 space)
+        % plot(freq, aperiodic_fit, 'LineWidth', 3, 'LineStyle', '--'); % Aperiodic fit
+        % ylabel('Power (log_{10})')
+        % xlabel('Frequency (Hz)')
+        % set(gca, 'FontSize', 15)
+        % legend({'Raw Power', 'Final Fit', 'Aperiodic Fit'}, 'Location', 'best')
+        % title(sprintf( ...
+        %     'Powspctrm: Subject %s | Cond 1 (set size 2) | t = %.2f s', ...
+        %     subjects{subj}, tfr_cond.time(tim)), ...
+        %     'FontSize', 20)
 
         % Save
         saveName = sprintf('AOC_controls_FOOOF_powspctrm_subj%s_cond1_ch%s_t%d.png', ...
             subjects{subj}, tfr_cond.label{chan}, tim);
-        savePathControls = ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF/');
+        savePathControls = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF/';
         saveas(gcf, fullfile(savePathControls, saveName));
-
-        if tfr_conds == 1
-            tfr2_fooof = tfr_ff_trl;
-        elseif tfr_conds == 2
-            tfr4_fooof = tfr_ff_trl;
-        elseif tfr_conds == 3
-            tfr6_fooof = tfr_ff_trl;
-        end
     end
+    % after parfor: unpack
+    tfr2_fooof = tfr_fooof_trl{1};
+    tfr4_fooof = tfr_fooof_trl{2};
+    tfr6_fooof = tfr_fooof_trl{3};
+    disp(upper('FOOOF done...'))
+
+    %% Sanity Check
+    % example sanity check for condition 1 (set size 2) after parfor
+    tfr_cond   = tfr2_fooof;         % rpt_chan_freq_time
+    chan_label = 'Oz';               % whatever channel you want
+    chan       = find(strcmp(tfr_cond.label, chan_label));
+
+    [~, tim]   = min(abs(tfr_cond.time - 0.5));
+    freq       = tfr_cond.freq;
+
+    % average across trials for that channel & time
+    raw_spec   = squeeze(mean(tfr_cond.powspctrm(:, chan, :, tim), 1));           % freq
+    model_spec = squeeze(mean(tfr_cond.power_spectrum(:, chan, :, tim), 1));      % freq
+
+    offset     = squeeze(mean(tfr_cond.fooofparams(:, chan, 1, tim), 1));         % intercept
+    slope      = squeeze(mean(tfr_cond.fooofparams(:, chan, 2, tim), 1));         % slope
+
+    aperiodic_fit = offset - slope .* log10(freq);
+
+    figure('Position', [0 0 1512/2 982], 'Color', 'w');
+    plot(freq, log10(raw_spec), 'LineWidth', 3)
+    hold on
+    plot(freq, model_spec, 'LineWidth', 3)
+    plot(freq, aperiodic_fit, 'LineWidth', 3, 'LineStyle', '--');
+    ylabel('Power (log_{10})')
+    xlabel('Frequency (Hz)')
+    set(gca, 'FontSize', 15)
+    legend({'Raw Power', 'Final Fit', 'Aperiodic Fit'}, 'Location', 'best')
+    title(sprintf('Powspctrm: Subject %s | Cond 1 (set size 2) | t = %.2f s', ...
+        subjects{subj}, tfr_cond.time(tim)), 'FontSize', 20)
+
+    %% FOOOFed powspctrm baselined
+    cfg                              = [];
+    cfg.baseline                     = [-.5 -.25];
+    cfg.baselinetype                 = 'absolute';   % FOOOF already sets log scale, so no 'dB' here
+    tfr2_fooof_bl                    = ft_freqbaseline(cfg, tfr2_fooof);
+    tfr4_fooof_bl                    = ft_freqbaseline(cfg, tfr4_fooof);
+    tfr6_fooof_bl                    = ft_freqbaseline(cfg, tfr6_fooof);
+
+    % Save data
+    cd(datapath)
+    save tfr_stern ...
+        tfr2 tfr4 tfr6 ...
+        tfr2_fooof tfr4_fooof tfr6_fooof ...
+        tfr2_bl tfr4_bl tfr6_bl ...
+        tfr2_fooof_bl tfr4_fooof_bl tfr6_fooof_bl
+
+    %% Convert TFR data to POWSCPTRM (channels x frequency)
+    analysisPeriodFull = [0 2];
+    analysisPeriodEarly = [0 1];
+    analysisPeriodLate = [1 2];
+    freq_range = [2 40];
+
+    % Select data
+    pow2_fooof                                = select_data(analysisPeriodFull, freq_range, tfr2_fooof);
+    pow2_fooof_bl                             = select_data(analysisPeriodFull, freq_range, tfr2_fooof_bl);
+    pow2_fooof_bl_early                       = select_data(analysisPeriodEarly, freq_range, tfr2_fooof_bl);
+    pow2_fooof_bl_late                        = select_data(analysisPeriodLate, freq_range, tfr2_fooof_bl);
+
+    pow4_fooof                                = select_data(analysisPeriodFull, freq_range, tfr4_fooof);
+    pow4_fooof_bl                             = select_data(analysisPeriodFull, freq_range, tfr4_fooof_bl);
+    pow4_fooof_bl_early                       = select_data(analysisPeriodEarly, freq_range, tfr4_fooof_bl);
+    pow4_fooof_bl_late                        = select_data(analysisPeriodLate, freq_range, tfr4_fooof_bl);
+
+    pow6_fooof                                = select_data(analysisPeriodFull, freq_range, tfr6_fooof);
+    pow6_fooof_bl                             = select_data(analysisPeriodFull, freq_range, tfr6_fooof_bl);
+    pow6_fooof_bl_early                       = select_data(analysisPeriodEarly, freq_range, tfr6_fooof_bl);
+    pow6_fooof_bl_late                        = select_data(analysisPeriodLate, freq_range, tfr6_fooof_bl);
+
+    % Remove time dimension for POWSCPTRM (channels x frequency)
+    pow2_fooof                                = remove_time_dimension(pow2_fooof);
+    pow2_fooof_bl                             = remove_time_dimension(pow2_fooof_bl);
+    pow2_fooof_bl_early                       = remove_time_dimension(pow2_fooof_bl_early);
+    pow2_fooof_bl_late                        = remove_time_dimension(pow2_fooof_bl_late);
+
+    pow4_fooof                                = remove_time_dimension(pow4_fooof);
+    pow4_fooof_bl                             = remove_time_dimension(pow4_fooof_bl);
+    pow4_fooof_bl_early                       = remove_time_dimension(pow4_fooof_bl_early);
+    pow4_fooof_bl_late                        = remove_time_dimension(pow4_fooof_bl_late);
+
+    pow6_fooof                                = remove_time_dimension(pow6_fooof);
+    pow6_fooof_bl                             = remove_time_dimension(pow6_fooof_bl);
+    pow6_fooof_bl_early                       = remove_time_dimension(pow6_fooof_bl_early);
+    pow6_fooof_bl_late                        = remove_time_dimension(pow6_fooof_bl_late);
+
+    save power_stern_fooof ...
+        pow2_fooof pow4_fooof pow6_fooof ...
+        pow2_fooof_bl pow4_fooof_bl pow6_fooof_bl ...
+        pow2_fooof_bl_early pow4_fooof_bl_early pow6_fooof_bl_early ...
+        pow2_fooof_bl_late pow4_fooof_bl_late pow6_fooof_bl_late
+    clc
+    disp('TFR and FOOOFed POWSPCTRM COMPUTED...');
 end
-disp(upper('FOOOF done...'))
-
-% FOOOFed powspctrm baselined
-cfg                              = [];
-cfg.baseline                     = [-.5 -.25];
-cfg.baselinetype                 = 'absolute';   % FOOOF already sets log scale, so no 'dB' here
-tfr2_fooof_bl                    = ft_freqbaseline(cfg, tfr2_fooof);
-tfr4_fooof_bl                    = ft_freqbaseline(cfg, tfr4_fooof);
-tfr6_fooof_bl                    = ft_freqbaseline(cfg, tfr6_fooof);
-
-% Save data
-cd(datapath)
-save tfr_stern ...
-    tfr2 tfr4 tfr6 ...
-    tfr2_fooof tfr4_fooof tfr6_fooof ...
-    tfr2_bl tfr4_bl tfr6_bl ...
-    tfr2_fooof_bl tfr4_fooof_bl tfr6_fooof_bl
-
-% Convert TFR data to POWSCPTRM (channels x frequency)
-analysisPeriodFull = [0 2];
-analysisPeriodEarly = [0 1];
-analysisPeriodLate = [1 2];
-freq_range = [2 40];
-
-% Select data
-pow2_fooof                                = select_data(analysisPeriodFull, freq_range, tfr2_fooof);
-pow2_fooof_bl                             = select_data(analysisPeriodFull, freq_range, tfr2_fooof_bl);
-pow2_fooof_bl_early                       = select_data(analysisPeriodEarly, freq_range, tfr2_fooof_bl);
-pow2_fooof_bl_late                        = select_data(analysisPeriodLate, freq_range, tfr2_fooof_bl);
-
-pow4_fooof                                = select_data(analysisPeriodFull, freq_range, tfr4_fooof);
-pow4_fooof_bl                             = select_data(analysisPeriodFull, freq_range, tfr4_fooof_bl);
-pow4_fooof_bl_early                       = select_data(analysisPeriodEarly, freq_range, tfr4_fooof_bl);
-pow4_fooof_bl_late                        = select_data(analysisPeriodLate, freq_range, tfr4_fooof_bl);
-
-pow6_fooof                                = select_data(analysisPeriodFull, freq_range, tfr6_fooof);
-pow6_fooof_bl                             = select_data(analysisPeriodFull, freq_range, tfr6_fooof_bl);
-pow6_fooof_bl_early                       = select_data(analysisPeriodEarly, freq_range, tfr6_fooof_bl);
-pow6_fooof_bl_late                        = select_data(analysisPeriodLate, freq_range, tfr6_fooof_bl);
-
-% Remove time dimension for POWSCPTRM (channels x frequency)
-pow2_fooof                                = remove_time_dimension(pow2_fooof);
-pow2_fooof_bl                             = remove_time_dimension(pow2_fooof_bl);
-pow2_fooof_bl_early                       = remove_time_dimension(pow2_fooof_bl_early);
-pow2_fooof_bl_late                        = remove_time_dimension(pow2_fooof_bl_late);
-
-pow4_fooof                                = remove_time_dimension(pow4_fooof);
-pow4_fooof_bl                             = remove_time_dimension(pow4_fooof_bl);
-pow4_fooof_bl_early                       = remove_time_dimension(pow4_fooof_bl_early);
-pow4_fooof_bl_late                        = remove_time_dimension(pow4_fooof_bl_late);
-
-pow6_fooof                                = remove_time_dimension(pow6_fooof);
-pow6_fooof_bl                             = remove_time_dimension(pow6_fooof_bl);
-pow6_fooof_bl_early                       = remove_time_dimension(pow6_fooof_bl_early);
-pow6_fooof_bl_late                        = remove_time_dimension(pow6_fooof_bl_late);
-
-save power_stern_fooof ...
-    pow2_fooof pow4_fooof pow6_fooof ...
-    pow2_fooof_bl pow4_fooof_bl pow6_fooof_bl ...
-    pow2_fooof_bl_early pow4_fooof_bl_early pow6_fooof_bl_early ...
-    pow2_fooof_bl_late pow4_fooof_bl_late pow6_fooof_bl_late
-clc
-end
-disp('TFR and FOOOFed POWSPCTRM COMPUTED...');

@@ -499,21 +499,34 @@ for subj = 1 : length(subjects)
         tfr_ff.avg_powspctrm        = tfr_ff_avg.powspctrm;
 
         %% Sanity check: visualize raw and fooofed powspctrm + aperiodic fit
-        % close all
-        % figure('Position', [0 0 1512/2 982], 'Color', 'w');
-        % plot(tmpfreq{trl}.freq, log10(mean(tmpfreq{trl}.powspctrm, 1)), 'LineWidth', 3)
-        % ylabel('Power')
-        % xlabel('Frequency')
-        % set(gca, 'FontSize', 15)
-        % hold on
-        % plot(tmpfreq{trl}.freq, tmpfreq{trl}.fooofparams.power_spectrum, 'LineWidth', 3, 'Color', 'r');
-        % %plot(tmpfreq{trl}.freq, tmpfreq{trl}.fooofparams.aperiodic_params, 'LineWidth', 3, 'LineStyle', '--')
-        % title('Aperiodic Fit')
-        % set(gca, 'FontSize', 15)
-        % legend({'Raw Power', 'Final Fit', 'Aperiodic Fit'})
-        % title(sprintf('Powspctrm: Subject %s Channel %d Timepoint %d', subjects{subj}, chan, tim), 'FontSize', 20)
-        % saveName = sprintf('AOC_controls_FOOOF_powspctrm_subj%s_ch%d_t%d.png', subjects{subj}, chan, tim);
-        % saveas(gcf, ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF', saveName]);
+        tfr_cond = tfr2_fooof;
+        chan        = find(strcmp(tfr_cond.label, chan_label)); % or set chan = 30, etc.
+        [~, tim]    = min(abs(tfr_cond.time - 0.5));            % time index closest to 0.5 s
+        freq = tfr_cond.freq;
+        raw_spec = squeeze(mean(tfr_cond.powspctrm(:, :, :, tim), 1));   % 1 x freq
+        model_spec = squeeze(mean(tfr_cond.power_spectrum(:, :, :, tim), 1)); % 1 x freq
+        offset = squeeze(mean(tfr_cond.fooofparams(:, :, 1, tim), 1));   % intercept
+        slope  = squeeze(mean(tfr_cond.fooofparams(:, :, 2, tim), 1));   % slope
+        aperiodic_fit = offset - slope .* log10(freq);
+        figure('Position', [0 0 1512/2 982], 'Color', 'w');
+        plot(freq, log10(raw_spec), 'LineWidth', 3) % Raw power (log10)
+        hold on
+        plot(freq, model_spec, 'LineWidth', 3, 'Color', 'r'); % FOOOF full model (already in log10 space)
+        plot(freq, aperiodic_fit, 'LineWidth', 3, 'LineStyle', '--'); % Aperiodic fit
+        ylabel('Power (log_{10})')
+        xlabel('Frequency (Hz)')
+        set(gca, 'FontSize', 15)
+        legend({'Raw Power', 'Final Fit', 'Aperiodic Fit'}, 'Location', 'best')
+        title(sprintf( ...
+            'Powspctrm: Subject %s | Cond 1 (set size 2) | t = %.2f s', ...
+            subjects{subj}, tfr_cond.time(tim)), ...
+            'FontSize', 20)
+
+        % Save
+        saveName = sprintf('AOC_controls_FOOOF_powspctrm_subj%s_cond1_ch%s_t%d.png', ...
+            subjects{subj}, tfr_cond.label{chan}, tim);
+        savePathControls = ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF/');
+        saveas(gcf, fullfile(savePathControls, saveName));
 
         if tfr_conds == 1
             tfr2_fooof = tfr_ff_trl;

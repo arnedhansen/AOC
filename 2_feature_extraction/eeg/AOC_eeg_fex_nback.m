@@ -289,10 +289,15 @@ for subj = 1:length(subjects)
     end
 end
 
-%% TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM
+%% TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM (NBACK)
 % Setup
 startup
 [subjects, path, ~ , ~] = setup('AOC');
+
+% Parallel progress output
+D = parallel.pool.DataQueue;
+afterEach(D, @(s) fprintf('Subj %d | Cond %d | Time %d/%d finished\n', ...
+    s.subj, s.cond, s.time, s.nTimePnts));
 
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1 : length(subjects)
@@ -307,19 +312,19 @@ for subj = 1 : length(subjects)
     load dataEEG_TFR_nback
 
     % Identify indices of trials belonging to conditions
-    % trialinfo codes: 21, 22, 23 (as in your old script)
+    % trialinfo codes: 21, 22, 23
     ind1 = find(dataTFR.trialinfo(:, 1) == 21);
     ind2 = find(dataTFR.trialinfo(:, 1) == 22);
     ind3 = find(dataTFR.trialinfo(:, 1) == 23);
 
-    % Time-frequency analysis (keep nback timing, adapt style)
+    % Time-frequency analysis (trial-averaged TFR for visualisation / later use)
     cfg              = [];
     cfg.output       = 'pow';
     cfg.method       = 'mtmconvol';
     cfg.taper        = 'hanning';
-    cfg.foi          = 3:1:30;                         % keep nback frequency range
+    cfg.foi          = 3:1:30;                         % nback frequency range
     cfg.t_ftimwin    = ones(length(cfg.foi), 1).*0.5;  % 0.5 s windows
-    cfg.toi          = -1:0.05:2.25;                   % keep nback time axis
+    cfg.toi          = -1:0.05:2.25;                   % nback time axis
     cfg.keeptrials   = 'no';
     cfg.pad          = 'nextpow2';
 
@@ -332,7 +337,7 @@ for subj = 1 : length(subjects)
 
     % Baselined TFR (raw powspctrm)
     cfg                      = [];
-    cfg.baseline             = [-.5 -.25];             % keep nback baseline
+    cfg.baseline             = [-.5 -.25];             % nback baseline
     cfg.baselinetype         = 'db';
     tfr1_bl                  = ft_freqbaseline(cfg, tfr1);
     tfr2_bl                  = ft_freqbaseline(cfg, tfr2);
@@ -351,14 +356,11 @@ for subj = 1 : length(subjects)
     toi_centres    = startWin_FOOOF(1):steps_FOOOF:startWin_FOOOF(1) + steps_FOOOF*(nTimePnts-1);
     toi_centres    = toi_centres + 0.25;  % shift by half window
 
-    % Prepare containers per condition
-    tfr_fooof_trl = cell(1, 3);
-    tfr_fooof_avg = cell(1, 3);
+    % Container for each condition
+    tfr_fooof = cell(1, 3);
 
     % Conditions
     for tfr_conds = 1 : 3
-        cfg   = [];
-        allff = {};
 
         if tfr_conds == 1
             trlIdx = ind1;
@@ -368,136 +370,123 @@ for subj = 1 : length(subjects)
             trlIdx = ind3;
         end
 
-        % Loop over timepoints
-        for timePnt = 1 : nTimePnts
-            nTrl           = numel(trlIdx);
-            tmpfreq        = cell(nTrl, 1);
-            tmpfooofparams = cell(nTrl, 1);
+        disp(' ')
+        disp(['Running FOOOF (NBACK) on trial-averaged spectra for condition ' num2str(tfr_conds)])
 
-            % Select data segment for FOOOF window
-            cfg         = [];
-            cfg.latency = startWin_FOOOF + steps_FOOOF * (timePnt-1);
-            datTFR      = ft_selectdata(cfg, dataTFR);
+        % Prepare FOOOF config
+        cfg_fooof            = [];
+        cfg_fooof.method     = 'mtmfft';
+        cfg_fooof.taper      = 'hanning';
+        cfg_fooof.foilim     = [3 30];     % nback frequency range
+        cfg_fooof.pad        = 5;
+        cfg_fooof.output     = 'fooof';
+        cfg_fooof.keeptrials = 'no';       % average across trials before FOOOF
 
-            % Loop over trials (parallel)
-            parfor trl = 1 : numel(trlIdx)
-                disp(['Subject    ' num2str(subj)])
-                disp(['Condition  ' num2str(tfr_conds)])
-                disp(['Timepoint  ' num2str(timePnt)])
-                disp(['Trial      ' num2str(trl)])
+        % One test window to get sizes
+        cfg_sel0         = [];
+        cfg_sel0.latency = startWin_FOOOF;      % first 500 ms window
+        cfg_sel0.trials  = trlIdx;
+        datTFR_win0      = ft_selectdata(cfg_sel0, dataTFR);
 
-                % FOOOF FieldTrip configs
-                cfg            = [];
-                cfg.method     = 'mtmfft';
-                cfg.taper      = 'hanning';
-                cfg.foilim     = [3 30];   % match nback frequency range
-                cfg.pad        = 5;
-                cfg.output     = 'fooof';
-                cfg.trials     = trlIdx(trl);
+        fooof_test       = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win0);
 
-                % Run FOOOF via your wrapper
-                tmpfreq{trl}        = ft_freqanalysis_Arne_FOOOF(cfg, datTFR);
-                tmpfooofparams{trl} = tmpfreq{trl}.fooofparams; % save fooofparams
+        nChan            = numel(fooof_test.label);
+        nFreq            = numel(fooof_test.freq);
+
+        % Preallocate containers
+        fooof_powspctrm = nan(nChan, nFreq, nTimePnts);
+        fooof_powspec   = nan(nChan, nFreq, nTimePnts);
+        fooof_aperiodic = nan(nChan, 4,       nTimePnts);  % [offset slope error r^2]
+
+        % parfor over timepoints
+        parfor timePnt = 1 : nTimePnts
+
+            % Select data window and trials for this condition
+            cfg_sel         = [];
+            cfg_sel.latency = startWin_FOOOF + steps_FOOOF * (timePnt-1);
+            cfg_sel.trials  = trlIdx;
+            datTFR_win      = ft_selectdata(cfg_sel, dataTFR);
+
+            % Run FOOOF on the averaged spectrum
+            fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win);
+
+            % Store FOOOFed power (chan x freq)
+            local_pow = fooof_out.powspctrm;      % chan x freq
+
+            % Extract FOOOF parameters per channel
+            if iscell(fooof_out.fooofparams)
+                repdata = fooof_out.fooofparams{1};   % single averaged "trial"
+            else
+                repdata = fooof_out.fooofparams;
             end
 
-            % Compute avg over trials (keepindividual = yes)
-            cfg                = [];
-            cfg.keepindividual = 'yes';
-            ff                 = ft_freqgrandaverage(cfg, tmpfreq{:});
-            ff.fooofparams     = tmpfooofparams;
-            ff.cfg             = [];
-            allff{timePnt}     = ff;
-        end
+            tmpaperdiodic = {repdata.aperiodic_params};
+            tmperror      = {repdata.error};
+            tmpr_sq       = {repdata.r_squared};
+            tmp_pwr_spec  = {repdata.power_spectrum};
 
-        % Concatenate data over time points
-        tfr_ff_trl    = tmpfreq{1};
-        fooofed_power = [];
-        ff_foof       = {};
+            local_aper = nan(nChan, 2);  % [offset slope]
+            local_err  = nan(nChan, 1);
+            local_rsq  = nan(nChan, 1);
+            local_ps   = nan(nChan, nFreq);
 
-        for timePnt = 1 : length(allff)
-            fooofed_power(:, :, :, timePnt) = allff{timePnt}.powspctrm;
-            ff_foof{timePnt}                = allff{timePnt}.fooofparams;
-        end
+            for electrode = 1 : nChan
+                aper_params              = tmpaperdiodic{electrode};   % [offset slope]
+                local_aper(electrode, :) = aper_params(:).';
 
-        % Extract aperiodic signal and full power spectrum
-        tmp_aperiodic  = [];
-        power_spectrum = [];
-        for timePnt = 1 : length(ff_foof)
-            tdata = ff_foof{timePnt};
-            for trl = 1 : length(tdata)
-                repdata       = tdata{trl};
-                tmpaperdiodic = {repdata.aperiodic_params};
-                tmperror      = {repdata.error};
-                tmpr_sq       = {repdata.r_squared};
-                tmp_pwr_spec  = {repdata.power_spectrum};
-                elec_data     = [];
-                datafit       = [];
-                pwr_spec      = [];
-                for electrode = 1 : size(tfr_ff_trl.label, 2)
-                    elec_data(1, electrode, :) = tmpaperdiodic{electrode};
-                    datafit(1, electrode, 1)   = tmperror{electrode};
-                    datafit(1, electrode, 2)   = tmpr_sq{electrode};
-                    pwr_spec(electrode, :)     = tmp_pwr_spec{electrode};
-                end
-                tmp_aperiodic(trl, :, 1, timePnt)  = elec_data(1, :, 1); % intercept
-                tmp_aperiodic(trl, :, 2, timePnt)  = elec_data(1, :, 2); % slope
-                tmp_aperiodic(trl, :, 3, timePnt)  = datafit(1, :, 1);   % error
-                tmp_aperiodic(trl, :, 4, timePnt)  = datafit(1, :, 2);   % r-squared
-                power_spectrum(trl, :, :, timePnt) = pwr_spec;
+                local_err(electrode, 1)  = tmperror{electrode};
+                local_rsq(electrode, 1)  = tmpr_sq{electrode};
+                local_ps(electrode, :)   = tmp_pwr_spec{electrode};
             end
+
+            % Write into sliced arrays (parfor-friendly)
+            fooof_powspctrm(:, :, timePnt) = local_pow;
+            fooof_powspec(:, :, timePnt)   = local_ps;
+
+            % Pack aperiodic parameters into one [chan x 4] matrix
+            local_aper_all        = nan(nChan, 4);
+            local_aper_all(:, 1)  = local_aper(:, 1);   % intercept
+            local_aper_all(:, 2)  = local_aper(:, 2);   % slope
+            local_aper_all(:, 3)  = local_err;          % error
+            local_aper_all(:, 4)  = local_rsq;          % r squared
+
+            % Single consistent sliced write for parfor
+            fooof_aperiodic(:, :, timePnt) = local_aper_all;
+
+            % Progress output
+            s           = struct();
+            s.subj      = subj;
+            s.cond      = tfr_conds;
+            s.time      = timePnt;
+            s.nTimePnts = nTimePnts;
+            send(D, s);
         end
 
-        % Save FOOOF output: trl x chan x freq x time
-        tfr_ff_trl.dimord         = 'rpt_chan_freq_time';
-        tfr_ff_trl.powspctrm      = fooofed_power;
-        tfr_ff_trl.power_spectrum = power_spectrum;
-        tfr_ff_trl.trialinfo      = trlIdx;
-        tfr_ff_trl.fooofparams    = tmp_aperiodic;
-        tfr_ff_trl.time           = toi_centres;
-
-        % Average over trials: chan x freq x time
-        tmp_for_avg = tfr_ff_trl;
-        tmp_for_avg = rmfield(tmp_for_avg, {'fooofparams', 'power_spectrum'});
-
-        cfg           = [];
-        cfg.parameter = 'powspctrm';
-        tfr_ff_avg    = ft_freqdescriptives(cfg, tmp_for_avg);
-
-        % Average aperiodic parameters and power_spectrum across trials
-        aperiodic_mean = squeeze(mean(tfr_ff_trl.fooofparams, 1, 'omitnan'));    % chan x 4 x time
-        powspec_mean   = squeeze(mean(tfr_ff_trl.power_spectrum, 1, 'omitnan')); % chan x freq x time
-
-        % Struct with only averages
+        % Construct condition-specific FOOOF struct
         tfr_ff                    = [];
-        tfr_ff.fooofparams        = aperiodic_mean;
-        tfr_ff.power_spectrum     = powspec_mean;
-        tfr_ff.powspctrm          = tfr_ff_avg.powspctrm;
-        tfr_ff.label              = tfr_ff_trl.label;
-        tfr_ff.freq               = tfr_ff_trl.freq;
-        tfr_ff.time               = tfr_ff_trl.time;
+        tfr_ff.label              = fooof_test.label;
+        tfr_ff.freq               = fooof_test.freq;
+        tfr_ff.time               = toi_centres(1:nTimePnts);
+        tfr_ff.powspctrm          = fooof_powspctrm;   % FOOOFed TFR: chan x freq x time
+        tfr_ff.power_spectrum     = fooof_powspec;     % full model spectrum: chan x freq x time
+        tfr_ff.fooofparams        = fooof_aperiodic;   % chan x 4 x time
         tfr_ff.dimord             = 'chan_freq_time';
 
-        % Assign to sliced outputs
-        tfr_fooof_trl{tfr_conds} = tfr_ff_trl;   % full rpt_chan_freq_time struct
-        tfr_fooof_avg{tfr_conds} = tfr_ff;       % averages only
+        tfr_fooof{tfr_conds}      = tfr_ff;
     end
 
     % Unpack per condition
-    tfr1_fooof_trl   = tfr_fooof_trl{1};
-    tfr2_fooof_trl   = tfr_fooof_trl{2};
-    tfr3_fooof_trl   = tfr_fooof_trl{3};
-
-    tfr1_fooof       = tfr_fooof_avg{1};
-    tfr2_fooof       = tfr_fooof_avg{2};
-    tfr3_fooof       = tfr_fooof_avg{3};
-    disp(upper('FOOOF done...'))
+    tfr1_fooof = tfr_fooof{1};
+    tfr2_fooof = tfr_fooof{2};
+    tfr3_fooof = tfr_fooof{3};
+    disp(upper('FOOOF (NBACK) done on trial-averaged spectra...'))
 
     %% Sanity Check: averaged FOOOF output, all channels, all three conditions
     time_point = 0.5; % time (s) to inspect
 
     % Collect condition data (already averaged over trials)
     tfr_all     = {tfr1_fooof, tfr2_fooof, tfr3_fooof};
-    cond_titles = {'Cond 1', 'Cond 2', 'Cond 3'};  % adapt labels if you like (0-back, 1-back, 2-back)
+    cond_titles = {'Cond 1', 'Cond 2', 'Cond 3'};  % e.g. 0-back, 1-back, 2-back
 
     % Use time axis from first condition
     [~, tim] = min(abs(tfr1_fooof.time - time_point));
@@ -574,7 +563,6 @@ for subj = 1 : length(subjects)
     save tfr_nback ...
         tfr1 tfr2 tfr3 ...
         tfr1_fooof tfr2_fooof tfr3_fooof ...
-        tfr1_fooof_trl tfr2_fooof_trl tfr3_fooof_trl ...
         tfr1_bl tfr2_bl tfr3_bl ...
         tfr1_fooof_bl tfr2_fooof_bl tfr3_fooof_bl
 
@@ -582,7 +570,7 @@ for subj = 1 : length(subjects)
     analysisPeriodFull  = [0 2];
     analysisPeriodEarly = [0 1];
     analysisPeriodLate  = [1 2];
-    freq_range          = [2 40];   % keep as in your previous scripts
+    freq_range          = [2 40];
 
     % Select data
     pow1_fooof              = select_data(analysisPeriodFull,  freq_range, tfr1_fooof);

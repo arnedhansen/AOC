@@ -363,6 +363,7 @@ for subj = 1 : length(subjects)
     cfg.t_ftimwin    = ones(length(cfg.foi),1).*0.5;   % length of time window = 0.5 sec
     cfg.toi          = -1.5:0.05:3;
     cfg.keeptrials   = 'no';
+    cfg.pad = 'nextpow2';
 
     cfg.trials = ind2;
     tfr2       = ft_freqanalysis(cfg, dataTFR);
@@ -404,8 +405,9 @@ for subj = 1 : length(subjects)
 
         % Loop over timepoints
         for timePnt = 1 : nTimePnts
-            tmpfreq        = [];
-            tmpfooofparams = [];
+            nTrl           = numel(trlIdx);
+            tmpfreq        = cell(nTrl, 1);
+            tmpfooofparams = cell(nTrl, 1);
 
             % Select data
             cfg         = [];
@@ -414,7 +416,7 @@ for subj = 1 : length(subjects)
 
             % Loop over trials
             parfor trl = 1 : numel(trlIdx)
-                clc
+                % clc
                 disp(['Subject    ' num2str(subj)])
                 disp(['Condition  ' num2str(tfr_conds)])
                 disp(['Timepoint  ' num2str(timePnt)])
@@ -431,8 +433,7 @@ for subj = 1 : length(subjects)
 
                 % Run FOOOF (settings Marius)
                 tmpfreq{trl} = ft_freqanalysis_Arne_FOOOF(cfg, datTFR);
-                tmpfooofparams{trl, 1}  =  tmpfreq{trl}.fooofparams; % save fooof params
-
+                tmpfooofparams{trl, 1}  =  tmpfreq{trl}.fooofparams; % save fooofparams
             end
             % Compute avg over trials
             cfg                = [];
@@ -441,7 +442,6 @@ for subj = 1 : length(subjects)
             ff.fooofparams     = tmpfooofparams;
             ff.cfg             = [];
             allff{timePnt}     = ff;
-
         end
 
         % Concatenate data over time points
@@ -480,6 +480,7 @@ for subj = 1 : length(subjects)
                 power_spectrum(trl, :, :, timePnt) = pwr_spec;
             end
         end
+
         % Save FOOOF output: trl x chan x freq x time
         tfr_ff_trl.dimord         = 'rpt_chan_freq_time';
         tfr_ff_trl.powspctrm      = fooofed_power;

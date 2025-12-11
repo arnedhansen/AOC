@@ -387,12 +387,12 @@ for subj = 1 : length(subjects)
     steps_FOOOF = 0.05; % 50 ms
     toi_FOOOF = -1.5:0.05:3; % -1.5 to 3 s with in 50s steps
     nTimePnts = round((abs(toi_FOOOF(1))+toi_FOOOF(end))/steps_FOOOF)+1;
+    toi_centres = startWin_FOOOF(1):steps_FOOOF:startWin_FOOOF(1) + steps_FOOOF*(nTimePnts-1);
+    toi_centres = toi_centres + 0.25;  % shift by half window
 
-    % Parallel processing of conditions
-    for tfr_conds = 1 : 3 %parfor
+    % Conditions
+    for tfr_conds = 1 : 3
         cfg            = [];
-        tmpfreq        = [];
-        tmpfooofparams = [];
         allff          = [];
         if tfr_conds == 1
             trlIdx = ind2;
@@ -404,14 +404,16 @@ for subj = 1 : length(subjects)
 
         % Loop over timepoints
         for timePnt = 1 : nTimePnts
+            tmpfreq        = [];
+            tmpfooofparams = [];
 
             % Select data
             cfg         = [];
-            cfg.latency = startWin_FOOOF + 0.05 * (timePnt-1);
+            cfg.latency = startWin_FOOOF + steps_FOOOF * (timePnt-1);
             datTFR      = ft_selectdata(cfg, dataTFR);
 
             % Loop over trials
-            for trl = 1 : numel(trlIdx)
+            parfor trl = 1 : numel(trlIdx)
                 clc
                 disp(['Subject    ' num2str(subj)])
                 disp(['Condition  ' num2str(tfr_conds)])
@@ -431,8 +433,6 @@ for subj = 1 : length(subjects)
                 tmpfreq{trl} = ft_freqanalysis_Arne_FOOOF(cfg, datTFR);
                 tmpfooofparams{trl, 1}  =  tmpfreq{trl}.fooofparams; % save fooof params
 
-                % Check fit
-                %mean(cell2mat({tmpfreq{trl}.fooofparams.r_squared}))
             end
             % Compute avg over trials
             cfg                = [];
@@ -441,6 +441,7 @@ for subj = 1 : length(subjects)
             ff.fooofparams     = tmpfooofparams;
             ff.cfg             = [];
             allff{timePnt}     = ff;
+
         end
 
         % Concatenate data over time points
@@ -485,7 +486,7 @@ for subj = 1 : length(subjects)
         tfr_ff_trl.power_spectrum = power_spectrum;
         tfr_ff_trl.trialinfo      = trlIdx;
         tfr_ff_trl.fooofparams    = tmp_aperiodic;
-        tfr_ff_trl.time           = toi_FOOOF;
+        tfr_ff_trl.time           = toi_centres;
 
         % Average over trials: chan x freq x time
         % Work on a copy without the extra FOOOF fields so FieldTrip doesn't complain
@@ -502,9 +503,9 @@ for subj = 1 : length(subjects)
 
         % Struct with only averages
         tfr_ff                    = [];
-        tfr_ff.fooofparams    = aperiodic_mean;      % chan x 4 x time
-        tfr_ff.power_spectrum = powspec_mean;        % chan x freq x time
-        tfr_ff.powspctrm      = tfr_ff_avg.powspctrm;
+        tfr_ff.fooofparams        = aperiodic_mean;      % chan x 4 x time
+        tfr_ff.power_spectrum     = powspec_mean;        % chan x freq x time
+        tfr_ff.powspctrm          = tfr_ff_avg.powspctrm;
         tfr_ff.label              = tfr_ff_trl.label;
         tfr_ff.freq               = tfr_ff_trl.freq;
         tfr_ff.time               = tfr_ff_trl.time;
@@ -610,6 +611,7 @@ for subj = 1 : length(subjects)
     save tfr_stern ...
         tfr2 tfr4 tfr6 ...
         tfr2_fooof tfr4_fooof tfr6_fooof ...
+        tfr2_fooof_trl tfr4_fooof_trl tfr6_fooof_trl ...
         tfr2_bl tfr4_bl tfr6_bl ...
         tfr2_fooof_bl tfr4_fooof_bl tfr6_fooof_bl
 

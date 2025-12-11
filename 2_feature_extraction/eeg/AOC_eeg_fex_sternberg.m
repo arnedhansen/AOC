@@ -428,7 +428,7 @@ for subj = 1 : length(subjects)
                 cfg.trials     = trlIdx(trl);
 
                 % Run FOOOF (settings Marius)
-                tmpfreq{trl} = ft_freqanalysis_Arne_FOOOF(cfg, datTFR); 
+                tmpfreq{trl} = ft_freqanalysis_Arne_FOOOF(cfg, datTFR);
                 tmpfooofparams{trl, 1}  =  tmpfreq{trl}.fooofparams; % save fooof params
 
                 % Check fit
@@ -534,8 +534,82 @@ for subj = 1 : length(subjects)
     tfr6_fooof       = tfr_fooof_avg{3};   % averages cond 3
     disp(upper('FOOOF done...'))
 
-    %% Sanity Check
-  
+    %% Sanity Check: all channels, all three conditions in one figure
+    time_point = 0.5;                % time (s) to inspect
+
+    % Collect condition data
+    tfr_all     = {tfr2_fooof, tfr4_fooof, tfr6_fooof};
+    cond_titles = {'Cond 1 (set size 2)', ...
+        'Cond 2 (set size 4)', ...
+        'Cond 3 (set size 6)'};
+
+    % Use time axis from first condition (they should all match)
+    [~, tim] = min(abs(tfr2_fooof.time - time_point));
+    freq     = tfr2_fooof.freq;
+
+    figure('Position', [0 0 1512 500], 'Color', 'w');
+
+    for c = 1 : 3
+        tfr_cond = tfr_all{c};
+
+        % powspctrm: rpt x chan x freq x time
+        raw_spec = squeeze( ...
+            mean( ...
+            mean(tfr_cond.powspctrm(:,:,:,tim), 1, 'omitnan'), ... % average over trials
+            2, 'omitnan') ...                                          % then over channels
+            ); % -> freq
+
+        % power_spectrum: rpt x chan x freq x time
+        model_spec = squeeze( ...
+            mean( ...
+            mean(tfr_cond.power_spectrum(:,:,:,tim), 1, 'omitnan'), ...
+            2, 'omitnan') ...
+            ); % -> freq
+
+        % fooofparams: rpt x chan x 4 x time
+        % dimension 3: 1 = intercept, 2 = slope
+        offset_mat = squeeze(tfr_cond.fooofparams(:,:,1,tim));  % rpt x chan
+        slope_mat  = squeeze(tfr_cond.fooofparams(:,:,2,tim));  % rpt x chan
+        offset     = mean(offset_mat(:), 'omitnan');
+        slope      = mean(slope_mat(:),  'omitnan');
+
+        % log-transform spectra so all curves live in the same space
+        raw_log      = log10(raw_spec);
+        model_log    = log10(model_spec);
+        aperiodic_fit = offset - slope .* log10(freq);   % already log10(power)
+
+        subplot(1, 3, c);
+        plot(freq, raw_log, 'LineWidth', 3)
+        hold on
+        plot(freq, model_log, 'LineWidth', 3)
+        plot(freq, aperiodic_fit, 'LineWidth', 3, 'LineStyle', '--');
+
+        xlabel('Frequency (Hz)')
+        if c == 1
+            ylabel('Power (log_{10})')
+        end
+        set(gca, 'FontSize', 15)
+        if c == 1
+            legend({'Raw Power', 'Final Fit', 'Aperiodic Fit'}, 'Location', 'best')
+        end
+        title(sprintf('%s | t = %.2f s', cond_titles{c}, tfr_cond.time(tim)), 'FontSize', 16)
+    end
+
+    sgtitle(sprintf('FOOOF sanity check: Subject %s | ALL channels', ...
+        subjects{subj}), 'FontSize', 20)
+
+    % Save figure using same path logic
+    if ispc
+        savePathControls = 'W:\Students\Arne\AOC\data\controls\FOOOF\';
+    else
+        savePathControls = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF/';
+    end
+    if ~exist(savePathControls, 'dir')
+        mkdir(savePathControls);
+    end
+
+    saveName = sprintf('AOC_controls_FOOOF_powspctrm_subj%s.png', subjects{subj});
+    saveas(gcf, fullfile(savePathControls, saveName));
 
     %% FOOOFed powspctrm baselined
     cfg                              = [];

@@ -410,13 +410,43 @@ for subj = 1 : length(subjects)
         disp(' ')
         disp(['Running FOOOF on trial-averaged spectra for condition ' num2str(tfr_conds)])
 
-        % Preallocation handles – will be set on first timepoint
-        fooof_powspctrm   = [];
-        fooof_powspec     = [];
-        fooof_aperiodic   = [];
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % Prepare FOOOF config
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        cfg_fooof            = [];
+        cfg_fooof.method     = 'mtmfft';
+        cfg_fooof.taper      = 'hanning';
+        cfg_fooof.foilim     = [2 40];
+        cfg_fooof.pad        = 5;
+        cfg_fooof.output     = 'fooof';
+        cfg_fooof.keeptrials = 'no';        % average across trials before FOOOF
 
-        % Loop over timepoints (sliding windows)
-        for timePnt = 1 : nTimePnts
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % One test window to get sizes
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        cfg_sel0         = [];
+        cfg_sel0.latency = startWin_FOOOF;      % first 500 ms window
+        cfg_sel0.trials  = trlIdx;
+        datTFR_win0      = ft_selectdata(cfg_sel0, dataTFR);
+
+        fooof_test       = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win0);
+
+        nChan            = numel(fooof_test.label);
+        nFreq            = numel(fooof_test.freq);
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % Preallocate containers
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        fooof_powspctrm = nan(nChan, nFreq, nTimePnts);
+        fooof_powspec   = nan(nChan, nFreq, nTimePnts);
+        fooof_aperiodic = nan(nChan, 4,       nTimePnts);  % [offset slope error r^2]
+
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % parfor over timepoints
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        parfor timePnt = 1 : nTimePnts
+
+            % Some status output (may appear jumbled in parfor, but fine)
             disp(['Subject   ' num2str(subj)])
             disp(['Condition ' num2str(tfr_conds)])
             disp(['Timepoint ' num2str(timePnt) ' / ' num2str(nTimePnts)])
@@ -427,30 +457,11 @@ for subj = 1 : length(subjects)
             cfg_sel.trials  = trlIdx;
             datTFR_win      = ft_selectdata(cfg_sel, dataTFR);
 
-            % FOOOF FieldTrip configs: trial-averaged spectrum
-            cfg_fooof            = [];
-            cfg_fooof.method     = 'mtmfft';
-            cfg_fooof.taper      = 'hanning';
-            cfg_fooof.foilim     = [2 40];
-            cfg_fooof.pad        = 5;
-            cfg_fooof.output     = 'fooof';
-            cfg_fooof.keeptrials = 'no';        % average across trials before FOOOF
-
             % Run FOOOF on the averaged spectrum
             fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win);
 
-            % On first timepoint, set up containers based on dimensions
-            if timePnt == 1
-                nChan = numel(fooof_out.label);
-                nFreq = numel(fooof_out.freq);
-
-                fooof_powspctrm = nan(nChan, nFreq, nTimePnts);
-                fooof_powspec   = nan(nChan, nFreq, nTimePnts);
-                fooof_aperiodic = nan(nChan, 4, nTimePnts);  % [offset slope error r^2]
-            end
-
-            % Store FOOOFed power (fooof_out.powspctrm should already be chan x freq)
-            fooof_powspctrm(:, :, timePnt) = fooof_out.powspctrm;
+            % Store FOOOFed power (chan x freq)
+            local_pow = fooof_out.powspctrm;      % chan x freq
 
             % Extract FOOOF parameters per channel
             if iscell(fooof_out.fooofparams)
@@ -464,36 +475,39 @@ for subj = 1 : length(subjects)
             tmpr_sq       = {repdata.r_squared};
             tmp_pwr_spec  = {repdata.power_spectrum};
 
-            elec_aper = nan(nChan, 2);  % [offset slope]
-            elec_err  = nan(nChan, 1);
-            elec_rsq  = nan(nChan, 1);
-            pwr_spec  = nan(nChan, nFreq);
+            local_aper = nan(nChan, 2);  % [offset slope]
+            local_err  = nan(nChan, 1);
+            local_rsq  = nan(nChan, 1);
+            local_ps   = nan(nChan, nFreq);
 
             for electrode = 1 : nChan
-                aper_params        = tmpaperdiodic{electrode};   % [offset slope]
-                elec_aper(electrode, :) = aper_params(:).';
+                aper_params              = tmpaperdiodic{electrode};   % [offset slope]
+                local_aper(electrode, :) = aper_params(:).';
 
-                elec_err(electrode, 1)  = tmperror{electrode};
-                elec_rsq(electrode, 1)  = tmpr_sq{electrode};
-                pwr_spec(electrode, :)  = tmp_pwr_spec{electrode};
+                local_err(electrode, 1)  = tmperror{electrode};
+                local_rsq(electrode, 1)  = tmpr_sq{electrode};
+                local_ps(electrode, :)   = tmp_pwr_spec{electrode};
             end
 
-            % Save into time-resolved containers
-            fooof_aperiodic(:, 1, timePnt) = elec_aper(:, 1);    % intercept
-            fooof_aperiodic(:, 2, timePnt) = elec_aper(:, 2);    % slope
-            fooof_aperiodic(:, 3, timePnt) = elec_err;           % error
-            fooof_aperiodic(:, 4, timePnt) = elec_rsq;           % r squared
+            % Write into sliced arrays (parfor-friendly)
+            fooof_powspctrm(:, :, timePnt) = local_pow;
+            fooof_powspec(:, :, timePnt)   = local_ps;
 
-            fooof_powspec(:, :, timePnt)   = pwr_spec;
+            fooof_aperiodic(:, 1, timePnt) = local_aper(:, 1);    % intercept
+            fooof_aperiodic(:, 2, timePnt) = local_aper(:, 2);    % slope
+            fooof_aperiodic(:, 3, timePnt) = local_err;           % error
+            fooof_aperiodic(:, 4, timePnt) = local_rsq;           % r squared
         end
 
-        % Construct condition-specific FOOOF struct (chan x freq x time)
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        % Construct condition-specific FOOOF struct
+        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         tfr_ff                    = [];
-        tfr_ff.label              = fooof_out.label;
-        tfr_ff.freq               = fooof_out.freq;
+        tfr_ff.label              = fooof_test.label;
+        tfr_ff.freq               = fooof_test.freq;
         tfr_ff.time               = toi_centres(1:nTimePnts);
         tfr_ff.powspctrm          = fooof_powspctrm;   % FOOOFed TFR: chan x freq x time
-        tfr_ff.power_spectrum     = fooof_powspec;     % FOOOF "full model" spectrum: chan x freq x time
+        tfr_ff.power_spectrum     = fooof_powspec;     % full model spectrum: chan x freq x time
         tfr_ff.fooofparams        = fooof_aperiodic;   % chan x 4 x time
         tfr_ff.dimord             = 'chan_freq_time';
 
@@ -512,8 +526,8 @@ for subj = 1 : length(subjects)
     % Collect condition data (already averaged over trials)
     tfr_all     = {tfr2_fooof, tfr4_fooof, tfr6_fooof};
     cond_titles = {'Cond 1 (set size 2)', ...
-                   'Cond 2 (set size 4)', ...
-                   'Cond 3 (set size 6)'};
+        'Cond 2 (set size 4)', ...
+        'Cond 3 (set size 6)'};
 
     % Use time axis from first condition (they should all match)
     [~, tim] = min(abs(tfr2_fooof.time - time_point));
@@ -527,17 +541,17 @@ for subj = 1 : length(subjects)
         % powspctrm: chan x freq x time
         % average across channels -> freq
         raw_spec = squeeze( ...
-                        mean( ...
-                            tfr_cond.powspctrm(:, :, tim), ...
-                        1, 'omitnan') ...
-                    );                      % -> freq
+            mean( ...
+            tfr_cond.powspctrm(:, :, tim), ...
+            1, 'omitnan') ...
+            );                      % -> freq
 
         % power_spectrum: chan x freq x time (already in log10 power from FOOOF)
         model_spec = squeeze( ...
-                        mean( ...
-                            tfr_cond.power_spectrum(:, :, tim), ...
-                        1, 'omitnan') ...
-                      );                    % -> freq
+            mean( ...
+            tfr_cond.power_spectrum(:, :, tim), ...
+            1, 'omitnan') ...
+            );                    % -> freq
 
         % fooofparams: chan x 4 x time
         % dimension 2: 1 = intercept, 2 = slope
@@ -564,11 +578,11 @@ for subj = 1 : length(subjects)
         end
         set(gca, 'FontSize', 15)
         title(sprintf('%s | t = %.2f s', ...
-              cond_titles{c}, tfr_cond.time(tim)), 'FontSize', 16)
+            cond_titles{c}, tfr_cond.time(tim)), 'FontSize', 16)
     end
 
     sgtitle(sprintf('FOOOF sanity check: Subject %s', ...
-            subjects{subj}), 'FontSize', 20)
+        subjects{subj}), 'FontSize', 20)
 
     % Save figure using same path logic
     if ispc

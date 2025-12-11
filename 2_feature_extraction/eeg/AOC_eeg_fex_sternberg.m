@@ -337,8 +337,18 @@ end
 startup
 [subjects, path, ~ , ~] = setup('AOC');
 
+% Define parfor output function
+D = parallel.pool.DataQueue;
+afterEach(D, @printProgress);
+function printProgress(s)
+    fprintf('Subj %d | Cond %d | Time %d/%d finished\n', ...
+        s.subj, s.cond, s.time, s.nTimePnts);
+end
+
 % Read data, segment and convert to FieldTrip data structure
 for subj = 1 : length(subjects)
+    D = parallel.pool.DataQueue;
+    afterEach(D, @(x) fprintf('Timepoint %d finished\n', x));
 
     % Check existing data
     datapath = strcat(path, subjects{subj}, filesep, 'eeg');
@@ -381,9 +391,7 @@ for subj = 1 : length(subjects)
     tfr4_bl                  = ft_freqbaseline(cfg, tfr4);
     tfr6_bl                  = ft_freqbaseline(cfg, tfr6);
 
-    %%%%%%%%%%%%%%%%%%%%
     %%%%%%  FOOOF %%%%%%
-    %%%%%%%%%%%%%%%%%%%%
     % Sliding-window FOOOF over trial-averaged spectra
     startWin_FOOOF = [-1.5 -1];    % 500 ms window
     steps_FOOOF    = 0.05;         % 50 ms step
@@ -410,9 +418,7 @@ for subj = 1 : length(subjects)
         disp(' ')
         disp(['Running FOOOF on trial-averaged spectra for condition ' num2str(tfr_conds)])
 
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Prepare FOOOF config
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         cfg_fooof            = [];
         cfg_fooof.method     = 'mtmfft';
         cfg_fooof.taper      = 'hanning';
@@ -421,9 +427,7 @@ for subj = 1 : length(subjects)
         cfg_fooof.output     = 'fooof';
         cfg_fooof.keeptrials = 'no';        % average across trials before FOOOF
 
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % One test window to get sizes
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         cfg_sel0         = [];
         cfg_sel0.latency = startWin_FOOOF;      % first 500 ms window
         cfg_sel0.trials  = trlIdx;
@@ -434,22 +438,13 @@ for subj = 1 : length(subjects)
         nChan            = numel(fooof_test.label);
         nFreq            = numel(fooof_test.freq);
 
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Preallocate containers
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         fooof_powspctrm = nan(nChan, nFreq, nTimePnts);
         fooof_powspec   = nan(nChan, nFreq, nTimePnts);
         fooof_aperiodic = nan(nChan, 4,       nTimePnts);  % [offset slope error r^2]
 
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % parfor over timepoints
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         parfor timePnt = 1 : nTimePnts
-
-            % Some status output (may appear jumbled in parfor, but fine)
-            disp(['Subject   ' num2str(subj)])
-            disp(['Condition ' num2str(tfr_conds)])
-            disp(['Timepoint ' num2str(timePnt) ' / ' num2str(nTimePnts)])
 
             % Select data window and trials for this condition
             cfg_sel         = [];
@@ -497,11 +492,17 @@ for subj = 1 : length(subjects)
             fooof_aperiodic(:, 2, timePnt) = local_aper(:, 2);    % slope
             fooof_aperiodic(:, 3, timePnt) = local_err;           % error
             fooof_aperiodic(:, 4, timePnt) = local_rsq;           % r squared
+
+            % Output
+            s           = struct();
+            s.subj      = subj;
+            s.cond      = tfr_conds;
+            s.time      = timePnt;
+            s.nTimePnts = nTimePnts;
+            send(D, s);
         end
 
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Construct condition-specific FOOOF struct
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         tfr_ff                    = [];
         tfr_ff.label              = fooof_test.label;
         tfr_ff.freq               = fooof_test.freq;

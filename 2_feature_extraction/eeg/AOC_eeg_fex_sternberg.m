@@ -502,9 +502,9 @@ for subj = 1 : length(subjects)
 
         % Struct with only averages
         tfr_ff                    = [];
-        tfr_ff.avg_fooofparams    = aperiodic_mean;      % chan x 4 x time
-        tfr_ff.avg_power_spectrum = powspec_mean;        % chan x freq x time
-        tfr_ff.avg_powspctrm      = tfr_ff_avg.powspctrm;
+        tfr_ff.fooofparams    = aperiodic_mean;      % chan x 4 x time
+        tfr_ff.power_spectrum = powspec_mean;        % chan x freq x time
+        tfr_ff.powspctrm      = tfr_ff_avg.powspctrm;
         tfr_ff.label              = tfr_ff_trl.label;
         tfr_ff.freq               = tfr_ff_trl.freq;
         tfr_ff.time               = tfr_ff_trl.time;
@@ -513,16 +513,6 @@ for subj = 1 : length(subjects)
         % Assign to sliced outputs for (par)for
         tfr_fooof_trl{tfr_conds} = tfr_ff_trl;   % full rpt_chan_freq_time struct
         tfr_fooof_avg{tfr_conds} = tfr_ff;       % averages only
-
-        % Save
-        saveName = sprintf('AOC_controls_FOOOF_powspctrm_subj%s_cond1_ch%s_t%d.png', ...
-            subjects{subj}, tfr_cond.label{chan}, tim);
-        if ispc
-            savePathControls = 'W:\Students\Arne\AOC\data\controls\FOOOF\';
-        else
-            savePathControls = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF/';
-        end
-        saveas(gcf, fullfile(savePathControls, saveName));
     end
 
     % after parfor: unpack
@@ -538,7 +528,7 @@ for subj = 1 : length(subjects)
     time_point = 0.5;                % time (s) to inspect
 
     % Collect condition data
-    tfr_all     = {tfr2_fooof, tfr4_fooof, tfr6_fooof};
+    tfr_all     = {tfr2_fooof_trl, tfr4_fooof_trl, tfr6_fooof_trl};
     cond_titles = {'Cond 1 (set size 2)', ...
         'Cond 2 (set size 4)', ...
         'Cond 3 (set size 6)'};
@@ -550,7 +540,7 @@ for subj = 1 : length(subjects)
     figure('Position', [0 0 1512 500], 'Color', 'w');
 
     for c = 1 : 3
-        tfr_cond = tfr_all{c};
+        tfr_cond = tfr_all{1, c}{1, 1};
 
         % powspctrm: rpt x chan x freq x time
         raw_spec = squeeze( ...
@@ -575,7 +565,7 @@ for subj = 1 : length(subjects)
 
         % log-transform spectra so all curves live in the same space
         raw_log      = log10(raw_spec);
-        model_log    = log10(model_spec);
+        model_log    = model_spec;
         aperiodic_fit = offset - slope .* log10(freq);   % already log10(power)
 
         subplot(1, 3, c);

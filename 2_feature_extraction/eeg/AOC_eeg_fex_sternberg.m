@@ -488,10 +488,15 @@ for subj = 1 : length(subjects)
             fooof_powspctrm(:, :, timePnt) = local_pow;
             fooof_powspec(:, :, timePnt)   = local_ps;
 
-            fooof_aperiodic(:, 1, timePnt) = local_aper(:, 1);    % intercept
-            fooof_aperiodic(:, 2, timePnt) = local_aper(:, 2);    % slope
-            fooof_aperiodic(:, 3, timePnt) = local_err;           % error
-            fooof_aperiodic(:, 4, timePnt) = local_rsq;           % r squared
+            % Pack aperiodic parameters into one [chan x 4] matrix
+            local_aper_all        = nan(nChan, 4);
+            local_aper_all(:, 1)  = local_aper(:, 1);   % intercept
+            local_aper_all(:, 2)  = local_aper(:, 2);   % slope
+            local_aper_all(:, 3)  = local_err;          % error
+            local_aper_all(:, 4)  = local_rsq;          % r squared
+
+            % Single consistent sliced write for parfor
+            fooof_aperiodic(:, :, timePnt) = local_aper_all;
 
             % Output
             s           = struct();

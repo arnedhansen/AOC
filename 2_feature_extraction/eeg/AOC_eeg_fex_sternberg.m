@@ -488,65 +488,54 @@ for subj = 1 : length(subjects)
         tfr_ff_trl.time           = toi_FOOOF;
 
         % Average over trials: chan x freq x time
-        cfg                 = [];
-        cfg.parameter       = 'powspctrm';
-        tfr_ff_avg          = ft_freqdescriptives(cfg, tfr_ff_trl);
+        % Work on a copy without the extra FOOOF fields so FieldTrip doesn't complain
+        tmp_for_avg = tfr_ff_trl;
+        tmp_for_avg = rmfield(tmp_for_avg, {'fooofparams', 'power_spectrum'});
+
+        cfg           = [];
+        cfg.parameter = 'powspctrm';
+        tfr_ff_avg    = ft_freqdescriptives(cfg, tmp_for_avg);
 
         % Average aperiodic parameters across trials as well
-        aperiodic_avg       = squeeze(mean(tfr_ff_trl.fooofparams, 1, 'omitnan'));   % chan x 4 x time
-        power_spectrum_avg  = squeeze(mean(tfr_ff_trl.power_spectrum, 1, 'omitnan')); % chan x freq x time
-        tfr_ff                    = [];
-        tfr_ff.avg_fooofparams    = aperiodic_avg;
-        tfr_ff.avg_power_spectrum = power_spectrum_avg;
-        tfr_ff.avg_powspctrm      = tfr_ff_avg.powspctrm;
+        aperiodic_mean  = squeeze(mean(tfr_ff_trl.fooofparams, 1, 'omitnan'));    % chan x 4 x time
+        powspec_mean    = squeeze(mean(tfr_ff_trl.power_spectrum, 1, 'omitnan')); % chan x freq x time
 
-        % Assign to sliced outputs for parfor
-        tfr_fooof_trl{tfr_conds} = tfr_ff_trl;
-        tfr_fooof_avg{tfr_conds} = tfr_ff;
-        aperiodic_avg{tfr_conds} = aperiodic_mean;
-        powspec_avg{tfr_conds}   = powspec_mean;
+        % Struct with only averages
+        tfr_ff                    = [];
+        tfr_ff.avg_fooofparams    = aperiodic_mean;      % chan x 4 x time
+        tfr_ff.avg_power_spectrum = powspec_mean;        % chan x freq x time
+        tfr_ff.avg_powspctrm      = tfr_ff_avg.powspctrm;
+        tfr_ff.label              = tfr_ff_trl.label;
+        tfr_ff.freq               = tfr_ff_trl.freq;
+        tfr_ff.time               = tfr_ff_trl.time;
+        tfr_ff.dimord             = 'chan_freq_time';
+
+        % Assign to sliced outputs for (par)for
+        tfr_fooof_trl{tfr_conds} = tfr_ff_trl;   % full rpt_chan_freq_time struct
+        tfr_fooof_avg{tfr_conds} = tfr_ff;       % averages only
 
         % Save
         saveName = sprintf('AOC_controls_FOOOF_powspctrm_subj%s_cond1_ch%s_t%d.png', ...
             subjects{subj}, tfr_cond.label{chan}, tim);
-        savePathControls = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF/';
+        if ispc
+            savePathControls = 'W:\Students\Arne\AOC\data\controls\FOOOF\';
+        else
+            savePathControls = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF/';
+        end
         saveas(gcf, fullfile(savePathControls, saveName));
     end
+
     % after parfor: unpack
-    tfr2_fooof = tfr_fooof_trl{1};
-    tfr4_fooof = tfr_fooof_trl{2};
-    tfr6_fooof = tfr_fooof_trl{3};
+    tfr2_fooof_trl   = tfr_fooof_trl{1};   % trial-wise FOOOF output, cond 1
+    tfr4_fooof_trl   = tfr_fooof_trl{2};   % trial-wise FOOOF output, cond 2
+    tfr6_fooof_trl   = tfr_fooof_trl{3};   % trial-wise FOOOF output, cond 3
+    tfr2_fooof       = tfr_fooof_avg{1};   % averages (aperiodic + spectrum) cond 1
+    tfr4_fooof       = tfr_fooof_avg{2};   % averages cond 2
+    tfr6_fooof       = tfr_fooof_avg{3};   % averages cond 3
     disp(upper('FOOOF done...'))
 
     %% Sanity Check
-    % example sanity check for condition 1 (set size 2) after parfor
-    tfr_cond   = tfr2_fooof;         % rpt_chan_freq_time
-    chan_label = 'Oz';               % whatever channel you want
-    chan       = find(strcmp(tfr_cond.label, chan_label));
-
-    [~, tim]   = min(abs(tfr_cond.time - 0.5));
-    freq       = tfr_cond.freq;
-
-    % average across trials for that channel & time
-    raw_spec   = squeeze(mean(tfr_cond.powspctrm(:, chan, :, tim), 1));           % freq
-    model_spec = squeeze(mean(tfr_cond.power_spectrum(:, chan, :, tim), 1));      % freq
-
-    offset     = squeeze(mean(tfr_cond.fooofparams(:, chan, 1, tim), 1));         % intercept
-    slope      = squeeze(mean(tfr_cond.fooofparams(:, chan, 2, tim), 1));         % slope
-
-    aperiodic_fit = offset - slope .* log10(freq);
-
-    figure('Position', [0 0 1512/2 982], 'Color', 'w');
-    plot(freq, log10(raw_spec), 'LineWidth', 3)
-    hold on
-    plot(freq, model_spec, 'LineWidth', 3)
-    plot(freq, aperiodic_fit, 'LineWidth', 3, 'LineStyle', '--');
-    ylabel('Power (log_{10})')
-    xlabel('Frequency (Hz)')
-    set(gca, 'FontSize', 15)
-    legend({'Raw Power', 'Final Fit', 'Aperiodic Fit'}, 'Location', 'best')
-    title(sprintf('Powspctrm: Subject %s | Cond 1 (set size 2) | t = %.2f s', ...
-        subjects{subj}, tfr_cond.time(tim)), 'FontSize', 20)
+  
 
     %% FOOOFed powspctrm baselined
     cfg                              = [];

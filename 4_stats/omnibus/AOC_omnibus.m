@@ -12,7 +12,11 @@ startup
 %% Load variables
 tic
 disp('Loading omnibus data...')
-load /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/omnibus_data.mat
+if ispc
+    load W:\Students\Arne\AOC\data\features\omnibus_data.mat
+else
+    load /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/omnibus_data.mat
+end 
 toc
 
 %% Visualize N-back
@@ -56,7 +60,7 @@ cfg = [];
 cfg.figure = 'gcf';
 cfg.ylim = [3 40];
 % cfg.zlim = [-3 3];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 figure; ft_multiplotTFR(cfg, ga_nb);
 
 %% single 
@@ -65,7 +69,7 @@ cfg.figure = 'gcf';
 cfg.zlim = [-.2 .2];
 cfg.xlim = [-1 2];
 cfg.channel = {'P3', 'P4', 'POz', 'PO3', 'PO4', 'PPO1', 'PPO2', 'PPO5h', 'PPO6h'};% nb
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 figure; ft_singleplotTFR(cfg, ga_nb);
 
 %% plot SB tfr and topo
@@ -117,7 +121,7 @@ c.Ticks = [-.2 0 .2];
 title(c,"Power change \newline from baseline")
 xline(0,'k--','LineWidth',2); % black dashed line at 0 sec
 cfg = [];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 cfg.figure = 'gcf';
  cfg.xlim = [1.5 3];
  cfg.ylim = [8 12];
@@ -181,7 +185,7 @@ c.Ticks = [-.2 0 .2];
 title(c,"Power change \newline from baseline")
 xline(0,'k--','LineWidth',2); % black dashed line at 0 sec
 cfg = [];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 cfg.figure = 'gcf';
  cfg.xlim = [0 2];
  cfg.ylim = [8 12];
@@ -268,7 +272,7 @@ cfg = [];
 cfg.figure = 'gcf';
 % cfg.ylim = [3 40];
 % cfg.zlim = [-3 3];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 figure; ft_multiplotER(cfg, ga_sb_2pow,ga_sb_4pow,ga_sb_6pow);
 
 %% plot with SE sternberg
@@ -403,7 +407,7 @@ cfg = [];
 cfg.figure = 'gcf';
 % cfg.ylim = [3 40];
 % cfg.zlim = [-3 3];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 figure; ft_multiplotER(cfg, ga_nb_1pow,ga_nb_2pow,ga_nb_3pow);
 %%
 load('/Users/tpopov/Documents/DATA4FT/DeepEye/headmodel_ant/elec_aligned.mat');% adapt the path according to your setup
@@ -447,7 +451,7 @@ cfg.uvar                  = 2;% units-of-observation (subjects or trials
 %%
 close all
 cfg = [];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 cfg.parameter = 'stat';
 cfg.maskparameter ='mask';
 % cfg.maskstyle = 'outline';
@@ -456,7 +460,7 @@ figure; ft_multiplotER(cfg,statFsb);
 %% 
 
 cfg = [];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 cfg.parameter = 'stat';
 cfg.maskparameter ='mask';
 cfg.linecolor = 'k';
@@ -466,7 +470,7 @@ figure; ft_multiplotER(cfg,statFnb);
 set(gcf,'color','w');
 %%
 cfg = [];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 cfg.figure = 'gcf';
 cfg.marker             = 'off';
 cfg.highlight          = 'on';
@@ -500,7 +504,7 @@ cfg = [];
 cfg.figure = 'gcf';
 cfg.ylim = [3 40];
 % cfg.zlim = [-2 2];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 figure; ft_multiplotTFR(cfg, ga_sb);
 %%
 cfg = [];
@@ -513,7 +517,7 @@ cfg = [];
 cfg.figure = 'gcf';
 cfg.ylim = [3 40];
 % cfg.zlim = [-3 3];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 figure; ft_multiplotTFR(cfg, omnibus);
 %% compute omnibus stat test freq time and elec
 cfg = [];
@@ -586,7 +590,7 @@ statprereg.effectsize = cohens_d;
 
 % close all
 cfg = [];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 cfg.parameter = 'effectsize';
 cfg.maskparameter ='mask';
 cfg.maskstyle = 'outline';
@@ -644,7 +648,7 @@ title(c,'Effect size \it d')
 stattfr=stat;
 stattfr.stat= stat.effectsize;
 cfg = [];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 cfg.figure = 'gcf';
 cfg.parameter = 'effectsize';
 cfg.xlim = [1.308497 1.716100];
@@ -682,7 +686,7 @@ cfg = [];
 cfg.figure = 'gcf';
 % cfg.ylim = [3 40];
 % cfg.zlim = [-3 3];
-cfg.layout = layANThead;
+cfg.layout = headmodel.layANThead;
 figure; ft_multiplotER(cfg, ga_sb_hl_pow,ga_nb_hl_pow);
 %% plot with SE sternberg
 % close all

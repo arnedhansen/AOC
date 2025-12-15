@@ -168,7 +168,7 @@ x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
 xline(ax, x0, 'k-', 'LineWidth', 1);
 
 % ticks (still index-based)
-xticks( round(interp1(tim_interp, 1:numel(tim_interp), [-1 0 1 2])) );
+%xticks( round(interp1(tim_interp, 1:numel(tim_interp), [-1 0 1 2])) );
 xticklabels({'-1','0','1','2'});
 yticks([1 125 250 375 ]); % positions in the interpolated grid
 yticklabels({'40','30','20','10'}); % corresponding freq values
@@ -245,15 +245,15 @@ load6_pow{subj} = rmfield(load6_pow{subj},'time');
 end
 cfg.latency = [.5 2];
 for subj = 1 :length(subjects)
-load1_pow{subj}= ft_selectdata(cfg,load1{subj});
+load1nb_pow{subj}= ft_selectdata(cfg,load1nb{subj});
 load2nb_pow{subj}= ft_selectdata(cfg,load2nb{subj});
-load3_pow{subj}= ft_selectdata(cfg,load3{subj});
-load1_pow{subj}.dimord = 'chan_freq';
-load1_pow{subj} = rmfield(load1_pow{subj},'time');
+load3nb_pow{subj}= ft_selectdata(cfg,load3nb{subj});
+load1nb_pow{subj}.dimord = 'chan_freq';
+load1nb_pow{subj} = rmfield(load1nb_pow{subj},'time');
 load2nb_pow{subj}.dimord = 'chan_freq';
 load2nb_pow{subj} = rmfield(load2nb_pow{subj},'time');
-load3_pow{subj}.dimord = 'chan_freq';
-load3_pow{subj} = rmfield(load3_pow{subj},'time');
+load3nb_pow{subj}.dimord = 'chan_freq';
+load3nb_pow{subj} = rmfield(load3nb_pow{subj},'time');
 end
 
 %% sternberg pow per condition
@@ -263,8 +263,8 @@ ga_sb_2pow = ft_freqgrandaverage(cfg,load2_pow{:});
 ga_sb_4pow = ft_freqgrandaverage(cfg,load4_pow{:});
 ga_sb_6pow = ft_freqgrandaverage(cfg,load6_pow{:});
 ga_nb_2pow = ft_freqgrandaverage(cfg,load2nb_pow{:});
-ga_nb_1pow = ft_freqgrandaverage(cfg,load1_pow{:});
-ga_nb_3pow = ft_freqgrandaverage(cfg,load3_pow{:});
+ga_nb_1pow = ft_freqgrandaverage(cfg,load1nb_pow{:});
+ga_nb_3pow = ft_freqgrandaverage(cfg,load3nb_pow{:});
 
 %%
 close all
@@ -410,10 +410,11 @@ cfg.figure = 'gcf';
 cfg.layout = headmodel.layANThead;
 figure; ft_multiplotER(cfg, ga_nb_1pow,ga_nb_2pow,ga_nb_3pow);
 %%
-load('/Users/tpopov/Documents/DATA4FT/DeepEye/headmodel_ant/elec_aligned.mat');% adapt the path according to your setup
+% load('/Users/tpopov/Documents/DATA4FT/DeepEye/headmodel_ant/elec_aligned.mat');% adapt the path according to your setup
 cfg =[];
 cfg.method ='distance';
-cfg.elec = elec_aligned;
+% cfg.elec = elec_aligned;
+cfg.layout = headmodel.layANThead;
 cfg.feedback      = 'yes' ;
 cfg.neighbourdist=40;
 neighbours = ft_prepare_neighbours(cfg);
@@ -882,7 +883,7 @@ cfg.channel = {'P7', 'PPO9h'};% based on Fstat
     val2nb{subj} = ft_selectdata(cfg,load2nb{subj});
     nb2(subj) = val2nb{subj}.powspctrm;
     
-    val1{subj} = ft_selectdata(cfg,load1{subj});
+    val1{subj} = ft_selectdata(cfg,load1nb{subj});
     nb1(subj) = val1{subj}.powspctrm;
 end
 %%

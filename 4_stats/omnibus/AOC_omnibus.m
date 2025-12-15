@@ -448,7 +448,7 @@ cfg.design(2,:)           = [1:n_U,1:n_P, 1:n_N];
 cfg.ivar                  = 1; % number or list with indices indicating the independent variable(subj)
 cfg.uvar                  = 2;% units-of-observation (subjects or trials
 [statFnb] = ft_freqstatistics(cfg, ga_nb_1pow,ga_nb_2pow,ga_nb_3pow);
-% [statFsb] = ft_freqstatistics(cfg, ga_sb_2pow,ga_sb_4pow,ga_sb_6pow);
+[statFsb] = ft_freqstatistics(cfg, ga_sb_2pow,ga_sb_4pow,ga_sb_6pow);
 %%
 close all
 cfg = [];
@@ -551,14 +551,14 @@ cfg.uvar     = 1;
 cfg.ivar     = 2;
 
 [stat] = ft_freqstatistics(cfg, sb_high_low{:}, nb_high_low{:});
-n = numel(load3);  % number of subjects (paired samples)
+n = numel(load6);  % number of subjects (paired samples)
 cohens_d = stat.stat ./ sqrt(n);
 stat.effectsize = cohens_d;
 %% now compute stat but only for the electrodes per pre registration
-cfg = [];
+cfg                  = [];
 cfg.latency          = [0 3];
-cfg.channel = {'M1', 'M2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
-cfg.avgoverchan ='yes';
+cfg.channel          = {'M1', 'M2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
+cfg.avgoverchan      = 'yes';
 cfg.method           = 'montecarlo';
 cfg.statistic        = 'ft_statfun_depsamplesT';
 cfg.correctm         = 'cluster';
@@ -584,7 +584,7 @@ cfg.uvar     = 1;
 cfg.ivar     = 2;
 
 [statprereg] = ft_freqstatistics(cfg, sb_high_low{:}, nb_high_low{:});
-n = numel(load3);  % number of subjects (paired samples)
+n = numel(load6);  % number of subjects (paired samples)
 cohens_d = statprereg.stat ./ sqrt(n);
 statprereg.effectsize = cohens_d;
 %%
@@ -743,18 +743,28 @@ xlim([1  40]);
 % ylim([-1.5 2.5]);
 legend({'Sternberg high-low','N-back high-low'}, 'Location','southeast','Fontsize',20);
 
+%%
+%%
+%%
+%%
+%%
+%%
+%%
+%% timewins
+tsb = [1 2]
+tnb = [0 2]
+
 %% extract values sternberg
+clc
 for subj = 1:length(load6)
     % select retention
     cfg = [];
-%     cfg.latency = [0.2 0.6]+1.5;
-%     cfg.frequency = [10 16];
-        cfg.latency = [0 3];
+    cfg.latency = tsb;
     cfg.frequency = [8 14];
-    cfg.channel   = {'O1', 'O2', 'PO7', 'PO8', 'PO9', 'PO10', 'P9', 'P10', 'I1', 'Iz', 'I2', 'PPO9h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
-   cfg.channel = {'M2', 'CP5', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP3h', 'CPP4h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'CPP1h', 'CPP2h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
-cfg.channel = {'CP5', 'P5', 'TP7', 'CPP5h', 'TPP7h'};
-cfg.channel = {'P5', 'PPO5h'};% based on F stat
+    cfg.channel   = {'O1', 'O2', 'PO7', 'PO8', 'PO9', 'PO10', 'P9', 'P10', 'I1', 'Iz', 'I2', 'PPO9h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'}; elecsName = 'prereg';
+    % cfg.channel = {'M2', 'CP5', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP3h', 'CPP4h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'CPP1h', 'CPP2h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
+    % cfg.channel = {'CP5', 'P5', 'TP7', 'CPP5h', 'TPP7h'};
+    % cfg.channel = {'P5', 'PPO5h'};% based on F stat
     cfg.avgoverfreq = 'yes';
     cfg.avgovertime = 'yes';
     cfg.avgoverchan = 'yes';
@@ -767,20 +777,33 @@ cfg.channel = {'P5', 'PPO5h'};% based on F stat
     val2{subj} = ft_selectdata(cfg,load2{subj});
     sb2(subj) = val2{subj}.powspctrm;
 end
+
+%% exclude outliers
+% exclude outliers from sb6, sb4 and sb2 using z-score
+sb6z = zscore(sb6);
+sb6 = sb6(find(abs(sb6z) < 2));
+sb4z = zscore(sb4);
+sb4 = sb4(find(abs(sb4z) < 2));
+sb2z = zscore(sb2);
+sb2 = sb2(find(abs(sb2z) < 2));
+minlength = min([length(sb2), length(sb4), length(sb6)]);
+sb2 = sb2(1:minlength); sb4 = sb4(1:minlength); sb6 = sb6(1:minlength);
+
 %%
+close all
 figure(30); clf;
-subplot(1,2,1);
+subplot(1,2,2);
 positions = [.3, .6, .9];  % Adjusted x-positions
 
 % Kernel Density Plots
 [f_sb2, xi_sb2] = ksdensity(sb2);
-fill(positions(1) + f_sb2*0.05, xi_sb2, 'k', 'FaceAlpha', 0.5); hold on;
+fill(positions(1) + f_sb2*0.3, xi_sb2, 'k', 'FaceAlpha', 0.5); hold on;
 
 [f_sb4, xi_sb4] = ksdensity(sb4);
-fill(positions(2) + f_sb4*0.05, xi_sb4, 'b', 'FaceAlpha', 0.5); hold on;
+fill(positions(2) + f_sb4*0.3, xi_sb4, 'b', 'FaceAlpha', 0.5); hold on;
 
 [f_sb6, xi_sb6] = ksdensity(sb6);
-fill(positions(3) + f_sb6*0.05, xi_sb6, 'r', 'FaceAlpha', 0.5); hold on;
+fill(positions(3) + f_sb6*0.3, xi_sb6, 'r', 'FaceAlpha', 0.5); hold on;
 
 % Boxplots
 box_h = boxplot([sb2(:), sb4(:), sb6(:)], ...
@@ -799,7 +822,8 @@ scatter(positions(3) + (rand(size(sb6))-0.5)*jitter, sb6, 'r.');
 % ylabel('\muV');
 ylabel('\alpha power [change from bl] ');
 xlim([0 1]);
-title('Sternberg');
+tsb = cfg.latency;
+title(['Sternberg (time: ', num2str(tsb), ', elecs ',elecsName, ')']);
 box on;
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
@@ -835,9 +859,11 @@ if ~isempty(sig_label)
     text(mean([positions(1), positions(3)]), y_max + 0.02, sig_label, ...
         'FontSize', 14, 'HorizontalAlignment', 'center');
 end
-ylim([min([sb2(:); sb4(:); sb6(:)]) - 0.5, y_max + 0.1]);
+% ylim([min([sb2(:); sb4(:); sb6(:)]) - 0.5, y_max + 0.1]);
+ylim([-y_max y_max])
 xlim([0 1.3])
 
+% 
 % % Significance annotations
 % y_max = max([sb2(:); sb4(:); sb6(:)]) + 5;
 % 
@@ -863,21 +889,19 @@ xlim([0 1.3])
 % 
 % ylim([min([sb2(:); sb4(:); sb6(:)]) - 5, y_max + 2]);
 %% extract values nback
-for subj = 1:length(load6)
+for subj = 1:length(load3nb)
     % select retention
     cfg = [];
-%     cfg.latency = [0.2 0.6]+.5;
-%     cfg.frequency = [10 16];
-            cfg.latency = [0.5 3];
+    cfg.latency = tnb;
     cfg.frequency = [8 14];
-    cfg.channel   = {'O1', 'O2', 'PO7', 'PO8', 'PO9', 'PO10', 'P9', 'P10', 'I1', 'Iz', 'I2', 'PPO9h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
-    cfg.channel = {'M2', 'CP5', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP3h', 'CPP4h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'CPP1h', 'CPP2h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
-cfg.channel = {'CP5', 'P5', 'TP7', 'CPP5h', 'TPP7h'};
-cfg.channel = {'P7', 'PPO9h'};% based on Fstat
+    cfg.channel   = {'O1', 'O2', 'PO7', 'PO8', 'PO9', 'PO10', 'P9', 'P10', 'I1', 'Iz', 'I2', 'PPO9h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'}; elecsName = 'prereg';
+    % cfg.channel = {'M2', 'CP5', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP3h', 'CPP4h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'CPP1h', 'CPP2h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
+    % cfg.channel = {'CP5', 'P5', 'TP7', 'CPP5h', 'TPP7h'};
+    % cfg.channel = {'P7', 'PPO9h'};% based on Fstat
     cfg.avgoverfreq = 'yes';
     cfg.avgovertime = 'yes';
     cfg.avgoverchan = 'yes';
-    val3{subj} = ft_selectdata(cfg,load3{subj});
+    val3{subj} = ft_selectdata(cfg,load3nb{subj});
     nb3(subj) = val3{subj}.powspctrm;
     
     val2nb{subj} = ft_selectdata(cfg,load2nb{subj});
@@ -886,20 +910,31 @@ cfg.channel = {'P7', 'PPO9h'};% based on Fstat
     val1{subj} = ft_selectdata(cfg,load1nb{subj});
     nb1(subj) = val1{subj}.powspctrm;
 end
+
+%% exclude outliers
+nb3z = zscore(nb3);
+nb3 = nb3(find(abs(nb3z) < 2));
+nb2z = zscore(nb2);
+nb2 = nb2(find(abs(nb2z) < 2));
+nb1z = zscore(nb1);
+nb1 = nb1(find(abs(nb1z) < 2));
+minlength = min([length(nb1), length(nb2), length(nb3)]);
+nb1 = nb1(1:minlength); nb2 = nb2(1:minlength); nb3 = nb3(1:minlength);
+
 %%
 % figure(31); clf;
-subplot(1,2,2);
+subplot(1,2,1);
 positions = [.3, .6, .9];  % Adjusted x-positions
 
 % Kernel Density Plots
 [f_sb2, xi_sb2] = ksdensity(nb1);
-fill(positions(1) + f_sb2*0.05, xi_sb2, 'k', 'FaceAlpha', 0.5); hold on;
+fill(positions(1) + f_sb2*0.3, xi_sb2, 'k', 'FaceAlpha', 0.5); hold on;
 
 [f_sb4, xi_sb4] = ksdensity(nb2);
-fill(positions(2) + f_sb4*0.05, xi_sb4, 'b', 'FaceAlpha', 0.5); hold on;
+fill(positions(2) + f_sb4*0.3, xi_sb4, 'b', 'FaceAlpha', 0.5); hold on;
 
 [f_sb6, xi_sb6] = ksdensity(nb3);
-fill(positions(3) + f_sb6*0.05, xi_sb6, 'r', 'FaceAlpha', 0.5); hold on;
+fill(positions(3) + f_sb6*0.3, xi_sb6, 'r', 'FaceAlpha', 0.5); hold on;
 
 % Boxplots
 box_h = boxplot([nb1(:), nb2(:), nb3(:)], ...
@@ -918,7 +953,7 @@ scatter(positions(3) + (rand(size(sb6))-0.5)*jitter, sb6, 'r.');
 % ylabel('\muV');
 ylabel('\alpha power [change from bl] ');
 xlim([0 1]);
-title('N back');
+title(['N-back (time: ', num2str(tnb), ', elecs ',elecsName, ')']);
 box on;
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
@@ -954,8 +989,14 @@ if ~isempty(sig_label)
     text(mean([positions(1), positions(3)]), y_max + 0.02, sig_label, ...
         'FontSize', 14, 'HorizontalAlignment', 'center');
 end
-ylim([min([sb2(:); sb4(:); sb6(:)]) - 0.5, y_max + 0.1]);
+% ylim([min([sb2(:); sb4(:); sb6(:)]) - 0.5, y_max + 0.1]);
+ylim([-y_max y_max])
 xlim([0 1.3])
+
+% Save
+tnb_str = sprintf('%d', tnb);
+tsb_str = sprintf('%d', tsb);
+saveas(gcf, ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/omnibus/AOC_omnibus_rainclouds_tnb', num2str(tnb_str), '_tsb', num2str(tsb_str), '.png'])
 
 %% Helper function
 function sig_label = getSigLabel(p)

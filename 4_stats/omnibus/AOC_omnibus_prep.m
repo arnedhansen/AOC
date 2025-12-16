@@ -17,17 +17,17 @@ for subj = 1:length(subjects)
     cd(datapath)
     load tfr_nback
     cfg = [];
-    cfg.baseline     = [-Inf -.25];
+    cfg.baseline     = [-.5 -.25];
     cfg.baselinetype = 'absolute'; % FOOOF already in log space
     tfr  = ft_freqbaseline(cfg,tfr1_fooof);
     load1nb{subj} = tfr;
     cfg = [];
-    cfg.baseline     = [-Inf -.25];
+    cfg.baseline     = [-.5 -.25];
     cfg.baselinetype = 'absolute'; % FOOOF already in log space
     tfr  = ft_freqbaseline(cfg,tfr2_fooof);
     load2nb{subj} = tfr;
     cfg = [];
-    cfg.baseline     = [-Inf -.25];
+    cfg.baseline     = [-.5 -.25];
     cfg.baselinetype = 'absolute'; % FOOOF already in log space
     tfr  = ft_freqbaseline(cfg,tfr3_fooof);
     load3nb{subj} = tfr;
@@ -54,17 +54,17 @@ for subj = 1:length(subjects)
     cd(datapath)
     load tfr_stern
     cfg = [];
-    cfg.baseline     = [-Inf -.25];
+    cfg.baseline     = [-.5 -.25];
     cfg.baselinetype = 'absolute'; % FOOOF already in log space
     tfr  = ft_freqbaseline(cfg,tfr2_fooof);
     load2{subj} = tfr;
     cfg = [];
-    cfg.baseline     = [-Inf -.25];
+    cfg.baseline     = [-.5 -.25];
     cfg.baselinetype = 'absolute'; % FOOOF already in log space
     tfr  = ft_freqbaseline(cfg,tfr4_fooof);
     load4{subj} = tfr;
     cfg = [];
-    cfg.baseline     = [-Inf -.25];
+    cfg.baseline     = [-.5 -.25];
     cfg.baselinetype = 'absolute'; % FOOOF already in log space
     tfr  = ft_freqbaseline(cfg,tfr6_fooof);
     load6{subj} = tfr;

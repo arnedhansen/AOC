@@ -413,7 +413,7 @@ figure; ft_multiplotER(cfg, ga_nb_1pow,ga_nb_2pow,ga_nb_3pow);
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/elec_aligned.mat');
 cfg =[];
 cfg.method ='distance';
-%cfg.elec = elec_aligned;
+cfg.elec = elec_aligned;
 cfg.layout = headmodel.layANThead;
 cfg.feedback      = 'yes' ;
 cfg.neighbourdist=40;
@@ -535,15 +535,14 @@ cfg.alpha            = 0.025;
 cfg.numrandomization = 1000;
 cfg.neighbours       = neighbours;
 cfg.minnbchan        = 2;
-subj = numel(load6);
 design = zeros(2,2*subj);
-for i = 1:subj
+for i = 1:numel(load6)
   design(1,i) = i;
 end
-for i = 1:subj
+for i = 1:numel(load6)
   design(1,subj+i) = i;
 end
-design(2,1:subj)        = 1;
+design(2,1:numel(load6))        = 1;
 design(2,subj+1:2*subj) = 2;
 
 cfg.design   = design;
@@ -568,15 +567,14 @@ cfg.tail             = 0;
 cfg.clustertail      = 0;
 cfg.alpha            = 0.025;
 cfg.numrandomization = 1000;
-subj = numel(load6);
 design = zeros(2,2*subj);
-for i = 1:subj
+for i = 1:numel(load6)
   design(1,i) = i;
 end
-for i = 1:subj
+for i = 1:numel(load6)
   design(1,subj+i) = i;
 end
-design(2,1:subj)        = 1;
+design(2,1:numel(load6))        = 1;
 design(2,subj+1:2*subj) = 2;
 
 cfg.design   = design;
@@ -603,19 +601,24 @@ stattfr=statprereg;
 stattfr.stat= statprereg.effectsize;
 % figure;
 cfg = [];
-cfg.latency          = [0 3];
-cfg.channel          = {'M1', 'M2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
-cfg.method           = 'montecarlo';
-cfg.statistic        = 'ft_statfun_depsamplesT';
-cfg.correctm         = 'cluster';
-cfg.clusteralpha     = 0.05;
-cfg.clusterstatistic = 'maxsum';
-cfg.tail             = 0;
-cfg.clustertail      = 0;
-cfg.alpha            = 0.05;
-cfg.numrandomization = 1000;
-cfg.neighbours       = neighbours;
-cfg.minnbchan        = 2;
+cfg.channel = {'CP2', 'Pz','P2', 'CPP4h', 'CPP2h', 'CPz'};
+cfg.avgoverchan = 'yes';
+%cfg.frequency = [2 40];
+%cfg.latency   = [0 2];
+
+% cfg.latency          = [0 3];
+% cfg.channel          = {'M1', 'M2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
+% cfg.method           = 'montecarlo';
+% cfg.statistic        = 'ft_statfun_depsamplesT';
+% cfg.correctm         = 'cluster';
+% cfg.clusteralpha     = 0.05;
+% cfg.clusterstatistic = 'maxsum';
+% cfg.tail             = 0;
+% cfg.clustertail      = 0;
+% cfg.alpha            = 0.05;
+% cfg.numrandomization = 1000;
+% cfg.neighbours       = neighbours;
+% cfg.minnbchan        = 2;
 
 freq = ft_selectdata(cfg,stattfr);
 meanpow = squeeze(mean(freq.stat, 1));

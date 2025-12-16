@@ -346,7 +346,7 @@ function printProgress(s)
 end
 
 % Read data, segment and convert to FieldTrip data structure
-for subj = 1 %%%%% : length(subjects)
+for subj = 1 : length(subjects)
     D = parallel.pool.DataQueue;
     afterEach(D, @(x) fprintf('Timepoint %d finished\n', x));
 

@@ -32,7 +32,7 @@ toc
 cfg = [];
 cfg.operation = 'subtract';
 cfg.parameter = 'powspctrm';
-omnibus = ft_math(cfg,ga_sb,ga_nb);
+%omnibus = ft_math(cfg,ga_sb,ga_nb);
 
 %% Visualize Omnibus
 % close all
@@ -49,8 +49,8 @@ ga_sb_2 = ft_freqgrandaverage(cfg,load2{:});
 ga_sb_4 = ft_freqgrandaverage(cfg,load4{:});
 ga_sb_6 = ft_freqgrandaverage(cfg,load6{:});
 ga_sb   = ft_freqgrandaverage(cfg,load2{:},load4{:},load6{:});
-ga_nb_2 = ft_freqgrandaverage(cfg,load1nb{:});
-ga_nb_1 = ft_freqgrandaverage(cfg,load2nb{:});
+ga_nb_1 = ft_freqgrandaverage(cfg,load1nb{:});
+ga_nb_2 = ft_freqgrandaverage(cfg,load2nb{:});
 ga_nb_3 = ft_freqgrandaverage(cfg,load3nb{:});
 ga_nb   = ft_freqgrandaverage(cfg,load1nb{:},load2nb{:},load3nb{:});
 
@@ -411,9 +411,10 @@ cfg.layout = headmodel.layANThead;
 figure; ft_multiplotER(cfg, ga_nb_1pow,ga_nb_2pow,ga_nb_3pow);
 %%
 % load('/Users/tpopov/Documents/DATA4FT/DeepEye/headmodel_ant/elec_aligned.mat');% adapt the path according to your setup
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/elec_aligned.mat');
 cfg =[];
 cfg.method ='distance';
-% cfg.elec = elec_aligned;
+cfg.elec = elec_aligned;
 cfg.layout = headmodel.layANThead;
 cfg.feedback      = 'yes' ;
 cfg.neighbourdist=40;
@@ -945,9 +946,9 @@ set(box_h, 'LineWidth', 2);
 
 % Raindrop scatter
 jitter = 0.05;
-scatter(positions(1) + (rand(size(sb2))-0.5)*jitter, sb2, 'k.');
-scatter(positions(2) + (rand(size(sb4))-0.5)*jitter, sb4, 'b.');
-scatter(positions(3) + (rand(size(sb6))-0.5)*jitter, sb6, 'r.');
+scatter(positions(1) + (rand(size(nb1))-0.5)*jitter, nb1, 'k.');
+scatter(positions(2) + (rand(size(nb2))-0.5)*jitter, nb2, 'b.');
+scatter(positions(3) + (rand(size(nb3))-0.5)*jitter, nb3, 'b.');
 
 % Axis & Label
 % ylabel('\muV');
@@ -964,7 +965,7 @@ set(gca,'Fontsize',20);
 [~, p_26] = ttest(nb1, nb3);
 
 % Significance annotations
-y_max = max([sb2(:); sb4(:); sb6(:)]) + 0.5;  % smaller margin above data overall height above
+y_max = max([nb1(:); nb2(:); nb3(:)]) + 0.5;  % smaller margin above data overall height above
 y_step = 0.1;  % tighter vertical spacing between lines
 
 sig_label = getSigLabel(p_24);

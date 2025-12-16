@@ -346,7 +346,7 @@ function printProgress(s)
 end
 
 % Read data, segment and convert to FieldTrip data structure
-for subj = 1 : length(subjects)
+for subj = 1 %%%%% : length(subjects)
     D = parallel.pool.DataQueue;
     afterEach(D, @(x) fprintf('Timepoint %d finished\n', x));
 
@@ -432,16 +432,12 @@ for subj = 1 : length(subjects)
         cfg_sel0.latency = startWin_FOOOF;      % first 500 ms window
         cfg_sel0.trials  = trlIdx;
         datTFR_win0      = ft_selectdata(cfg_sel0, dataTFR);
-
         fooof_test       = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win0);
-
         nChan            = numel(fooof_test.label);
         nFreq            = numel(fooof_test.freq);
-
-        % Preallocate containers
         fooof_powspctrm = nan(nChan, nFreq, nTimePnts);
         fooof_powspec   = nan(nChan, nFreq, nTimePnts);
-        fooof_aperiodic = nan(nChan, 4,       nTimePnts);  % [offset slope error r^2]
+        fooof_aperiodic = nan(nChan, 4, nTimePnts);  % [offset slope error r^2]
 
         % parfor over timepoints
         parfor timePnt = 1 : nTimePnts
@@ -527,64 +523,79 @@ for subj = 1 : length(subjects)
     disp(upper('FOOOF done on trial-averaged spectra...'))
 
     %% Sanity Check: averaged FOOOF output, all channels, all three conditions
-    time_point = 0.5; % time (s) to inspect
-
-    % Collect condition data (already averaged over trials)
-    tfr_all     = {tfr2_fooof, tfr4_fooof, tfr6_fooof};
-    cond_titles = {'Cond 1 (set size 2)', ...
-        'Cond 2 (set size 4)', ...
-        'Cond 3 (set size 6)'};
-
-    % Use time axis from first condition (they should all match)
+    time_point = 0.5;
     [~, tim] = min(abs(tfr2_fooof.time - time_point));
-    freq     = tfr2_fooof.freq;
+
+    tfr_all     = {tfr2_fooof, tfr4_fooof, tfr6_fooof};
+    cond_titles = {'Set size 2','Set size 4','Set size 6'};
 
     figure('Position', [0 0 1512 500], 'Color', 'w');
 
-    for c = 1 : 3
+    for c = 1:3
         tfr_cond = tfr_all{c};
+        freq     = tfr_cond.freq;
 
-        % powspctrm: chan x freq x time
-        % average across channels -> freq
-        raw_spec = squeeze( ...
-            mean( ...
-            tfr_cond.powspctrm(:, :, tim), ...
-            1, 'omitnan') ...
-            );                      % -> freq
+        % pick a channel to avoid mixing spaces across channels at first
+        ch = 1;
 
-        % power_spectrum: chan x freq x time (already in log10 power from FOOOF)
-        model_spec = squeeze( ...
-            mean( ...
-            tfr_cond.power_spectrum(:, :, tim), ...
-            1, 'omitnan') ...
-            );                    % -> freq
+        % recover the repdata for THIS condition/timepoint:
+        % (best is to store repdata per timepoint, but for a quick sanity plot
+        %  you can rerun one window or just plot what you already stored if you saved repdata)
+        %
+        % Here: you need repdata from the same time window that produced tim.
+        % So easiest is: rerun ONE window here, for ONE condition, ONE subject.
+        %
+        % For now assume you still have repdata in workspace from the last fooof_out call.
+        ps_in = repdata(ch).power_spectrum(:);
 
-        % fooofparams: chan x 4 x time
-        % dimension 2: 1 = intercept, 2 = slope
-        offset_vec = squeeze(tfr_cond.fooofparams(:, 1, tim)); % chan
-        slope_vec  = squeeze(tfr_cond.fooofparams(:, 2, tim)); % chan
-        offset     = mean(offset_vec, 'omitnan');
-        slope      = mean(slope_vec,  'omitnan');
+        ap = repdata(ch).aperiodic_params(:);
+        if numel(ap) == 2
+            offset = ap(1);
+            expo   = ap(2);
+            ap_fit = offset - expo .* log10(freq(:));
+        elseif numel(ap) == 3
+            offset = ap(1);
+            knee   = ap(2);
+            expo   = ap(3);
+            ap_fit = offset - log10(knee + freq(:).^expo);
+        else
+            ap_fit = nan(numel(freq), 1);
+        end
 
-        % log-transform raw spectrum so everything lives in log10(power) space
-        raw_log       = log10(raw_spec);
-        model_log     = model_spec;                 % already log10(power)
-        aperiodic_fit = offset - slope .* log10(freq);
+        pk = repdata(ch).peak_params;
+        gauss_sum = zeros(numel(freq), 1);
 
-        subplot(1, 3, c);
-        plot(freq, raw_log, 'LineWidth', 3)
-        hold on
-        plot(freq, model_log, 'LineWidth', 3)
-        plot(freq, aperiodic_fit, 'LineWidth', 3, 'LineStyle', '--')
+        if ~isempty(pk)
+            for p = 1:size(pk, 1)
+                cf  = pk(p, 1);
+                amp = pk(p, 2);
+                bw  = pk(p, 3);
+
+                % Option A: treat bw as Gaussian std (common)
+                gauss = amp .* exp(-(freq(:) - cf).^2 ./ (2*bw.^2));
+
+                % Option B (fallback): treat bw as FWHM -> convert to std
+                % std = bw / (2*sqrt(2*log(2)));
+                % gauss = amp .* exp(-(freq(:) - cf).^2 ./ (2*std.^2));
+
+                gauss_sum = gauss_sum + gauss;
+            end
+        end
+
+        model_fit = ap_fit + gauss_sum;
+
+        subplot(1,3,c); hold on
+        plot(freq, ps_in,     'LineWidth', 3)
+        plot(freq, model_fit, 'LineWidth', 3)
+        plot(freq, ap_fit,    '--', 'LineWidth', 3)
 
         xlabel('Frequency (Hz)')
         if c == 1
-            ylabel('Power (log_{10})')
-            legend({'Raw Power', 'Final Fit', 'Aperiodic Fit'}, 'Location', 'best')
+            ylabel('Power (FOOOF space)')
+            legend({'Input spectrum','Model fit','Aperiodic fit'}, 'Location', 'best')
         end
+        title(sprintf('%s | t = %.2f s', cond_titles{c}, tfr_cond.time(tim)))
         set(gca, 'FontSize', 15)
-        title(sprintf('%s | t = %.2f s', ...
-            cond_titles{c}, tfr_cond.time(tim)), 'FontSize', 16)
     end
 
     sgtitle(sprintf('FOOOF sanity check: Subject %s', ...

@@ -54,23 +54,23 @@ ga_nb_2 = ft_freqgrandaverage(cfg,load2nb{:});
 ga_nb_3 = ft_freqgrandaverage(cfg,load3nb{:});
 ga_nb   = ft_freqgrandaverage(cfg,load1nb{:},load2nb{:},load3nb{:});
 
-%%
-close all
-cfg = [];
-cfg.figure = 'gcf';
-cfg.ylim = [3 40];
-% cfg.zlim = [-3 3];
-cfg.layout = headmodel.layANThead;
-figure; ft_multiplotTFR(cfg, ga_nb);
-
-%% single 
-cfg = [];
-cfg.figure = 'gcf';
-cfg.zlim = [-.2 .2];
-cfg.xlim = [-1 2];
-cfg.channel = {'P3', 'P4', 'POz', 'PO3', 'PO4', 'PPO1', 'PPO2', 'PPO5h', 'PPO6h'};% nb
-cfg.layout = headmodel.layANThead;
-figure; ft_singleplotTFR(cfg, ga_nb);
+% %%
+% close all
+% cfg = [];
+% cfg.figure = 'gcf';
+% cfg.ylim = [3 40];
+% % cfg.zlim = [-3 3];
+% cfg.layout = headmodel.layANThead;
+% figure; ft_multiplotTFR(cfg, ga_nb);
+% 
+% %% single 
+% cfg = [];
+% cfg.figure = 'gcf';
+% cfg.zlim = [-.2 .2];
+% cfg.xlim = [-1 2];
+% cfg.channel = {'P3', 'P4', 'POz', 'PO3', 'PO4', 'PPO1', 'PPO2', 'PPO5h', 'PPO6h'};% nb
+% cfg.layout = headmodel.layANThead;
+% figure; ft_singleplotTFR(cfg, ga_nb);
 
 %% plot SB tfr and topo
 figure;
@@ -410,11 +410,10 @@ cfg.figure = 'gcf';
 cfg.layout = headmodel.layANThead;
 figure; ft_multiplotER(cfg, ga_nb_1pow,ga_nb_2pow,ga_nb_3pow);
 %%
-% load('/Users/tpopov/Documents/DATA4FT/DeepEye/headmodel_ant/elec_aligned.mat');% adapt the path according to your setup
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/elec_aligned.mat');
 cfg =[];
 cfg.method ='distance';
-cfg.elec = elec_aligned;
+%cfg.elec = elec_aligned;
 cfg.layout = headmodel.layANThead;
 cfg.feedback      = 'yes' ;
 cfg.neighbourdist=40;
@@ -598,15 +597,26 @@ cfg.maskparameter ='mask';
 cfg.maskstyle = 'outline';
 % cfg.zlim = [-.8 .8];
 figure; ft_multiplotTFR(cfg,stat);
-%%
+
+%% do stats
 stattfr=statprereg;
 stattfr.stat= statprereg.effectsize;
 % figure;
 cfg = [];
-% cfg.channel = {'CP2', 'Pz','P2', 'CPP4h', 'CPP2h', 'CPz'};
-cfg.avgoverchan = 'yes';
-% cfg.frequency = [2 40];
-% cfg.latency   = [0 1.5];
+cfg.latency          = [0 3];
+cfg.channel          = {'M1', 'M2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
+cfg.method           = 'montecarlo';
+cfg.statistic        = 'ft_statfun_depsamplesT';
+cfg.correctm         = 'cluster';
+cfg.clusteralpha     = 0.05;
+cfg.clusterstatistic = 'maxsum';
+cfg.tail             = 0;
+cfg.clustertail      = 0;
+cfg.alpha            = 0.05;
+cfg.numrandomization = 1000;
+cfg.neighbours       = neighbours;
+cfg.minnbchan        = 2;
+
 freq = ft_selectdata(cfg,stattfr);
 meanpow = squeeze(mean(freq.stat, 1));
 meanmask = squeeze(mean(freq.mask, 1));
@@ -781,12 +791,17 @@ end
 
 %% exclude outliers
 % exclude outliers from sb6, sb4 and sb2 using z-score
-sb6z = zscore(sb6);
-sb6 = sb6(find(abs(sb6z) < 2));
-sb4z = zscore(sb4);
-sb4 = sb4(find(abs(sb4z) < 2));
-sb2z = zscore(sb2);
-sb2 = sb2(find(abs(sb2z) < 2));
+sb2 = sb2(:);
+sb4 = sb4(:);
+sb6 = sb6(:);
+
+Z = zscore([sb2 sb4 sb6], 0, 1); % z per condition across subjects
+keepIdx = all(abs(Z) < 2, 2); % keep subjects that are not outliers in any condition
+
+sb2 = sb2(keepIdx);
+sb4 = sb4(keepIdx);
+sb6 = sb6(keepIdx);
+
 minlength = min([length(sb2), length(sb4), length(sb6)]);
 sb2 = sb2(1:minlength); sb4 = sb4(1:minlength); sb6 = sb6(1:minlength);
 
@@ -913,12 +928,17 @@ for subj = 1:length(load3nb)
 end
 
 %% exclude outliers
-nb3z = zscore(nb3);
-nb3 = nb3(find(abs(nb3z) < 2));
-nb2z = zscore(nb2);
-nb2 = nb2(find(abs(nb2z) < 2));
-nb1z = zscore(nb1);
-nb1 = nb1(find(abs(nb1z) < 2));
+nb1 = nb1(:);
+nb2 = nb2(:);
+nb3 = nb3(:);
+
+Z = zscore([nb1 nb2 nb3], 0, 1); % z per condition across subjects
+keepIdx = all(abs(Z) < 2, 2); % keep subjects that are not outliers in any condition
+
+nb1 = nb1(keepIdx);
+nb2 = nb2(keepIdx);
+nb3 = nb3(keepIdx);
+
 minlength = min([length(nb1), length(nb2), length(nb3)]);
 nb1 = nb1(1:minlength); nb2 = nb2(1:minlength); nb3 = nb3(1:minlength);
 
@@ -948,7 +968,7 @@ set(box_h, 'LineWidth', 2);
 jitter = 0.05;
 scatter(positions(1) + (rand(size(nb1))-0.5)*jitter, nb1, 'k.');
 scatter(positions(2) + (rand(size(nb2))-0.5)*jitter, nb2, 'b.');
-scatter(positions(3) + (rand(size(nb3))-0.5)*jitter, nb3, 'b.');
+scatter(positions(3) + (rand(size(nb3))-0.5)*jitter, nb3, 'r.');
 
 % Axis & Label
 % ylabel('\muV');

@@ -481,73 +481,99 @@ for subj = 1 : length(subjects)
     tfr3_fooof = tfr_fooof{3};
     disp(upper('FOOOF (NBACK) done on trial-averaged spectra...'))
 
-    %% Sanity Check: averaged FOOOF output, all channels, all three conditions
-    time_point = 0.5; % time (s) to inspect
+    %% Sanity Check: rerun ONE window per condition
+    time_point = 0.5;
+    [~, tim]   = min(abs(tfr1_fooof.time - time_point));
 
-    % Collect condition data (already averaged over trials)
+    latWin = startWin_FOOOF + steps_FOOOF * (tim-1);   % the exact latency window used for this time index
+
     tfr_all     = {tfr1_fooof, tfr2_fooof, tfr3_fooof};
-    cond_titles = {'Cond 1', 'Cond 2', 'Cond 3'};  % e.g. 0-back, 1-back, 2-back
-
-    % Use time axis from first condition
-    [~, tim] = min(abs(tfr1_fooof.time - time_point));
-    freq     = tfr1_fooof.freq;
+    cond_titles = {'1-back','2-back','3-back'};
 
     figure('Position', [0 0 1512 500], 'Color', 'w');
 
-    for c = 1 : 3
-        tfr_cond = tfr_all{c};
+    for c = 1:3
 
-        % powspctrm: chan x freq x time
-        raw_spec = squeeze( ...
-                        mean( ...
-                            tfr_cond.powspctrm(:, :, tim), ...
-                        1, 'omitnan') ...
-                    );                     % -> freq
+        if c == 1
+            trlIdx = ind1;
+        elseif c == 2
+            trlIdx = ind2;
+        elseif c == 3
+            trlIdx = ind3;
+        end
 
-        % power_spectrum: chan x freq x time (already log10 power from FOOOF)
-        model_spec = squeeze( ...
-                        mean( ...
-                            tfr_cond.power_spectrum(:, :, tim), ...
-                        1, 'omitnan') ...
-                      );                   % -> freq
+        freq = tfr_all{c}.freq;
 
-        % fooofparams: chan x 4 x time, dim 2: 1 = intercept, 2 = slope
-        offset_vec = squeeze(tfr_cond.fooofparams(:, 1, tim)); % chan
-        slope_vec  = squeeze(tfr_cond.fooofparams(:, 2, tim)); % chan
-        offset     = mean(offset_vec, 'omitnan');
-        slope      = mean(slope_vec,  'omitnan');
+        cfg_sel         = [];
+        cfg_sel.latency = latWin;      % 500 ms window for this time index
+        cfg_sel.trials  = trlIdx;
+        datTFR_win_sc   = ft_selectdata(cfg_sel, dataTFR);
 
-        % log-transform raw spectrum so everything lives in log10(power)
-        raw_log       = log10(raw_spec);
-        model_log     = model_spec;                 % already log10(power)
-        aperiodic_fit = offset - slope .* log10(freq);
+        fooof_sc = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win_sc);
 
-        subplot(1, 3, c);
-        plot(freq, raw_log, 'LineWidth', 3)
-        hold on
-        plot(freq, model_log, 'LineWidth', 3)
-        plot(freq, aperiodic_fit, 'LineWidth', 3, 'LineStyle', '--')
+        if iscell(fooof_sc.fooofparams)
+            repdata_sc = fooof_sc.fooofparams{1};
+        else
+            repdata_sc = fooof_sc.fooofparams;
+        end
+
+        ch = 1;
+
+        ps_in = repdata_sc(ch).power_spectrum(:);
+
+        ap = repdata_sc(ch).aperiodic_params(:);
+        if numel(ap) == 2
+            offset = ap(1);
+            expo   = ap(2);
+            ap_fit = offset - expo .* log10(freq(:));
+        elseif numel(ap) == 3
+            offset = ap(1);
+            knee   = ap(2);
+            expo   = ap(3);
+            ap_fit = offset - log10(knee + freq(:).^expo);
+        else
+            ap_fit = nan(numel(freq), 1);
+        end
+
+        pk = repdata_sc(ch).peak_params;
+        gauss_sum = zeros(numel(freq), 1);
+
+        if ~isempty(pk)
+            for p = 1:size(pk, 1)
+                cf  = pk(p, 1);
+                amp = pk(p, 2);
+                bw  = pk(p, 3);
+
+                gauss = amp .* exp(-(freq(:) - cf).^2 ./ (2*bw.^2));
+                gauss_sum = gauss_sum + gauss;
+            end
+        end
+
+        model_fit = ap_fit + gauss_sum;
+
+        subplot(1,3,c); hold on
+        plot(freq, ps_in,     'LineWidth', 3)
+        plot(freq, model_fit, 'LineWidth', 3)
+        plot(freq, ap_fit,    '--', 'LineWidth', 3)
 
         xlabel('Frequency (Hz)')
         if c == 1
-            ylabel('Power (log_{10})')
-            legend({'Raw Power', 'Final Fit', 'Aperiodic Fit'}, 'Location', 'best')
+            ylabel('Power (FOOOF space)')
+            legend({'Input spectrum','Model fit','Aperiodic fit'}, 'Location', 'best')
         end
+        title(sprintf('%s | t = %.2f s', cond_titles{c}, tfr_all{c}.time(tim)))
         set(gca, 'FontSize', 15)
-        title(sprintf('%s | t = %.2f s', ...
-              cond_titles{c}, tfr_cond.time(tim)), 'FontSize', 16)
     end
 
-    sgtitle(sprintf('FOOOF sanity check (NBACK): Subject %s', ...
-            subjects{subj}), 'FontSize', 20)
+    sgtitle(sprintf('FOOOF sanity check: Subject %s | Window [%.2f %.2f] s', ...
+        subjects{subj}, latWin(1), latWin(2)), 'FontSize', 20)
 
-    % Save figure (adapt path if you want a separate NBACK folder)
     if ispc
         savePathControls = 'W:\Students\Arne\AOC\data\controls\FOOOF\';
     else
         savePathControls = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF/';
     end
-    saveName = sprintf('AOC_controls_FOOOF_powspctrm_nback_subj%s.png', subjects{subj});
+    saveName = sprintf('AOC_controls_FOOOF_powspctrm_nback_subj%s_t%.2fs.png', subjects{subj}, tfr1_fooof.time(tim));
     saveas(gcf, fullfile(savePathControls, saveName));
 
     %% FOOOFed powspctrm baselined

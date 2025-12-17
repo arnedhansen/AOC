@@ -435,9 +435,9 @@ for subj = 1 : length(subjects)
         fooof_test       = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win0);
         nChan            = numel(fooof_test.label);
         nFreq            = numel(fooof_test.freq);
-        fooof_powspctrm = nan(nChan, nFreq, nTimePnts);
-        fooof_powspec   = nan(nChan, nFreq, nTimePnts);
-        fooof_aperiodic = nan(nChan, 4, nTimePnts);  % [offset slope error r^2]
+        fooof_powspctrm  = nan(nChan, nFreq, nTimePnts);
+        fooof_powspec    = nan(nChan, nFreq, nTimePnts);
+        fooof_aperiodic  = nan(nChan, 4, nTimePnts);  % [offset slope error r^2]
 
         % parfor over timepoints
         parfor timePnt = 1 : nTimePnts
@@ -522,9 +522,11 @@ for subj = 1 : length(subjects)
     tfr6_fooof = tfr_fooof{3};   % averages cond 3
     disp(upper('FOOOF done on trial-averaged spectra...'))
 
-    %% Sanity Check: averaged FOOOF output, all channels, all three conditions
+    %% Sanity Check: rerun ONE window per condition
     time_point = 0.5;
-    [~, tim] = min(abs(tfr2_fooof.time - time_point));
+    [~, tim]   = min(abs(tfr2_fooof.time - time_point));
+
+    latWin = startWin_FOOOF + steps_FOOOF * (tim-1);   % the exact latency window used for this time index
 
     tfr_all     = {tfr2_fooof, tfr4_fooof, tfr6_fooof};
     cond_titles = {'Set size 2','Set size 4','Set size 6'};
@@ -532,23 +534,35 @@ for subj = 1 : length(subjects)
     figure('Position', [0 0 1512 500], 'Color', 'w');
 
     for c = 1:3
-        tfr_cond = tfr_all{c};
-        freq     = tfr_cond.freq;
 
-        % pick a channel to avoid mixing spaces across channels at first
+        if c == 1
+            trlIdx = ind2;
+        elseif c == 2
+            trlIdx = ind4;
+        elseif c == 3
+            trlIdx = ind6;
+        end
+
+        freq = tfr_all{c}.freq;
+
+        cfg_sel         = [];
+        cfg_sel.latency = latWin;      % 500 ms window for this time index
+        cfg_sel.trials  = trlIdx;
+        datTFR_win_sc   = ft_selectdata(cfg_sel, dataTFR);
+
+        fooof_sc = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win_sc);
+
+        if iscell(fooof_sc.fooofparams)
+            repdata_sc = fooof_sc.fooofparams{1};
+        else
+            repdata_sc = fooof_sc.fooofparams;
+        end
+
         ch = 1;
 
-        % recover the repdata for THIS condition/timepoint:
-        % (best is to store repdata per timepoint, but for a quick sanity plot
-        %  you can rerun one window or just plot what you already stored if you saved repdata)
-        %
-        % Here: you need repdata from the same time window that produced tim.
-        % So easiest is: rerun ONE window here, for ONE condition, ONE subject.
-        %
-        % For now assume you still have repdata in workspace from the last fooof_out call.
-        ps_in = repdata(ch).power_spectrum(:);
+        ps_in = repdata_sc(ch).power_spectrum(:);
 
-        ap = repdata(ch).aperiodic_params(:);
+        ap = repdata_sc(ch).aperiodic_params(:);
         if numel(ap) == 2
             offset = ap(1);
             expo   = ap(2);
@@ -562,7 +576,7 @@ for subj = 1 : length(subjects)
             ap_fit = nan(numel(freq), 1);
         end
 
-        pk = repdata(ch).peak_params;
+        pk = repdata_sc(ch).peak_params;
         gauss_sum = zeros(numel(freq), 1);
 
         if ~isempty(pk)
@@ -571,13 +585,7 @@ for subj = 1 : length(subjects)
                 amp = pk(p, 2);
                 bw  = pk(p, 3);
 
-                % Option A: treat bw as Gaussian std (common)
                 gauss = amp .* exp(-(freq(:) - cf).^2 ./ (2*bw.^2));
-
-                % Option B (fallback): treat bw as FWHM -> convert to std
-                % std = bw / (2*sqrt(2*log(2)));
-                % gauss = amp .* exp(-(freq(:) - cf).^2 ./ (2*std.^2));
-
                 gauss_sum = gauss_sum + gauss;
             end
         end
@@ -594,20 +602,19 @@ for subj = 1 : length(subjects)
             ylabel('Power (FOOOF space)')
             legend({'Input spectrum','Model fit','Aperiodic fit'}, 'Location', 'best')
         end
-        title(sprintf('%s | t = %.2f s', cond_titles{c}, tfr_cond.time(tim)))
+        title(sprintf('%s | t = %.2f s', cond_titles{c}, tfr_all{c}.time(tim)))
         set(gca, 'FontSize', 15)
     end
 
-    sgtitle(sprintf('FOOOF sanity check: Subject %s', ...
-        subjects{subj}), 'FontSize', 20)
+    sgtitle(sprintf('FOOOF sanity check: Subject %s | Window [%.2f %.2f] s', ...
+        subjects{subj}, latWin(1), latWin(2)), 'FontSize', 20)
 
-    % Save figure using same path logic
     if ispc
         savePathControls = 'W:\Students\Arne\AOC\data\controls\FOOOF\';
     else
         savePathControls = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF/';
     end
-    saveName = sprintf('AOC_controls_FOOOF_powspctrm_subj%s.png', subjects{subj});
+    saveName = sprintf('AOC_controls_FOOOF_powspctrm_stern_subj%s_t%.2fs.png', subjects{subj}, tfr2_fooof.time(tim));
     saveas(gcf, fullfile(savePathControls, saveName));
 
     %% FOOOFed powspctrm baselined

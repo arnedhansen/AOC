@@ -33,6 +33,18 @@ for subj = 1:length(subjects)
     load3nb{subj} = tfr;
 end
 
+% check data
+meanspctrm = squeeze(mean(tfr.powspctrm, 1));   % freq x time
+meanspctrm = squeeze(mean(meanspctrm, 2));      % freq x 1
+
+figure('Color','w'); hold on
+plot(tfr.freq, meanspctrm, 'LineWidth', 3)
+xlabel('Frequency (Hz)')
+ylabel('Power (FOOOF space)')
+set(gca, 'FontSize', 15)
+xlim([tfr.freq(1) tfr.freq(end)])
+%set(gca, 'YScale', 'log')
+
 %% Compute diff nback
 clc
 disp('Computing N-back Diff')

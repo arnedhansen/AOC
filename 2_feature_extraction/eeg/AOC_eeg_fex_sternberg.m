@@ -558,37 +558,47 @@ for subj = 1 : length(subjects)
             repdata_sc = fooof_sc.fooofparams;
         end
 
-        ch = 1;
+        nChan = numel(repdata_sc);
 
-        ps_in = repdata_sc(ch).power_spectrum(:);
+        ps_all = nan(numel(freq), nChan);
+        ap_all = nan(numel(freq), nChan);
+        gauss_all = nan(numel(freq), nChan);
 
-        ap = repdata_sc(ch).aperiodic_params(:);
-        if numel(ap) == 2
-            offset = ap(1);
-            expo   = ap(2);
-            ap_fit = offset - expo .* log10(freq(:));
-        elseif numel(ap) == 3
-            offset = ap(1);
-            knee   = ap(2);
-            expo   = ap(3);
-            ap_fit = offset - log10(knee + freq(:).^expo);
-        else
-            ap_fit = nan(numel(freq), 1);
-        end
+        for ch = 1:nChan
 
-        pk = repdata_sc(ch).peak_params;
-        gauss_sum = zeros(numel(freq), 1);
+            ps_all(:, ch) = repdata_sc(ch).power_spectrum(:);
 
-        if ~isempty(pk)
-            for p = 1:size(pk, 1)
-                cf  = pk(p, 1);
-                amp = pk(p, 2);
-                bw  = pk(p, 3);
+            ap = repdata_sc(ch).aperiodic_params(:);
 
-                gauss = amp .* exp(-(freq(:) - cf).^2 ./ (2*bw.^2));
-                gauss_sum = gauss_sum + gauss;
+            if numel(ap) == 2
+                offset = ap(1);
+                expo   = ap(2);
+                ap_all(:, ch) = offset - expo .* log10(freq(:));
+            elseif numel(ap) == 3
+                offset = ap(1);
+                knee   = ap(2);
+                expo   = ap(3);
+                ap_all(:, ch) = offset - log10(knee + freq(:).^expo);
             end
+
+            pk = repdata_sc(ch).peak_params;
+            gauss_tmp = zeros(numel(freq), 1);
+
+            if ~isempty(pk)
+                for p = 1:size(pk,1)
+                    cf  = pk(p,1);
+                    amp = pk(p,2);
+                    bw  = pk(p,3);
+                    gauss_tmp = gauss_tmp + amp .* exp(-(freq(:) - cf).^2 ./ (2*bw.^2));
+                end
+            end
+
+            gauss_all(:, ch) = gauss_tmp;
         end
+
+        ps_in     = mean(ps_all,    2, 'omitnan');
+        ap_fit    = mean(ap_all,    2, 'omitnan');
+        gauss_sum = mean(gauss_all, 2, 'omitnan');
 
         model_fit = ap_fit + gauss_sum;
 

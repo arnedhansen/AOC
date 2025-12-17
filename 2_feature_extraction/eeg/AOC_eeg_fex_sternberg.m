@@ -617,6 +617,28 @@ for subj = 1 : length(subjects)
     saveName = sprintf('AOC_controls_FOOOF_powspctrm_stern_subj%s_t%.2fs.png', subjects{subj}, tfr2_fooof.time(tim));
     saveas(gcf, fullfile(savePathControls, saveName));
 
+% % CHECKCHECK
+    ch = 1;
+
+ps_log  = repdata_sc(ch).power_spectrum(:);     % typically log10 power
+ps_lin  = 10.^ps_log;
+
+pow_ft  = fooof_sc.powspctrm(ch, :).';          % whatever the wrapper stored
+
+fprintf('\nDiagnostics\n')
+fprintf('repdata power_spectrum (log10)  : min %.3f | max %.3f\n', min(ps_log), max(ps_log))
+fprintf('10.^power_spectrum (linear)     : min %.3e | max %.3e\n', min(ps_lin), max(ps_lin))
+fprintf('fooof_sc.powspctrm (FieldTrip)  : min %.3e | max %.3e\n', min(pow_ft), max(pow_ft))
+
+figure('Color','w'); hold on
+plot(freq, ps_log,  'LineWidth', 3)
+plot(freq, pow_ft,  'LineWidth', 3)
+xlabel('Frequency (Hz)')
+ylabel('Value')
+legend({'repdata power\_spectrum (log10)', 'fooof\_sc.powspctrm (as stored)'}, 'Location', 'best')
+set(gca, 'FontSize', 15)
+
+
     %% FOOOFed powspctrm baselined
     cfg                      = [];
     cfg.baseline             = [-.5 -.25];

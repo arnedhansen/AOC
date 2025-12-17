@@ -411,7 +411,7 @@ for subj = 1 : length(subjects)
             fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win);
 
             % Store FOOOFed power (chan x freq)
-            local_pow = fooof_out.powspctrm;      % chan x freq
+            local_pow = log10(fooof_out.powspctrm);      % chan x freq
 
             % Extract FOOOF parameters per channel
             if iscell(fooof_out.fooofparams)

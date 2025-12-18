@@ -435,7 +435,7 @@ for subj = 1:length(subjects)
         fooof_powspec   = nan(nChan, nFreq, nTimePnts);   % input power spectrum
         fooof_aperiodic = nan(nChan, 4,    nTimePnts);    % [offset exponent error r^2]
 
-        for timePnt = 1:nTimePnts
+        parfor timePnt = 1:nTimePnts
 
             % Select sliding window + trials
             cfg_sel         = [];
@@ -515,7 +515,7 @@ for subj = 1:length(subjects)
             s.cond      = tfr_conds;
             s.time      = timePnt;
             s.nTimePnts = nTimePnts;
-            send(D, s);
+            %send(D, s);
         end
 
         % Construct condition-specific FieldTrip freq-like struct

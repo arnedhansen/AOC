@@ -450,39 +450,39 @@ for subj = 1 : length(subjects)
 
             % Run FOOOF on the averaged spectrum
             fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win);
+            local_model = nan(nChan, nFreq);
+            for electrode = 1:nChan
 
-            % Store FOOOFed power (chan x freq)
-            local_pow = log10(fooof_out.powspctrm);      % chan x freq
+                freq = fooof_out.freq(:);
 
-            % Extract FOOOF parameters per channel
-            if iscell(fooof_out.fooofparams)
-                repdata = fooof_out.fooofparams{1};   % single averaged "trial"
-            else
-                repdata = fooof_out.fooofparams;
+                ap = tmpaperdiodic{electrode};
+                if numel(ap) == 2
+                    offset = ap(1);
+                    expo   = ap(2);
+                    ap_fit = offset - expo .* log10(freq);
+                else
+                    offset = ap(1);
+                    knee   = ap(2);
+                    expo   = ap(3);
+                    ap_fit = offset - log10(knee + freq.^expo);
+                end
+
+                pk = repdata(electrode).peak_params;
+                gauss_sum = zeros(nFreq, 1);
+                if ~isempty(pk)
+                    for p = 1:size(pk,1)
+                        cf  = pk(p,1);
+                        amp = pk(p,2);
+                        bw  = pk(p,3);
+                        gauss_sum = gauss_sum + amp .* exp(-(freq - cf).^2 ./ (2*bw.^2));
+                    end
+                end
+
+                local_model(electrode, :) = (ap_fit + gauss_sum).';
             end
 
-            tmpaperdiodic = {repdata.aperiodic_params};
-            tmperror      = {repdata.error};
-            tmpr_sq       = {repdata.r_squared};
-            tmp_pwr_spec  = {repdata.power_spectrum};
-
-            local_aper = nan(nChan, 2);  % [offset slope]
-            local_err  = nan(nChan, 1);
-            local_rsq  = nan(nChan, 1);
-            local_ps   = nan(nChan, nFreq);
-
-            for electrode = 1 : nChan
-                aper_params              = tmpaperdiodic{electrode};   % [offset slope]
-                local_aper(electrode, :) = aper_params(:).';
-
-                local_err(electrode, 1)  = tmperror{electrode};
-                local_rsq(electrode, 1)  = tmpr_sq{electrode};
-                local_ps(electrode, :)   = tmp_pwr_spec{electrode};
-            end
-
-            % Write into sliced arrays (parfor-friendly)
-            fooof_powspctrm(:, :, timePnt) = local_pow;
-            fooof_powspec(:, :, timePnt)   = local_ps;
+            fooof_powspctrm(:, :, timePnt) = local_model;   % model fit in FOOOF (log10) space
+            fooof_powspec(:, :, timePnt)   = local_ps;      % input spectrum in same (log10) space
 
             % Pack aperiodic parameters into one [chan x 4] matrix
             local_aper_all        = nan(nChan, 4);
@@ -508,8 +508,8 @@ for subj = 1 : length(subjects)
         tfr_ff.label              = fooof_test.label;
         tfr_ff.freq               = fooof_test.freq;
         tfr_ff.time               = toi_centres(1:nTimePnts);
-        tfr_ff.powspctrm          = fooof_powspctrm;   % FOOOFed TFR: chan x freq x time
-        tfr_ff.power_spectrum     = fooof_powspec;     % full model spectrum: chan x freq x time
+        tfr_ff.powspctrm          = fooof_powspctrm;   % FOOOFed TFR: chan x freq x time (log10 space)
+        tfr_ff.power_spectrum     = fooof_powspec;     % full input model spectrum: chan x freq x time (log10 space=
         tfr_ff.fooofparams        = fooof_aperiodic;   % chan x 4 x time
         tfr_ff.dimord             = 'chan_freq_time';
 
@@ -624,7 +624,7 @@ for subj = 1 : length(subjects)
     else
         savePathControls = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF/';
     end
-    saveName = sprintf('AOC_controls_FOOOF_powspctrm_stern_subj%s_t%.2fs.png', subjects{subj}, tfr2_fooof.time(tim));
+    saveName = sprintf('AOC_controls_FOOOF_powspctrm_stern_subj%s.png', subjects{subj});
     saveas(gcf, fullfile(savePathControls, saveName));
 
     %% FOOOFed powspctrm baselined

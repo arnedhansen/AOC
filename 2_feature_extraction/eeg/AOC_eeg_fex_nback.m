@@ -411,12 +411,12 @@ for subj = 1 : length(subjects)
             clc
             disp(['Running FOOOF for Subject ', num2str(subjects{subj})])
             disp(['Subject:    ', num2str(subj), ' / ', num2str(length(subjects))])
-            disp(['Condition:  ', num2str(cond), ' / 3'])
+            disp(['Condition:  ', num2str(tfr_conds), ' / 3'])
             disp(['Time Point: ', num2str(timePnt), ' / ', num2str(nTimePnts)])
 
             % Run FOOOF on averaged spectrum
             % fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat_win);
-            out = evalc('fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat_win);');
+            out = evalc('fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win);');
 
             if iscell(fooof_out.fooofparams)
                 repdata = fooof_out.fooofparams{1};
@@ -427,7 +427,8 @@ for subj = 1 : length(subjects)
             freq = fooof_out.freq(:);
 
             local_ps     = nan(nChan, nFreq);
-            local_model  = nan(nChan, nFreq);
+            local_peaks  = nan(nChan, nFreq);   % aperiodic-removed = peaks only
+            local_apfit  = nan(nChan, nFreq);   % optional, if you want it
             local_err    = nan(nChan, 1);
             local_rsq    = nan(nChan, 1);
             local_offset = nan(nChan, 1);
@@ -468,16 +469,17 @@ for subj = 1 : length(subjects)
                     end
                 end
 
-                local_model(ch, :) = (ap_fit + gauss_sum).';
+                local_apfit(ch, :) = ap_fit(:).';
+                local_peaks(ch, :) = gauss_sum(:).';
             end
 
-            fooof_powspctrm(:, :, timePnt) = local_model;   % model fit (FOOOF/log space)
-            fooof_powspec(:,   :, timePnt) = local_ps;      % input spectrum (FOOOF/log space)
-
-            fooof_aperiodic(:, 1, timePnt) = local_offset;  % offset
-            fooof_aperiodic(:, 2, timePnt) = local_expo;    % exponent
-            fooof_aperiodic(:, 3, timePnt) = local_err;     % error
-            fooof_aperiodic(:, 4, timePnt) = local_rsq;     % r^2
+            % write into time dimension
+            fooof_powspctrm(:, :, timePnt) = local_peaks;     % peaks-only (aperiodic removed)
+            fooof_powspec(:,   :, timePnt) = local_ps;
+            fooof_aperiodic(:, 1, timePnt) = local_offset;
+            fooof_aperiodic(:, 2, timePnt) = local_expo;
+            fooof_aperiodic(:, 3, timePnt) = local_err;
+            fooof_aperiodic(:, 4, timePnt) = local_rsq;
 
             % Progress output
             s           = struct();

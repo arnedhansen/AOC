@@ -447,12 +447,11 @@ for subj = 1:length(subjects)
             clc
             disp(['Running FOOOF for Subject ', num2str(subjects{subj})])
             disp(['Subject:    ', num2str(subj), ' / ', num2str(length(subjects))])
-            disp(['Condition:  ', num2str(cond), ' / 3'])
+            disp(['Condition:  ', num2str(trf_conds), ' / 3'])
             disp(['Time Point: ', num2str(timePnt), ' / ', num2str(nTimePnts)])
 
             % Run FOOOF on averaged spectrum
-            % fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat_win);
-            out = evalc('fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat_win);');
+            out = evalc('fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win);');
 
             if iscell(fooof_out.fooofparams)
                 repdata = fooof_out.fooofparams{1};
@@ -462,13 +461,10 @@ for subj = 1:length(subjects)
 
             freq = fooof_out.freq(:);
 
-            local_ps    = nan(nChan, nFreq);
-            local_model = nan(nChan, nFreq);
-            local_err   = nan(nChan, 1);
-            local_rsq   = nan(nChan, 1);
-
-            % If you ever use knee models and want to store knee explicitly,
-            % you'll need to add a separate output array for knee.
+            local_ps     = nan(nChan, nFreq);
+            local_peaks  = nan(nChan, nFreq);   % aperiodic-removed spectrum (peaks only)
+            local_err    = nan(nChan, 1);
+            local_rsq    = nan(nChan, 1);
             local_offset = nan(nChan, 1);
             local_expo   = nan(nChan, 1);
 
@@ -499,18 +495,20 @@ for subj = 1:length(subjects)
                 gauss_sum = zeros(nFreq, 1);
 
                 if ~isempty(pk)
-                    for p = 1:size(pk,1)
-                        cf  = pk(p,1);
-                        amp = pk(p,2);
-                        bw  = pk(p,3);
+                    for p = 1:size(pk, 1)
+                        cf  = pk(p, 1);
+                        amp = pk(p, 2);
+                        bw  = pk(p, 3);
                         gauss_sum = gauss_sum + amp .* exp(-(freq - cf).^2 ./ (2*bw.^2));
                     end
                 end
 
-                local_model(ch, :) = (ap_fit + gauss_sum).';
+                % This is the aperiodic-removed spectrum in FOOOF space:
+                local_peaks(ch, :) = gauss_sum(:).';
             end
 
-            fooof_powspctrm(:, :, timePnt) = local_model;
+            % Save
+            fooof_powspctrm(:, :, timePnt) = local_peaks;   % peaks only (aperiodic removed)
             fooof_powspec(:,   :, timePnt) = local_ps;
 
             fooof_aperiodic(:, 1, timePnt) = local_offset;

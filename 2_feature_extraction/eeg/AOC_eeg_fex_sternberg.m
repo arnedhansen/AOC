@@ -435,7 +435,7 @@ for subj = 1:length(subjects)
         fooof_powspec   = nan(nChan, nFreq, nTimePnts);   % input power spectrum
         fooof_aperiodic = nan(nChan, 4,    nTimePnts);    % [offset exponent error r^2]
 
-        parfor timePnt = 1:nTimePnts
+        for timePnt = 1:nTimePnts
 
             % Select sliding window + trials
             cfg_sel         = [];
@@ -443,8 +443,16 @@ for subj = 1:length(subjects)
             cfg_sel.trials  = trlIdx;
             datTFR_win      = ft_selectdata(cfg_sel, dataTFR);
 
+            % Tracker
+            clc
+            disp(['Running FOOOF for Subject ', num2str(subjects{subj})])
+            disp(['Subject:    ', num2str(subj), ' / ', num2str(length(subjects))])
+            disp(['Condition:  ', num2str(cond), ' / 3'])
+            disp(['Time Point: ', num2str(timePnt), ' / ', num2str(nTimePnts)])
+
             % Run FOOOF on averaged spectrum
-            fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win);
+            % fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat_win);
+            out = evalc('fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat_win);');
 
             if iscell(fooof_out.fooofparams)
                 repdata = fooof_out.fooofparams{1};

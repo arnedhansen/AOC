@@ -394,12 +394,12 @@ for subj = 1 : length(subjects)
         nFreq            = numel(fooof_test.freq);
 
         % Preallocate containers
-        fooof_powspctrm = nan(nChan, nFreq, nTimePnts);
-        fooof_powspec   = nan(nChan, nFreq, nTimePnts);
-        fooof_aperiodic = nan(nChan, 4,       nTimePnts);  % [offset slope error r^2]
+        fooof_powspctrm = nan(nChan, nFreq, nTimePnts);     % model fit (aperiodic + peaks)
+        fooof_powspec   = nan(nChan, nFreq, nTimePnts);     % input spectrum
+        fooof_aperiodic = nan(nChan, 4,    nTimePnts);      % [offset exponent error r^2]
 
         % parfor over timepoints
-        parfor timePnt = 1 : nTimePnts
+        for timePnt = 1 : nTimePnts
 
             % Select data window and trials for this condition
             cfg_sel         = [];
@@ -407,14 +407,41 @@ for subj = 1 : length(subjects)
             cfg_sel.trials  = trlIdx;
             datTFR_win      = ft_selectdata(cfg_sel, dataTFR);
 
-            % Run FOOOF on the averaged spectrum
-            fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win);
-            local_model = nan(nChan, nFreq);
-            for electrode = 1:nChan
+            % Tracker
+            clc
+            disp(['Running FOOOF for Subject ', num2str(subjects{subj})])
+            disp(['Subject:    ', num2str(subj), ' / ', num2str(length(subjects))])
+            disp(['Condition:  ', num2str(cond), ' / 3'])
+            disp(['Time Point: ', num2str(timePnt), ' / ', num2str(nTimePnts)])
 
-                freq = fooof_out.freq(:);
+            % Run FOOOF on averaged spectrum
+            % fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat_win);
+            out = evalc('fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat_win);');
 
-                ap = tmpaperdiodic{electrode};
+            if iscell(fooof_out.fooofparams)
+                repdata = fooof_out.fooofparams{1};
+            else
+                repdata = fooof_out.fooofparams;
+            end
+
+            freq = fooof_out.freq(:);
+
+            local_ps     = nan(nChan, nFreq);
+            local_model  = nan(nChan, nFreq);
+            local_err    = nan(nChan, 1);
+            local_rsq    = nan(nChan, 1);
+            local_offset = nan(nChan, 1);
+            local_expo   = nan(nChan, 1);
+
+            for ch = 1:nChan
+
+                local_ps(ch, :) = repdata(ch).power_spectrum(:).';
+
+                ap = repdata(ch).aperiodic_params(:);
+
+                local_err(ch) = repdata(ch).error;
+                local_rsq(ch) = repdata(ch).r_squared;
+
                 if numel(ap) == 2
                     offset = ap(1);
                     expo   = ap(2);
@@ -426,8 +453,12 @@ for subj = 1 : length(subjects)
                     ap_fit = offset - log10(knee + freq.^expo);
                 end
 
-                pk = repdata(electrode).peak_params;
+                local_offset(ch) = offset;
+                local_expo(ch)   = expo;
+
+                pk = repdata(ch).peak_params;
                 gauss_sum = zeros(nFreq, 1);
+
                 if ~isempty(pk)
                     for p = 1:size(pk,1)
                         cf  = pk(p,1);
@@ -437,21 +468,16 @@ for subj = 1 : length(subjects)
                     end
                 end
 
-                local_model(electrode, :) = (ap_fit + gauss_sum).';
+                local_model(ch, :) = (ap_fit + gauss_sum).';
             end
 
-            fooof_powspctrm(:, :, timePnt) = local_model;   % model fit in FOOOF (log10) space
-            fooof_powspec(:, :, timePnt)   = local_ps;      % input spectrum in same (log10) space
+            fooof_powspctrm(:, :, timePnt) = local_model;   % model fit (FOOOF/log space)
+            fooof_powspec(:,   :, timePnt) = local_ps;      % input spectrum (FOOOF/log space)
 
-            % Pack aperiodic parameters into one [chan x 4] matrix
-            local_aper_all        = nan(nChan, 4);
-            local_aper_all(:, 1)  = local_aper(:, 1);   % intercept
-            local_aper_all(:, 2)  = local_aper(:, 2);   % slope
-            local_aper_all(:, 3)  = local_err;          % error
-            local_aper_all(:, 4)  = local_rsq;          % r squared
-
-            % Single consistent sliced write for parfor
-            fooof_aperiodic(:, :, timePnt) = local_aper_all;
+            fooof_aperiodic(:, 1, timePnt) = local_offset;  % offset
+            fooof_aperiodic(:, 2, timePnt) = local_expo;    % exponent
+            fooof_aperiodic(:, 3, timePnt) = local_err;     % error
+            fooof_aperiodic(:, 4, timePnt) = local_rsq;     % r^2
 
             % Progress output
             s           = struct();
@@ -467,8 +493,8 @@ for subj = 1 : length(subjects)
         tfr_ff.label              = fooof_test.label;
         tfr_ff.freq               = fooof_test.freq;
         tfr_ff.time               = toi_centres(1:nTimePnts);
-        tfr_ff.powspctrm          = fooof_powspctrm;   % FOOOFed TFR: chan x freq x time
-        tfr_ff.power_spectrum     = fooof_powspec;     % full model spectrum: chan x freq x time
+        tfr_ff.powspctrm          = fooof_powspctrm;   % chan x freq x time
+        tfr_ff.power_spectrum     = fooof_powspec;     % chan x freq x time
         tfr_ff.fooofparams        = fooof_aperiodic;   % chan x 4 x time
         tfr_ff.dimord             = 'chan_freq_time';
 
@@ -553,7 +579,6 @@ for subj = 1 : length(subjects)
             end
 
             gauss_all(:, ch) = gauss_tmp;
-
         end
 
         ps_in     = mean(ps_all,    2, 'omitnan');
@@ -574,7 +599,6 @@ for subj = 1 : length(subjects)
         end
         title(sprintf('%s | t = %.2f s', cond_titles{c}, tfr_all{c}.time(tim)))
         set(gca, 'FontSize', 15)
-
     end
 
     sgtitle(sprintf('FOOOF sanity check: Subject %s | Window [%.2f %.2f] s', ...
@@ -586,17 +610,20 @@ for subj = 1 : length(subjects)
         savePathControls = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF/';
     end
 
+    if ~exist(savePathControls, 'dir')
+        mkdir(savePathControls)
+    end
+
     saveName = sprintf('AOC_controls_FOOOF_powspctrm_nback_subj%s.png', subjects{subj});
     saveas(gcf, fullfile(savePathControls, saveName));
 
-
     %% FOOOFed powspctrm baselined
-    cfg                      = [];
-    cfg.baseline             = [-.5 -.25];      % same as raw baseline
-    cfg.baselinetype         = 'absolute';      % FOOOF already in log space
-    tfr1_fooof_bl            = ft_freqbaseline(cfg, tfr1_fooof);
-    tfr2_fooof_bl            = ft_freqbaseline(cfg, tfr2_fooof);
-    tfr3_fooof_bl            = ft_freqbaseline(cfg, tfr3_fooof);
+    cfg              = [];
+    cfg.baseline     = [-.5 -.25];      % same as raw baseline
+    cfg.baselinetype = 'absolute';      % FOOOF already in log space
+    tfr1_fooof_bl    = ft_freqbaseline(cfg, tfr1_fooof);
+    tfr2_fooof_bl    = ft_freqbaseline(cfg, tfr2_fooof);
+    tfr3_fooof_bl    = ft_freqbaseline(cfg, tfr3_fooof);
 
     % Save data
     cd(datapath)
@@ -613,36 +640,36 @@ for subj = 1 : length(subjects)
     freq_range          = [2 40];
 
     % Select data
-    pow1_fooof              = select_data(analysisPeriodFull,  freq_range, tfr1_fooof);
-    pow1_fooof_bl           = select_data(analysisPeriodFull,  freq_range, tfr1_fooof_bl);
-    pow1_fooof_bl_early     = select_data(analysisPeriodEarly, freq_range, tfr1_fooof_bl);
-    pow1_fooof_bl_late      = select_data(analysisPeriodLate,  freq_range, tfr1_fooof_bl);
+    pow1_fooof          = select_data(analysisPeriodFull,  freq_range, tfr1_fooof);
+    pow1_fooof_bl       = select_data(analysisPeriodFull,  freq_range, tfr1_fooof_bl);
+    pow1_fooof_bl_early = select_data(analysisPeriodEarly, freq_range, tfr1_fooof_bl);
+    pow1_fooof_bl_late  = select_data(analysisPeriodLate,  freq_range, tfr1_fooof_bl);
 
-    pow2_fooof              = select_data(analysisPeriodFull,  freq_range, tfr2_fooof);
-    pow2_fooof_bl           = select_data(analysisPeriodFull,  freq_range, tfr2_fooof_bl);
-    pow2_fooof_bl_early     = select_data(analysisPeriodEarly, freq_range, tfr2_fooof_bl);
-    pow2_fooof_bl_late      = select_data(analysisPeriodLate,  freq_range, tfr2_fooof_bl);
+    pow2_fooof          = select_data(analysisPeriodFull,  freq_range, tfr2_fooof);
+    pow2_fooof_bl       = select_data(analysisPeriodFull,  freq_range, tfr2_fooof_bl);
+    pow2_fooof_bl_early = select_data(analysisPeriodEarly, freq_range, tfr2_fooof_bl);
+    pow2_fooof_bl_late  = select_data(analysisPeriodLate,  freq_range, tfr2_fooof_bl);
 
-    pow3_fooof              = select_data(analysisPeriodFull,  freq_range, tfr3_fooof);
-    pow3_fooof_bl           = select_data(analysisPeriodFull,  freq_range, tfr3_fooof_bl);
-    pow3_fooof_bl_early     = select_data(analysisPeriodEarly, freq_range, tfr3_fooof_bl);
-    pow3_fooof_bl_late      = select_data(analysisPeriodLate,  freq_range, tfr3_fooof_bl);
+    pow3_fooof          = select_data(analysisPeriodFull,  freq_range, tfr3_fooof);
+    pow3_fooof_bl       = select_data(analysisPeriodFull,  freq_range, tfr3_fooof_bl);
+    pow3_fooof_bl_early = select_data(analysisPeriodEarly, freq_range, tfr3_fooof_bl);
+    pow3_fooof_bl_late  = select_data(analysisPeriodLate,  freq_range, tfr3_fooof_bl);
 
     % Remove time dimension for POWSPCTRM (channels x frequency)
-    pow1_fooof              = remove_time_dimension(pow1_fooof);
-    pow1_fooof_bl           = remove_time_dimension(pow1_fooof_bl);
-    pow1_fooof_bl_early     = remove_time_dimension(pow1_fooof_bl_early);
-    pow1_fooof_bl_late      = remove_time_dimension(pow1_fooof_bl_late);
+    pow1_fooof          = remove_time_dimension(pow1_fooof);
+    pow1_fooof_bl       = remove_time_dimension(pow1_fooof_bl);
+    pow1_fooof_bl_early = remove_time_dimension(pow1_fooof_bl_early);
+    pow1_fooof_bl_late  = remove_time_dimension(pow1_fooof_bl_late);
 
-    pow2_fooof              = remove_time_dimension(pow2_fooof);
-    pow2_fooof_bl           = remove_time_dimension(pow2_fooof_bl);
-    pow2_fooof_bl_early     = remove_time_dimension(pow2_fooof_bl_early);
-    pow2_fooof_bl_late      = remove_time_dimension(pow2_fooof_bl_late);
+    pow2_fooof          = remove_time_dimension(pow2_fooof);
+    pow2_fooof_bl       = remove_time_dimension(pow2_fooof_bl);
+    pow2_fooof_bl_early = remove_time_dimension(pow2_fooof_bl_early);
+    pow2_fooof_bl_late  = remove_time_dimension(pow2_fooof_bl_late);
 
-    pow3_fooof              = remove_time_dimension(pow3_fooof);
-    pow3_fooof_bl           = remove_time_dimension(pow3_fooof_bl);
-    pow3_fooof_bl_early     = remove_time_dimension(pow3_fooof_bl_early);
-    pow3_fooof_bl_late      = remove_time_dimension(pow3_fooof_bl_late);
+    pow3_fooof          = remove_time_dimension(pow3_fooof);
+    pow3_fooof_bl       = remove_time_dimension(pow3_fooof_bl);
+    pow3_fooof_bl_early = remove_time_dimension(pow3_fooof_bl_early);
+    pow3_fooof_bl_late  = remove_time_dimension(pow3_fooof_bl_late);
 
     save power_nback_fooof ...
         pow1_fooof pow2_fooof pow3_fooof ...

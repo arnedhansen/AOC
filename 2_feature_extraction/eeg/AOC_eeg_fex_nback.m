@@ -250,9 +250,9 @@ for subj = 1:length(subjects)
 
         %% Frequency analysis
         % Identify indices of trials belonging to conditions
-        ind1 = find(data.trialinfo == 21);
-        ind1 = find(data.trialinfo == 22);
-        ind3 = find(data.trialinfo == 23);
+        ind1 = find(dataEEG.trialinfo == 21);
+        ind1 = find(dataEEG.trialinfo == 22);
+        ind3 = find(dataEEG.trialinfo == 23);
 
         % Select data
         cfg = [];

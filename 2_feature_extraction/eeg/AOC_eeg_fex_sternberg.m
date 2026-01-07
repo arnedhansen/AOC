@@ -447,7 +447,7 @@ for subj = 1:length(subjects)
             clc
             disp(['Running FOOOF for Subject ', num2str(subjects{subj})])
             disp(['Subject:    ', num2str(subj), ' / ', num2str(length(subjects))])
-            disp(['Condition:  ', num2str(trf_conds), ' / 3'])
+            disp(['Condition:  ', num2str(tfr_conds), ' / 3'])
             disp(['Time Point: ', num2str(timePnt), ' / ', num2str(nTimePnts)])
 
             % Run FOOOF on averaged spectrum

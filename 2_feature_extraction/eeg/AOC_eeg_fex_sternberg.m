@@ -332,17 +332,11 @@ else
     save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/eeg_matrix_sternberg eeg_data_sternberg
 end
 
-%% TFR (Raw, FOOOF and Baselined) POWSPCTRM | Sternberg
+%% TFR (Raw, FOOOF and Baselined) | Sternberg (AOC)
 clear; close all; clc
+
 startup
 [subjects, path, ~, ~] = setup('AOC');
-
-function printProgress(s)
-fprintf('Subj %d | Cond %d | Time %d/%d finished\n', ...
-    s.subj, s.cond, s.time, s.nTimePnts);
-end
-D = parallel.pool.DataQueue;
-afterEach(D, @printProgress);
 
 for subj = 1:length(subjects)
 
@@ -351,32 +345,29 @@ for subj = 1:length(subjects)
     close all
     clc
 
-    disp(['Processing TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
+    disp(['Processing TFR (Raw, FOOOF and Baselined) for Subject AOC ', num2str(subjects{subj})])
     disp('Loading EEG TFR data')
     load dataEEG_TFR_sternberg
 
-    % Identify indices of trials belonging to conditions
+    %% Identify indices of trials belonging to conditions
     ind2 = find(dataTFR.trialinfo(:, 1) == 22);
     ind4 = find(dataTFR.trialinfo(:, 1) == 24);
     ind6 = find(dataTFR.trialinfo(:, 1) == 26);
 
     %% Trial-averaged TFR (for visualisation / later use)
-    cfg              = [];
-    cfg.output       = 'pow';
-    cfg.method       = 'mtmconvol';
-    cfg.taper        = 'hanning';
-    cfg.foi          = 2:1:40;
-    cfg.t_ftimwin    = ones(length(cfg.foi),1).*0.5;
-    cfg.toi          = -1.5:0.05:3;
-    cfg.keeptrials   = 'no';
-    cfg.pad          = 'nextpow2';
+    cfg            = [];
+    cfg.output     = 'pow';
+    cfg.method     = 'mtmconvol';
+    cfg.taper      = 'hanning';
+    cfg.foi        = 2:1:40;
+    cfg.t_ftimwin  = ones(length(cfg.foi), 1) .* 0.5;
+    cfg.toi        = -1.5:0.05:3;
+    cfg.keeptrials = 'no';
+    cfg.pad        = 'nextpow2';
 
-    cfg.trials = ind2;
-    tfr2       = ft_freqanalysis(cfg, dataTFR);
-    cfg.trials = ind4;
-    tfr4       = ft_freqanalysis(cfg, dataTFR);
-    cfg.trials = ind6;
-    tfr6       = ft_freqanalysis(cfg, dataTFR);
+    cfg.trials = ind2; tfr2 = ft_freqanalysis(cfg, dataTFR);
+    cfg.trials = ind4; tfr4 = ft_freqanalysis(cfg, dataTFR);
+    cfg.trials = ind6; tfr6 = ft_freqanalysis(cfg, dataTFR);
 
     %% Baselined TFR (raw)
     cfg              = [];
@@ -386,15 +377,19 @@ for subj = 1:length(subjects)
     tfr4_bl          = ft_freqbaseline(cfg, tfr4);
     tfr6_bl          = ft_freqbaseline(cfg, tfr6);
 
-    %% Sliding-window FOOOF over trial-averaged spectra
-    winLen        = 0.5;     % 500 ms
-    stepLen       = 0.05;    % 50 ms
-    tMin          = -1.5;
-    tMax          = 3;
+    disp(upper('Raw TFR + baseline done...'))
 
-    toi_start     = tMin:stepLen:(tMax - winLen);
-    toi_centres   = toi_start + winLen/2;
-    nTimePnts     = numel(toi_start);
+    %% Sliding-window FOOOF over trial-averaged spectra (mtmfft)
+    winLen  = 0.5;     % 500 ms
+    stepLen = 0.05;    % 50 ms
+
+    % Use data time axis (more robust than hardcoding)
+    tMin = dataTFR.time{1}(1);
+    tMax = dataTFR.time{1}(end);
+
+    toi_start   = tMin:stepLen:(tMax - winLen);
+    toi_centres = toi_start + winLen/2;
+    nTimePnts   = numel(toi_centres);
 
     tfr_fooof = cell(1, 3);
 
@@ -410,29 +405,33 @@ for subj = 1:length(subjects)
     for tfr_conds = 1:3
 
         if tfr_conds == 1
-            trlIdx = ind2;
+            trlIdx   = ind2;
+            condName = 'set2';
         elseif tfr_conds == 2
-            trlIdx = ind4;
+            trlIdx   = ind4;
+            condName = 'set4';
         else
-            trlIdx = ind6;
+            trlIdx   = ind6;
+            condName = 'set6';
         end
 
         disp(' ')
-        disp(['Running FOOOF on trial-averaged spectra for condition ', num2str(tfr_conds)])
+        disp(['Running sliding-window FOOOF for condition ', condName])
 
-        % One test window to get sizes
+        % One test window to get sizes / master freq grid
         cfg_sel0         = [];
         cfg_sel0.latency = [toi_start(1) (toi_start(1) + winLen)];
         cfg_sel0.trials  = trlIdx;
         datTFR_win0      = ft_selectdata(cfg_sel0, dataTFR);
 
-        fooof_test = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win0);
+        fooof_test  = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win0);
 
-        nChan = numel(fooof_test.label);
-        nFreq = numel(fooof_test.freq);
+        nChan       = numel(fooof_test.label);
+        freq_master = fooof_test.freq(:);
+        nFreq       = numel(freq_master);
 
-        fooof_powspctrm = nan(nChan, nFreq, nTimePnts);   % model fit (aperiodic + peaks)
-        fooof_powspec   = nan(nChan, nFreq, nTimePnts);   % input power spectrum
+        fooof_powspctrm = nan(nChan, nFreq, nTimePnts);   % (model fit - aperiodic) in FOOOF/log space
+        fooof_powspec   = nan(nChan, nFreq, nTimePnts);   % input power spectrum in FOOOF/log space
         fooof_aperiodic = nan(nChan, 4,    nTimePnts);    % [offset exponent error r^2]
 
         for timePnt = 1:nTimePnts
@@ -447,7 +446,7 @@ for subj = 1:length(subjects)
             clc
             disp(['Running FOOOF for Subject ', num2str(subjects{subj})])
             disp(['Subject:    ', num2str(subj), ' / ', num2str(length(subjects))])
-            disp(['Condition:  ', num2str(trf_conds), ' / 3'])
+            disp(['Condition:  ', num2str(tfr_conds), ' / 3'])
             disp(['Time Point: ', num2str(timePnt), ' / ', num2str(nTimePnts)])
 
             % Run FOOOF on averaged spectrum
@@ -459,10 +458,14 @@ for subj = 1:length(subjects)
                 repdata = fooof_out.fooofparams;
             end
 
-            freq = fooof_out.freq(:);
+            freq_now = fooof_out.freq(:);
+
+            % Map onto master grid (robust to any tiny numeric shifts)
+            [tf, loc] = ismembertol(freq_now, freq_master, 1e-10);
 
             local_ps     = nan(nChan, nFreq);
-            local_peaks  = nan(nChan, nFreq);   % aperiodic-removed spectrum (peaks only)
+            local_pkcomp = nan(nChan, nFreq);  % (model fit - aperiodic) on master grid
+
             local_err    = nan(nChan, 1);
             local_rsq    = nan(nChan, 1);
             local_offset = nan(nChan, 1);
@@ -470,8 +473,11 @@ for subj = 1:length(subjects)
 
             for ch = 1:nChan
 
-                local_ps(ch, :) = repdata(ch).power_spectrum(:).';
+                % input spectrum (FOOOF/log space)
+                ps_tmp = repdata(ch).power_spectrum(:);
+                local_ps(ch, loc(tf)) = ps_tmp(tf).';
 
+                % aperiodic fit (FOOOF/log space)
                 ap = repdata(ch).aperiodic_params(:);
 
                 local_err(ch) = repdata(ch).error;
@@ -480,48 +486,48 @@ for subj = 1:length(subjects)
                 if numel(ap) == 2
                     offset = ap(1);
                     expo   = ap(2);
-                    ap_fit = offset - expo .* log10(freq);
+                    ap_fit = offset - expo .* log10(freq_now);
                 else
                     offset = ap(1);
                     knee   = ap(2);
                     expo   = ap(3);
-                    ap_fit = offset - log10(knee + freq.^expo);
+                    ap_fit = offset - log10(knee + freq_now.^expo);
                 end
 
                 local_offset(ch) = offset;
                 local_expo(ch)   = expo;
 
-                pk = repdata(ch).peak_params;
-                gauss_sum = zeros(nFreq, 1);
-
-                if ~isempty(pk)
-                    for p = 1:size(pk, 1)
-                        cf  = pk(p, 1);
-                        amp = pk(p, 2);
-                        bw  = pk(p, 3);
-                        gauss_sum = gauss_sum + amp .* exp(-(freq - cf).^2 ./ (2*bw.^2));
+                % full model fit (aperiodic + peaks) in FOOOF/log space
+                if isfield(repdata(ch), 'fooofed_spectrum') && ~isempty(repdata(ch).fooofed_spectrum)
+                    model_fit = repdata(ch).fooofed_spectrum(:);
+                else
+                    % fallback: reconstruct via Gaussian peaks + aperiodic fit
+                    pk = repdata(ch).peak_params;
+                    gauss_sum = zeros(numel(freq_now), 1);
+                    if ~isempty(pk)
+                        for p = 1:size(pk, 1)
+                            cf  = pk(p, 1);
+                            amp = pk(p, 2);
+                            bw  = pk(p, 3);
+                            gauss_sum = gauss_sum + amp .* exp(-(freq_now - cf).^2 ./ (2*bw.^2));
+                        end
                     end
+                    model_fit = ap_fit(:) + gauss_sum(:);
                 end
 
-                % This is the aperiodic-removed spectrum in FOOOF space:
-                local_peaks(ch, :) = gauss_sum(:).';
+                % what you want: model fit - aperiodic
+                pkcomp = model_fit(:) - ap_fit(:);
+                local_pkcomp(ch, loc(tf)) = pkcomp(tf).';
             end
 
             % Save
-            fooof_powspctrm(:, :, timePnt) = local_peaks;   % peaks only (aperiodic removed)
+            fooof_powspctrm(:, :, timePnt) = local_pkcomp;
             fooof_powspec(:,   :, timePnt) = local_ps;
 
             fooof_aperiodic(:, 1, timePnt) = local_offset;
             fooof_aperiodic(:, 2, timePnt) = local_expo;
             fooof_aperiodic(:, 3, timePnt) = local_err;
             fooof_aperiodic(:, 4, timePnt) = local_rsq;
-
-            s           = struct();
-            s.subj      = subj;
-            s.cond      = tfr_conds;
-            s.time      = timePnt;
-            s.nTimePnts = nTimePnts;
-            %send(D, s);
         end
 
         % Construct condition-specific FieldTrip freq-like struct
@@ -529,41 +535,34 @@ for subj = 1:length(subjects)
         tfr_ff.label          = fooof_test.label;
         tfr_ff.freq           = fooof_test.freq;
         tfr_ff.time           = toi_centres;
-        tfr_ff.powspctrm      = fooof_powspctrm;   % model fit (log space)
-        tfr_ff.power_spectrum = fooof_powspec;     % input spectrum (log space)
+        tfr_ff.powspctrm      = fooof_powspctrm;   % (model fit - aperiodic) in FOOOF/log space
+        tfr_ff.power_spectrum = fooof_powspec;     % input spectrum in FOOOF/log space
         tfr_ff.fooofparams    = fooof_aperiodic;   % chan x 4 x time
         tfr_ff.dimord         = 'chan_freq_time';
 
-        tfr_fooof{tfr_conds}  = tfr_ff;
+        tfr_fooof{tfr_conds} = tfr_ff;
     end
 
     tfr2_fooof = tfr_fooof{1};
     tfr4_fooof = tfr_fooof{2};
     tfr6_fooof = tfr_fooof{3};
-    disp(upper('FOOOF done on trial-averaged spectra...'))
 
-    %% Sanity Check: rerun ONE window per condition (same logic as your check)
+    disp(upper('FOOOF done on trial-averaged spectra (sliding windows)...'))
+
+    %% Sanity check (3-panel): input, input-aperiodic, model-aperiodic (stored)
     time_point = 0.5;
     [~, tim]   = min(abs(tfr2_fooof.time - time_point));
 
     latWin = [toi_start(tim) (toi_start(tim) + winLen)];
 
-    tfr_all     = {tfr2_fooof, tfr4_fooof, tfr6_fooof};
     cond_titles = {'Set size 2','Set size 4','Set size 6'};
+    trl_all     = {ind2, ind4, ind6};
 
-    figure('Position', [0 0 1512 500], 'Color', 'w');
+    figure('Position', [0 0 1500 420], 'Color', 'w');
 
     for c = 1:3
 
-        if c == 1
-            trlIdx = ind2;
-        elseif c == 2
-            trlIdx = ind4;
-        else
-            trlIdx = ind6;
-        end
-
-        freq = tfr_all{c}.freq;
+        trlIdx = trl_all{c};
 
         cfg_sel         = [];
         cfg_sel.latency = latWin;
@@ -578,66 +577,80 @@ for subj = 1:length(subjects)
             repdata_sc = fooof_sc.fooofparams;
         end
 
-        nChan = numel(repdata_sc);
+        freq_sc = fooof_sc.freq(:);
+        nChan   = numel(repdata_sc);
 
-        ps_all    = nan(numel(freq), nChan);
-        ap_all    = nan(numel(freq), nChan);
-        gauss_all = nan(numel(freq), nChan);
+        ps_all     = nan(numel(freq_sc), nChan);
+        ap_all     = nan(numel(freq_sc), nChan);
+        model_all  = nan(numel(freq_sc), nChan);
+        pkcomp_all = nan(numel(freq_sc), nChan);
 
         for ch = 1:nChan
 
-            ps_all(:, ch) = repdata_sc(ch).power_spectrum(:);
+            ps_tmp = repdata_sc(ch).power_spectrum(:);
+            ps_all(:, ch) = ps_tmp;
 
             ap = repdata_sc(ch).aperiodic_params(:);
-
             if numel(ap) == 2
                 offset = ap(1);
                 expo   = ap(2);
-                ap_all(:, ch) = offset - expo .* log10(freq(:));
+                ap_fit = offset - expo .* log10(freq_sc);
             else
                 offset = ap(1);
                 knee   = ap(2);
                 expo   = ap(3);
-                ap_all(:, ch) = offset - log10(knee + freq(:).^expo);
+                ap_fit = offset - log10(knee + freq_sc.^expo);
             end
+            ap_all(:, ch) = ap_fit(:);
 
-            pk = repdata_sc(ch).peak_params;
-            gauss_tmp = zeros(numel(freq), 1);
-
-            if ~isempty(pk)
-                for p = 1:size(pk,1)
-                    cf  = pk(p,1);
-                    amp = pk(p,2);
-                    bw  = pk(p,3);
-                    gauss_tmp = gauss_tmp + amp .* exp(-(freq(:) - cf).^2 ./ (2*bw.^2));
+            if isfield(repdata_sc(ch), 'fooofed_spectrum') && ~isempty(repdata_sc(ch).fooofed_spectrum)
+                model_fit = repdata_sc(ch).fooofed_spectrum(:);
+            else
+                pk = repdata_sc(ch).peak_params;
+                gauss_sum = zeros(numel(freq_sc), 1);
+                if ~isempty(pk)
+                    for p = 1:size(pk, 1)
+                        cf  = pk(p, 1);
+                        amp = pk(p, 2);
+                        bw  = pk(p, 3);
+                        gauss_sum = gauss_sum + amp .* exp(-(freq_sc - cf).^2 ./ (2*bw.^2));
+                    end
                 end
+                model_fit = ap_fit(:) + gauss_sum(:);
             end
 
-            gauss_all(:, ch) = gauss_tmp;
+            model_all(:, ch)  = model_fit(:);
+            pkcomp_all(:, ch) = model_fit(:) - ap_fit(:);
         end
 
-        ps_in     = mean(ps_all,    2, 'omitnan');
-        ap_fit    = mean(ap_all,    2, 'omitnan');
-        gauss_sum = mean(gauss_all, 2, 'omitnan');
+        ps_in     = mean(ps_all,     2, 'omitnan');
+        ap_fit    = mean(ap_all,     2, 'omitnan');
+        pk_comp   = mean(pkcomp_all, 2, 'omitnan');
+        ps_corr   = ps_in - ap_fit;
 
-        model_fit = ap_fit + gauss_sum;
-
-        subplot(1,3,c); hold on
-        plot(freq, ps_in,     'LineWidth', 3)
-        plot(freq, model_fit, 'LineWidth', 3)
-        plot(freq, ap_fit,    '--', 'LineWidth', 3)
-
-        xlabel('Frequency (Hz)')
         if c == 1
-            ylabel('Power (FOOOF space)')
-            legend({'Input spectrum','Model fit','Aperiodic fit'}, 'Location', 'best')
+            subplot(1,3,1); hold on
+            plot(freq_sc, ps_in, 'LineWidth', 2)
+            title('Original Powspctrm')
+            xlabel('Frequency (Hz)'); ylabel('Power (FOOOF/log space)')
+            set(gca, 'FontSize', 13); xlim([min(freq_sc) max(freq_sc)])
+
+            subplot(1,3,2); hold on
+            plot(freq_sc, ps_corr, 'LineWidth', 2)
+            title('Original - Aperiodic')
+            xlabel('Frequency (Hz)'); ylabel('Power (FOOOF/log space)')
+            set(gca, 'FontSize', 13); xlim([min(freq_sc) max(freq_sc)])
+
+            subplot(1,3,3); hold on
+            plot(freq_sc, pk_comp, 'LineWidth', 2)
+            title('Model fit - Aperiodic (stored)')
+            xlabel('Frequency (Hz)'); ylabel('Power (FOOOF/log space)')
+            set(gca, 'FontSize', 13); xlim([min(freq_sc) max(freq_sc)])
         end
-        title(sprintf('%s | t = %.2f s', cond_titles{c}, tfr_all{c}.time(tim)))
-        set(gca, 'FontSize', 15)
     end
 
-    sgtitle(sprintf('FOOOF sanity check: Subject %s | Window [%.2f %.2f] s', ...
-        subjects{subj}, latWin(1), latWin(2)), 'FontSize', 20)
+    sgtitle(sprintf('FOOOF sanity check (AOC): Subject %s | Window [%.2f %.2f] s | t = %.2f s', ...
+        subjects{subj}, latWin(1), latWin(2), tfr2_fooof.time(tim)), 'FontSize', 18)
 
     if ispc
         savePathControls = 'W:\Students\Arne\AOC\data\controls\FOOOF\';
@@ -648,7 +661,7 @@ for subj = 1:length(subjects)
         mkdir(savePathControls)
     end
 
-    saveName = sprintf('AOC_controls_FOOOF_powspctrm_stern_subj%s.png', subjects{subj});
+    saveName = sprintf('AOC_controls_FOOOF_modelMinusAperiodic_stern_subj%s.png', subjects{subj});
     saveas(gcf, fullfile(savePathControls, saveName));
 
     %% Baselined FOOOF TFR
@@ -658,6 +671,8 @@ for subj = 1:length(subjects)
     tfr2_fooof_bl    = ft_freqbaseline(cfg, tfr2_fooof);
     tfr4_fooof_bl    = ft_freqbaseline(cfg, tfr4_fooof);
     tfr6_fooof_bl    = ft_freqbaseline(cfg, tfr6_fooof);
+
+    disp(upper('FOOOF baseline done...'))
 
     %% Save TFR data
     cd(datapath)
@@ -710,5 +725,6 @@ for subj = 1:length(subjects)
         pow2_fooof_bl_late pow4_fooof_bl_late pow6_fooof_bl_late
 
     clc
-    disp('TFR and FOOOFed POWSPCTRM COMPUTED...');
+    fprintf('Subject AOC %s (%.3d/%.3d) DONE (sliding-window FOOOF: model - aperiodic) \n', ...
+        num2str(subjects{subj}), subj, length(subjects))
 end

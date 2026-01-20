@@ -57,12 +57,12 @@ max_spctrm = max([mean(gatfr2.powspctrm(channel_idx, freq_idx, time_idx), 'omitn
                   mean(gatfr4.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan'); ...
                   mean(gatfr6.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan')]);
 max_spctrm = max(max(abs(max_spctrm)));
-max_spctrm = 0.21
+max_spctrm = 0.25
 clim = [-max_spctrm, max_spctrm];
 
 % WM load 2
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr2);
 colormap(color_map);
 set(gca, 'CLim', clim);
@@ -70,15 +70,15 @@ cb = colorbar;
 ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
-rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+%rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+%rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('Sternberg WM load 2 TFR');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_2_fooof_bl_abs.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_2_fooof_bl_absX.png');
 
 % WM load 4
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr4);
 colormap(color_map);
 set(gca, 'CLim', clim);
@@ -86,15 +86,15 @@ cb = colorbar;
 ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
-rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+%rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+%rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('Sternberg WM load 4 TFR');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_4_fooof_bl_abs.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_4_fooof_bl_absX.png');
 
 % WM load 6
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr6);
 colormap(color_map);
 set(gca, 'CLim', clim);
@@ -102,11 +102,11 @@ cb = colorbar;
 ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
-rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+%rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+%rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('Sternberg WM load 6 TFR');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_6_fooof_bl_abs.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_6_fooof_bl_absX.png');
 
 %% Plot the grand averages for the difference between condition 3 and condition 1
 close all
@@ -136,7 +136,7 @@ clim = double([-max_spctrm max_spctrm]);
 
 % Plot: Difference Time-Frequency Response
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 ft_singleplotTFR(cfg, diff);
 colormap(color_map);
 set(gca, 'CLim', clim); 
@@ -150,4 +150,4 @@ title('Sternberg TFR Difference (WM load 6 minus WM load 2)', 'FontName', 'Arial
 set(gca, 'FontSize', fontSize);
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_diff_fooof_bl_abs.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_sternberg_diff_fooof_bl_absX.png');

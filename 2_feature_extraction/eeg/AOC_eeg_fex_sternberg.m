@@ -515,7 +515,7 @@ for subj = 1:length(subjects)
                     model_fit = ap_fit(:) + gauss_sum(:);
                 end
 
-                % what you want: model fit - aperiodic
+                % model fit - aperiodic
                 pkcomp = model_fit(:) - ap_fit(:);
                 local_pkcomp(ch, loc(tf)) = pkcomp(tf).';
             end

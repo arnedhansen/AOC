@@ -1,12 +1,6 @@
-**README for AOC Study (Sternberg & N-back)**
+### README for AOC Study (Sternberg & N-back)
 
 Sternberg and N-back tasks. Combined EEG and Eye-Tracking (ET) analysis of neural signatures of oculomotor control in the alpha band. Published in Psychophysiology as a Registered Report. https://doi.org/10.22541/au.172466871.17083913/v1
-
-**Pipeline Run Order:** 
-Preprocessing: 1_cut → 2_automagic (GUI) → 3_merge → 4_preprocessing 
-Feature Extraction: 2_feature_extraction 
-Visualization: 3_visualization 
-Stats: 4_stats (omnibus: prep → omnibus; Python rainclouds: standalone)
 
 The following are short descriptions of what the files in the respective folders in this repository do. The titles below correspond to the folder names. Apart from the Python scripts in ’4_stats’, all files are MATLAB scripts.
 
@@ -17,7 +11,7 @@ The experimental paradigms ‚AOC_NBack.m’ and ‚AOC_Sternberg.m‘ are execu
 ## 1_preprocessing
 
 ### 1_cut
-EEG and ET files are cut by `AOC_Cutting.m` using `AOC_DataCuttingFunction.m`.
+Raw EEG and ET files are cut by `AOC_Cutting.m` using `AOC_DataCuttingFunction.m`.
 
 ### 2_automagic
 The cut EEG and ET files are preprocessed using Automagic (Pedroni et al., 2019). In the first step in Automagic, the bad channels are detected using the EEGLAB plugin clean_rawdata (Mullen et al., 2015). An electrode is defined as bad when recorded data from that electrode is correlated at less than .85 to an estimate based on neighboring electrodes. Furthermore, an electrode is defined as bad if it had more line noise relative to its signal than all other electrodes (4 standard deviations). Finally, if an electrode had a longer flat line than 5 s, it is considered bad. These bad channels will be removed from the original EEG data. The data will be filtered using a 0.1 Hz high pass filter (-6 dB cut off: 0.05 Hz) using the EEGLAB function pop_eegfiltnew (Widmann & Schröger, 2012). Line noise will be removed using a ZapLine method with a passband edge of 50 Hz (De Cheveigné, 2020), removing 7 power line components.
@@ -27,8 +21,11 @@ An independent component analysis (ICA) for ocular artifact correction will be a
 Afterwards, the quality of the data is automatically and objectively assessed in Automagic, thus increasing research reproducibility by having objective measures for data quality. The data of each individual block will be classified regarding data quality using the following exclusion criteria:
 
 (1) The proportion of high-amplitude data points in the signal (> 30 μV) is larger than 0.2
+
 (2) More than 20% of the time points show variance larger than 15 μV across electrodes
+
 (3) 40% of the electrodes show high variance (15 μV)
+
 (4) The proportion of bad electrodes is higher than 0.4
 
 Any data file of a block exceeding any one of these criteria will be rated as bad and excluded from further analyses.

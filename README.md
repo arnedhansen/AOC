@@ -2,7 +2,11 @@
 
 Sternberg and N-back tasks. Combined EEG and Eye-Tracking (ET) analysis of neural signatures of oculomotor control in the alpha band. Published in Psychophysiology as a Registered Report. https://doi.org/10.22541/au.172466871.17083913/v1
 
-**Pipeline run order:** 1_cut → 2_automagic (GUI) → 3_merge → 4_preprocessing → 2_feature_extraction → 3_visualization → 4_stats (omnibus: prep → omnibus; Python rainclouds: standalone).
+**Pipeline Run Order:** 
+Preprocessing: 1_cut → 2_automagic (GUI) → 3_merge → 4_preprocessing 
+Feature Extraction: 2_feature_extraction 
+Visualization: 3_visualization 
+Stats: 4_stats (omnibus: prep → omnibus; Python rainclouds: standalone)
 
 The following are short descriptions of what the files in the respective folders in this repository do. The titles below correspond to the folder names. Apart from the Python scripts in ’4_stats’, all files are MATLAB scripts.
 

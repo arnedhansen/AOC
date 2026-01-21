@@ -1,60 +1,86 @@
 %% AOC Master Analysis Script
 %
-% Executes all analysis steps for the AOC study except cut and Automagic
+% Executes all MATLAB-based analysis steps for the AOC study (everything
+% except cut and Automagic). Each script is run with try/catch and a full
+% log is printed at the end.
 %
-% Executed analysis steps:
-%
+% Table of contents (run order)
 %   Preprocessing:
 %       1_preprocessing/3_merge/AOC_mergeData.m
 %       1_preprocessing/4_preprocessing/AOC_preprocessing_nback.m
 %       1_preprocessing/4_preprocessing/AOC_preprocessing_sternberg.m
+%
+%   Data Checks:
+%       _controls/AOC_cal_val_ET.m
+%       _controls/AOC_check_baseline_effects.m
+%       _controls/AOC_fixCheck_exclusion_trials.m
+%       _controls/AOC_missing_data.m
+%       _controls/AOC_paradigm_durations.m
+%       _controls/AOC_recording_order.m
 %
 %   Feature Extraction:
 %       2_feature_extraction/behavioral/AOC_behavioral_fex_nback.m
 %       2_feature_extraction/behavioral/AOC_behavioral_fex_sternberg.m
 %       2_feature_extraction/eeg/AOC_eeg_fex_nback.m
 %       2_feature_extraction/eeg/AOC_eeg_fex_sternberg.m
+%       2_feature_extraction/eeg/trials/AOC_eeg_fex_nback_trials.m
+%       2_feature_extraction/eeg/trials/AOC_eeg_fex_sternberg_trials.m
 %       2_feature_extraction/gaze/AOC_gaze_fex_nback.m
 %       2_feature_extraction/gaze/AOC_gaze_fex_sternberg.m
+%       2_feature_extraction/gaze/trials/AOC_gaze_fex_nback_trials.m
+%       2_feature_extraction/gaze/trials/AOC_gaze_fex_sternberg_trials.m
+%       2_feature_extraction/AOC_demographics.m
 %       2_feature_extraction/AOC_master_matrix_nback.m
+%       2_feature_extraction/AOC_master_matrix_nback_trials.m
 %       2_feature_extraction/AOC_master_matrix_sternberg.m
+%       2_feature_extraction/AOC_master_matrix_sternberg_trials.m
 %
-%   Visualizations:   
-%       3_visualization/behavioral/AOC_behav_dev_nback.m
-%       3_visualization/behavioral/AOC_behav_dev_sternberg.m
-%       3_visualization/eeg/alpha_over_trials/AOC_eeg_alpha_power_over_trials_nback.m
-%       3_visualization/eeg/powspctrm/AOC_eeg_alpha_power_nback.m
-%       3_visualization/eeg/powspctrm/AOC_eeg_alpha_power_sternberg.m
-%       3_visualization/eeg/powspctrm/by_trial/AOC_eeg_alpha_power_by_trial_nback.m
-%       3_visualization/eeg/powspctrm/by_trial/AOC_eeg_alpha_power_by_trial_sternberg.m
-%       3_visualization/eeg/tfr/AOC_tfr_nback.m
-%       3_visualization/eeg/tfr/AOC_tfr_sternberg.m
-%       3_visualization/eeg/topos/AOC_eeg_topos_nback.m
-%       3_visualization/eeg/topos/AOC_eeg_topos_sternberg.m
-%       3_visualization/gaze/deviation/AOC_gaze_dev_nback.m
-%       3_visualization/gaze/deviation/AOC_gaze_dev_sternberg.m
-%       3_visualization/gaze/heatmap/AOC_gaze_heatmap_nback.m
-%       3_visualization/gaze/heatmap/AOC_gaze_heatmap_sternberg.m
-%       3_visualization/gaze/microsaccades/AOC_gaze_microsaccades_nback.m
-%       3_visualization/gaze/microsaccades/AOC_gaze_microsaccades_sternberg.m
+%   Visualizations:
+%       Behavioral:
+%           3_visualization/behavioral/AOC_behav_dev_nback.m
+%           3_visualization/behavioral/AOC_behav_dev_sternberg.m
+%       EEG:
+%           3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_nback.m
+%           3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_sternberg.m
+%           3_visualization/eeg/alphapower_by_trial/AOC_eeg_alpha_power_by_trial_nback.m
+%           3_visualization/eeg/alphapower_by_trial/AOC_eeg_alpha_power_by_trial_sternberg.m
+%           3_visualization/eeg/tfr/AOC_tfr_nback.m
+%           3_visualization/eeg/tfr/AOC_tfr_nback_fooof_abs.m
+%           3_visualization/eeg/tfr/AOC_tfr_sternberg.m
+%           3_visualization/eeg/tfr/AOC_tfr_sternberg_bl_relchange.m
+%           3_visualization/eeg/tfr/AOC_tfr_sternberg_fooof_abs.m
+%           3_visualization/eeg/erp/AOC_eeg_erp_sternberg.m
+%           3_visualization/eeg/topos/AOC_eeg_topos_nback.m
+%           3_visualization/eeg/topos/AOC_eeg_topos_sternberg.m
+%           3_visualization/eeg/topos/AOC_eeg_topos_sternberg_baseline.m
+%           3_visualization/eeg/topos/AOC_eeg_topos_sternberg_raster.m
+%       Gaze:
+%           3_visualization/gaze/deviation/AOC_gaze_dev_nback.m
+%           3_visualization/gaze/deviation/AOC_gaze_dev_sternberg.m
+%           3_visualization/gaze/heatmap/AOC_gaze_heatmap_nback.m
+%           3_visualization/gaze/heatmap/AOC_gaze_heatmap_nback_split.m
+%           3_visualization/gaze/heatmap/AOC_gaze_heatmap_sternberg.m
+%           3_visualization/gaze/heatmap/AOC_gaze_heatmap_sternberg_split.m
+%           3_visualization/gaze/heatmap/AOC_gaze_heatmap_sternberg_splitTZVETAN.m
+%           3_visualization/gaze/microsaccades/AOC_gaze_microsaccades_nback.m
+%           3_visualization/gaze/microsaccades/AOC_gaze_microsaccades_sternberg.m
+%           3_visualization/gaze/microsaccades/AOC_gaze_microsaccades_MSSeries_sternberg.m
+%           3_visualization/gaze/scanPathLength/AOC_gaze_scanPathLength_sternberg.m
+%       Interactions:
+%           3_visualization/interactions/AOC_interaction_AlphaxVelocity_crosscorr.m
+%           3_visualization/interactions/AOC_interaction_splitPupilSize_sternberg.m
+%           3_visualization/interactions/AOC_interaction_SPLxTFR_nback.m
+%           3_visualization/interactions/AOC_interaction_SPLxTFR_sternberg.m
+%           3_visualization/interactions/AOC_interaction_TFRxSPL_sternberg.m
 %
-%   Stats:   
-%       4_stats/orf/AOC_orf.m
-%       4_stats/overview/AOC_stats_overview_nback.m
-%       4_stats/overview/AOC_stats_overview_sternberg.m
-%
-%   Data Checks:   
-%       controls/AOC_cal_val_ET.m
-%       controls/AOC_fixCheck_exclusion_trials.m
-%       controls/AOC_missing_data.m
-%       controls/AOC_paradigm_durations.m
-%       controls/AOC_recording_order.m
+%   Stats:
+%       4_stats/omnibus/AOC_omnibus_prep.m
+%       4_stats/omnibus/AOC_omnibus.m
 
 %% Setup
-startup
-clc
+startup;
+clc;
 
-%% Run all
 % Set base path depending on platform
 if ispc
     basePath = 'C:\Users\dummy\Documents\GitHub\AOC';
@@ -62,66 +88,154 @@ else
     basePath = '/Users/Arne/Documents/GitHub/AOC';
 end
 
-% Get all subfolders
-allDirs = genpath(basePath);
-dirList = strsplit(allDirs, pathsep);
+addpath(genpath(basePath));  % ensure dependencies are reachable
 
-% Loop through each subdirectory
-errorLog = {};
-for i = 1:length(dirList)
-    currentDir = dirList{i};
+% Ordered plan of scripts to execute
+scriptPlan = { ...
+    'Preprocessing', { ...
+        '1_preprocessing/3_merge/AOC_mergeData.m', ...
+        '1_preprocessing/4_preprocessing/AOC_preprocessing_nback.m', ...
+        '1_preprocessing/4_preprocessing/AOC_preprocessing_sternberg.m' ...
+    }; ...
+    'Data Checks', { ...
+        '_controls/AOC_cal_val_ET.m', ...
+        '_controls/AOC_check_baseline_effects.m', ...
+        '_controls/AOC_fixCheck_exclusion_trials.m', ...
+        '_controls/AOC_missing_data.m', ...
+        '_controls/AOC_paradigm_durations.m', ...
+        '_controls/AOC_recording_order.m' ...
+    }; ...
+    'Feature Extraction', { ...
+        '2_feature_extraction/behavioral/AOC_behavioral_fex_nback.m', ...
+        '2_feature_extraction/behavioral/AOC_behavioral_fex_sternberg.m', ...
+        '2_feature_extraction/eeg/AOC_eeg_fex_nback.m', ...
+        '2_feature_extraction/eeg/AOC_eeg_fex_sternberg.m', ...
+        '2_feature_extraction/eeg/trials/AOC_eeg_fex_nback_trials.m', ...
+        '2_feature_extraction/eeg/trials/AOC_eeg_fex_sternberg_trials.m', ...
+        '2_feature_extraction/gaze/AOC_gaze_fex_nback.m', ...
+        '2_feature_extraction/gaze/AOC_gaze_fex_sternberg.m', ...
+        '2_feature_extraction/gaze/trials/AOC_gaze_fex_nback_trials.m', ...
+        '2_feature_extraction/gaze/trials/AOC_gaze_fex_sternberg_trials.m', ...
+        '2_feature_extraction/AOC_demographics.m', ...
+        '2_feature_extraction/AOC_master_matrix_nback.m', ...
+        '2_feature_extraction/AOC_master_matrix_nback_trials.m', ...
+        '2_feature_extraction/AOC_master_matrix_sternberg.m', ...
+        '2_feature_extraction/AOC_master_matrix_sternberg_trials.m' ...
+    }; ...
+    'Visualizations - Behavioral', { ...
+        '3_visualization/behavioral/AOC_behav_dev_nback.m', ...
+        '3_visualization/behavioral/AOC_behav_dev_sternberg.m' ...
+    }; ...
+    'Visualizations - EEG', { ...
+        '3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_nback.m', ...
+        '3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_sternberg.m', ...
+        '3_visualization/eeg/alphapower_by_trial/AOC_eeg_alpha_power_by_trial_nback.m', ...
+        '3_visualization/eeg/alphapower_by_trial/AOC_eeg_alpha_power_by_trial_sternberg.m', ...
+        '3_visualization/eeg/tfr/AOC_tfr_nback.m', ...
+        '3_visualization/eeg/tfr/AOC_tfr_nback_fooof_abs.m', ...
+        '3_visualization/eeg/tfr/AOC_tfr_sternberg.m', ...
+        '3_visualization/eeg/tfr/AOC_tfr_sternberg_bl_relchange.m', ...
+        '3_visualization/eeg/tfr/AOC_tfr_sternberg_fooof_abs.m', ...
+        '3_visualization/eeg/erp/AOC_eeg_erp_sternberg.m', ...
+        '3_visualization/eeg/topos/AOC_eeg_topos_nback.m', ...
+        '3_visualization/eeg/topos/AOC_eeg_topos_sternberg.m', ...
+        '3_visualization/eeg/topos/AOC_eeg_topos_sternberg_baseline.m', ...
+        '3_visualization/eeg/topos/AOC_eeg_topos_sternberg_raster.m' ...
+    }; ...
+    'Visualizations - Gaze', { ...
+        '3_visualization/gaze/deviation/AOC_gaze_dev_nback.m', ...
+        '3_visualization/gaze/deviation/AOC_gaze_dev_sternberg.m', ...
+        '3_visualization/gaze/heatmap/AOC_gaze_heatmap_nback.m', ...
+        '3_visualization/gaze/heatmap/AOC_gaze_heatmap_nback_split.m', ...
+        '3_visualization/gaze/heatmap/AOC_gaze_heatmap_sternberg.m', ...
+        '3_visualization/gaze/heatmap/AOC_gaze_heatmap_sternberg_split.m', ...
+        '3_visualization/gaze/heatmap/AOC_gaze_heatmap_sternberg_splitTZVETAN.m', ...
+        '3_visualization/gaze/microsaccades/AOC_gaze_microsaccades_nback.m', ...
+        '3_visualization/gaze/microsaccades/AOC_gaze_microsaccades_sternberg.m', ...
+        '3_visualization/gaze/microsaccades/AOC_gaze_microsaccades_MSSeries_sternberg.m', ...
+        '3_visualization/gaze/scanPathLength/AOC_gaze_scanPathLength_sternberg.m' ...
+    }; ...
+    'Visualizations - Interactions', { ...
+        '3_visualization/interactions/AOC_interaction_AlphaxVelocity_crosscorr.m', ...
+        '3_visualization/interactions/AOC_interaction_splitPupilSize_sternberg.m', ...
+        '3_visualization/interactions/AOC_interaction_SPLxTFR_nback.m', ...
+        '3_visualization/interactions/AOC_interaction_SPLxTFR_sternberg.m', ...
+        '3_visualization/interactions/AOC_interaction_TFRxSPL_sternberg.m' ...
+    }; ...
+    'Stats', { ...
+        '4_stats/omnibus/AOC_omnibus_prep.m', ...
+        '4_stats/omnibus/AOC_omnibus.m' ...
+    } ...
+};
 
-    % Skip empty or excluded directories
-    [~, folderName] = fileparts(currentDir);
-    if isempty(currentDir) || contains(currentDir, '_OSF') || contains(currentDir, '_BACKUP') || contains(currentDir, 'paradigms') || contains(currentDir, '1_cut') || contains(currentDir, 'MASTER')
-        continue;
-    end
+executionLog = struct( ...
+    'category', {}, ...
+    'script', {}, ...
+    'status', {}, ...
+    'message', {}, ...
+    'duration', {} ...
+);
 
-    % Get all .m files in this folder
-    mFiles = dir(fullfile(currentDir, '*.m'));
+for idxCat = 1:size(scriptPlan, 1)
+    categoryName = scriptPlan{idxCat, 1};
+    scripts = scriptPlan{idxCat, 2};
 
-    % Sort files alphabetically
-    mFileNames = sort({mFiles.name});
-    if strcmp(mFileNames, 'AOC_MASTER_ANALYSIS.m')
-        continue;
-    end
+    for idxScript = 1:numel(scripts)
+        relScript = scripts{idxScript};
+        % fullfile() handles path separators correctly on both Windows and Unix/Mac
+        % Forward slashes in relScript will be converted to backslashes on Windows
+        fullScript = fullfile(basePath, relScript);
 
-    for j = 1:length(mFileNames)
-        scriptPath = fullfile(currentDir, mFileNames{j});
-        [~, scriptName, ~] = fileparts(scriptPath);
+        fprintf('\n[%s] Running %s\n', categoryName, relScript);
+        tStart = tic;
 
-        % Display which script is running
-        fprintf('Running script: %s\n', scriptPath);
-
-        % Change to script directory
-        oldPath = pwd;
-        cd(currentDir);
-
-        try
-            runInFunction(scriptName);  % Execute the script
-        catch ME
-            warning('Error while running %s: %s', scriptName, ME.message);
-            errorLog{end+1, 1} = scriptPath;
-            errorLog{end, 2} = ME.message;
+        if ~isfile(fullScript)
+            status = 'missing';
+            message = 'File not found';
+        else
+            try
+                run(fullScript);
+                status = 'ok';
+                message = '';
+            catch ME
+                status = 'error';
+                message = getReport(ME, 'extended', 'hyperlinks', 'off');
+            end
         end
-        cd(oldPath);  % Return to previous directory
-    end
-end
-if ispc
-    run('C:\Users\dummy\Documents\GitHub\AOC\2_feature_extraction\AOC_master_matrix_nback.m');
-    run('C:\Users\dummy\Documents\GitHub\AOC\2_feature_extraction\AOC_master_matrix_sternberg.m');
-else
-    run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/AOC_master_matrix_nback.m');
-    run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/AOC_master_matrix_sternberg.m');
-end
-disp(upper('All AOC analysis scripts executed!'));
 
-%% Display error summary
-if ~isempty(errorLog)
-    fprintf('\n===== ERROR SUMMARY =====\n');
-    for i = 1:size(errorLog, 1)
-        fprintf('Script: %s\nError: %s\n\n', errorLog{i,1}, errorLog{i,2});
+        executionLog(end + 1) = struct( ...
+            'category', categoryName, ...
+            'script', relScript, ...
+            'status', status, ...
+            'message', message, ...
+            'duration', toc(tStart) ...
+        ); %#ok<SAGROW>
     end
+end
+
+disp(upper('All AOC analysis scripts processed.'));
+
+%% Display execution log and errors
+fprintf('\n===== EXECUTION LOG =====\n');
+for idx = 1:numel(executionLog)
+    entry = executionLog(idx);
+    fprintf('[%s] %s -> %s (%.1fs)\n', ...
+        entry.category, entry.script, upper(entry.status), entry.duration);
+    if ~isempty(entry.message)
+        fprintf('    %s\n', entry.message);
+    end
+end
+
+errorEntries = strcmp({executionLog.status}, 'error');
+missingEntries = strcmp({executionLog.status}, 'missing');
+
+if ~any(errorEntries) && ~any(missingEntries)
+    disp('No errors or missing files encountered during execution.');
 else
-    disp('No errors occurred during execution.');
+    fprintf('\n===== ERRORS / MISSING FILES =====\n');
+    for idx = find(errorEntries | missingEntries)
+        entry = executionLog(idx);
+        fprintf('[%s] %s -> %s\n', entry.category, entry.script, upper(entry.status));
+        fprintf('    %s\n', entry.message);
+    end
 end

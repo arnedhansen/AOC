@@ -21,11 +21,8 @@ An independent component analysis (ICA) for ocular artifact correction will be a
 Afterwards, the quality of the data is automatically and objectively assessed in Automagic, thus increasing research reproducibility by having objective measures for data quality. The data of each individual block will be classified regarding data quality using the following exclusion criteria:
 
 (1) The proportion of high-amplitude data points in the signal (> 30 μV) is larger than 0.2
-
 (2) More than 20% of the time points show variance larger than 15 μV across electrodes
-
 (3) 40% of the electrodes show high variance (15 μV)
-
 (4) The proportion of bad electrodes is higher than 0.4
 
 Any data file of a block exceeding any one of these criteria will be rated as bad and excluded from further analyses.
@@ -47,7 +44,7 @@ The EEG files that were preprocessed by Automagic are subsequently merged with t
 ## 4_stats
 
 ### Omnibus (MATLAB, FieldTrip)
-`AOC_omnibus_prep.m` loads single-subject TFR (FOOOF), applies baseline [-.5 -.25] s, builds high–low load contrasts (N-back: 3−1; Sternberg: 6−2) and grand averages, saves `omnibus_data.mat`. `AOC_omnibus.m` loads that, extracts posterior alpha spectra, runs cluster-based permutation (F-stat for load, t for omnibus), and produces ROI raincloud/box plots with paired t-tests. **Run order:** omnibus_prep → omnibus.
+`AOC_omnibus_prep.m` loads single-subject TFR (FOOOF), applies baseline [-.5 -.25] s, builds high–low load contrasts (N-back: 3−1; Sternberg: 6−2) and grand averages, saves `omnibus_data.mat`. `AOC_omnibus.m` loads that, extracts posterior alpha spectra, runs cluster-based permutation (F-stat for load, t for omnibus), and produces ROI raincloud/box plots with paired t-tests.
 
 ### Rainclouds (Python)
 `AOC_stats_glmms_rainclouds.py` produces raincloud plots, repeated-measures ANOVA, and mixed models for all variables; input: `merged_data_*_nback.csv` and `merged_data_*_sternberg.csv`. Python helpers (`stats_helpers`, `rainclouds_plotting_helpers`, `mixedlm_helpers`, `export_model_table`) come from [github.com/arnedhansen/functions](https://github.com/arnedhansen/functions). Adapt `base_dir` and input paths in the script to your setup.

@@ -1,5 +1,9 @@
-%% Merge ET and EEG data
-% Use data after AUTOMAGIC
+%% AOC Merge — EEG and Eyelink After Automagic
+% Loads Automagic-cleaned EEG and Eyelink .mat, merges them with EYE-EEG (pop_importeyetracker), and saves one merged file per block. Runs: merge over subjects/blocks.
+%
+% Key outputs:
+%   *_EEG_ET_*_blockN_merged.mat per subject and block (Sternberg, N-back)
+%   Merged dataset with co-registered EEG and eye-tracking
 
 %% Setup
 startup

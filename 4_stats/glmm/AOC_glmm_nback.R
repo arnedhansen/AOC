@@ -1,4 +1,8 @@
-# GLMM Stats for AOC N-back
+# AOC GLMM — N-Back (Subject-Level)
+# Fits GLMMs (Accuracy, RT, gaze, EEG) with Condition + (1|ID) on merged_data_nback. Runs Anova, emmeans, model tables.
+#
+# Key outputs:
+#   Model summaries; Anova tables; (optional) exported tables
 
 #install.packages('lme4')
 #install.packages('nlme')

@@ -1,4 +1,8 @@
-## AOC Sternberg Effect Size (WM Load on Alpha) from Hu et al, 2019
+# AOC Effect Sizes — Sternberg (Hu et al. 2019)
+# Converts t-values from Hu et al. 2019 (load on alpha) to Cohen's d via cohens_d(t, n). Prints d per contrast. No files saved.
+#
+# Key outputs:
+#   cohens_d_values (console)
 
 # T-values from Hu et al., 2019 (UF data; digits)
 # "During the retention period, alpha power increased as a function of memory load"

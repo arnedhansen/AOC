@@ -1,4 +1,8 @@
-%% AOC Sternberg — Split participants by PupilSize
+%% AOC Interaction — Sternberg: Split by PupilSize
+% Loads merged_data_sternberg_trials, plots scatter of each numeric variable vs PupilSizeFull to inspect associations. Saves figures.
+%
+% Key outputs:
+%   Scatter figures (variable vs PupilSizeFull)
 
 %% Setup
 startup

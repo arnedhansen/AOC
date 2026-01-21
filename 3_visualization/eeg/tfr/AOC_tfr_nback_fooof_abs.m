@@ -1,4 +1,8 @@
-%% Alpha Power Time Frequency Analysis for AOC N-back data
+%% AOC TFR — N-Back (FOOOF, Absolute)
+% Loads FOOOFed tfr_nback (tfr*_fooof) per subject, grand-averages, plots occipital TFRs. Saves figures.
+%
+% Key outputs:
+%   TFR figures (FOOOF, absolute power, per condition)
 
 %% Setup
 startup

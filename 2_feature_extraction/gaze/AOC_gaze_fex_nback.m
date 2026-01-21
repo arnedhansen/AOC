@@ -1,13 +1,9 @@
-%% AOC Gaze Feature Extraction N-back
+%% AOC Gaze Feature Extraction — N-Back
+% Loads dataET_nback, computes gaze deviation, std, pupil, microsaccade rate, and scan-path length per trial and condition. Saccades, blinks and fixations come from AOC_preprocessing_nback. Saves gaze_matrix_nback.mat.
 %
 % Extracted features:
-%   Gaze deviation (Euclidean distances)
-%   Gaze standard deviation
-%   Pupil size
-%   Microsaccades
-%
-% Gaze metrics labelled by eye-tracker (saccades, blinks and
-% fixations) are extracted already in AOC_preprocessing_nback.m
+%   Gaze deviation (Euclidean), GazeStdX/Y, PupilSize, MSRate
+%   Blinks, Fixations, Saccades, ScanPathLength (from preprocessing)
 
 %% Setup 
 clear

@@ -1,4 +1,9 @@
-%% AOC MASTER Matrix Nback
+%% AOC Master Matrix — N-Back (Subject-Level)
+% Loads behavioral, EEG, gaze matrices and demographics, merges by ID. Produces merged_data_nback.mat. Runs: load and merge.
+%
+% Key outputs:
+%   merged_data_nback.mat (struct: ID, demographics, Condition, Accuracy, RT, gaze and EEG features)
+
 clear
 clc
 close all

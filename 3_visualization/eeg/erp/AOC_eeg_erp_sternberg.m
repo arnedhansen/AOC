@@ -1,3 +1,9 @@
+%% AOC ERP — Sternberg
+% Loads dataEEG_TFR_sternberg, computes ERPs per condition (load 2/4/6), plots. Saves figures.
+%
+% Key outputs:
+%   ERP figures (per condition)
+
 %% Setup
 startup
 [subjects, path, colors, headmodel] = setup('AOC');

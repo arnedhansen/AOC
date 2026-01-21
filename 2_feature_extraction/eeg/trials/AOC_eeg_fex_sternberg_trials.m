@@ -1,4 +1,5 @@
-%% AOC EEG Feature Extraction Sternberg TRIAL-BY-TRIAL
+%% AOC EEG Feature Extraction — Sternberg (Trial-Level)
+% Trial-wise power spectra (early/late, retention, baseline), IAF, power at IAF, lateralization, and TFR (raw, FOOOF, baselined) from dataEEG_TFR_sternberg. Saves eeg_matrix_sternberg_trials and per-subject TFR/FOOOF.
 %
 % Extracted features:
 %   Power Spectrum (Early, Late (= Registered Retention))  [trial-by-trial]

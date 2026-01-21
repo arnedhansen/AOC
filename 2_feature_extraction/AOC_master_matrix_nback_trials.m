@@ -1,4 +1,8 @@
-%% AOC MASTER Matrix N-back
+%% AOC Master Matrix — N-Back (Trial-Level)
+% Loads behavioral, EEG, gaze trial matrices and demographics, inner-joins on ID/Trial/Condition. Produces merged_data_nback_trials.mat.
+%
+% Key outputs:
+%   merged_data_nback_trials.mat (table: trial-wise behav, EEG, gaze, demographics)
 
 %% Setup
 clear

@@ -1,4 +1,8 @@
-%% AOC Durations of Paradigms
+%% AOC Paradigm Durations
+% Reads *_AOC_Nback_block*_task.mat and *_AOC_Sternberg_block*_task.mat, extracts trial durations. Computes and displays duration stats (e.g. mean, SD) per task.
+%
+% Key outputs:
+%   durationNback, durationSternberg arrays; console or figure summary
 
 %% Setup
 clear

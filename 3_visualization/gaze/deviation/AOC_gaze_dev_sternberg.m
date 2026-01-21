@@ -1,7 +1,8 @@
-%% Visualization of gaze deviation for AOC Sternberg
-
-% Visualizations:
-%   Time Series of Gaze Position Using a Sliding Window
+%% AOC Gaze Deviation — Sternberg
+% Loads dataET_sternberg, computes mean gaze position and SEM over time per condition. Plots time series of gaze X/Y. Saves figures.
+%
+% Key outputs:
+%   Gaze deviation time-series figures (per condition)
 
 %% Setup
 startup

@@ -1,29 +1,9 @@
-%% AOC Gaze Feature Extraction N-back TRIAL-BY-TRIAL
+%% AOC Gaze Feature Extraction — N-Back (Trial-Level)
+% Trial-wise gaze deviation, SPL, pupil, MS rate in early/late/full windows with trial-specific baselines; optional ScanPathSeries. Loads dataET_nback. Saves gaze_matrix_nback_trials.mat.
 %
-% Extracted features (trial-wise):
-% GazeDeviationEarly / GazeDeviationEarlyBL (dB)
-% GazeDeviationLate / GazeDeviationLateBL (dB)
-% GazeDeviationFull / GazeDeviationFullBL (dB)
-% ScanPathLengthEarly / ScanPathLengthEarlyBL (dB)
-% ScanPathLengthLate / ScanPathLengthLateBL (dB)
-% ScanPathLengthFull / ScanPathLengthFullBL (dB)
-% PupilSizeEarly / PupilSizeEarlyBL (%)
-% PupilSizeLate / PupilSizeLateBL (%)
-% PupilSizeFull / PupilSizeFullBL (%)
-% MSRateEarly / MSRateEarlyBL (dB, events/s)
-% MSRateLate / MSRateLateBL (dB, events/s)
-% MSRateFull / MSRateFullBL (dB, events/s)
-% Additionally saved per trial:
-% ScanPathSeriesT (time vector, -0.5:2 s) and ScanPathSeries (step length time series, px)
-%
-% Notes:
-% - Baseline window: [-0.5 -0.25] s (trial-specific)
-% - Early window: [0 1] s
-% - Late window: [1 2] s
-% - Full window: [0 2] s
-% - Screen: 800x600 px, centre (400,300); Y inverted
-% - Blink removal: remove_blinks(data, win_size) before any windowing
-% - Min valid samples per window: threshold applied after blink removal and bounds filtering
+% Extracted features:
+%   GazeDeviation, ScanPathLength, PupilSize, MSRate (Early/Late/Full, baselined)
+%   ScanPathSeries, ScanPathSeriesT (time series). Windows: BL [-0.5 -0.25], early [0 1], late [1 2], full [0 2] s
 
 %% Setup
 startup

@@ -1,4 +1,8 @@
-# AOC N-back EEG Alpha Power Lateralization
+# AOC EEG Lateralization — N-Back (Raincloud)
+# Reads merged_data_nback.csv, plots horizontal raincloud of lateralization by condition (1/2/3-back). Saves figure.
+#
+# Key outputs:
+#   Raincloud figure (lateralization by condition)
 
 # Load necessary libraries
 library(ggplot2)

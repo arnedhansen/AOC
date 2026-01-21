@@ -1,4 +1,8 @@
-%% Heatmap for AOC Sternberg gaze data
+%% AOC Gaze Heatmap — Sternberg
+% Loads dataET_sternberg, computes gaze heatmaps for baseline and stimulus windows per condition (load 2/4/6). Saves figures.
+%
+% Key outputs:
+%   Gaze heatmap figures (baseline, stimulus, per condition)
 
 %% Setup
 startup

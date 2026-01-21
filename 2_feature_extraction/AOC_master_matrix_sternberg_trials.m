@@ -1,4 +1,8 @@
-%% AOC MASTER Matrix Sternberg
+%% AOC Master Matrix — Sternberg (Trial-Level)
+% Loads behavioral, EEG, gaze trial matrices and demographics, inner-joins on ID/Trial/Condition. Produces merged_data_sternberg_trials.mat.
+%
+% Key outputs:
+%   merged_data_sternberg_trials.mat (table: trial-wise behav, EEG, gaze, demographics)
 
 %% Setup
 clear

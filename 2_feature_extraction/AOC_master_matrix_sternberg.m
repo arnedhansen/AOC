@@ -1,4 +1,8 @@
-%% AOC MASTER Matrix Sternberg
+%% AOC Master Matrix — Sternberg (Subject-Level)
+% Loads behavioral, EEG, gaze matrices and demographics, merges by ID. Produces merged_data_sternberg.mat. Runs: load and merge.
+%
+% Key outputs:
+%   merged_data_sternberg.mat (struct: ID, demographics, Condition, Accuracy, RT, gaze and EEG features)
 
 %% Setup
 clear

@@ -1,4 +1,8 @@
-%% AOC POWSPCTRM Sternberg
+%% AOC Power Spectrum — Sternberg
+% Loads power_stern (powspctrm), grand-averages across load 2/4/6. Plots power spectra. Saves figures.
+%
+% Key outputs:
+%   Power spectrum figures (per condition)
 
 %% Setup
 startup

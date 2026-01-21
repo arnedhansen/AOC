@@ -1,9 +1,8 @@
-% #AOC Sternberg Arne
+%% AOC Sternberg — Task Script
+% Runs the Sternberg task (WM load 2/4/6, 6 blocks), calibrates ET, records EEG, sends triggers. Requires PsychToolbox. Saves task logic and timings; EEG/ET data written by initEEG and eye-tracker.
 %
-% This code requires PsychToolbox. https://psychtoolbox.org
-% This was tested with PsychToolbox version 3.0.15, and with MATLAB R2023b.
-%
-% Sternberg Task with 6 blocks of WM load 2, 4, and 6.
+% Key outputs:
+%   *_AOC_Sternberg_block*_task.mat; EEG and ET recordings (external)
 
 %% Initialize EEG and ET
 % Calibrate ET (Tobii Pro Fusion)

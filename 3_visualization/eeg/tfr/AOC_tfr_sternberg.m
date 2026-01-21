@@ -1,4 +1,8 @@
-%% Alpha Power Time Frequency Analysis for AOC Sternberg data
+%% AOC TFR — Sternberg (Raw)
+% Loads tfr_stern per subject, grand-averages TFR across conditions (load 2/4/6), plots occipital TFRs. Saves figures.
+%
+% Key outputs:
+%   TFR figures (occipital, per condition)
 
 %% Setup
 startup

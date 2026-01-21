@@ -1,4 +1,8 @@
-%% AOC Gaze Sternberg Scan Path Length (grand average + per-load with SEM)
+%% AOC Gaze Scan Path Length — Sternberg
+% Loads gaze_series_sternberg_trials (ScanPathSeries), aggregates SPL over time per subject and condition. Plots grand average and per-load with SEM. Saves figures.
+%
+% Key outputs:
+%   Scan-path length time-series figures (grand average, per load)
 
 %% Setup
 clear

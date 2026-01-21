@@ -1,4 +1,9 @@
-%% AOC Preprocessing for N-back task
+%% AOC Preprocessing — N-Back EEG to FieldTrip
+% Reads merged EEG–ET blocks, segments into trials (0/1/2-back), converts to FieldTrip, applies baseline and filtering. Produces dataEEG_nback.mat per subject.
+%
+% Key outputs:
+%   dataEEG_nback.mat (FieldTrip) with trialinfo, 0/1/2-back conditions
+%   Preprocessed, epoched, and filtered N-back EEG
 
 %% Setup
 startup

@@ -1,4 +1,8 @@
-%% Heatmap for AOC N-back gaze data
+%% AOC Gaze Heatmap — N-Back
+% Loads dataET_nback, computes gaze heatmaps for baseline and stimulus windows per condition (0/1/2-back). Saves figures.
+%
+% Key outputs:
+%   Gaze heatmap figures (baseline, stimulus, per condition)
 
 %% Setup
 startup

@@ -1,4 +1,5 @@
-%% Master script for the AOC (Alpha Oculomotr Control) Study
+%% AOC Master — Session Script
+% Orchestrates a full session: dialogID, (optional) Resting EEG, Sternberg and N-back in order by subject ID. Runs training until criterion, then 6 blocks each. Produces Resting (if used), Sternberg and N-back task/EEG/ET files.
 %
 % - Resting EEG
 % - Sternberg

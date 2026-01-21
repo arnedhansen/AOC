@@ -1,9 +1,8 @@
-% #AOC Nback
+%% AOC N-Back — Task Script
+% Runs the N-back task (1/2/3-back, 6 blocks, randomized), calibrates ET, records EEG, sends triggers. Requires PsychToolbox. Saves task logic and timings; EEG/ET data written by initEEG and eye-tracker.
 %
-% This code requires PsychToolbox. https://psychtoolbox.org
-% This was tested with PsychToolbox version 3.0.15, and with MATLAB R2023a.
-%
-% N-back task with 6 blocks of 1-, 2- and 3-back conditions in randomized order.
+% Key outputs:
+%   *_AOC_Nback_block*_*_task.mat; EEG and ET recordings (external)
 
 %% Initialize EEG and ET
 % Calibrate ET (Tobii Pro Fusion)

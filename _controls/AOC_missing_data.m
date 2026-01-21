@@ -1,4 +1,5 @@
-%% AOC check for missing data
+%% AOC Missing Data Check
+% Scans merged folder for *_EEG_ET_*_block*_merged.mat, reports missing blocks per subject. Documents known missing/incomplete subjects (see list in source).
 %
 % AOC 319 - Sternberg only block 1
 % AOC 320 - N-back only block 1-4; NO ET DATA
@@ -17,6 +18,9 @@
 % AOC 407 - N-back only block 1
 % AOC 408 - N-back only block 1, no Sternberg data
 % AOC 412 - N-back only block 1-3, no Sternberg data
+%
+% Key outputs:
+%   Console report of missing files; optional saved list
 
 %% Setup
 startup

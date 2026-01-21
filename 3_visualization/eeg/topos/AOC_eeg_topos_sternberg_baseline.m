@@ -1,4 +1,8 @@
-%% AOC Alpha Power Sternberg
+%% AOC TFR — Sternberg (Baselined, Baseline Period)
+% Loads tfr_stern (tfr*_bl), grand-averages, plots TFR with focus on baseline period. Saves figures.
+%
+% Key outputs:
+%   TFR figures (baselined, baseline window)
 
 %% Setup
 startup

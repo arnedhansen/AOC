@@ -1,4 +1,5 @@
-%% AOC EEG Feature Extraction Sternberg
+%% AOC EEG Feature Extraction — Sternberg
+% Computes power spectra (retention, baseline), IAF and lateralization, and TFR (raw, FOOOF, baselined) from preprocessed Sternberg EEG. Saves per-subject and grand-average results.
 %
 % Extracted features:
 %   Power Spectrum (Retention)

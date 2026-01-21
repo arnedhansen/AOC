@@ -1,4 +1,9 @@
-%% AOC Alpha Power N-back Topos
+%% AOC Topos — N-Back (Power)
+% Loads power_nback, grand-averages powspctrm, plots topographical maps per condition. Saves figures.
+%
+% Key outputs:
+%   Topographic maps (occipital alpha power, per condition)
+
 startup
 [subjects, path, colors, headmodel] = setup('AOC');
 % exclude subject 364 because of faulty data in electrode Cz

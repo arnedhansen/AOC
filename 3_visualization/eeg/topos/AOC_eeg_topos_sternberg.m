@@ -1,4 +1,9 @@
-%% AOC Alpha Power Sternberg Topos
+%% AOC Topos — Sternberg (Power)
+% Loads power_stern_raw, grand-averages powspctrm, plots topographical maps per condition. Saves figures.
+%
+% Key outputs:
+%   Topographic maps (occipital alpha power, per condition)
+
 startup
 [subjects, path, colors, headmodel] = setup('AOC');
 

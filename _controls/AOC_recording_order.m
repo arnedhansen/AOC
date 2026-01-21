@@ -1,3 +1,9 @@
+%% AOC Recording Order
+% Reads AOC_VPs.xlsx, combines Datum and Zeit into DateTime, sorts by DateTime. Saves first 125 rows (ID, name, DateTime) to AOC_sorted_table.xlsx.
+%
+% Key outputs:
+%   AOC_sorted_table.xlsx (participants ordered by recording date/time)
+
 % Read the Excel file. (Optionally, use 'VariableNamingRule','preserve' to keep original headers)
 T = readtable('/Volumes/methlab_vp/AOC/AOC_VPs.xlsx');
 

@@ -1,4 +1,8 @@
-%% AOC Sternberg — Median-split by within-subject Alpha to compare Scan Path Length & TFR
+%% AOC Interaction — Sternberg: Alpha × SPL/TFR
+% Median-splits trials by within-subject AlphaPowerLate, compares SPL time-course and TFR between low and high alpha. Loads merged_data_sternberg_trials. Saves figures.
+%
+% Key outputs:
+%   SPL and TFR figures (low vs high alpha)
 
 %% Setup
 startup

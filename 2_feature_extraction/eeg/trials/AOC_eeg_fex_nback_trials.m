@@ -1,4 +1,5 @@
-%% AOC EEG Feature Extraction N-back TRIAL-BY-TRIAL
+%% AOC EEG Feature Extraction — N-Back (Trial-Level)
+% Trial-wise power spectra (early/late/full, baseline), IAF, power at IAF, lateralization, and TFR (raw, FOOOF, baselined) from dataEEG_TFR_nback. Saves eeg_matrix_nback_trials and per-subject TFR/FOOOF.
 %
 % Extracted features:
 %   Power Spectrum (Early, Late, Full)  [trial-by-trial]

@@ -1,4 +1,8 @@
-%% AOC Alpha Power Sternberg
+%% AOC TFR Raster — Sternberg (Baselined)
+% Loads tfr_stern (tfr*_bl), grand-averages, plots raster TFR. Saves figures.
+%
+% Key outputs:
+%   TFR raster figures (baselined, per condition)
 
 %% Setup
 startup

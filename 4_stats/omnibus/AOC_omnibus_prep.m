@@ -1,8 +1,8 @@
 %% AOC Omnibus Data Preparation
+% Loads TFR FOOOF (Sternberg 2/4/6, N-back 1/2/3), applies baseline, computes high–low contrasts and grand averages. Produces omnibus_data.mat for AOC_omnibus. Runs: baseline, diff, GA, visualisation.
 %
-% Load subject list and task-specific TFR data (Sternberg: loads 2/4/6; N-back: loads 1/2/3)
-% Apply baseline correction to single-subject TFRs and compute high–low load contrasts per task
-% Compute grand average TFRs (per task and per load) and visualise time–frequency/topography patterns
+% Key outputs:
+%   omnibus_data.mat (baselined TFR, load diffs, GAs)
 
 %% Setup
 tic
@@ -36,6 +36,10 @@ end
 % check data
 meanspctrm = squeeze(mean(tfr.powspctrm, 1));   % freq x time
 meanspctrm = squeeze(mean(meanspctrm, 2));      % freq x 1
+
+disp(['Loaded N-back data for Subject ', subjects{subj}, ' with dimensions: ', num2str(size(load1nb{subj}.powspctrm))]);
+fprintf('powspctrm: min %.3e | max %.3e\n', min(tfr.powspctrm(:)), max(tfr.powspctrm(:)))
+fprintf('meanspctrm: min %.3e | max %.3e\n', min(meanspctrm(:)), max(meanspctrm(:)))
 
 figure('Color','w'); hold on
 plot(tfr.freq, meanspctrm, 'LineWidth', 3)
@@ -81,6 +85,22 @@ for subj = 1:length(subjects)
     tfr  = ft_freqbaseline(cfg,tfr6_fooof);
     load6{subj} = tfr;
 end
+
+% check data
+meanspctrm = squeeze(mean(tfr.powspctrm, 1));   % freq x time
+meanspctrm = squeeze(mean(meanspctrm, 2));      % freq x 1
+
+disp(['Loaded N-back data for Subject ', subjects{subj}, ' with dimensions: ', num2str(size(load2{subj}.powspctrm))]);
+fprintf('powspctrm: min %.3e | max %.3e\n', min(tfr.powspctrm(:)), max(tfr.powspctrm(:)))
+fprintf('meanspctrm: min %.3e | max %.3e\n', min(meanspctrm(:)), max(meanspctrm(:)))
+
+figure('Color','w'); hold on
+plot(tfr.freq, meanspctrm, 'LineWidth', 3)
+xlabel('Frequency (Hz)')
+ylabel('Power (FOOOF space)')
+set(gca, 'FontSize', 15)
+xlim([tfr.freq(1) tfr.freq(end)])
+%set(gca, 'YScale', 'log')
 
 %% Compute diff stern
 clc

@@ -1,4 +1,9 @@
-%% AOC EEG Lateralization
+%% AOC EEG Lateralization — Sternberg (By-Trial Scatter)
+% Loads eeg_matrix_sternberg_trials, plots lateralization vs trial per subject. Saves PNG per subject.
+%
+% Key outputs:
+%   AOC_eeg_lateralization_by_trial_sternberg_subj_*.png
+
 clear
 clc
 close all

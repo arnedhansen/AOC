@@ -1,4 +1,8 @@
-%% Alpha Power Time Frequency Analysis for AOC Sternberg data
+%% AOC TFR — Sternberg (Baseline-Relative Change)
+% Loads raw tfr_stern (not FOOOF), grand-averages, computes and plots baseline-relative change. Saves figures.
+%
+% Key outputs:
+%   TFR figures (baseline-relative, % change, per condition)
 
 %% Setup
 startup

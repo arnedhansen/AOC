@@ -1,9 +1,8 @@
-%% AOC Omnibus
-% Extract posterior alpha-band power spectra (per load and task) and plot with SEM across subjects
-% Run cluster-based permutation statistics on N-back load TFRs (F-statistic) to identify load-sensitive clusters
-% Compute omnibus cluster-based comparison (Sternberg vs N-back high–low) with effect size maps over time–frequency–channels
-% Extract ROI-averaged alpha power (time–frequency windows from stats) and create raincloud/box/scatter plots per load
-% Perform paired t-tests between loads (within task) and annotate significance levels on the raincloud plots
+%% AOC Omnibus — Cluster Stats and Alpha Plots
+% Loads omnibus_data.mat. Runs cluster-based permutation (N-back load, Sternberg vs N-back), extracts ROI alpha, raincloud/box/scatter plots, paired t-tests. Produces figures and stats.
+%
+% Key outputs:
+%   Cluster permutation results; TFR/alpha figures; rainclouds with significance; paired t-tests
 
 %% Setup
 startup

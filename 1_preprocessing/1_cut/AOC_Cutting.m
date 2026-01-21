@@ -1,5 +1,9 @@
-%% Cutting of EEG data for the AOC study
-% Automatically finds all not converted .cnt files
+%% AOC Cutting — Segment Raw EEG by Task
+% Finds unconverted .cnt files, cuts each into task-specific segments via AOC_DataCuttingFunction, then loads and synchronizes EEG with Eyelink. Runs: cutting, .mat conversion, EEG–ET sync.
+%
+% Key outputs:
+%   Task-specific .mat files (Resting, Sternberg, N-back, etc.) per subject
+%   Synchronized EEG and Eyelink in subject folders
 
 %% EEGlab
 startup

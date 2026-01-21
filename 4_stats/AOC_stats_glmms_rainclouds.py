@@ -1,4 +1,8 @@
-# %% AOC Stats Rainclouds — Combined (Sternberg + N-back)
+# %% AOC Stats Rainclouds — Combined (Sternberg + N-Back)
+# Loads merged CSV for both tasks, runs ANOVAs and mixed models, generates raincloud plots. Saves figures and model/ANOVA tables.
+#
+# Key outputs:
+#   Raincloud figures; ANOVA/mixed-model tables
 
 # %% Imports
 import sys, os

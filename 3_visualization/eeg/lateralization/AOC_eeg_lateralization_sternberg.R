@@ -1,4 +1,8 @@
-# AOC Sternberg EEG Alpha Power Lateralization
+# AOC EEG Lateralization — Sternberg (Raincloud)
+# Reads merged_data_sternberg.csv, plots horizontal raincloud of lateralization by condition (load 2/4/6). Saves figure.
+#
+# Key outputs:
+#   Raincloud figure (lateralization by condition)
 
 # Load necessary libraries
 library(ggplot2)

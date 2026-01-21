@@ -1,8 +1,8 @@
-%% Heatmap for AOC Sternberg COMBINED gaze data SPLIT EARLY AND LATE
-% combined data of loads 2, 4, and 6
-% Baseline = [-0.5 -0.25]
-% Early = 0-1000ms
-% Late = 1000-2000ms
+%% AOC Gaze Heatmap — Sternberg (Early/Late Split, TZVETAN)
+% Variant with baseline [-1.25 -0.25] s. Loads dataET_sternberg, heatmaps for baseline, early, late. Saves figures.
+%
+% Key outputs:
+%   Gaze heatmap figures (baseline, early, late; per condition and combined)
 
 %% Setup
 startup

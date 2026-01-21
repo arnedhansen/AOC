@@ -1,4 +1,9 @@
-% Define participants
+%% AOC Pre-Stimulus Fixation Check — Exclusion Trials
+% Loads AOC_preStimFixation_*_nback/sternberg.mat, aggregates excluded/kept/invalid trial counts per subject and task. Plots bar or summary. No files saved.
+%
+% Key outputs:
+%   Bar figures (excluded/kept/invalid counts per task)
+
 startup
 clear
 dirs = dir('/Volumes/methlab/Students/Arne/AOC/data/merged/');

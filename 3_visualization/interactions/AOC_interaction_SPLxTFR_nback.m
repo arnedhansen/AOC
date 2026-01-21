@@ -1,4 +1,8 @@
-%% AOC N-back — Median-split by within-subject Scan Path Length (SPL) to compare TFRs & SPL time-course
+%% AOC Interaction — N-Back: SPL × TFR
+% Median-splits trials by within-subject SPL, compares TFR and SPL time-course between low and high SPL. Loads merged_data_nback_trials. Saves figures.
+%
+% Key outputs:
+%   TFR and SPL figures (low vs high SPL)
 
 %% Setup
 startup

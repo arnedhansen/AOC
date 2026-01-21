@@ -1,4 +1,5 @@
-%% AOC EEG Feature Extraction N-back
+%% AOC EEG Feature Extraction — N-Back
+% Computes power spectrum, IAF and lateralization, trial-wise power, and TFR (raw, FOOOF, baselined) from preprocessed N-back EEG. Saves per-subject and grand-average results.
 %
 % Extracted features:
 %   Power Spectrum

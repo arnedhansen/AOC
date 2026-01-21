@@ -1,4 +1,8 @@
-%% Check baseline in AOC Sternberg & N-back
+%% AOC Check Baseline Effects — Sternberg & N-Back
+% Loads FOOOF TFR per condition from merged, computes high–low load diff, runs cluster permutation or similar. Checks baseline/condition effects. Saves figures.
+%
+% Key outputs:
+%   High–low diff TFRs; cluster or other stats; figures
 
 % Setup
 startup

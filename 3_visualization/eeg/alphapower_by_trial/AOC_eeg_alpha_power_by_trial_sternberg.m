@@ -1,4 +1,8 @@
-%% AOC Alpha Power Sternberg (trial-by-trial)
+%% AOC Alpha Power by Trial — Sternberg
+% Loads eeg_matrix_sternberg_trials, plots trial-by-trial alpha power (grand average, block separators). Saves figures.
+%
+% Key outputs:
+%   Trial-wise alpha power figure(s)
 
 %% Load data struct
 clear

@@ -1,7 +1,8 @@
-%% Visualization of gaze deviation for AOC Nback
-
-% Visualizations:
-%   Time Series of Gaze Position Using a Sliding Window
+%% AOC Gaze Deviation — N-Back
+% Loads dataET_nback, computes mean gaze position and SEM over time per condition. Plots time series of gaze X/Y. Saves figures.
+%
+% Key outputs:
+%   Gaze deviation time-series figures (per condition)
 
 %% Setup
 startup

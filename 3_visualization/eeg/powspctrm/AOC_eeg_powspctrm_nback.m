@@ -1,4 +1,8 @@
-%% AOC Alpha Power N-back
+%% AOC Power Spectrum — N-Back
+% Loads power_nback and alpha_power_nback, grand-averages power and power-at-IAF across conditions. Plots powspctrm and bar plots. Saves figures.
+%
+% Key outputs:
+%   Power spectrum and power-at-IAF figures (per condition)
 
 %% Setup
 startup

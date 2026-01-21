@@ -1,4 +1,5 @@
-%% AOC Behavioral Feature Extraction N-back
+%% AOC Behavioral Feature Extraction — N-Back
+% Reads *_AOC_Nback_block*_task.mat, extracts accuracy and RT per condition and per trial. Saves behavioral_matrix_nback.mat and behavioral_matrix_nback_trials.mat.
 %
 % Extracted features:
 %   Accuracy

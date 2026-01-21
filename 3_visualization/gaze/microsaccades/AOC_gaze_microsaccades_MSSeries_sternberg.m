@@ -1,5 +1,8 @@
-%% AOC Sternberg Microsaccade Serues Visualization
-% Aggregates blink times relative to stimulus onsets across subjects/blocks
+%% AOC Gaze Microsaccade Series — Sternberg
+% Loads gaze_series_sternberg_trials (MSSeries), aggregates MS rate over time across subjects. Plots bar + SEM. Saves figures.
+%
+% Key outputs:
+%   Microsaccade rate time-series figure (grand average ± SEM)
 
 %% Setup
 startup

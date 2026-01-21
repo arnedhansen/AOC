@@ -1,4 +1,5 @@
-%% AOC Behavioral Feature Extraction Sternberg
+%% AOC Behavioral Feature Extraction — Sternberg
+% Reads *_AOC_Sternberg_block*_task.mat, extracts accuracy and RT per condition and per trial. Saves behavioral_matrix_sternberg.mat and behavioral_matrix_sternberg_trials.mat.
 %
 % Extracted features:
 %   Accuracy

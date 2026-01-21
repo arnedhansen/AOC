@@ -1,13 +1,9 @@
-%% AOC Gaze Feature Extraction Sternberg
+%% AOC Gaze Feature Extraction — Sternberg
+% Loads dataET_sternberg, computes gaze deviation, std, pupil, microsaccade rate, and scan-path length per trial and condition. Saccades, blinks and fixations come from AOC_preprocessing_sternberg. Saves gaze_matrix_sternberg.mat.
 %
 % Extracted features:
-%   Gaze deviation (Euclidean distances)
-%   Gaze standard deviation
-%   Pupil size
-%   Microsaccades
-%
-% Gaze metrics labelled by eye-tracker (saccades, blinks and
-% fixations) are extracted already in AOC_preprocessing_sternberg.m
+%   Gaze deviation (Euclidean), GazeStdX/Y, PupilSize, MSRate
+%   Blinks, Fixations, Saccades, ScanPathLength (from preprocessing)
 
 %% Setup
 startup

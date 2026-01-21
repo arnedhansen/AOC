@@ -1,4 +1,9 @@
-%% AOC Preprocessing for Sternberg task
+%% AOC Preprocessing — Sternberg EEG to FieldTrip
+% Reads merged EEG–ET blocks, segments into trials (load 2/4/6), converts to FieldTrip, applies baseline and filtering. Produces dataEEG_sternberg.mat per subject.
+%
+% Key outputs:
+%   dataEEG_sternberg.mat (FieldTrip) with trialinfo, WM load 2/4/6
+%   Preprocessed, epoched, and filtered Sternberg EEG
 
 %% Setup
 startup

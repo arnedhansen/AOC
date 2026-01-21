@@ -1,4 +1,8 @@
-%% Computation of EyeLink CALIBRATION and VALIDATION data
+%% AOC Calibration and Validation — EyeLink
+% Loads Ntk/Stk .asc from subject archive, parses calibration and validation samples. Aggregates CAL/VAL per subject. Saves or reports summary.
+%
+% Key outputs:
+%   CAL, VAL arrays per subject; (optional) summary figures or tables
 
 %% Setup
 startup

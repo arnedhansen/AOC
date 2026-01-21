@@ -1,4 +1,9 @@
-## AOC Simulation for Power Analysis on NBACK CONDITION using SIMR
+# AOC Power Analysis — N-Back Condition (SIMR)
+# Simulates power for mixed model (alpha ~ condition + (1|Subject)) with simr; effect size d=1.38 (Gevins & Smith 2000). Power curve over N=5–125. Saves figure.
+#
+# Key outputs:
+#   AOC_power_anal_nback.png; power curve (console)
+
 # Tutorial: https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.12504
 library(lme4)
 library(simr)

@@ -1,7 +1,8 @@
-%% AOC Sternberg — α ↔ oculomotor couplings
-% 1) CCF curves (α × speed @500 Hz; α × scan-path length; α × microsaccade rate) + SEM
-% 2) For each measure: per-lag t-curve with cluster-permutation shading
-% 3) For each measure: window-level subject metrics with group inference
+%% AOC Interaction — Sternberg: Alpha × Oculomotor (Cross-Correlation)
+% Computes CCF of alpha with gaze speed, scan-path length, and microsaccade rate; cluster-permutation stats; window-level inference. Saves CCF, t-curves, and metrics.
+%
+% Key outputs:
+%   CCF figures (α × speed, SPL, MS rate); cluster permutation; window-level figures
 
 %% Setup
 startup

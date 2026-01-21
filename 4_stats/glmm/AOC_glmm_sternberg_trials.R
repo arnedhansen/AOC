@@ -1,4 +1,8 @@
-# GLMM Stats for AOC Sternberg
+# AOC GLMM — Sternberg (Trial-Level)
+# Fits trial-level GLMMs on merged_data_sternberg_trials (Accuracy, RT, gaze, EEG) with Condition + (1|ID) or (1+Condition|ID). Anova, emmeans, model tables.
+#
+# Key outputs:
+#   Model summaries; Anova tables; (optional) exported tables
 
 #install.packages('lme4')
 #install.packages('nlme')

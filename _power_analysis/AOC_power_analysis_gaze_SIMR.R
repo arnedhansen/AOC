@@ -1,4 +1,9 @@
-## AOC Simulation for Power Analysis on GAZE using SIMR
+# AOC Power Analysis — Gaze (SIMR)
+# Simulates power for mixed model (alpha ~ gaze + (1|Subject)) with simr; effect size d=0.4 (Popov et al.). Power curve over N=5–125. Saves figure.
+#
+# Key outputs:
+#   AOC_power_anal_gaze.png; power curve (console)
+
 # Tutorial: https://besjournals.onlinelibrary.wiley.com/doi/10.1111/2041-210X.12504
 library(lme4)
 library(simr)

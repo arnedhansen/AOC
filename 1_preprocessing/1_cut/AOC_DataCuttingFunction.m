@@ -1,9 +1,10 @@
 function AOC_DataCuttingFunction(filePath)
-% ANT EEG data comes in 1 file containing all tasks (e.g. Resting, CDA, etc.).
-% This function cuts the data into distinct tasks, saves the tasks to .mat files
-% and moves the original file to filePath/archive
+% AOC_DataCuttingFunction — Cut Raw ANT EEG by Task
+% ANT EEG is recorded in one file per subject. This function splits it into task-specific segments (Resting, Sternberg, N-back, etc.), saves each as .mat, and moves the original to archive. Requires EEGlab and pop_loadeep_v4.
 %
-% EEGlab with 'pop_loadeep_v4' required
+% Key outputs:
+%   One .mat per task per subject in the subject folder
+%   Photodiode .mat when present; original .cnt moved to archive
 
 %% Load the data
 [EEGorig, command] = pop_loadeep_v4(filePath);

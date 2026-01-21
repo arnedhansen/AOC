@@ -1,4 +1,9 @@
-% AOC Demographics
+%% AOC Demographics — Participant Summary
+% Loads merged_data_nback, computes and prints N, mean/SD age, % female, % right-handed. No files saved.
+%
+% Key outputs:
+%   Console: N, mean age, SD age, % female, % right-handed
+
 clear
 
 % demos = readtable('/Volumes/methlab_vp/OCC/AOC/AOC_VPs.xlsx');

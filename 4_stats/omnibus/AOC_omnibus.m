@@ -835,7 +835,18 @@ saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternvsnback_effectsize_multiplot
 
 %% do stats
 stattfr = statprereg;
-stattfr.stat = statprereg.effectsize;
+% Check if statprereg.effectsize has valid data, if not use stat.effectsize
+if ~isfield(statprereg, 'effectsize') || all(isnan(statprereg.effectsize(:)))
+    warning('statprereg.effectsize is missing or all NaNs. Using stat.effectsize instead.');
+    stattfr.stat = stat.effectsize;
+    % Also update label to match stat if needed
+    if isfield(stat, 'label') && ~isempty(stat.label)
+        stattfr.label = stat.label;
+    end
+else
+    stattfr.stat = statprereg.effectsize;
+end
+
 % figure;
 cfg = [];
 cfg.channel = {'CP2', 'Pz','P2', 'CPP4h', 'CPP2h', 'CPz'};
@@ -843,7 +854,7 @@ cfg.avgoverchan = 'yes';
 %cfg.frequency = [2 40];
 %cfg.latency   = [0 2];
 
-% cfg.latency          = [0 3];L
+% cfg.latency          = [0 3];
 % cfg.channel          = {'M1', 'M2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
 % cfg.method           = 'montecarlo';
 % cfg.statistic        = 'ft_statfun_depsamplesT';
@@ -857,6 +868,19 @@ cfg.avgoverchan = 'yes';
 % cfg.neighbours       = neighbours;
 % cfg.minnbchan        = 2;
 
+% Check available channels before selection
+if isfield(stattfr, 'label') && ~isempty(stattfr.label)
+    [common_chans, ~, ~] = intersect(stattfr.label, cfg.channel);
+    if isempty(common_chans)
+        warning('None of the requested channels exist in stattfr.label. Available channels: %s', strjoin(stattfr.label(1:min(10,end)), ', '));
+        % Try using all available channels or a subset
+        if length(stattfr.label) > 0
+            warning('Using first available channel instead.');
+            cfg.channel = stattfr.label(1);
+        end
+    end
+end
+
 freq = ft_selectdata(cfg,stattfr);
 % After avgoverchan, freq.stat is [1×freq×time], so just squeeze to get [freq×time]
 % No need to average again since there's only 1 channel dimension
@@ -865,7 +889,15 @@ meanmask = squeeze(freq.mask);
 
 % Validate data
 if all(isnan(meanpow(:)))
-    error('meanpow is all NaNs after channel selection. Check that stat.effectsize has valid data and channels exist.');
+    % Provide detailed diagnostics
+    fprintf('ERROR: meanpow is all NaNs after channel selection.\n');
+    fprintf('stattfr.stat size: %s, NaNs: %d/%d\n', mat2str(size(stattfr.stat)), sum(isnan(stattfr.stat(:))), numel(stattfr.stat));
+    fprintf('freq.stat size: %s, NaNs: %d/%d\n', mat2str(size(freq.stat)), sum(isnan(freq.stat(:))), numel(freq.stat));
+    if isfield(stattfr, 'label')
+        fprintf('stattfr.label: %d channels\n', length(stattfr.label));
+        fprintf('Requested channels: %s\n', strjoin(cfg.channel, ', '));
+    end
+    error('meanpow is all NaNs after channel selection. Check diagnostics above.');
 end
 if ~isequal(size(meanpow), [length(freq.freq), length(freq.time)])
     error('meanpow dimensions [%s] do not match expected [%d×%d]', mat2str(size(meanpow)), length(freq.freq), length(freq.time));
@@ -941,58 +973,36 @@ if all(isnan(pow_interp(:)))
     error('Cannot plot: pow_interp contains only NaN values. Check that freq.stat has valid data.');
 end
 
+%% Plot TFR Effect Size Comparison
+close all
 figure;
 set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-% subplot(2,1,2);ft_plot_matrix(flip(pow_interp));
 % Ensure pow_interp has finite values for plotting
 pow_interp_plot = pow_interp;
 pow_interp_plot(~isfinite(pow_interp_plot)) = 0; % Replace Inf/NaN with 0 for plotting
-subplot(2,1,1);ft_plot_matrix(flip(pow_interp_plot),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
+ft_plot_matrix(flip(pow_interp_plot),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
 freq_flipped = fliplr(freq_interp);
-
-target_freqs = [10 20 30 40];
+target_freqs = [5 10 15 20 25 30];
 ytick_idx = round(interp1(freq_flipped, 1:length(freq_flipped), target_freqs));
 yticks(fliplr(ytick_idx));
-yticklabels({'40','30','20','10'});
-
-xticks([1 250 500])
-xticklabels({num2str(freq.time(1)),'1.5',  num2str(freq.time(end))});
+yticklabels({'30', '25', '20', '15', '10', '5'});
+ylim([ytick_idx(end) ytick_idx(1)*1.05])
+xticks([0 125 250 375 500])
+xticklabels({num2str(freq.time(1)),'0.5', '1', '1.5', num2str(freq.time(end))});
 set(gca,'Fontsize',20);
 xlabel('Time [sec]');
 ylabel('Frequency [Hz]');
-caxis([-.5 .5]);
+maxval = max(abs(pow_interp_plot(:)));
+caxis([-maxval maxval]);
 color_map = flipud(cbrewer('div', 'RdBu', 64));
 colormap(color_map);
 cb = colorbar;
 cb.LineWidth = 1;
 cb.FontSize = 18;
-cb.Ticks = [-.5 0 .5];
-title(cb,'Effect size \it d')
-% Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternvsnback_effectsize_TFR.png'));
-
-stattfr=stat;
-stattfr.stat= stat.effectsize;
-cfg = [];
-cfg.layout = headmodel.layANThead;
-cfg.figure = 'gcf';
-cfg.parameter = 'effectsize';
-cfg.xlim = [1.308497 1.716100];
-cfg.ylim = [8 11];
-cfg.zlim = [-.5 .5];
-cfg.marker             = 'off';
-cfg.highlight          = 'on';
-% cfg.highlightchannel = {'CP2', 'Pz','P2', 'CPP4h', 'CPP2h', 'CPz'};
-cfg.highlightchannel = {'M1', 'M2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
-cfg.highlightsymbol    = '.';
- cfg.highlightsize      = 14;
- cfg.comment = 'no';
-% figure; 
-subplot(2,1,2);ft_topoplotTFR(cfg,stat);
-colormap(color_map); % Use same colormap for topo
-% Save figure
+title(cb,'Effect Size\it d')
 sgtitle('Sternberg vs N-back Effect Size', 'FontSize', 24, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternvsnback_effectsize_topo.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternvsnback_effectsize.png'));
+
 %% extract power spectra omnibus
 cfg = [];
 cfg.latency = [1 2];
@@ -1010,6 +1020,7 @@ cfg = [];
 cfg.keepindividual = 'yes';
 ga_sb_hl_pow = ft_freqgrandaverage(cfg,sb_hl_pow{:});
 ga_nb_hl_pow = ft_freqgrandaverage(cfg,nb_hl_pow{:});
+
 %%
 close all
 cfg = [];
@@ -1022,14 +1033,13 @@ set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 ft_multiplotER(cfg, ga_sb_hl_pow,ga_nb_hl_pow);
 % Save figure (multiplot: .fig only)
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_highlow_power_spectra_multiplot.fig'));
+
 %% plot with SE sternberg
 % close all
 figure;
-subplot(2,1,1);
 cfg = [];
-cfg.channel ={'CP2', 'Pz','P2', 'CPP4h', 'CPP2h', 'CPz'};
-% cfg.channel = {'M1', 'M2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
-
+%cfg.channel ={'CP2', 'Pz','P2', 'CPP4h', 'CPP2h', 'CPz'};
+cfg.channel = {'M1', 'M2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
 cfg.avgoverchan = 'yes';
 tlk_sb_ind        = ft_selectdata(cfg,ga_sb_hl_pow);
 tlk_nb_ind        = ft_selectdata(cfg,ga_nb_hl_pow);
@@ -1040,7 +1050,6 @@ y = mean(squeeze(tlk_sb_ind.powspctrm), 1)'; % y-axis def
 e = std(squeeze(tlk_sb_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
 low = y - e; % lower bound
 high = y + e; % upper bound
-
 
 hp1 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'r', 'HandleVisibility', 'off');
 hold on;
@@ -1060,29 +1069,27 @@ hl2 = line(x, y);
 set(hp2, 'facecolor', [0.30, 0.75, 0.93], 'edgecolor', 'none', 'facealpha', 0.2);
 set(hl2, 'color', [0.30, 0.75, 0.93], 'linewidth', 2);
 
-
 % Label the axes
 set(gca, 'FontSize', 22);
 title('');
 xlabel('Frequency [Hz]');
 ylabel("Power change \newline from baseline");
-box on;
-grid on;
-
-%     xticks([-1 0 .5 1]);
-% xticklabels({'o' '500' '1000'})
-xlim([1  40]);
+xlim([3  30]);
+yline(0, '--')
 % ylim([-1.5 2.5]);
 legend({'Sternberg high-low','N-back high-low'}, 'Location','southeast','Fontsize',20);
 % Save figure
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_highlow_power_spectra_SE.png'));
 
 %% timewins
-tsb = [1 2];
-tnb = [0 2];
+clc
+tsb = [0 .5];
+tnb = [0 .5];
 
 %% extract values sternberg
 clc
+% Track subject IDs for raincloud export (assume load6 indices match subjects array)
+sb_subject_ids = cell(length(load6), 1);
 for subj = 1:length(load6)
     % select retention
     cfg = [];
@@ -1103,9 +1110,16 @@ for subj = 1:length(load6)
     
     val2{subj} = ft_selectdata(cfg,load2{subj});
     sb2(subj) = val2{subj}.powspctrm;
+    
+    % Store subject ID (load6 should match subjects array indices)
+    if iscell(subjects) && length(subjects) >= subj
+        sb_subject_ids{subj} = subjects{subj};
+    else
+        sb_subject_ids{subj} = num2str(subj);  % Fallback to index
+    end
 end
 
-%% exclude outliers
+% exclude outliers
 % exclude outliers from sb6, sb4 and sb2 using z-score
 sb2 = sb2(:);
 sb4 = sb4(:);
@@ -1119,6 +1133,7 @@ scatter(1:length(sb2), sb2, 'filled', 'k'); hold on;
 scatter(1:length(sb4), sb4, 'filled', 'b');
 scatter(1:length(sb6), sb6, 'filled', 'r');
 xlabel('Subject'); ylabel('Alpha Power');
+ylim([-.5 .5])
 title('Sternberg: Before Outlier Exclusion');
 legend({'Load 2', 'Load 4', 'Load 6'}, 'Location', 'best');
 grid on;
@@ -1148,6 +1163,7 @@ end
 sb2 = sb2(keepIdx);
 sb4 = sb4(keepIdx);
 sb6 = sb6(keepIdx);
+sb_subject_ids = sb_subject_ids(keepIdx);  % Track which subjects remain
 % Note: After outlier exclusion, all arrays should have the same length
 
 % Control: Visualize after exclusion
@@ -1158,6 +1174,7 @@ scatter(1:length(sb6), sb6, 'filled', 'r');
 xlabel('Subject'); ylabel('Alpha Power');
 title('Sternberg: After Outlier Exclusion');
 legend({'Load 2', 'Load 4', 'Load 6'}, 'Location', 'best');
+ylim([-.5 .5])
 grid on;
 
 subplot(2,2,4);
@@ -1169,108 +1186,9 @@ xticklabels({'Load 2', 'Load 4', 'Load 6'});
 sgtitle('Sternberg Outlier Exclusion Control', 'FontSize', 16, 'FontWeight', 'bold');
 saveas(gcf, fullfile(control_dir, 'AOC_omnibus_stern_outlier_exclusion.png'));
 
-%%
-close all
-figure(30);
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-clf;
-subplot(1,2,2);
-positions = [.3, .6, .9];  % Adjusted x-positions
-
-% Kernel Density Plots
-[f_sb2, xi_sb2] = ksdensity(sb2);
-fill(positions(1) + f_sb2*0.3, xi_sb2, 'k', 'FaceAlpha', 0.5); hold on;
-
-[f_sb4, xi_sb4] = ksdensity(sb4);
-fill(positions(2) + f_sb4*0.3, xi_sb4, 'b', 'FaceAlpha', 0.5); hold on;
-
-[f_sb6, xi_sb6] = ksdensity(sb6);
-fill(positions(3) + f_sb6*0.3, xi_sb6, 'r', 'FaceAlpha', 0.5); hold on;
-
-% Boxplots
-box_h = boxplot([sb2(:), sb4(:), sb6(:)], ...
-    'Labels', {'load 2', 'load 4', 'load 6'}, ...
-    'Widths', 0.05, ...
-    'Positions', positions);
-set(box_h, 'LineWidth', 2);
-
-% Raindrop scatter
-jitter = 0.05;
-scatter(positions(1) + (rand(size(sb2))-0.5)*jitter, sb2, 'k.');
-scatter(positions(2) + (rand(size(sb4))-0.5)*jitter, sb4, 'b.');
-scatter(positions(3) + (rand(size(sb6))-0.5)*jitter, sb6, 'r.');
-
-% Axis & Label
-% ylabel('\muV');
-ylabel('\alpha power [change from bl] ');
-xlim([0 1]);
-tsb = cfg.latency;
-title(['Sternberg (time: ', num2str(tsb), ', elecs ',elecsName, ')']);
-box on;
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-
-% Significance tests
-[~, p_24] = ttest(sb2, sb4);
-[~, p_46] = ttest(sb4, sb6);
-[~, p_26] = ttest(sb2, sb6);
-
-% Significance annotations
-y_max = max([sb2(:); sb4(:); sb6(:)]) + 0.5;  % smaller margin above data overall height above
-y_step = 0.1;  % tighter vertical spacing between lines
-
-sig_label = getSigLabel(p_24);
-if ~isempty(sig_label)
-    line([positions(1), positions(2)], [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
-    text(mean([positions(1), positions(2)]), y_max + 0.02, sig_label, ...
-        'FontSize', 14, 'HorizontalAlignment', 'center');
-    y_max = y_max + y_step;
-end
-
-sig_label = getSigLabel(p_46);
-if ~isempty(sig_label)
-    line([positions(2), positions(3)], [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
-    text(mean([positions(2), positions(3)]), y_max + 0.02, sig_label, ...
-        'FontSize', 14, 'HorizontalAlignment', 'center');
-    y_max = y_max + y_step;
-end
-
-sig_label = getSigLabel(p_26);
-if ~isempty(sig_label)
-    line([positions(1), positions(3)], [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
-    text(mean([positions(1), positions(3)]), y_max + 0.02, sig_label, ...
-        'FontSize', 14, 'HorizontalAlignment', 'center');
-end
-% ylim([min([sb2(:); sb4(:); sb6(:)]) - 0.5, y_max + 0.1]);
-ylim([-y_max y_max])
-xlim([0 1.3])
-
-% 
-% % Significance annotations
-% y_max = max([sb2(:); sb4(:); sb6(:)]) + 5;
-% 
-% sig_label = getSigLabel(p_24);
-% if ~isempty(sig_label)
-%     line([positions(1), positions(2)], [y_max, y_max], 'Color', 'k', 'LineWidth', .5);
-%     text(mean([positions(1), positions(2)]), y_max, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'Center');
-%     y_max = y_max + 2;
-% end
-% 
-% sig_label = getSigLabel(p_46);
-% if ~isempty(sig_label)
-%     line([positions(2), positions(3)], [y_max, y_max], 'Color', 'k', 'LineWidth', .5);
-%     text(mean([positions(2), positions(3)]), y_max, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'Center');
-%     y_max = y_max + 2;
-% end
-% 
-% sig_label = getSigLabel(p_26);
-% if ~isempty(sig_label)
-%     line([positions(1), positions(3)], [y_max, y_max], 'Color', 'k', 'LineWidth', .5);
-%     text(mean([positions(1), positions(3)]), y_max, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'Center');
-% end
-% 
-% ylim([min([sb2(:); sb4(:); sb6(:)]) - 5, y_max + 2]);
 %% extract values nback
+% Track subject IDs for raincloud export (assume load3nb indices match subjects array)
+nb_subject_ids = cell(length(load3nb), 1);
 for subj = 1:length(load3nb)
     % select retention
     cfg = [];
@@ -1291,9 +1209,16 @@ for subj = 1:length(load3nb)
     
     val1{subj} = ft_selectdata(cfg,load1nb{subj});
     nb1(subj) = val1{subj}.powspctrm;
+    
+    % Store subject ID (load3nb should match subjects array indices)
+    if iscell(subjects) && length(subjects) >= subj
+        nb_subject_ids{subj} = subjects{subj};
+    else
+        nb_subject_ids{subj} = num2str(subj);  % Fallback to index
+    end
 end
 
-%% exclude outliers
+% exclude outliers
 nb1 = nb1(:);
 nb2 = nb2(:);
 nb3 = nb3(:);
@@ -1306,6 +1231,7 @@ scatter(1:length(nb1), nb1, 'filled', 'k'); hold on;
 scatter(1:length(nb2), nb2, 'filled', 'b');
 scatter(1:length(nb3), nb3, 'filled', 'r');
 xlabel('Subject'); ylabel('Alpha Power');
+ylim([-.5 .5])
 title('N-back: Before Outlier Exclusion');
 legend({'Load 1', 'Load 2', 'Load 3'}, 'Location', 'best');
 grid on;
@@ -1335,6 +1261,7 @@ end
 nb1 = nb1(keepIdx);
 nb2 = nb2(keepIdx);
 nb3 = nb3(keepIdx);
+nb_subject_ids = nb_subject_ids(keepIdx);  % Track which subjects remain
 % Note: After outlier exclusion, all arrays should have the same length
 
 % Control: Visualize after exclusion
@@ -1343,6 +1270,7 @@ scatter(1:length(nb1), nb1, 'filled', 'k'); hold on;
 scatter(1:length(nb2), nb2, 'filled', 'b');
 scatter(1:length(nb3), nb3, 'filled', 'r');
 xlabel('Subject'); ylabel('Alpha Power');
+ylim([-.5 .5])
 title('N-back: After Outlier Exclusion');
 legend({'Load 1', 'Load 2', 'Load 3'}, 'Location', 'best');
 grid on;
@@ -1356,20 +1284,151 @@ xticklabels({'Load 1', 'Load 2', 'Load 3'});
 sgtitle('N-back Outlier Exclusion Control', 'FontSize', 16, 'FontWeight', 'bold');
 saveas(gcf, fullfile(control_dir, 'AOC_omnibus_nback_outlier_exclusion.png'));
 
-%%
-% figure(31); clf;
+%% Save data for raincloud plots (Python)
+% Create CSV files with ID, Task, Condition, AlphaPower
+raincloud_data_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
+if ~exist(raincloud_data_dir, 'dir'), mkdir(raincloud_data_dir); end
+
+% Prepare data for Sternberg (after outlier exclusion)
+n_sb = length(sb2);
+sb_data = table();
+sb_data.ID = repmat(sb_subject_ids(:), 3, 1);  % Repeat for each condition
+sb_data.Task = repmat({'sternberg'}, n_sb*3, 1);
+sb_data.Condition = [repmat({'WM load 2'}, n_sb, 1); repmat({'WM load 4'}, n_sb, 1); repmat({'WM load 6'}, n_sb, 1)];
+sb_data.AlphaPower = [sb2(:); sb4(:); sb6(:)];
+
+% Prepare data for N-back (after outlier exclusion)
+n_nb = length(nb1);
+nb_data = table();
+nb_data.ID = repmat(nb_subject_ids(:), 3, 1);  % Repeat for each condition
+nb_data.Task = repmat({'nback'}, n_nb*3, 1);
+nb_data.Condition = [repmat({'1-back'}, n_nb, 1); repmat({'2-back'}, n_nb, 1); repmat({'3-back'}, n_nb, 1)];
+nb_data.AlphaPower = [nb1(:); nb2(:); nb3(:)];
+
+% Combine and save
+raincloud_data = [sb_data; nb_data];
+% Ensure ID is string/cell for proper CSV export
+if iscell(raincloud_data.ID)
+    raincloud_data.ID = string(raincloud_data.ID);
+end
+writetable(raincloud_data, fullfile(raincloud_data_dir, 'AOC_omnibus_raincloud_data.csv'));
+fprintf('Saved raincloud data to: %s\n', fullfile(raincloud_data_dir, 'AOC_omnibus_raincloud_data.csv'));
+fprintf('  Sternberg: %d subjects, N-back: %d subjects\n', n_sb, n_nb);
+
+%% Raincloud Plots (MATLAB - will be replaced by Python)
+% Note: Python raincloud plots will be generated separately
+% close all
+% figure();
+% set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+% clf;
+subplot(1,2,2);
+positions = [.3, .6, .9];  % Adjusted x-positions
+
+% Kernel Density Plots
+[f_sb2, xi_sb2] = ksdensity(sb2);
+fill(positions(1) + f_sb2*0.05, xi_sb2, 'k', 'FaceAlpha', 0.5); hold on;
+
+[f_sb4, xi_sb4] = ksdensity(sb4);
+fill(positions(2) + f_sb4*0.05, xi_sb4, 'b', 'FaceAlpha', 0.5); hold on;
+
+[f_sb6, xi_sb6] = ksdensity(sb6);
+fill(positions(3) + f_sb6*0.05, xi_sb6, 'r', 'FaceAlpha', 0.5); hold on;
+
+% Boxplots
+box_h = boxplot([sb2(:), sb4(:), sb6(:)], ...
+    'Labels', {'load 2', 'load 4', 'load 6'}, ...
+    'Widths', 0.05, ...
+    'Positions', positions);
+set(box_h, 'LineWidth', 2);
+
+% Raindrop scatter
+jitter = 0.05;
+scatter(positions(1) + (rand(size(sb2))-0.5)*jitter, sb2, 'k.');
+scatter(positions(2) + (rand(size(sb4))-0.5)*jitter, sb4, 'b.');
+scatter(positions(3) + (rand(size(sb6))-0.5)*jitter, sb6, 'r.');
+
+% Axis & Label
+% ylabel('\muV');
+ylabel('Alpha power [change from bl] ');
+xlim([0 1]);
+title(['Sternberg (time: ', num2str(tsb), ')']);
+box on;
+set(gcf,'color','w');
+set(gca,'Fontsize',20);
+
+% Significance tests
+[~, p_24] = ttest(sb2, sb4);
+[~, p_46] = ttest(sb4, sb6);
+[~, p_26] = ttest(sb2, sb6);
+
+% Significance annotations
+y_max = max([sb2(:); sb4(:); sb6(:)]) * 1.25;  % smaller margin above data overall height above
+y_step = y_max*0.01;  % tighter vertical spacing between lines
+
+sig_label = getSigLabel(p_24);
+if ~isempty(sig_label)
+    line([positions(1), positions(2)], [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
+    text(mean([positions(1), positions(2)]), y_max + 0.02, sig_label, ...
+        'FontSize', 14, 'HorizontalAlignment', 'center');
+    y_max = y_max + y_step;
+end
+
+sig_label = getSigLabel(p_46);
+if ~isempty(sig_label)
+    line([positions(2), positions(3)], [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
+    text(mean([positions(2), positions(3)]), y_max + 0.02, sig_label, ...
+        'FontSize', 14, 'HorizontalAlignment', 'center');
+    y_max = y_max + y_step;
+end
+
+sig_label = getSigLabel(p_26);
+if ~isempty(sig_label)
+    line([positions(1), positions(3)], [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
+    text(mean([positions(1), positions(3)]), y_max + 0.02, sig_label, ...
+        'FontSize', 14, 'HorizontalAlignment', 'center');
+end
+% ylim([min([sb2(:); sb4(:); sb6(:)]) - 0.5, y_max + 0.1]);
+%ylim([-y_max y_max])
+xlim([0 1.3])
+
+% 
+% % Significance annotations
+% y_max = max([sb2(:); sb4(:); sb6(:)]) + 5;
+% 
+% sig_label = getSigLabel(p_24);
+% if ~isempty(sig_label)
+%     line([positions(1), positions(2)], [y_max, y_max], 'Color', 'k', 'LineWidth', .5);
+%     text(mean([positions(1), positions(2)]), y_max, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'Center');
+%     y_max = y_max + 2;
+% end
+% 
+% sig_label = getSigLabel(p_46);
+% if ~isempty(sig_label)
+%     line([positions(2), positions(3)], [y_max, y_max], 'Color', 'k', 'LineWidth', .5);
+%     text(mean([positions(2), positions(3)]), y_max, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'Center');
+%     y_max = y_max + 2;
+% end
+% 
+% sig_label = getSigLabel(p_26);
+% if ~isempty(sig_label)
+%     line([positions(1), positions(3)], [y_max, y_max], 'Color', 'k', 'LineWidth', .5);
+%     text(mean([positions(1), positions(3)]), y_max, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'Center');
+% end
+% 
+% ylim([min([sb2(:); sb4(:); sb6(:)]) - 5, y_max + 2]);
+
 subplot(1,2,1);
 positions = [.3, .6, .9];  % Adjusted x-positions
 
 % Kernel Density Plots
 [f_sb2, xi_sb2] = ksdensity(nb1);
-fill(positions(1) + f_sb2*0.3, xi_sb2, 'k', 'FaceAlpha', 0.5); hold on;
+fill(positions(1) + f_sb2*0.05, xi_sb2, 'k', 'FaceAlpha', 0.5); hold on;
 
 [f_sb4, xi_sb4] = ksdensity(nb2);
-fill(positions(2) + f_sb4*0.3, xi_sb4, 'b', 'FaceAlpha', 0.5); hold on;
+fill(positions(2) + f_sb4*0.05, xi_sb4, 'b', 'FaceAlpha', 0.5); hold on;
 
 [f_sb6, xi_sb6] = ksdensity(nb3);
-fill(positions(3) + f_sb6*0.3, xi_sb6, 'r', 'FaceAlpha', 0.5); hold on;
+fill(positions(3) + f_sb6*0.05, xi_sb6, 'r', 'FaceAlpha', 0.5); hold on;
 
 % Boxplots
 box_h = boxplot([nb1(:), nb2(:), nb3(:)], ...
@@ -1386,9 +1445,9 @@ scatter(positions(3) + (rand(size(nb3))-0.5)*jitter, nb3, 'r.');
 
 % Axis & Label
 % ylabel('\muV');
-ylabel('\alpha power [change from bl] ');
+ylabel('Alpha power [change from bl] ');
 xlim([0 1]);
-title(['N-back (time: ', num2str(tnb), ', elecs ',elecsName, ')']);
+title(['N-back (time: ', num2str(tnb), ')']);
 box on;
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
@@ -1399,7 +1458,7 @@ set(gca,'Fontsize',20);
 [~, p_26] = ttest(nb1, nb3);
 
 % Significance annotations
-y_max = max([nb1(:); nb2(:); nb3(:)]) + 0.5;  % smaller margin above data overall height above
+y_max = max([nb1(:); nb2(:); nb3(:)]) * 1.35;  % smaller margin above data overall height above
 y_step = 0.1;  % tighter vertical spacing between lines
 
 sig_label = getSigLabel(p_24);
@@ -1425,13 +1484,13 @@ if ~isempty(sig_label)
         'FontSize', 14, 'HorizontalAlignment', 'center');
 end
 % ylim([min([sb2(:); sb4(:); sb6(:)]) - 0.5, y_max + 0.1]);
-ylim([-y_max y_max])
+%ylim([-y_max y_max])
 xlim([0 1.3])
 
 % Save
 tnb_str = sprintf('%d', tnb);
 tsb_str = sprintf('%d', tsb);
-saveas(gcf, fullfile(figures_dir, ['AOC_omnibus_rainclouds_tnb', num2str(tnb_str), '_tsb', num2str(tsb_str), '.png']));
+saveas(gcf, fullfile(figures_dir, ['AOC_omnibus_rainclouds_matlab.png']));
 
 %% Control: Summary statistics and data quality report
 disp('Generating summary control report...');

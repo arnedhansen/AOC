@@ -589,7 +589,6 @@ figure;
 set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 ft_topoplotER(cfg,statFnb);
 caxis([0 20]);
-colormap('YlOrRd'); % Yellow to red colormap for F-stat
 cb = colorbar;
 cb.LineWidth = 1;
 cb.FontSize = 30;
@@ -738,7 +737,11 @@ mean_diff = squeeze(mean(diff_data, 1, 'omitnan'));  % mean across subjects [fre
 sd_diff = squeeze(std(diff_data, 0, 1, 'omitnan'));   % sample SD across subjects [freq x time]
 % Cohen's d = mean_diff / sd_diff (for paired samples)
 cohens_d = mean_diff ./ (sd_diff + eps);  % add eps to avoid division by zero
-stat.effectsize = cohens_d;
+% Expand effectsize to match stat dimensions [chan×freq×time]
+% Since effectsize was calculated channel-averaged, replicate across all channels
+% cohens_d is [freq×time] = [136×41], need [chan×freq×time] = [125×136×41]
+cohens_d_3d = reshape(cohens_d, [1, size(cohens_d, 1), size(cohens_d, 2)]); % [1×136×41]
+stat.effectsize = repmat(cohens_d_3d, [length(stat.label), 1, 1]); % [125×136×41]
 %% now compute stat but only for the electrodes per pre registration
 cfg                  = [];
 cfg.latency          = [0 2];
@@ -840,7 +843,11 @@ mean_diff = squeeze(mean(diff_data, 1, 'omitnan'));  % mean across subjects [fre
 sd_diff = squeeze(std(diff_data, 0, 1, 'omitnan'));   % sample SD across subjects [freq x time]
 % Cohen's d = mean_diff / sd_diff (for paired samples)
 cohens_d = mean_diff ./ (sd_diff + eps);  % add eps to avoid division by zero
-statprereg.effectsize = cohens_d;
+% Expand effectsize to match statprereg dimensions [chan×freq×time]
+% Since effectsize was calculated channel-averaged, replicate across all channels
+% cohens_d is [freq×time], need [chan×freq×time]
+cohens_d_3d = reshape(cohens_d, [1, size(cohens_d, 1), size(cohens_d, 2)]); % [1×freq×time]
+statprereg.effectsize = repmat(cohens_d_3d, [length(statprereg.label), 1, 1]); % [chan×freq×time]
 %%
 
 % close all
@@ -1025,13 +1032,6 @@ legend({'Sternberg high-low','N-back high-low'}, 'Location','southeast','Fontsiz
 % Save figure
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_highlow_power_spectra_SE.png'));
 
-%%
-%%
-%%
-%%
-%%
-%%
-%%
 %% timewins
 tsb = [1 2];
 tnb = [0 2];

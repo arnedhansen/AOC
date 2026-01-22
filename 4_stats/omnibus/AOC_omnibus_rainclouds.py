@@ -143,68 +143,59 @@ for task in tasks:
     else:
         print(f"  Warning: Not enough balanced subjects for ANOVA")
     
-    # Cluster-based permutation testing (CBPT) for pairwise comparisons
+    # Paired t-tests with FDR correction
     # Build wide table for paired comparisons
     wide = dvar.pivot(index='ID', columns='Condition', values=var)
     
-    # Parameters for permutation testing
-    n_permutations = 1000
-    random_seed = 42
-    np.random.seed(random_seed)
-    
-    # Perform permutation-based paired t-tests for each comparison
+    # Perform paired t-tests for each comparison
     pw_rows = []
+    p_values = []
     for (g1, g2) in task["comparisons"]:
         if (g1 in wide.columns) and (g2 in wide.columns):
             # Get paired data (drop NaNs in either condition)
             paired_data = wide[[g1, g2]].dropna()
             if len(paired_data) >= 2:
-                # Compute observed t-statistic
-                diffs = paired_data[g2].values - paired_data[g1].values
-                n = len(diffs)
-                mean_diff = np.mean(diffs)
-                std_diff = np.std(diffs, ddof=1)
-                if std_diff > 0:
-                    t_observed = mean_diff / (std_diff / np.sqrt(n))
-                else:
-                    t_observed = 0.0
-                
-                # Permutation testing: permute signs within subjects (maintains paired structure)
-                t_permuted = np.zeros(n_permutations)
-                for perm in range(n_permutations):
-                    # Randomly flip signs of differences (equivalent to swapping conditions within subjects)
-                    signs = np.random.choice([-1, 1], size=n)
-                    diffs_perm = diffs * signs
-                    mean_diff_perm = np.mean(diffs_perm)
-                    std_diff_perm = np.std(diffs_perm, ddof=1)
-                    if std_diff_perm > 0:
-                        t_permuted[perm] = mean_diff_perm / (std_diff_perm / np.sqrt(n))
-                    else:
-                        t_permuted[perm] = 0.0
-                
-                # Two-tailed p-value: proportion of permuted |t| >= observed |t|
-                p_val = np.mean(np.abs(t_permuted) >= np.abs(t_observed))
-                
+                # Paired t-test (like MATLAB's ttest)
+                t_stat, p_val = stats.ttest_rel(paired_data[g2], paired_data[g1])
                 pw_rows.append({
                     "group1": g1,
                     "group2": g2,
-                    "p": p_val,
-                    "p_adj": p_val  # CBPT already accounts for multiple comparisons via permutation
+                    "p": p_val
                 })
+                p_values.append(p_val)
             else:
                 pw_rows.append({
                     "group1": g1,
                     "group2": g2,
-                    "p": np.nan,
-                    "p_adj": np.nan
+                    "p": np.nan
                 })
+                p_values.append(np.nan)
+    
+    # Apply FDR correction (Benjamini-Hochberg) - less conservative than Bonferroni
+    if len(p_values) > 0 and not all(np.isnan(p_values)):
+        # Filter out NaNs for correction
+        valid_mask = ~np.isnan(p_values)
+        if np.sum(valid_mask) > 0:
+            p_valid = np.array(p_values)[valid_mask]
+            _, p_adj_valid, _, _ = multipletests(p_valid, method='fdr_bh')
+            # Map back to original positions
+            p_adj_all = np.full(len(p_values), np.nan)
+            p_adj_all[valid_mask] = p_adj_valid
+        else:
+            p_adj_all = np.array(p_values)
+    else:
+        p_adj_all = np.array(p_values)
+    
+    # Add adjusted p-values to dataframe
+    for i, row in enumerate(pw_rows):
+        row["p_adj"] = p_adj_all[i] if i < len(p_adj_all) else np.nan
     
     pw = pd.DataFrame(pw_rows)
     
     # Print pairwise results
-    print(f"  Pairwise comparisons (CBPT with {n_permutations} permutations):")
+    print("  Pairwise comparisons (paired t-tests with FDR correction):")
     for _, row in pw.iterrows():
-        print(f"    {row['group1']} vs {row['group2']}: p = {row['p']:.4f}")
+        print(f"    {row['group1']} vs {row['group2']}: p = {row['p']:.4f}, p_adj = {row['p_adj']:.4f}")
     
     # %% Figure
     fig, ax = plt.subplots(figsize=(8, 6), facecolor="white")

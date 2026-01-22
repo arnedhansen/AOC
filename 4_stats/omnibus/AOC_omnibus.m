@@ -288,7 +288,7 @@ tlk6_ind        = ft_selectdata(cfg,ga_sb_6pow);
 % plot load 6
 x = tlk6_ind.freq'; % x-axis def
 y = mean(squeeze(tlk6_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk6_ind.powspctrm), 1)' ./ sqrt(numel(subjects)); % sme
+e = std(squeeze(tlk6_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
 low = y - e; % lower bound
 high = y + e; % upper bound
 
@@ -302,7 +302,7 @@ set(hl1, 'color', [0.97, 0.26, 0.26], 'linewidth', 2);
 % plot load 4
 x = tlk4_ind.freq'; % x-axis def
 y = mean(squeeze(tlk4_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk4_ind.powspctrm), 1)' ./ sqrt(numel(subjects)); % sme
+e = std(squeeze(tlk4_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
 low = y - e; % lower bound
 high = y + e; % upper bound
 
@@ -314,7 +314,7 @@ set(hl2, 'color', [0.30, 0.75, 0.93], 'linewidth', 2);
 % plot load 2
 x = tlk2_ind.freq'; % x-axis def
 y = mean(squeeze(tlk2_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk2_ind.powspctrm), 1)' ./ sqrt(numel(subjects)); % sme
+e = std(squeeze(tlk2_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
 low = y - e; % lower bound
 high = y + e; % upper bound
 
@@ -351,7 +351,7 @@ tlk6_ind        = ft_selectdata(cfg,ga_nb_3pow);
 % plot load 3
 x = tlk6_ind.freq'; % x-axis def
 y = mean(squeeze(tlk6_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk6_ind.powspctrm), 1)' ./ sqrt(numel(subjects)); % sme
+e = std(squeeze(tlk6_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
 low = y - e; % lower bound
 high = y + e; % upper bound
 
@@ -365,7 +365,7 @@ set(hl1, 'color', [0.97, 0.26, 0.26], 'linewidth', 2);
 % plot load 2
 x = tlk4_ind.freq'; % x-axis def
 y = mean(squeeze(tlk4_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk4_ind.powspctrm), 1)' ./ sqrt(numel(subjects)); % sme
+e = std(squeeze(tlk4_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
 low = y - e; % lower bound
 high = y + e; % upper bound
 
@@ -377,7 +377,7 @@ set(hl2, 'color', [0.30, 0.75, 0.93], 'linewidth', 2);
 % plot load 1
 x = tlk2_ind.freq'; % x-axis def
 y = mean(squeeze(tlk2_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk2_ind.powspctrm), 1)' ./ sqrt(numel(subjects)); % sme
+e = std(squeeze(tlk2_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
 low = y - e; % lower bound
 high = y + e; % upper bound
 
@@ -433,7 +433,7 @@ cfg.minnbchan        = 2;          % minimum number of neighborhood channels tha
 cfg.neighbours       = neighbours; % see below
 cfg.tail             = 1;          % 1 as the F distribution is skewed
 cfg.clustertail      = cfg.tail;  
-cfg.alpha            = 0.025;      % alpha level of the permutation test
+cfg.alpha            = 0.05;       % alpha level of the permutation test (two-tailed)
 cfg.numrandomization = 1000;        % number of draws from the permutation distribution
 
 n_U  = numel(subjects);
@@ -550,12 +550,47 @@ cfg.uvar     = 1;
 cfg.ivar     = 2;
 
 [stat] = ft_freqstatistics(cfg, sb_high_low{:}, nb_high_low{:});
+% Calculate Cohen's d properly for paired samples
+% Extract data values for effect size calculation
 n = numel(load6);  % number of subjects (paired samples)
-cohens_d = stat.stat ./ sqrt(n);
+% Calculate mean difference and SD of differences for Cohen's d
+% For each time-frequency point, calculate d = mean_diff / SD_diff
+n_freq = numel(stat.freq);
+n_time = numel(stat.time);
+sb_data = zeros(n, n_freq, n_time);
+nb_data = zeros(n, n_freq, n_time);
+for s = 1:n
+    % Select matching time and frequency
+    cfg_sel = [];
+    cfg_sel.latency = stat.time;
+    cfg_sel.frequency = stat.freq;
+    cfg_sel.avgoverchan = 'yes';
+    sb_sel = ft_selectdata(cfg_sel, sb_high_low{s});
+    nb_sel = ft_selectdata(cfg_sel, nb_high_low{s});
+    % Handle potential dimension issues
+    sb_tmp = squeeze(sb_sel.powspctrm);
+    nb_tmp = squeeze(nb_sel.powspctrm);
+    % Ensure correct dimensions [freq x time]
+    if isscalar(sb_tmp)
+        sb_data(s, :, :) = repmat(sb_tmp, n_freq, n_time);
+        nb_data(s, :, :) = repmat(nb_tmp, n_freq, n_time);
+    elseif ndims(sb_tmp) == 2
+        sb_data(s, :, :) = sb_tmp;
+        nb_data(s, :, :) = nb_tmp;
+    else
+        error('Unexpected dimensions in powspctrm');
+    end
+end
+% Calculate differences (Sternberg - N-back)
+diff_data = sb_data - nb_data;
+mean_diff = squeeze(mean(diff_data, 1));  % mean across subjects [freq x time]
+sd_diff = squeeze(std(diff_data, 0, 1));   % sample SD across subjects [freq x time]
+% Cohen's d = mean_diff / sd_diff (for paired samples)
+cohens_d = mean_diff ./ (sd_diff + eps);  % add eps to avoid division by zero
 stat.effectsize = cohens_d;
 %% now compute stat but only for the electrodes per pre registration
 cfg                  = [];
-cfg.latency          = [0 3];
+cfg.latency          = [0 2];
 cfg.channel          = {'M1', 'M2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
 cfg.avgoverchan      = 'yes';
 cfg.method           = 'montecarlo';
@@ -565,7 +600,7 @@ cfg.clusteralpha     = 0.05;
 cfg.clusterstatistic = 'maxsum';
 cfg.tail             = 0;
 cfg.clustertail      = 0;
-cfg.alpha            = 0.025;
+cfg.alpha            = 0.05;       % alpha level of the permutation test (two-tailed)
 cfg.numrandomization = 1000;
 n_subj = numel(load6);
 design = zeros(2,2*n_subj);
@@ -583,8 +618,41 @@ cfg.uvar     = 1;
 cfg.ivar     = 2;
 
 [statprereg] = ft_freqstatistics(cfg, sb_high_low{:}, nb_high_low{:});
+% Calculate Cohen's d properly for paired samples
 n = numel(load6);  % number of subjects (paired samples)
-cohens_d = statprereg.stat ./ sqrt(n);
+% Extract data values for effect size calculation
+n_freq = numel(statprereg.freq);
+n_time = numel(statprereg.time);
+sb_data = zeros(n, n_freq, n_time);
+nb_data = zeros(n, n_freq, n_time);
+for s = 1:n
+    % Select matching time and frequency
+    cfg_sel = [];
+    cfg_sel.latency = statprereg.time;
+    cfg_sel.frequency = statprereg.freq;
+    cfg_sel.avgoverchan = 'yes';
+    sb_sel = ft_selectdata(cfg_sel, sb_high_low{s});
+    nb_sel = ft_selectdata(cfg_sel, nb_high_low{s});
+    % Handle potential dimension issues
+    sb_tmp = squeeze(sb_sel.powspctrm);
+    nb_tmp = squeeze(nb_sel.powspctrm);
+    % Ensure correct dimensions [freq x time]
+    if isscalar(sb_tmp)
+        sb_data(s, :, :) = repmat(sb_tmp, n_freq, n_time);
+        nb_data(s, :, :) = repmat(nb_tmp, n_freq, n_time);
+    elseif ndims(sb_tmp) == 2
+        sb_data(s, :, :) = sb_tmp;
+        nb_data(s, :, :) = nb_tmp;
+    else
+        error('Unexpected dimensions in powspctrm');
+    end
+end
+% Calculate differences (Sternberg - N-back)
+diff_data = sb_data - nb_data;
+mean_diff = squeeze(mean(diff_data, 1));  % mean across subjects [freq x time]
+sd_diff = squeeze(std(diff_data, 0, 1));   % sample SD across subjects [freq x time]
+% Cohen's d = mean_diff / sd_diff (for paired samples)
+cohens_d = mean_diff ./ (sd_diff + eps);  % add eps to avoid division by zero
 statprereg.effectsize = cohens_d;
 %%
 
@@ -718,7 +786,7 @@ tlk_nb_ind        = ft_selectdata(cfg,ga_nb_hl_pow);
 % plot load sb
 x = tlk_sb_ind.freq'; % x-axis def
 y = mean(squeeze(tlk_sb_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk_sb_ind.powspctrm), 1)' ./ sqrt(numel(subjects)); % sme
+e = std(squeeze(tlk_sb_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
 low = y - e; % lower bound
 high = y + e; % upper bound
 
@@ -732,7 +800,7 @@ set(hl1, 'color', [0.97, 0.26, 0.26], 'linewidth', 2);
 % plot load nb
 x = tlk_nb_ind.freq'; % x-axis def
 y = mean(squeeze(tlk_nb_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk_nb_ind.powspctrm), 1)' ./ sqrt(numel(subjects)); % sme
+e = std(squeeze(tlk_nb_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
 low = y - e; % lower bound
 high = y + e; % upper bound
 
@@ -804,9 +872,7 @@ keepIdx = all(abs(Z) < 2, 2); % keep subjects that are not outliers in any condi
 sb2 = sb2(keepIdx);
 sb4 = sb4(keepIdx);
 sb6 = sb6(keepIdx);
-
-minlength = min([length(sb2), length(sb4), length(sb6)]);
-sb2 = sb2(1:minlength); sb4 = sb4(1:minlength); sb6 = sb6(1:minlength);
+% Note: After outlier exclusion, all arrays should have the same length
 
 %%
 close all
@@ -941,9 +1007,7 @@ keepIdx = all(abs(Z) < 2, 2); % keep subjects that are not outliers in any condi
 nb1 = nb1(keepIdx);
 nb2 = nb2(keepIdx);
 nb3 = nb3(keepIdx);
-
-minlength = min([length(nb1), length(nb2), length(nb3)]);
-nb1 = nb1(1:minlength); nb2 = nb2(1:minlength); nb3 = nb3(1:minlength);
+% Note: After outlier exclusion, all arrays should have the same length
 
 %%
 % figure(31); clf;

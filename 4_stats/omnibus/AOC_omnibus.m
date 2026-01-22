@@ -1083,8 +1083,8 @@ saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_highlow_power_spectra_SE.png'));
 
 %% timewins
 clc
-tsb = [0 .5];
-tnb = [0 .5];
+tsb = [0 2];
+tnb = [0 2];
 
 %% extract values sternberg
 clc

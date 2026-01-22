@@ -217,44 +217,6 @@ colormap(color_map); % Use same colormap for topo
 sgtitle('N-back TFR and Topography', 'FontSize', 24, 'FontWeight', 'bold');
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_TFR_topo.png'));
 
-%% plot SB posterior
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-cfg = [];
-cfg.channel = {'Pz', 'POz', 'P2', 'PPO2'};
-% cfg.channel = {'P8', 'PO4', 'PO8', 'PPO6h', 'POO4h'};
-cfg.figure = 'gcf';
-cfg.ylim = [3 40];
-cfg.zlim = [-.2 .2];
-cfg.xlim = [-.5 3];
-subplot(3,1,1); ft_singleplotTFR(cfg,ga_sb_2);
-subplot(3,1,2); ft_singleplotTFR(cfg,ga_sb_4);
-subplot(3,1,3); ft_singleplotTFR(cfg,ga_sb_6);
-color_map = flipud(cbrewer('div', 'RdBu', 64));
-colormap(color_map);
-% Save figure
-sgtitle('Sternberg Posterior TFR by Load', 'FontSize', 24, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_stern_posterior_TFR.png'));
-
-%% plot NB posterior
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-cfg = [];
-% cfg.channel = {'Pz', 'POz', 'P2', 'PPO2'};
-cfg.channel = {'POz', 'PO3', 'PO4', 'PPO1', 'PPO6h'};
-cfg.figure = 'gcf';
-cfg.ylim = [3 40];
-cfg.zlim = [-.2 .2];
-cfg.xlim = [-.5 2];
-subplot(3,1,1); ft_singleplotTFR(cfg,ga_nb_1);
-subplot(3,1,2); ft_singleplotTFR(cfg,ga_nb_2);
-subplot(3,1,3); ft_singleplotTFR(cfg,ga_nb_3);
-color_map = flipud(cbrewer('div', 'RdBu', 64));
-colormap(color_map);
-% Save figure
-sgtitle('N-back Posterior TFR by Load', 'FontSize', 24, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_posterior_TFR.png'));
-
 %% Control: Check baseline stability and data quality
 disp('Running data quality controls...');
 % Check baseline values across conditions
@@ -423,8 +385,6 @@ grid on;
 xlim([1  40]);
 % ylim([-1.5 2.5]);
 legend({'Load 6','Load 4','Load 2'}, 'Location','northeast','Fontsize',20);
-% Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_stern_power_spectra_SE.png'));
 %% plot with SE nback
 % close all
 % figure;
@@ -487,7 +447,7 @@ xlim([1  40]);
 % ylim([-1.5 2.5]);
 legend({'Load 3','Load 2','Load 1'}, 'Location','southeast','Fontsize',20);
 % Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_power_spectra_SE.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_power_spectra_SE.png'));
 %%
 close all
 cfg = [];
@@ -874,8 +834,8 @@ colormap(color_map);
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternvsnback_effectsize_multiplot.fig'));
 
 %% do stats
-stattfr=statprereg;
-stattfr.stat= statprereg.effectsize;
+stattfr = statprereg;
+stattfr.stat = statprereg.effectsize;
 % figure;
 cfg = [];
 cfg.channel = {'CP2', 'Pz','P2', 'CPP4h', 'CPP2h', 'CPz'};
@@ -883,7 +843,7 @@ cfg.avgoverchan = 'yes';
 %cfg.frequency = [2 40];
 %cfg.latency   = [0 2];
 
-% cfg.latency          = [0 3];
+% cfg.latency          = [0 3];L
 % cfg.channel          = {'M1', 'M2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
 % cfg.method           = 'montecarlo';
 % cfg.statistic        = 'ft_statfun_depsamplesT';
@@ -898,8 +858,18 @@ cfg.avgoverchan = 'yes';
 % cfg.minnbchan        = 2;
 
 freq = ft_selectdata(cfg,stattfr);
-meanpow = squeeze(mean(freq.stat, 1));
-meanmask = squeeze(mean(freq.mask, 1));
+% After avgoverchan, freq.stat is [1×freq×time], so just squeeze to get [freq×time]
+% No need to average again since there's only 1 channel dimension
+meanpow = squeeze(freq.stat);
+meanmask = squeeze(freq.mask);
+
+% Validate data
+if all(isnan(meanpow(:)))
+    error('meanpow is all NaNs after channel selection. Check that stat.effectsize has valid data and channels exist.');
+end
+if ~isequal(size(meanpow), [length(freq.freq), length(freq.time)])
+    error('meanpow dimensions [%s] do not match expected [%d×%d]', mat2str(size(meanpow)), length(freq.freq), length(freq.time));
+end
 % The finer time and frequency axes:
 tim_interp = linspace(freq.time(1), freq.time(end), 500);
 freq_interp = linspace(2, 40, 500);
@@ -909,19 +879,75 @@ freq_interp = linspace(2, 40, 500);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 
 % And interpolate:
-% Use 'linear' instead of 'spline' to handle NaN values better
-% Replace NaN values with nearest neighbor before interpolation if needed
+% Handle NaN values before interpolation
 meanpow_clean = meanpow;
 meanmask_clean = meanmask;
-% Use linear interpolation which handles NaN better
-pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow_clean,...
-    tim_grid_interp, freq_grid_interp, 'linear', NaN);
-mask_interp = interp2(tim_grid_orig, freq_grid_orig, double(meanmask_clean),...
-    tim_grid_interp, freq_grid_interp, 'nearest', 0);
+
+% Check if we have enough valid data (need at least 4 points for 2D interpolation)
+valid_data = ~isnan(meanpow_clean);
+n_valid = sum(valid_data(:));
+
+if n_valid < 4
+    % Not enough data points for interpolation, use original data
+    warning('Insufficient valid data for interpolation (%d valid points), using original resolution', n_valid);
+    pow_interp = meanpow_clean;
+    mask_interp = double(meanmask_clean);
+    tim_interp = freq.time;
+    freq_interp = freq.freq;
+    [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
+else
+    % Fill NaN values using inpainting (fill with nearest valid neighbor)
+    if any(isnan(meanpow_clean(:)))
+        % Simple approach: fill NaNs with 0 or mean of valid values
+        % For better results, use inpaint_nans if available, otherwise use fillmissing
+        if exist('inpaint_nans', 'file') == 2
+            meanpow_clean = inpaint_nans(meanpow_clean);
+        else
+            % Use fillmissing with 'nearest' method
+            meanpow_clean = fillmissing(meanpow_clean, 'nearest', 2); % fill along dimension 2 (time)
+            meanpow_clean = fillmissing(meanpow_clean, 'nearest', 1); % fill along dimension 1 (freq)
+            % If still NaNs, fill with 0
+            meanpow_clean(isnan(meanpow_clean)) = 0;
+        end
+    end
+    
+    % Now interpolate to finer grid
+    try
+        pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow_clean,...
+            tim_grid_interp, freq_grid_interp, 'linear', NaN);
+        mask_interp = interp2(tim_grid_orig, freq_grid_orig, double(meanmask_clean),...
+            tim_grid_interp, freq_grid_interp, 'nearest', 0);
+        
+        % Check if interpolation produced all NaNs
+        if all(isnan(pow_interp(:)))
+            warning('Interpolation produced all NaNs, using original resolution');
+            pow_interp = meanpow_clean;
+            mask_interp = double(meanmask_clean);
+            tim_interp = freq.time;
+            freq_interp = freq.freq;
+            [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
+        end
+    catch ME
+        warning('Interpolation failed: %s. Using original resolution.', ME.message);
+        pow_interp = meanpow_clean;
+        mask_interp = double(meanmask_clean);
+        tim_interp = freq.time;
+        freq_interp = freq.freq;
+        [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
+    end
+end
+% Check if we have valid data to plot
+if all(isnan(pow_interp(:)))
+    error('Cannot plot: pow_interp contains only NaN values. Check that freq.stat has valid data.');
+end
+
 figure;
 set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 % subplot(2,1,2);ft_plot_matrix(flip(pow_interp));
-subplot(2,1,1);ft_plot_matrix(flip(pow_interp),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
+% Ensure pow_interp has finite values for plotting
+pow_interp_plot = pow_interp;
+pow_interp_plot(~isfinite(pow_interp_plot)) = 0; % Replace Inf/NaN with 0 for plotting
+subplot(2,1,1);ft_plot_matrix(flip(pow_interp_plot),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
 freq_flipped = fliplr(freq_interp);
 
 target_freqs = [10 20 30 40];

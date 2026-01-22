@@ -14,12 +14,17 @@ dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
+% Setup logging
+logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
+scriptName = 'AOC_cal_val_ET';
+
 %% Load gaze data
 % Define the number of files for each pattern (N and S)
 numFiles = 6;
 
 % Loop through each subject
 for subj = 1:length(subjects)
+    try
     clc
     fprintf('Processing Subject AOC %.3s \n', subjects{subj});
     datapath = strcat(path, subjects{subj}, '/archive');
@@ -50,8 +55,15 @@ for subj = 1:length(subjects)
 
                 % Increment file counter
                 fileCounter = fileCounter + 1;
+            catch ME
+                fprintf('[WARNING] Subject %s (iteration %d/%d): Error loading file %s: %s\n', ...
+                    subjects{subj}, subj, length(subjects), filePath, ME.message);
             end
         end
+    end
+    catch ME
+        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
+        fprintf('Continuing to next subject...\n');
     end
 end
 
@@ -125,8 +137,9 @@ for subjIdx = 1:numSubjects
         cd(savepath)
         saveName = [savepath, filesep, num2str(subjects{subjIdx}) '_validations.png'];
         saveas(gcf, saveName)
-    catch
-        disp(['Could not create VALIDATION overview for subject ' num2str(subjects{subjIdx})])
+    catch ME
+        fprintf('[WARNING] Subject %s (iteration %d/%d): Could not create VALIDATION overview: %s\n', ...
+            num2str(subjects{subjIdx}), subjIdx, numSubjects, ME.message);
     end
 end
 

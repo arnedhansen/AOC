@@ -20,9 +20,14 @@ subjects = {folders.name};
 subjects = exclude_subjects(subjects, 'AOC');
 runMode = askRunMode();
 
+% Setup logging
+logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
+scriptName = 'AOC_preprocessing_sternberg';
+
 %% Read data, segment and convert to FieldTrip data structure
 tic;
 for subj = 1:length(subjects)
+    try
     datapath = strcat(path,subjects{subj});
     cd(datapath)
 
@@ -68,8 +73,8 @@ for subj = 1:length(subjects)
                 clear EEG
                 fprintf('Block %.1d loaded \n', block)
             catch ME
-                ME.message
-                disp(['ERROR loading Block ' num2str(block) '!'])
+                fprintf('[WARNING] Subject %s (iteration %d/%d): Error loading Block %d: %s\n', ...
+                    subjects{subj}, subj, length(subjects), block, ME.message);
             end
         end
 

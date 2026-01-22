@@ -7,17 +7,21 @@ clear; close all; clc
 startup
 [subjects, path, ~, ~] = setup('AOC');
 
+% Setup logging
+logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
+scriptName = 'AOC_eeg_fex_nback_FOOOF';
+
 %% Loop subjects
 for subj = 1:length(subjects)
+    try
+        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        cd(datapath)
+        close all
+        clc
 
-    datapath = strcat(path, subjects{subj}, filesep, 'eeg');
-    cd(datapath)
-    close all
-    clc
-
-    disp(['Processing TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM (NBACK) for Subject AOC ', num2str(subjects{subj})])
-    disp('Loading EEG TFR data (NBACK)')
-    load dataEEG_TFR_nback
+        disp(['Processing TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM (NBACK) for Subject AOC ', num2str(subjects{subj})])
+        disp('Loading EEG TFR data (NBACK)')
+        load dataEEG_TFR_nback
 
     %% Identify indices of trials belonging to conditions (trialinfo codes: 21, 22, 23)
     ind1 = find(dataTFR.trialinfo(:, 1) == 21);
@@ -400,7 +404,11 @@ for subj = 1:length(subjects)
         pow1_fooof_bl_early pow2_fooof_bl_early pow3_fooof_bl_early ...
         pow1_fooof_bl_late pow2_fooof_bl_late pow3_fooof_bl_late
 
-    clc
-    fprintf('Subject AOC %s (%.3d/%.3d) DONE (sliding-window FOOOF: model - aperiodic) \n', ...
-        num2str(subjects{subj}), subj, length(subjects))
+        clc
+        fprintf('Subject AOC %s (%.3d/%.3d) DONE (sliding-window FOOOF: model - aperiodic) \n', ...
+            num2str(subjects{subj}), subj, length(subjects))
+    catch ME
+        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
+        fprintf('Continuing to next subject...\n');
+    end
 end

@@ -11,11 +11,15 @@
 % Setup
 startup
 [subjects, path, ~ , ~] = setup('AOC');
-for subj = 1:length(subjects)
-    clc
-    disp(['Processing Retention POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
 
+% Setup logging
+logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
+scriptName = 'AOC_eeg_fex_sternberg';
+
+for subj = 1:length(subjects)
     try
+        clc
+        disp(['Processing Retention POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
         % Load data
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
@@ -54,8 +58,8 @@ for subj = 1:length(subjects)
         save('power_stern_raw.mat', 'powload2', 'powload4', 'powload6')
 
     catch ME
-        disp(ME.message)
-        error(['ERROR extracting power for Subject ' num2str(subjects{subj}) '!'])
+        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
+        fprintf('Continuing to next subject...\n');
     end
 end
 
@@ -108,10 +112,9 @@ IAF_results = struct();
 eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {}, 'Lateralization', {});
 
 for subj = 1:length(subjects)
-    clc
-    disp(['Processing Alpha Power, IAF and Lateralization for Subject AOC ', num2str(subjects{subj})])
-
     try
+        clc
+        disp(['Processing Alpha Power, IAF and Lateralization for Subject AOC ', num2str(subjects{subj})])
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath);
         load('power_stern_raw.mat');
@@ -238,8 +241,8 @@ for subj = 1:length(subjects)
             'WM6: %f Hz (Power: %f) | Lateralization: %f %f %f \n'], subjects{subj}, ...
             IAF2, powerIAF2, IAF4, powerIAF4, IAF6, powerIAF6, LatIdx2, LatIdx4, LatIdx6);
     catch ME
-        ME.message
-        error(['ERROR calculating alpha power and IAF for Subject ' num2str(subjects{subj}) '!'])
+        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
+        fprintf('Continuing to next subject...\n');
     end
 end
 if ispc == 1

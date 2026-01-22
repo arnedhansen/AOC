@@ -12,11 +12,14 @@
 startup
 [subjects, path, ~ , ~] = setup('AOC');
 
-for subj = 1:length(subjects)
-    clc
-    disp(['Processing POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
+% Setup logging
+logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
+scriptName = 'AOC_eeg_fex_nback';
 
+for subj = 1:length(subjects)
     try
+        clc
+        disp(['Processing POWSPCTRM for Subject AOC ', num2str(subjects{subj})])
         % Load data
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath)
@@ -56,8 +59,8 @@ for subj = 1:length(subjects)
         save power_nback powload1 powload2 powload3
 
     catch ME
-        ME.message
-        error(['ERROR extracting power for Subject ' num2str(subjects{subj}) '!'])
+        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
+        fprintf('Continuing to next subject...\n');
     end
 end
 
@@ -111,10 +114,9 @@ IAF_results = struct();
 eeg_data_nback = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {}, 'Lateralization', {});
 
 for subj = 1:length(subjects)
-    clc
-    disp(['Processing Alpha Power, IAF and Lateralization for Subject AOC ', num2str(subjects{subj})])
-
     try
+        clc
+        disp(['Processing Alpha Power, IAF and Lateralization for Subject AOC ', num2str(subjects{subj})])
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath);
         load('power_nback.mat');
@@ -225,8 +227,8 @@ for subj = 1:length(subjects)
             '3-back: %f Hz (Power: %f) |Lateralization: %f %f %f \n'], subjects{subj}, IAF1, ...
             powerIAF1, IAF2, powerIAF2, IAF3, powerIAF3, LatIdx1, LatIdx2, LatIdx3);
     catch ME
-        ME.message
-        error(['ERROR calculating alpha power and IAF for Subject ' num2str(subjects{subj}) '!'])
+        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
+        fprintf('Continuing to next subject...\n');
     end
 end
 if ispc == 1

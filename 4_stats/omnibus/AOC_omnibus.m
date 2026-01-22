@@ -8,6 +8,12 @@
 startup
 [subjects, path, colors, headmodel] = setup('AOC');
 
+% Set up save directories
+control_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/omnibus';
+figures_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/omnibus';
+if ~exist(control_dir, 'dir'), mkdir(control_dir); end
+if ~exist(figures_dir, 'dir'), mkdir(figures_dir); end
+
 %% Load variables
 tic
 disp('Loading omnibus data...')
@@ -134,6 +140,10 @@ cfg.highlightsymbol    = '.';
  cfg.comment = 'no';
 % figure; 
 subplot(2,1,1);ft_topoplotTFR(cfg,ga_sb);
+% Save figure
+sgtitle('Sternberg TFR and Topography', 'FontSize', 24, 'FontWeight', 'bold');
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_TFR_topo.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_TFR_topo.fig'));
 
 %% plot NB tfr and topo
 figure;
@@ -200,6 +210,10 @@ cfg.highlightsymbol    = '.';
  cfg.comment = 'no';
 % figure; 
 subplot(2,1,1);ft_topoplotTFR(cfg,ga_nb);
+% Save figure
+sgtitle('N-back TFR and Topography', 'FontSize', 24, 'FontWeight', 'bold');
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_TFR_topo.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_TFR_topo.fig'));
 
 %% plot SB posterior
 cfg = [];
@@ -213,6 +227,10 @@ figure;
 subplot(3,1,1); ft_singleplotTFR(cfg,ga_sb_2);
 subplot(3,1,2); ft_singleplotTFR(cfg,ga_sb_4);
 subplot(3,1,3); ft_singleplotTFR(cfg,ga_sb_6);
+% Save figure
+sgtitle('Sternberg Posterior TFR by Load', 'FontSize', 24, 'FontWeight', 'bold');
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_posterior_TFR.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_posterior_TFR.fig'));
 
 %% plot NB posterior
 cfg = [];
@@ -226,6 +244,64 @@ figure;
 subplot(3,1,1); ft_singleplotTFR(cfg,ga_nb_1);
 subplot(3,1,2); ft_singleplotTFR(cfg,ga_nb_2);
 subplot(3,1,3); ft_singleplotTFR(cfg,ga_nb_3);
+% Save figure
+sgtitle('N-back Posterior TFR by Load', 'FontSize', 24, 'FontWeight', 'bold');
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_posterior_TFR.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_posterior_TFR.fig'));
+
+%% Control: Check baseline stability and data quality
+disp('Running data quality controls...');
+% Check baseline values across conditions
+cfg_base = [];
+cfg_base.latency = [-0.5 -0.25];
+cfg_base.avgovertime = 'yes';
+cfg_base.avgoverchan = 'yes';
+cfg_base.frequency = [8 14];  % alpha band
+cfg_base.avgoverfreq = 'yes';
+
+baseline_sb2 = zeros(length(subjects), 1);
+baseline_sb4 = zeros(length(subjects), 1);
+baseline_sb6 = zeros(length(subjects), 1);
+baseline_nb1 = zeros(length(subjects), 1);
+baseline_nb2 = zeros(length(subjects), 1);
+baseline_nb3 = zeros(length(subjects), 1);
+
+for s = 1:length(subjects)
+    tmp = ft_selectdata(cfg_base, load2{s});
+    baseline_sb2(s) = tmp.powspctrm;
+    tmp = ft_selectdata(cfg_base, load4{s});
+    baseline_sb4(s) = tmp.powspctrm;
+    tmp = ft_selectdata(cfg_base, load6{s});
+    baseline_sb6(s) = tmp.powspctrm;
+    tmp = ft_selectdata(cfg_base, load1nb{s});
+    baseline_nb1(s) = tmp.powspctrm;
+    tmp = ft_selectdata(cfg_base, load2nb{s});
+    baseline_nb2(s) = tmp.powspctrm;
+    tmp = ft_selectdata(cfg_base, load3nb{s});
+    baseline_nb3(s) = tmp.powspctrm;
+end
+
+% Plot baseline stability
+figure('Color', 'w');
+subplot(2,1,1);
+boxplot([baseline_sb2, baseline_sb4, baseline_sb6], 'Labels', {'Load 2', 'Load 4', 'Load 6'});
+ylabel('Baseline Power (alpha band)');
+title('Sternberg Baseline Stability');
+grid on;
+
+subplot(2,1,2);
+boxplot([baseline_nb1, baseline_nb2, baseline_nb3], 'Labels', {'Load 1', 'Load 2', 'Load 3'});
+ylabel('Baseline Power (alpha band)');
+title('N-back Baseline Stability');
+grid on;
+sgtitle('Baseline Stability Check', 'FontSize', 16, 'FontWeight', 'bold');
+saveas(gcf, fullfile(control_dir, 'AOC_omnibus_baseline_stability.png'));
+saveas(gcf, fullfile(control_dir, 'AOC_omnibus_baseline_stability.fig'));
+
+% Check for baseline differences (should be ~0 after baseline correction)
+fprintf('Baseline means (should be ~0):\n');
+fprintf('  SB Load 2: %.4f, Load 4: %.4f, Load 6: %.4f\n', mean(baseline_sb2), mean(baseline_sb4), mean(baseline_sb6));
+fprintf('  NB Load 1: %.4f, Load 2: %.4f, Load 3: %.4f\n', mean(baseline_nb1), mean(baseline_nb2), mean(baseline_nb3));
 
 %% extract power spectra SB
 cfg = [];
@@ -273,6 +349,9 @@ cfg.figure = 'gcf';
 % cfg.zlim = [-3 3];
 cfg.layout = headmodel.layANThead;
 figure; ft_multiplotER(cfg, ga_sb_2pow,ga_sb_4pow,ga_sb_6pow);
+% Save figure
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_power_spectra_multiplot.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_power_spectra_multiplot.fig'));
 
 %% plot with SE sternberg
 % close all
@@ -337,6 +416,9 @@ grid on;
 xlim([1  40]);
 % ylim([-1.5 2.5]);
 legend({'Load 6','Load 4','Load 2'}, 'Location','northeast','Fontsize',20);
+% Save figure
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_power_spectra_SE.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_power_spectra_SE.fig'));
 %% plot with SE nback
 % close all
 % figure;
@@ -400,6 +482,9 @@ grid on;
 xlim([1  40]);
 % ylim([-1.5 2.5]);
 legend({'Load 3','Load 2','Load 1'}, 'Location','southeast','Fontsize',20);
+% Save figure
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_power_spectra_SE.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_power_spectra_SE.fig'));
 %%
 close all
 cfg = [];
@@ -408,6 +493,9 @@ cfg.figure = 'gcf';
 % cfg.zlim = [-3 3];
 cfg.layout = headmodel.layANThead;
 figure; ft_multiplotER(cfg, ga_nb_1pow,ga_nb_2pow,ga_nb_3pow);
+% Save figure
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_power_spectra_multiplot.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_power_spectra_multiplot.fig'));
 %%
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/elec_aligned.mat');
 cfg =[];
@@ -457,6 +545,9 @@ cfg.maskparameter ='mask';
 % cfg.maskstyle = 'outline';
 % cfg.zlim = [-.8 .8];
 figure; ft_multiplotER(cfg,statFsb);
+% Save figure
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_Fstat_multiplot.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_Fstat_multiplot.fig'));
 %% 
 
 cfg = [];
@@ -468,6 +559,9 @@ cfg.linewidth = 2;
 cfg.comment = 'no';
 figure; ft_multiplotER(cfg,statFnb);
 set(gcf,'color','w');
+% Save figure
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_Fstat_multiplot.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_Fstat_multiplot.fig'));
 %%
 cfg = [];
 cfg.layout = headmodel.layANThead;
@@ -494,6 +588,9 @@ c.LineWidth = 1;
 c.FontSize = 30;
 c.Ticks = [0 20];
 title(c,'F-values')
+% Save figure
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_Fstat_topoplot.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_Fstat_topoplot.fig'));
 %% do omnibus again and test
 cfg = [];
 ga_nb = ft_freqgrandaverage(cfg,nb_high_low{:});
@@ -506,6 +603,9 @@ cfg.ylim = [3 40];
 % cfg.zlim = [-2 2];
 cfg.layout = headmodel.layANThead;
 figure; ft_multiplotTFR(cfg, ga_sb);
+% Save figure
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_highlow_TFR_multiplot.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_highlow_TFR_multiplot.fig'));
 %%
 cfg = [];
 cfg.operation = 'subtract';
@@ -519,6 +619,9 @@ cfg.ylim = [3 40];
 % cfg.zlim = [-3 3];
 cfg.layout = headmodel.layANThead;
 figure; ft_multiplotTFR(cfg, omnibus);
+% Save figure
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SBvsNB_TFR_multiplot.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SBvsNB_TFR_multiplot.fig'));
 %% compute omnibus stat test freq time and elec
 cfg = [];
 cfg.latency          = [0 3];
@@ -727,6 +830,9 @@ c.LineWidth = 1;
 c.FontSize = 18;
 c.Ticks = [-.5 0 .5];
 title(c,'Effect size \it d')
+% Save figure
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SBvsNB_effectsize_TFR.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SBvsNB_effectsize_TFR.fig'));
 
 stattfr=stat;
 stattfr.stat= stat.effectsize;
@@ -746,6 +852,10 @@ cfg.highlightsymbol    = '.';
  cfg.comment = 'no';
 % figure; 
 subplot(2,1,2);ft_topoplotTFR(cfg,stat);
+% Save figure
+sgtitle('Sternberg vs N-back Effect Size', 'FontSize', 24, 'FontWeight', 'bold');
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SBvsNB_effectsize_topo.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SBvsNB_effectsize_topo.fig'));
 %% extract power spectra omnibus
 cfg = [];
 cfg.latency = [1 2];
@@ -771,6 +881,9 @@ cfg.figure = 'gcf';
 % cfg.zlim = [-3 3];
 cfg.layout = headmodel.layANThead;
 figure; ft_multiplotER(cfg, ga_sb_hl_pow,ga_nb_hl_pow);
+% Save figure
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_highlow_power_spectra_multiplot.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_highlow_power_spectra_multiplot.fig'));
 %% plot with SE sternberg
 % close all
 figure;
@@ -824,6 +937,9 @@ grid on;
 xlim([1  40]);
 % ylim([-1.5 2.5]);
 legend({'Sternberg high-low','N-back high-low'}, 'Location','southeast','Fontsize',20);
+% Save figure
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_highlow_power_spectra_SE.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_highlow_power_spectra_SE.fig'));
 
 %%
 %%
@@ -866,13 +982,63 @@ sb2 = sb2(:);
 sb4 = sb4(:);
 sb6 = sb6(:);
 
+% Control: Visualize outliers before exclusion
+figure('Color', 'w');
+subplot(2,2,1);
+scatter(1:length(sb2), sb2, 'filled', 'k'); hold on;
+scatter(1:length(sb4), sb4, 'filled', 'b');
+scatter(1:length(sb6), sb6, 'filled', 'r');
+xlabel('Subject'); ylabel('Alpha Power');
+title('Sternberg: Before Outlier Exclusion');
+legend({'Load 2', 'Load 4', 'Load 6'}, 'Location', 'best');
+grid on;
+
 Z = zscore([sb2 sb4 sb6], 0, 1); % z per condition across subjects
 keepIdx = all(abs(Z) < 2, 2); % keep subjects that are not outliers in any condition
+
+% Control: Show which subjects are excluded
+n_excluded = sum(~keepIdx);
+fprintf('Sternberg: Excluding %d subjects (%.1f%%) as outliers\n', n_excluded, 100*n_excluded/length(keepIdx));
+if n_excluded > 0
+    fprintf('  Excluded subject indices: %s\n', num2str(find(~keepIdx)));
+end
+
+subplot(2,2,2);
+imagesc(Z); colorbar;
+xlabel('Condition'); ylabel('Subject');
+title('Z-scores (Sternberg)');
+xticklabels({'Load 2', 'Load 4', 'Load 6'});
+hold on;
+for i = 1:length(keepIdx)
+    if ~keepIdx(i)
+        plot([0.5 3.5], [i i], 'r-', 'LineWidth', 2);
+    end
+end
 
 sb2 = sb2(keepIdx);
 sb4 = sb4(keepIdx);
 sb6 = sb6(keepIdx);
 % Note: After outlier exclusion, all arrays should have the same length
+
+% Control: Visualize after exclusion
+subplot(2,2,3);
+scatter(1:length(sb2), sb2, 'filled', 'k'); hold on;
+scatter(1:length(sb4), sb4, 'filled', 'b');
+scatter(1:length(sb6), sb6, 'filled', 'r');
+xlabel('Subject'); ylabel('Alpha Power');
+title('Sternberg: After Outlier Exclusion');
+legend({'Load 2', 'Load 4', 'Load 6'}, 'Location', 'best');
+grid on;
+
+subplot(2,2,4);
+Z_after = zscore([sb2 sb4 sb6], 0, 1);
+imagesc(Z_after); colorbar;
+xlabel('Condition'); ylabel('Subject');
+title('Z-scores After Exclusion');
+xticklabels({'Load 2', 'Load 4', 'Load 6'});
+sgtitle('Sternberg Outlier Exclusion Control', 'FontSize', 16, 'FontWeight', 'bold');
+saveas(gcf, fullfile(control_dir, 'AOC_omnibus_SB_outlier_exclusion.png'));
+saveas(gcf, fullfile(control_dir, 'AOC_omnibus_SB_outlier_exclusion.fig'));
 
 %%
 close all
@@ -1001,13 +1167,63 @@ nb1 = nb1(:);
 nb2 = nb2(:);
 nb3 = nb3(:);
 
+% Control: Visualize outliers before exclusion
+figure('Color', 'w');
+subplot(2,2,1);
+scatter(1:length(nb1), nb1, 'filled', 'k'); hold on;
+scatter(1:length(nb2), nb2, 'filled', 'b');
+scatter(1:length(nb3), nb3, 'filled', 'r');
+xlabel('Subject'); ylabel('Alpha Power');
+title('N-back: Before Outlier Exclusion');
+legend({'Load 1', 'Load 2', 'Load 3'}, 'Location', 'best');
+grid on;
+
 Z = zscore([nb1 nb2 nb3], 0, 1); % z per condition across subjects
 keepIdx = all(abs(Z) < 2, 2); % keep subjects that are not outliers in any condition
+
+% Control: Show which subjects are excluded
+n_excluded = sum(~keepIdx);
+fprintf('N-back: Excluding %d subjects (%.1f%%) as outliers\n', n_excluded, 100*n_excluded/length(keepIdx));
+if n_excluded > 0
+    fprintf('  Excluded subject indices: %s\n', num2str(find(~keepIdx)));
+end
+
+subplot(2,2,2);
+imagesc(Z); colorbar;
+xlabel('Condition'); ylabel('Subject');
+title('Z-scores (N-back)');
+xticklabels({'Load 1', 'Load 2', 'Load 3'});
+hold on;
+for i = 1:length(keepIdx)
+    if ~keepIdx(i)
+        plot([0.5 3.5], [i i], 'r-', 'LineWidth', 2);
+    end
+end
 
 nb1 = nb1(keepIdx);
 nb2 = nb2(keepIdx);
 nb3 = nb3(keepIdx);
 % Note: After outlier exclusion, all arrays should have the same length
+
+% Control: Visualize after exclusion
+subplot(2,2,3);
+scatter(1:length(nb1), nb1, 'filled', 'k'); hold on;
+scatter(1:length(nb2), nb2, 'filled', 'b');
+scatter(1:length(nb3), nb3, 'filled', 'r');
+xlabel('Subject'); ylabel('Alpha Power');
+title('N-back: After Outlier Exclusion');
+legend({'Load 1', 'Load 2', 'Load 3'}, 'Location', 'best');
+grid on;
+
+subplot(2,2,4);
+Z_after = zscore([nb1 nb2 nb3], 0, 1);
+imagesc(Z_after); colorbar;
+xlabel('Condition'); ylabel('Subject');
+title('Z-scores After Exclusion');
+xticklabels({'Load 1', 'Load 2', 'Load 3'});
+sgtitle('N-back Outlier Exclusion Control', 'FontSize', 16, 'FontWeight', 'bold');
+saveas(gcf, fullfile(control_dir, 'AOC_omnibus_NB_outlier_exclusion.png'));
+saveas(gcf, fullfile(control_dir, 'AOC_omnibus_NB_outlier_exclusion.fig'));
 
 %%
 % figure(31); clf;
@@ -1084,7 +1300,65 @@ xlim([0 1.3])
 % Save
 tnb_str = sprintf('%d', tnb);
 tsb_str = sprintf('%d', tsb);
-saveas(gcf, ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/omnibus/AOC_omnibus_rainclouds_tnb', num2str(tnb_str), '_tsb', num2str(tsb_str), '.png'])
+saveas(gcf, fullfile(figures_dir, ['AOC_omnibus_rainclouds_tnb', num2str(tnb_str), '_tsb', num2str(tsb_str), '.png']));
+saveas(gcf, fullfile(figures_dir, ['AOC_omnibus_rainclouds_tnb', num2str(tnb_str), '_tsb', num2str(tsb_str), '.fig']));
+
+%% Control: Summary statistics and data quality report
+disp('Generating summary control report...');
+summary_file = fullfile(control_dir, 'AOC_omnibus_summary_report.txt');
+fid = fopen(summary_file, 'w');
+fprintf(fid, 'AOC Omnibus Analysis Summary Report\n');
+fprintf(fid, '====================================\n\n');
+fprintf(fid, 'Analysis Date: %s\n\n', datestr(now));
+
+fprintf(fid, 'Sample Information:\n');
+fprintf(fid, '  Total subjects: %d\n', length(subjects));
+fprintf(fid, '  Sternberg after outlier exclusion: %d\n', length(sb2));
+fprintf(fid, '  N-back after outlier exclusion: %d\n\n', length(nb1));
+
+fprintf(fid, 'Baseline Stability (alpha band, should be ~0):\n');
+fprintf(fid, '  Sternberg Load 2: %.4f (SD: %.4f)\n', mean(baseline_sb2), std(baseline_sb2));
+fprintf(fid, '  Sternberg Load 4: %.4f (SD: %.4f)\n', mean(baseline_sb4), std(baseline_sb4));
+fprintf(fid, '  Sternberg Load 6: %.4f (SD: %.4f)\n', mean(baseline_sb6), std(baseline_sb6));
+fprintf(fid, '  N-back Load 1: %.4f (SD: %.4f)\n', mean(baseline_nb1), std(baseline_nb1));
+fprintf(fid, '  N-back Load 2: %.4f (SD: %.4f)\n', mean(baseline_nb2), std(baseline_nb2));
+fprintf(fid, '  N-back Load 3: %.4f (SD: %.4f)\n\n', mean(baseline_nb3), std(baseline_nb3));
+
+fprintf(fid, 'Alpha Power Statistics (after outlier exclusion):\n');
+fprintf(fid, '  Sternberg Load 2: M=%.4f, SD=%.4f, Range=[%.4f, %.4f]\n', mean(sb2), std(sb2), min(sb2), max(sb2));
+fprintf(fid, '  Sternberg Load 4: M=%.4f, SD=%.4f, Range=[%.4f, %.4f]\n', mean(sb4), std(sb4), min(sb4), max(sb4));
+fprintf(fid, '  Sternberg Load 6: M=%.4f, SD=%.4f, Range=[%.4f, %.4f]\n', mean(sb6), std(sb6), min(sb6), max(sb6));
+fprintf(fid, '  N-back Load 1: M=%.4f, SD=%.4f, Range=[%.4f, %.4f]\n', mean(nb1), std(nb1), min(nb1), max(nb1));
+fprintf(fid, '  N-back Load 2: M=%.4f, SD=%.4f, Range=[%.4f, %.4f]\n', mean(nb2), std(nb2), min(nb2), max(nb2));
+fprintf(fid, '  N-back Load 3: M=%.4f, SD=%.4f, Range=[%.4f, %.4f]\n\n', mean(nb3), std(nb3), min(nb3), max(nb3));
+
+fprintf(fid, 'Statistical Tests (paired t-tests, uncorrected):\n');
+[~, p_24_sb] = ttest(sb2, sb4);
+[~, p_46_sb] = ttest(sb4, sb6);
+[~, p_26_sb] = ttest(sb2, sb6);
+[~, p_12_nb] = ttest(nb1, nb2);
+[~, p_23_nb] = ttest(nb2, nb3);
+[~, p_13_nb] = ttest(nb1, nb3);
+fprintf(fid, '  Sternberg Load 2 vs 4: p=%.4f\n', p_24_sb);
+fprintf(fid, '  Sternberg Load 4 vs 6: p=%.4f\n', p_46_sb);
+fprintf(fid, '  Sternberg Load 2 vs 6: p=%.4f\n', p_26_sb);
+fprintf(fid, '  N-back Load 1 vs 2: p=%.4f\n', p_12_nb);
+fprintf(fid, '  N-back Load 2 vs 3: p=%.4f\n', p_23_nb);
+fprintf(fid, '  N-back Load 1 vs 3: p=%.4f\n\n', p_13_nb);
+
+fprintf(fid, 'Analysis Parameters:\n');
+fprintf(fid, '  Baseline window: [-0.5 -0.25] s\n');
+fprintf(fid, '  Alpha band: 8-14 Hz\n');
+fprintf(fid, '  Sternberg time window: [%.1f %.1f] s\n', tsb(1), tsb(2));
+fprintf(fid, '  N-back time window: [%.1f %.1f] s\n', tnb(1), tnb(2));
+fprintf(fid, '  Cluster permutation alpha: 0.05 (two-tailed)\n');
+fprintf(fid, '  Outlier threshold: |z| > 2\n\n');
+
+fprintf(fid, 'Files Saved:\n');
+fprintf(fid, '  Controls: %s\n', control_dir);
+fprintf(fid, '  Figures: %s\n', figures_dir);
+fclose(fid);
+fprintf('Summary report saved to: %s\n', summary_file);
 
 %% Helper function
 function sig_label = getSigLabel(p)

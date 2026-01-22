@@ -573,7 +573,6 @@ cfg.layout = headmodel.layANThead;
 cfg.figure = 'gcf';
 cfg.marker             = 'off';
 cfg.highlight          = 'on';
-cfg.colormap = 'YlOrRd';
 % cfg.highlightchannel = {'P7', 'P3', 'P5', 'PO3', 'TP7', 'PO7', 'TPP9h', 'PO9', 'P9', 'TPP7h', 'PPO9h', 'PPO5h', 'POO9h'};% sb
 cfg.highlightchannel = {'P7', 'P3', 'O1', 'P5', 'P1', 'PO3', 'TP7', 'PO7', 'TPP9h', 'PO9', 'P9', 'CPP5h', 'CPP3h', 'PPO1', 'I1', 'TPP7h', 'PPO9h', 'PPO5h', 'POO9h', 'POO3h', 'OI1h'};% sb
 cfg.highlightsymbol    = '.';
@@ -851,13 +850,28 @@ statprereg.effectsize = repmat(cohens_d_3d, [length(statprereg.label), 1, 1]); %
 %%
 
 % close all
+% Ensure effectsize has correct dimensions [chan×freq×time] for plotting
+if isfield(stat, 'effectsize')
+    if ndims(stat.effectsize) == 2
+        % Expand from [freq×time] to [chan×freq×time]
+        cohens_d_2d = stat.effectsize;
+        cohens_d_3d = reshape(cohens_d_2d, [1, size(cohens_d_2d, 1), size(cohens_d_2d, 2)]);
+        stat.effectsize = repmat(cohens_d_3d, [length(stat.label), 1, 1]);
+    end
+end
 cfg = [];
 cfg.layout = headmodel.layANThead;
 cfg.parameter = 'effectsize';
 cfg.maskparameter ='mask';
 cfg.maskstyle = 'outline';
 % cfg.zlim = [-.8 .8];
-figure; ft_multiplotTFR(cfg,stat);
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+ft_multiplotTFR(cfg,stat);
+color_map = flipud(cbrewer('div', 'RdBu', 64));
+colormap(color_map);
+% Save figure (multiplot: .fig only)
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternvsnback_effectsize_multiplot.fig'));
 
 %% do stats
 stattfr=statprereg;
@@ -895,10 +909,15 @@ freq_interp = linspace(2, 40, 500);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 
 % And interpolate:
-pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow,...
-    tim_grid_interp, freq_grid_interp, 'spline');
-mask_interp = interp2(tim_grid_orig, freq_grid_orig, meanmask,...
-    tim_grid_interp, freq_grid_interp, 'spline');
+% Use 'linear' instead of 'spline' to handle NaN values better
+% Replace NaN values with nearest neighbor before interpolation if needed
+meanpow_clean = meanpow;
+meanmask_clean = meanmask;
+% Use linear interpolation which handles NaN better
+pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow_clean,...
+    tim_grid_interp, freq_grid_interp, 'linear', NaN);
+mask_interp = interp2(tim_grid_orig, freq_grid_orig, double(meanmask_clean),...
+    tim_grid_interp, freq_grid_interp, 'nearest', 0);
 figure;
 set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 % subplot(2,1,2);ft_plot_matrix(flip(pow_interp));

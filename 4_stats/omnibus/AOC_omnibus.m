@@ -12,7 +12,7 @@ startup
 control_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/omnibus';
 figures_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/omnibus';
 if ~exist(control_dir, 'dir'), mkdir(control_dir); end
-if ~exist(figures_dir, 'dir'), mkdir(figures_dir); end
+if ~exist(figures_dir, 'dir'), mkdir(figures_dir); end 
 
 %% Load variables
 tic
@@ -79,6 +79,7 @@ ga_nb   = ft_freqgrandaverage(cfg,load1nb{:},load2nb{:},load3nb{:});
 
 %% plot SB tfr and topo
 figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 cfg = [];
 cfg.channel = {'Pz', 'POz', 'P2', 'PPO2'};
 cfg.avgoverchan = 'yes';
@@ -99,7 +100,6 @@ freq_interp = linspace(1, 40, 500);
 pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow,...
     tim_grid_interp, freq_grid_interp, 'spline');
 
-figure;
 subplot(2,1,2);ft_plot_matrix(flip(pow_interp));
 % subplot(2,1,1);ft_plot_matrix(flip(pow_interp),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
 ax = gca; hold(ax,'on');
@@ -114,16 +114,17 @@ xticklabels({'-1','0','1','2','3'});
 yticks([1 125 250 375 ]); % positions in the interpolated grid
 yticklabels({'40','30','20','10'}); % corresponding freq values
 
-set(gcf,'color','w');
 set(gca,'Fontsize',20);
 xlabel('Time [sec]');
 ylabel('Frequency [Hz]');
 caxis([-.2 .2]);
-c = colorbar;
-c.LineWidth = 1;
-c.FontSize = 18;
-c.Ticks = [-.2 0 .2];
-title(c,"Power change \newline from baseline")
+color_map = flipud(cbrewer('div', 'RdBu', 64)); % Red-Blue diverging color map
+colormap(color_map);
+cb = colorbar;
+cb.LineWidth = 1;
+cb.FontSize = 18;
+cb.Ticks = [-.2 0 .2];
+title(cb,"Power change \newline from baseline")
 xline(0,'k--','LineWidth',2); % black dashed line at 0 sec
 cfg = [];
 cfg.layout = headmodel.layANThead;
@@ -140,13 +141,14 @@ cfg.highlightsymbol    = '.';
  cfg.comment = 'no';
 % figure; 
 subplot(2,1,1);ft_topoplotTFR(cfg,ga_sb);
+colormap(color_map); % Use same colormap for topo
 % Save figure
 sgtitle('Sternberg TFR and Topography', 'FontSize', 24, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_TFR_topo.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_TFR_topo.fig'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_stern_TFR_topo.png'));
 
 %% plot NB tfr and topo
 figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 cfg = [];
 cfg.channel = {'P3', 'P4', 'POz', 'PO3', 'PO4', 'PPO1', 'PPO2', 'PPO5h', 'PPO6h'};% nb
 cfg.avgoverchan = 'yes';
@@ -167,7 +169,6 @@ freq_interp = linspace(1, 40, 500);
 pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow,...
     tim_grid_interp, freq_grid_interp, 'spline');
 
-figure;
 subplot(2,1,2);ft_plot_matrix(flip(pow_interp));
 % subplot(2,1,1);ft_plot_matrix(flip(pow_interp),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
 ax = gca; hold(ax,'on');
@@ -182,16 +183,17 @@ xticklabels({'-1','0','1','2'});
 yticks([1 125 250 375 ]); % positions in the interpolated grid
 yticklabels({'40','30','20','10'}); % corresponding freq values
 
-set(gcf,'color','w');
 set(gca,'Fontsize',20);
 xlabel('Time [sec]');
 ylabel('Frequency [Hz]');
 caxis([-.2 .2]);
-c = colorbar;
-c.LineWidth = 1;
-c.FontSize = 18;
-c.Ticks = [-.2 0 .2];
-title(c,"Power change \newline from baseline")
+color_map = flipud(cbrewer('div', 'RdBu', 64)); % Red-Blue diverging color map
+colormap(color_map);
+cb = colorbar;
+cb.LineWidth = 1;
+cb.FontSize = 18;
+cb.Ticks = [-.2 0 .2];
+title(cb,"Power change \newline from baseline")
 xline(0,'k--','LineWidth',2); % black dashed line at 0 sec
 cfg = [];
 cfg.layout = headmodel.layANThead;
@@ -210,12 +212,14 @@ cfg.highlightsymbol    = '.';
  cfg.comment = 'no';
 % figure; 
 subplot(2,1,1);ft_topoplotTFR(cfg,ga_nb);
+colormap(color_map); % Use same colormap for topo
 % Save figure
 sgtitle('N-back TFR and Topography', 'FontSize', 24, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_TFR_topo.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_TFR_topo.fig'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_TFR_topo.png'));
 
 %% plot SB posterior
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 cfg = [];
 cfg.channel = {'Pz', 'POz', 'P2', 'PPO2'};
 % cfg.channel = {'P8', 'PO4', 'PO8', 'PPO6h', 'POO4h'};
@@ -223,16 +227,18 @@ cfg.figure = 'gcf';
 cfg.ylim = [3 40];
 cfg.zlim = [-.2 .2];
 cfg.xlim = [-.5 3];
-figure; 
 subplot(3,1,1); ft_singleplotTFR(cfg,ga_sb_2);
 subplot(3,1,2); ft_singleplotTFR(cfg,ga_sb_4);
 subplot(3,1,3); ft_singleplotTFR(cfg,ga_sb_6);
+color_map = flipud(cbrewer('div', 'RdBu', 64));
+colormap(color_map);
 % Save figure
 sgtitle('Sternberg Posterior TFR by Load', 'FontSize', 24, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_posterior_TFR.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_posterior_TFR.fig'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_stern_posterior_TFR.png'));
 
 %% plot NB posterior
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 cfg = [];
 % cfg.channel = {'Pz', 'POz', 'P2', 'PPO2'};
 cfg.channel = {'POz', 'PO3', 'PO4', 'PPO1', 'PPO6h'};
@@ -240,14 +246,14 @@ cfg.figure = 'gcf';
 cfg.ylim = [3 40];
 cfg.zlim = [-.2 .2];
 cfg.xlim = [-.5 2];
-figure; 
 subplot(3,1,1); ft_singleplotTFR(cfg,ga_nb_1);
 subplot(3,1,2); ft_singleplotTFR(cfg,ga_nb_2);
 subplot(3,1,3); ft_singleplotTFR(cfg,ga_nb_3);
+color_map = flipud(cbrewer('div', 'RdBu', 64));
+colormap(color_map);
 % Save figure
 sgtitle('N-back Posterior TFR by Load', 'FontSize', 24, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_posterior_TFR.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_posterior_TFR.fig'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_posterior_TFR.png'));
 
 %% Control: Check baseline stability and data quality
 disp('Running data quality controls...');
@@ -282,7 +288,8 @@ for s = 1:length(subjects)
 end
 
 % Plot baseline stability
-figure('Color', 'w');
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 subplot(2,1,1);
 boxplot([baseline_sb2, baseline_sb4, baseline_sb6], 'Labels', {'Load 2', 'Load 4', 'Load 6'});
 ylabel('Baseline Power (alpha band)');
@@ -296,7 +303,6 @@ title('N-back Baseline Stability');
 grid on;
 sgtitle('Baseline Stability Check', 'FontSize', 16, 'FontWeight', 'bold');
 saveas(gcf, fullfile(control_dir, 'AOC_omnibus_baseline_stability.png'));
-saveas(gcf, fullfile(control_dir, 'AOC_omnibus_baseline_stability.fig'));
 
 % Check for baseline differences (should be ~0 after baseline correction)
 fprintf('Baseline means (should be ~0):\n');
@@ -348,10 +354,11 @@ cfg.figure = 'gcf';
 % cfg.ylim = [3 40];
 % cfg.zlim = [-3 3];
 cfg.layout = headmodel.layANThead;
-figure; ft_multiplotER(cfg, ga_sb_2pow,ga_sb_4pow,ga_sb_6pow);
-% Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_power_spectra_multiplot.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_power_spectra_multiplot.fig'));
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+ft_multiplotER(cfg, ga_sb_2pow,ga_sb_4pow,ga_sb_6pow);
+% Save figure (multiplot: .fig only)
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_stern_power_spectra_multiplot.fig'));
 
 %% plot with SE sternberg
 % close all
@@ -372,42 +379,42 @@ low = y - e; % lower bound
 high = y + e; % upper bound
 
 
+% plot load 6 (highest - red)
 hp1 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'r', 'HandleVisibility', 'off');
 hold on;
 hl1 = line(x, y);
 set(hp1, 'facecolor', [0.97, 0.26, 0.26], 'edgecolor', 'none', 'facealpha', 0.2);
 set(hl1, 'color', [0.97, 0.26, 0.26], 'linewidth', 2);
 
-% plot load 4
+% plot load 4 (middle - green)
 x = tlk4_ind.freq'; % x-axis def
 y = mean(squeeze(tlk4_ind.powspctrm), 1)'; % y-axis def
 e = std(squeeze(tlk4_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
 low = y - e; % lower bound
 high = y + e; % upper bound
 
-hp2 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'b', 'HandleVisibility', 'off');
+hp2 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'g', 'HandleVisibility', 'off');
 hl2 = line(x, y);
-set(hp2, 'facecolor', [0.30, 0.75, 0.93], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl2, 'color', [0.30, 0.75, 0.93], 'linewidth', 2);
+set(hp2, 'facecolor', [0.2, 0.8, 0.2], 'edgecolor', 'none', 'facealpha', 0.2);
+set(hl2, 'color', [0.2, 0.8, 0.2], 'linewidth', 2);
 
-% plot load 2
+% plot load 2 (lowest - blue)
 x = tlk2_ind.freq'; % x-axis def
 y = mean(squeeze(tlk2_ind.powspctrm), 1)'; % y-axis def
 e = std(squeeze(tlk2_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
 low = y - e; % lower bound
 high = y + e; % upper bound
 
-hp3 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'k', 'HandleVisibility', 'off');
+hp3 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'b', 'HandleVisibility', 'off');
 hl3 = line(x, y);
-set(hp3, 'facecolor', [0.5, 0.5, 0.5], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl3, 'color', 'k', 'linewidth', 2);
+set(hp3, 'facecolor', [0.30, 0.75, 0.93], 'edgecolor', 'none', 'facealpha', 0.2);
+set(hl3, 'color', [0.30, 0.75, 0.93], 'linewidth', 2);
 
 % Label the axes
 set(gca, 'FontSize', 22);
 title('');
 xlabel('Frequency [Hz]');
 ylabel("Power change \newline from baseline");
-set(gcf,'color','w');
 box on;
 grid on;
 
@@ -417,8 +424,7 @@ xlim([1  40]);
 % ylim([-1.5 2.5]);
 legend({'Load 6','Load 4','Load 2'}, 'Location','northeast','Fontsize',20);
 % Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_power_spectra_SE.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_power_spectra_SE.fig'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_stern_power_spectra_SE.png'));
 %% plot with SE nback
 % close all
 % figure;
@@ -430,13 +436,12 @@ cfg.avgoverchan = 'yes';
 tlk2_ind        = ft_selectdata(cfg,ga_nb_1pow);
 tlk4_ind        = ft_selectdata(cfg,ga_nb_2pow);
 tlk6_ind        = ft_selectdata(cfg,ga_nb_3pow);
-% plot load 3
+% plot load 3 (highest - red)
 x = tlk6_ind.freq'; % x-axis def
 y = mean(squeeze(tlk6_ind.powspctrm), 1)'; % y-axis def
 e = std(squeeze(tlk6_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
 low = y - e; % lower bound
 high = y + e; % upper bound
-
 
 hp1 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'r', 'HandleVisibility', 'off');
 hold on;
@@ -444,36 +449,35 @@ hl1 = line(x, y);
 set(hp1, 'facecolor', [0.97, 0.26, 0.26], 'edgecolor', 'none', 'facealpha', 0.2);
 set(hl1, 'color', [0.97, 0.26, 0.26], 'linewidth', 2);
 
-% plot load 2
+% plot load 2 (middle - green)
 x = tlk4_ind.freq'; % x-axis def
 y = mean(squeeze(tlk4_ind.powspctrm), 1)'; % y-axis def
 e = std(squeeze(tlk4_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
 low = y - e; % lower bound
 high = y + e; % upper bound
 
-hp2 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'b', 'HandleVisibility', 'off');
+hp2 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'g', 'HandleVisibility', 'off');
 hl2 = line(x, y);
-set(hp2, 'facecolor', [0.30, 0.75, 0.93], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl2, 'color', [0.30, 0.75, 0.93], 'linewidth', 2);
+set(hp2, 'facecolor', [0.2, 0.8, 0.2], 'edgecolor', 'none', 'facealpha', 0.2);
+set(hl2, 'color', [0.2, 0.8, 0.2], 'linewidth', 2);
 
-% plot load 1
+% plot load 1 (lowest - blue)
 x = tlk2_ind.freq'; % x-axis def
 y = mean(squeeze(tlk2_ind.powspctrm), 1)'; % y-axis def
 e = std(squeeze(tlk2_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
 low = y - e; % lower bound
 high = y + e; % upper bound
 
-hp3 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'k', 'HandleVisibility', 'off');
+hp3 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'b', 'HandleVisibility', 'off');
 hl3 = line(x, y);
-set(hp3, 'facecolor', [0.5, 0.5, 0.5], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl3, 'color', 'k', 'linewidth', 2);
+set(hp3, 'facecolor', [0.30, 0.75, 0.93], 'edgecolor', 'none', 'facealpha', 0.2);
+set(hl3, 'color', [0.30, 0.75, 0.93], 'linewidth', 2);
 
 % Label the axes
 set(gca, 'FontSize', 22);
 title('');
 xlabel('Frequency [Hz]');
 ylabel("Power change \newline from baseline");
-set(gcf,'color','w');
 box on;
 grid on;
 
@@ -483,8 +487,7 @@ xlim([1  40]);
 % ylim([-1.5 2.5]);
 legend({'Load 3','Load 2','Load 1'}, 'Location','southeast','Fontsize',20);
 % Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_power_spectra_SE.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_power_spectra_SE.fig'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_power_spectra_SE.png'));
 %%
 close all
 cfg = [];
@@ -492,10 +495,11 @@ cfg.figure = 'gcf';
 % cfg.ylim = [3 40];
 % cfg.zlim = [-3 3];
 cfg.layout = headmodel.layANThead;
-figure; ft_multiplotER(cfg, ga_nb_1pow,ga_nb_2pow,ga_nb_3pow);
-% Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_power_spectra_multiplot.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_power_spectra_multiplot.fig'));
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+ft_multiplotER(cfg, ga_nb_1pow,ga_nb_2pow,ga_nb_3pow);
+% Save figure (multiplot: .fig only)
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_power_spectra_multiplot.fig'));
 %%
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/elec_aligned.mat');
 cfg =[];
@@ -544,10 +548,11 @@ cfg.parameter = 'stat';
 cfg.maskparameter ='mask';
 % cfg.maskstyle = 'outline';
 % cfg.zlim = [-.8 .8];
-figure; ft_multiplotER(cfg,statFsb);
-% Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_Fstat_multiplot.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_Fstat_multiplot.fig'));
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+ft_multiplotER(cfg,statFsb);
+% Save figure (multiplot: .fig only)
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_stern_Fstat_multiplot.fig'));
 %% 
 
 cfg = [];
@@ -557,11 +562,11 @@ cfg.maskparameter ='mask';
 cfg.linecolor = 'k';
 cfg.linewidth = 2;
 cfg.comment = 'no';
-figure; ft_multiplotER(cfg,statFnb);
-set(gcf,'color','w');
-% Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_Fstat_multiplot.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_Fstat_multiplot.fig'));
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+ft_multiplotER(cfg,statFnb);
+% Save figure (multiplot: .fig only)
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_Fstat_multiplot.fig'));
 %%
 cfg = [];
 cfg.layout = headmodel.layANThead;
@@ -580,17 +585,18 @@ cfg.xlim = [8.975230 17.601959];% nb
 % cfg.zlim = [0 7];%sb
 cfg.zlim = [0 20];%sb
 
-figure; ft_topoplotER(cfg,statFnb);
-set(gcf,'color','w');
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+ft_topoplotER(cfg,statFnb);
 caxis([0 20]);
-c = colorbar;
-c.LineWidth = 1;
-c.FontSize = 30;
-c.Ticks = [0 20];
-title(c,'F-values')
+colormap('YlOrRd'); % Yellow to red colormap for F-stat
+cb = colorbar;
+cb.LineWidth = 1;
+cb.FontSize = 30;
+cb.Ticks = [0 20];
+title(cb,'F-values')
 % Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_Fstat_topoplot.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_NB_Fstat_topoplot.fig'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_Fstat_topoplot.png'));
 %% do omnibus again and test
 cfg = [];
 ga_nb = ft_freqgrandaverage(cfg,nb_high_low{:});
@@ -602,10 +608,13 @@ cfg.figure = 'gcf';
 cfg.ylim = [3 40];
 % cfg.zlim = [-2 2];
 cfg.layout = headmodel.layANThead;
-figure; ft_multiplotTFR(cfg, ga_sb);
-% Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_highlow_TFR_multiplot.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SB_highlow_TFR_multiplot.fig'));
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+ft_multiplotTFR(cfg, ga_sb);
+color_map = flipud(cbrewer('div', 'RdBu', 64));
+colormap(color_map);
+% Save figure (multiplot: .fig only)
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_stern_highlow_TFR_multiplot.fig'));
 %%
 cfg = [];
 cfg.operation = 'subtract';
@@ -618,10 +627,13 @@ cfg.figure = 'gcf';
 cfg.ylim = [3 40];
 % cfg.zlim = [-3 3];
 cfg.layout = headmodel.layANThead;
-figure; ft_multiplotTFR(cfg, omnibus);
-% Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SBvsNB_TFR_multiplot.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SBvsNB_TFR_multiplot.fig'));
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+ft_multiplotTFR(cfg, omnibus);
+color_map = flipud(cbrewer('div', 'RdBu', 64));
+colormap(color_map);
+% Save figure (multiplot: .fig only)
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternvsnback_TFR_multiplot.fig'));
 %% compute omnibus stat test freq time and elec
 cfg = [];
 cfg.latency          = [0 3];
@@ -809,6 +821,7 @@ pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow,...
 mask_interp = interp2(tim_grid_orig, freq_grid_orig, meanmask,...
     tim_grid_interp, freq_grid_interp, 'spline');
 figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 % subplot(2,1,2);ft_plot_matrix(flip(pow_interp));
 subplot(2,1,1);ft_plot_matrix(flip(pow_interp),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
 freq_flipped = fliplr(freq_interp);
@@ -820,19 +833,19 @@ yticklabels({'40','30','20','10'});
 
 xticks([1 250 500])
 xticklabels({num2str(freq.time(1)),'1.5',  num2str(freq.time(end))});
-set(gcf,'color','w');
 set(gca,'Fontsize',20);
 xlabel('Time [sec]');
 ylabel('Frequency [Hz]');
 caxis([-.5 .5]);
-c = colorbar;
-c.LineWidth = 1;
-c.FontSize = 18;
-c.Ticks = [-.5 0 .5];
-title(c,'Effect size \it d')
+color_map = flipud(cbrewer('div', 'RdBu', 64));
+colormap(color_map);
+cb = colorbar;
+cb.LineWidth = 1;
+cb.FontSize = 18;
+cb.Ticks = [-.5 0 .5];
+title(cb,'Effect size \it d')
 % Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SBvsNB_effectsize_TFR.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SBvsNB_effectsize_TFR.fig'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternvsnback_effectsize_TFR.png'));
 
 stattfr=stat;
 stattfr.stat= stat.effectsize;
@@ -852,10 +865,10 @@ cfg.highlightsymbol    = '.';
  cfg.comment = 'no';
 % figure; 
 subplot(2,1,2);ft_topoplotTFR(cfg,stat);
+colormap(color_map); % Use same colormap for topo
 % Save figure
 sgtitle('Sternberg vs N-back Effect Size', 'FontSize', 24, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SBvsNB_effectsize_topo.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_SBvsNB_effectsize_topo.fig'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternvsnback_effectsize_topo.png'));
 %% extract power spectra omnibus
 cfg = [];
 cfg.latency = [1 2];
@@ -880,9 +893,10 @@ cfg.figure = 'gcf';
 % cfg.ylim = [3 40];
 % cfg.zlim = [-3 3];
 cfg.layout = headmodel.layANThead;
-figure; ft_multiplotER(cfg, ga_sb_hl_pow,ga_nb_hl_pow);
-% Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_highlow_power_spectra_multiplot.png'));
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+ft_multiplotER(cfg, ga_sb_hl_pow,ga_nb_hl_pow);
+% Save figure (multiplot: .fig only)
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_highlow_power_spectra_multiplot.fig'));
 %% plot with SE sternberg
 % close all
@@ -928,7 +942,6 @@ set(gca, 'FontSize', 22);
 title('');
 xlabel('Frequency [Hz]');
 ylabel("Power change \newline from baseline");
-set(gcf,'color','w');
 box on;
 grid on;
 
@@ -939,7 +952,6 @@ xlim([1  40]);
 legend({'Sternberg high-low','N-back high-low'}, 'Location','southeast','Fontsize',20);
 % Save figure
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_highlow_power_spectra_SE.png'));
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_highlow_power_spectra_SE.fig'));
 
 %%
 %%
@@ -983,7 +995,8 @@ sb4 = sb4(:);
 sb6 = sb6(:);
 
 % Control: Visualize outliers before exclusion
-figure('Color', 'w');
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 subplot(2,2,1);
 scatter(1:length(sb2), sb2, 'filled', 'k'); hold on;
 scatter(1:length(sb4), sb4, 'filled', 'b');
@@ -1037,12 +1050,13 @@ xlabel('Condition'); ylabel('Subject');
 title('Z-scores After Exclusion');
 xticklabels({'Load 2', 'Load 4', 'Load 6'});
 sgtitle('Sternberg Outlier Exclusion Control', 'FontSize', 16, 'FontWeight', 'bold');
-saveas(gcf, fullfile(control_dir, 'AOC_omnibus_SB_outlier_exclusion.png'));
-saveas(gcf, fullfile(control_dir, 'AOC_omnibus_SB_outlier_exclusion.fig'));
+saveas(gcf, fullfile(control_dir, 'AOC_omnibus_stern_outlier_exclusion.png'));
 
 %%
 close all
-figure(30); clf;
+figure(30);
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+clf;
 subplot(1,2,2);
 positions = [.3, .6, .9];  % Adjusted x-positions
 
@@ -1168,7 +1182,8 @@ nb2 = nb2(:);
 nb3 = nb3(:);
 
 % Control: Visualize outliers before exclusion
-figure('Color', 'w');
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 subplot(2,2,1);
 scatter(1:length(nb1), nb1, 'filled', 'k'); hold on;
 scatter(1:length(nb2), nb2, 'filled', 'b');
@@ -1222,8 +1237,7 @@ xlabel('Condition'); ylabel('Subject');
 title('Z-scores After Exclusion');
 xticklabels({'Load 1', 'Load 2', 'Load 3'});
 sgtitle('N-back Outlier Exclusion Control', 'FontSize', 16, 'FontWeight', 'bold');
-saveas(gcf, fullfile(control_dir, 'AOC_omnibus_NB_outlier_exclusion.png'));
-saveas(gcf, fullfile(control_dir, 'AOC_omnibus_NB_outlier_exclusion.fig'));
+saveas(gcf, fullfile(control_dir, 'AOC_omnibus_nback_outlier_exclusion.png'));
 
 %%
 % figure(31); clf;
@@ -1301,7 +1315,6 @@ xlim([0 1.3])
 tnb_str = sprintf('%d', tnb);
 tsb_str = sprintf('%d', tsb);
 saveas(gcf, fullfile(figures_dir, ['AOC_omnibus_rainclouds_tnb', num2str(tnb_str), '_tsb', num2str(tsb_str), '.png']));
-saveas(gcf, fullfile(figures_dir, ['AOC_omnibus_rainclouds_tnb', num2str(tnb_str), '_tsb', num2str(tsb_str), '.fig']));
 
 %% Control: Summary statistics and data quality report
 disp('Generating summary control report...');

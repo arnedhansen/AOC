@@ -85,7 +85,7 @@ meanpow = squeeze(mean(freq.powspctrm, 1));
 tim_interp = linspace(freq.time(1), freq.time(end), 500);
 freq_interp = linspace(1, 40, 500);
 % We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab'subj meshgrid() does this for us:
+% interpolated coordinates. Matlab's meshgrid() does this for us:
 [tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 
@@ -149,7 +149,7 @@ meanpow = squeeze(mean(freq.powspctrm, 1));
 tim_interp = linspace(freq.time(1), freq.time(end), 500);
 freq_interp = linspace(1, 40, 500);
 % We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab'subj meshgrid() does this for us:
+% interpolated coordinates. Matlab's meshgrid() does this for us:
 [tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 
@@ -534,15 +534,16 @@ cfg.alpha            = 0.025;
 cfg.numrandomization = 1000;
 cfg.neighbours       = neighbours;
 cfg.minnbchan        = 2;
-design = zeros(2,2*subj);
-for i = 1:numel(load6)
+n_subj = numel(load6);
+design = zeros(2,2*n_subj);
+for i = 1:n_subj
   design(1,i) = i;
 end
-for i = 1:numel(load6)
-  design(1,subj+i) = i;
+for i = 1:n_subj
+  design(1,n_subj+i) = i;
 end
-design(2,1:numel(load6))        = 1;
-design(2,subj+1:2*subj) = 2;
+design(2,1:n_subj)        = 1;
+design(2,n_subj+1:2*n_subj) = 2;
 
 cfg.design   = design;
 cfg.uvar     = 1;
@@ -566,15 +567,16 @@ cfg.tail             = 0;
 cfg.clustertail      = 0;
 cfg.alpha            = 0.025;
 cfg.numrandomization = 1000;
-design = zeros(2,2*subj);
-for i = 1:numel(load6)
+n_subj = numel(load6);
+design = zeros(2,2*n_subj);
+for i = 1:n_subj
   design(1,i) = i;
 end
-for i = 1:numel(load6)
-  design(1,subj+i) = i;
+for i = 1:n_subj
+  design(1,n_subj+i) = i;
 end
-design(2,1:numel(load6))        = 1;
-design(2,subj+1:2*subj) = 2;
+design(2,1:n_subj)        = 1;
+design(2,n_subj+1:2*n_subj) = 2;
 
 cfg.design   = design;
 cfg.uvar     = 1;
@@ -625,9 +627,8 @@ meanmask = squeeze(mean(freq.mask, 1));
 % The finer time and frequency axes:
 tim_interp = linspace(freq.time(1), freq.time(end), 500);
 freq_interp = linspace(2, 40, 500);
-mask_interp = linspace(2, 40, 500);
 % We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab'subj meshgrid() does this for us:
+% interpolated coordinates. Matlab's meshgrid() does this for us:
 [tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 
@@ -764,8 +765,8 @@ legend({'Sternberg high-low','N-back high-low'}, 'Location','southeast','Fontsiz
 %%
 %%
 %% timewins
-tsb = [1 2]
-tnb = [0 2]
+tsb = [1 2];
+tnb = [0 2];
 
 %% extract values sternberg
 clc

@@ -33,11 +33,11 @@ for subj = 1:length(subjects)
     load3nb{subj} = tfr;
 end
 
-% check data
+% check data (for last subject)
 meanspctrm = squeeze(mean(tfr.powspctrm, 1));   % freq x time
 meanspctrm = squeeze(mean(meanspctrm, 2));      % freq x 1
 
-disp(['Loaded N-back data for Subject ', subjects{subj}, ' with dimensions: ', num2str(size(load1nb{subj}.powspctrm))]);
+disp(['Loaded N-back data for Subject ', subjects{end}, ' with dimensions: ', num2str(size(load1nb{end}.powspctrm))]);
 fprintf('powspctrm: min %.3e | max %.3e\n', min(tfr.powspctrm(:)), max(tfr.powspctrm(:)))
 fprintf('meanspctrm: min %.3e | max %.3e\n', min(meanspctrm(:)), max(meanspctrm(:)))
 
@@ -86,11 +86,11 @@ for subj = 1:length(subjects)
     load6{subj} = tfr;
 end
 
-% check data
+% check data (for last subject)
 meanspctrm = squeeze(mean(tfr.powspctrm, 1));   % freq x time
 meanspctrm = squeeze(mean(meanspctrm, 2));      % freq x 1
 
-disp(['Loaded N-back data for Subject ', subjects{subj}, ' with dimensions: ', num2str(size(load2{subj}.powspctrm))]);
+disp(['Loaded Sternberg data for Subject ', subjects{end}, ' with dimensions: ', num2str(size(load2{end}.powspctrm))]);
 fprintf('powspctrm: min %.3e | max %.3e\n', min(tfr.powspctrm(:)), max(tfr.powspctrm(:)))
 fprintf('meanspctrm: min %.3e | max %.3e\n', min(meanspctrm(:)), max(meanspctrm(:)))
 

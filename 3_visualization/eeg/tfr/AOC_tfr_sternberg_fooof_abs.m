@@ -36,7 +36,7 @@ channels = occ_channels;
 
 %% Plot TFR for each individual condition
 close all
-fontSize = 50;
+fontSize = 40;
 
 % Define the common configuration
 cfg = [];

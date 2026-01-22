@@ -645,7 +645,7 @@ cfg.clusteralpha     = 0.05;
 cfg.clusterstatistic = 'maxsum';
 cfg.tail             = 0;
 cfg.clustertail      = 0;
-cfg.alpha            = 0.025;
+cfg.alpha            = 0.05;       % alpha level of the permutation test (two-tailed)
 cfg.numrandomization = 1000;
 cfg.neighbours       = neighbours;
 cfg.minnbchan        = 2;
@@ -675,31 +675,67 @@ n_time = numel(stat.time);
 sb_data = zeros(n, n_freq, n_time);
 nb_data = zeros(n, n_freq, n_time);
 for s = 1:n
-    % Select matching time and frequency
+    % Select matching time and frequency ranges (use ranges, not vectors)
     cfg_sel = [];
-    cfg_sel.latency = stat.time;
-    cfg_sel.frequency = stat.freq;
+    cfg_sel.latency = [min(stat.time) max(stat.time)];
+    cfg_sel.frequency = [min(stat.freq) max(stat.freq)];
     cfg_sel.avgoverchan = 'yes';
     sb_sel = ft_selectdata(cfg_sel, sb_high_low{s});
     nb_sel = ft_selectdata(cfg_sel, nb_high_low{s});
-    % Handle potential dimension issues
+    
+    % Extract data and match to stat dimensions
     sb_tmp = squeeze(sb_sel.powspctrm);
     nb_tmp = squeeze(nb_sel.powspctrm);
-    % Ensure correct dimensions [freq x time]
-    if isscalar(sb_tmp)
-        sb_data(s, :, :) = repmat(sb_tmp, n_freq, n_time);
-        nb_data(s, :, :) = repmat(nb_tmp, n_freq, n_time);
-    elseif ndims(sb_tmp) == 2
-        sb_data(s, :, :) = sb_tmp;
-        nb_data(s, :, :) = nb_tmp;
+    
+    % If we got a scalar (averaged everything), we need to extract differently
+    if isscalar(sb_tmp) || (ndims(sb_tmp) == 2 && (size(sb_tmp, 1) ~= n_freq || size(sb_tmp, 2) ~= n_time))
+        % Extract data channel by channel and average, matching stat dimensions
+        % Get one channel to check structure
+        cfg_check = [];
+        cfg_check.latency = [min(stat.time) max(stat.time)];
+        cfg_check.frequency = [min(stat.freq) max(stat.freq)];
+        cfg_check.channel = sb_high_low{s}.label(1);
+        tmp_check = ft_selectdata(cfg_check, sb_high_low{s});
+        if ndims(tmp_check.powspctrm) == 3 && size(tmp_check.powspctrm, 1) == 1
+            % Extract all channels and average
+            all_sb = zeros(length(sb_high_low{s}.label), length(tmp_check.freq), length(tmp_check.time));
+            all_nb = zeros(length(nb_high_low{s}.label), length(tmp_check.freq), length(tmp_check.time));
+            for ch = 1:length(sb_high_low{s}.label)
+                cfg_ch = [];
+                cfg_ch.latency = [min(stat.time) max(stat.time)];
+                cfg_ch.frequency = [min(stat.freq) max(stat.freq)];
+                cfg_ch.channel = sb_high_low{s}.label(ch);
+                tmp_sb = ft_selectdata(cfg_ch, sb_high_low{s});
+                tmp_nb = ft_selectdata(cfg_ch, nb_high_low{s});
+                all_sb(ch, :, :) = squeeze(tmp_sb.powspctrm);
+                all_nb(ch, :, :) = squeeze(tmp_nb.powspctrm);
+            end
+            sb_tmp = squeeze(mean(all_sb, 1));  % average over channels
+            nb_tmp = squeeze(mean(all_nb, 1));  % average over channels
+        end
+    end
+    
+    % Match dimensions to stat structure
+    if ndims(sb_tmp) == 2
+        if size(sb_tmp, 1) == n_freq && size(sb_tmp, 2) == n_time
+            % Exact match
+            sb_data(s, :, :) = sb_tmp;
+            nb_data(s, :, :) = nb_tmp;
+        else
+            % Need to interpolate to match stat dimensions
+            [freq_orig, time_orig] = meshgrid(sb_sel.freq, sb_sel.time);
+            [freq_stat, time_stat] = meshgrid(stat.freq, stat.time);
+            sb_data(s, :, :) = interp2(freq_orig, time_orig, sb_tmp', freq_stat, time_stat, 'linear', NaN)';
+            nb_data(s, :, :) = interp2(freq_orig, time_orig, nb_tmp', freq_stat, time_stat, 'linear', NaN)';
+        end
     else
         error('Unexpected dimensions in powspctrm');
     end
 end
 % Calculate differences (Sternberg - N-back)
 diff_data = sb_data - nb_data;
-mean_diff = squeeze(mean(diff_data, 1));  % mean across subjects [freq x time]
-sd_diff = squeeze(std(diff_data, 0, 1));   % sample SD across subjects [freq x time]
+mean_diff = squeeze(mean(diff_data, 1, 'omitnan'));  % mean across subjects [freq x time]
+sd_diff = squeeze(std(diff_data, 0, 1, 'omitnan'));   % sample SD across subjects [freq x time]
 % Cohen's d = mean_diff / sd_diff (for paired samples)
 cohens_d = mean_diff ./ (sd_diff + eps);  % add eps to avoid division by zero
 stat.effectsize = cohens_d;
@@ -741,31 +777,67 @@ n_time = numel(statprereg.time);
 sb_data = zeros(n, n_freq, n_time);
 nb_data = zeros(n, n_freq, n_time);
 for s = 1:n
-    % Select matching time and frequency
+    % Select matching time and frequency ranges (use ranges, not vectors)
     cfg_sel = [];
-    cfg_sel.latency = statprereg.time;
-    cfg_sel.frequency = statprereg.freq;
+    cfg_sel.latency = [min(statprereg.time) max(statprereg.time)];
+    cfg_sel.frequency = [min(statprereg.freq) max(statprereg.freq)];
     cfg_sel.avgoverchan = 'yes';
     sb_sel = ft_selectdata(cfg_sel, sb_high_low{s});
     nb_sel = ft_selectdata(cfg_sel, nb_high_low{s});
-    % Handle potential dimension issues
+    
+    % Extract data and match to stat dimensions
     sb_tmp = squeeze(sb_sel.powspctrm);
     nb_tmp = squeeze(nb_sel.powspctrm);
-    % Ensure correct dimensions [freq x time]
-    if isscalar(sb_tmp)
-        sb_data(s, :, :) = repmat(sb_tmp, n_freq, n_time);
-        nb_data(s, :, :) = repmat(nb_tmp, n_freq, n_time);
-    elseif ndims(sb_tmp) == 2
-        sb_data(s, :, :) = sb_tmp;
-        nb_data(s, :, :) = nb_tmp;
+    
+    % If we got a scalar (averaged everything), we need to extract differently
+    if isscalar(sb_tmp) || (ndims(sb_tmp) == 2 && (size(sb_tmp, 1) ~= n_freq || size(sb_tmp, 2) ~= n_time))
+        % Extract data channel by channel and average, matching stat dimensions
+        % Get one channel to check structure
+        cfg_check = [];
+        cfg_check.latency = [min(statprereg.time) max(statprereg.time)];
+        cfg_check.frequency = [min(statprereg.freq) max(statprereg.freq)];
+        cfg_check.channel = sb_high_low{s}.label(1);
+        tmp_check = ft_selectdata(cfg_check, sb_high_low{s});
+        if ndims(tmp_check.powspctrm) == 3 && size(tmp_check.powspctrm, 1) == 1
+            % Extract all channels and average
+            all_sb = zeros(length(sb_high_low{s}.label), length(tmp_check.freq), length(tmp_check.time));
+            all_nb = zeros(length(nb_high_low{s}.label), length(tmp_check.freq), length(tmp_check.time));
+            for ch = 1:length(sb_high_low{s}.label)
+                cfg_ch = [];
+                cfg_ch.latency = [min(statprereg.time) max(statprereg.time)];
+                cfg_ch.frequency = [min(statprereg.freq) max(statprereg.freq)];
+                cfg_ch.channel = sb_high_low{s}.label(ch);
+                tmp_sb = ft_selectdata(cfg_ch, sb_high_low{s});
+                tmp_nb = ft_selectdata(cfg_ch, nb_high_low{s});
+                all_sb(ch, :, :) = squeeze(tmp_sb.powspctrm);
+                all_nb(ch, :, :) = squeeze(tmp_nb.powspctrm);
+            end
+            sb_tmp = squeeze(mean(all_sb, 1));  % average over channels
+            nb_tmp = squeeze(mean(all_nb, 1));  % average over channels
+        end
+    end
+    
+    % Match dimensions to stat structure
+    if ndims(sb_tmp) == 2
+        if size(sb_tmp, 1) == n_freq && size(sb_tmp, 2) == n_time
+            % Exact match
+            sb_data(s, :, :) = sb_tmp;
+            nb_data(s, :, :) = nb_tmp;
+        else
+            % Need to interpolate to match stat dimensions
+            [freq_orig, time_orig] = meshgrid(sb_sel.freq, sb_sel.time);
+            [freq_stat, time_stat] = meshgrid(statprereg.freq, statprereg.time);
+            sb_data(s, :, :) = interp2(freq_orig, time_orig, sb_tmp', freq_stat, time_stat, 'linear', NaN)';
+            nb_data(s, :, :) = interp2(freq_orig, time_orig, nb_tmp', freq_stat, time_stat, 'linear', NaN)';
+        end
     else
         error('Unexpected dimensions in powspctrm');
     end
 end
 % Calculate differences (Sternberg - N-back)
 diff_data = sb_data - nb_data;
-mean_diff = squeeze(mean(diff_data, 1));  % mean across subjects [freq x time]
-sd_diff = squeeze(std(diff_data, 0, 1));   % sample SD across subjects [freq x time]
+mean_diff = squeeze(mean(diff_data, 1, 'omitnan'));  % mean across subjects [freq x time]
+sd_diff = squeeze(std(diff_data, 0, 1, 'omitnan'));   % sample SD across subjects [freq x time]
 % Cohen's d = mean_diff / sd_diff (for paired samples)
 cohens_d = mean_diff ./ (sd_diff + eps);  % add eps to avoid division by zero
 statprereg.effectsize = cohens_d;

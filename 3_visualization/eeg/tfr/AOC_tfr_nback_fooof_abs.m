@@ -36,7 +36,7 @@ channels = occ_channels;
 
 %% Plot TFR for each individual condition
 close all
-fontSize = 50;
+fontSize = 40;
 
 % Define the common configuration
 cfg = [];
@@ -66,7 +66,7 @@ clim = [-max_spctrm, max_spctrm];
 
 % 1-back
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr1);
 colormap(color_map);
 set(gca, 'CLim', clim);
@@ -82,7 +82,7 @@ saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC
 
 % 2-back
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr2);
 colormap(color_map);
 set(gca, 'CLim', clim);
@@ -98,7 +98,7 @@ saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC
 
 % 3-back
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr3);
 colormap(color_map);
 set(gca, 'CLim', clim);

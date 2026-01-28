@@ -31,48 +31,49 @@ for s = 1:length(subjects)
     end
     
     cd(subj_dir);
+    disp(subj_dir);
 
-    % Load dataET_sternberg (contains dataet structure)
+    % Load dataET_sternberg (contains dataETlong structure with full time window)
     if ~exist('dataET_sternberg.mat', 'file')
         warning('dataET_sternberg.mat not found for subject %s. Skipping...', subj);
         continue;
     end
     load('dataET_sternberg.mat');
     
-    % Ensure dataet exists (it should be loaded from the .mat file)
-    if ~exist('dataet', 'var')
-        warning('dataet variable not found in dataET_sternberg.mat for subject %s. Skipping...', subj);
+    % Ensure dataETlong exists (it should be loaded from the .mat file)
+    if ~exist('dataETlong', 'var')
+        warning('dataETlong variable not found in dataET_sternberg.mat for subject %s. Skipping...', subj);
         continue;
     end
     
-    % Use dataet from the loaded file
+    % Use dataETlong from the loaded file (has full time window including baseline)
     % Trial types - check if trialinfo is single column or two columns
-    if size(dataet.trialinfo, 2) == 1
-        trl2 = find(dataet.trialinfo == 22);
-        trl4 = find(dataet.trialinfo == 24);
-        trl6 = find(dataet.trialinfo == 26);
+    if size(dataETlong.trialinfo, 2) == 1
+        trl2 = find(dataETlong.trialinfo == 22);
+        trl4 = find(dataETlong.trialinfo == 24);
+        trl6 = find(dataETlong.trialinfo == 26);
     else
         % If trialinfo has two columns (condition, globalID)
-        trl2 = find(dataet.trialinfo(:,1) == 22);
-        trl4 = find(dataet.trialinfo(:,1) == 24);
-        trl6 = find(dataet.trialinfo(:,1) == 26);
+        trl2 = find(dataETlong.trialinfo(:,1) == 22);
+        trl4 = find(dataETlong.trialinfo(:,1) == 24);
+        trl6 = find(dataETlong.trialinfo(:,1) == 26);
     end
 
     % Select eye tracking channels if not already selected
-    if ~all(ismember({'L-GAZE-X','L-GAZE-Y'}, dataet.label))
+    if ~all(ismember({'L-GAZE-X','L-GAZE-Y'}, dataETlong.label))
         cfg = []; cfg.channel = {'L-GAZE-X','L-GAZE-Y'};
-        dataet = ft_selectdata(cfg, dataet);
+        dataETlong = ft_selectdata(cfg, dataETlong);
     end
-    nTrials = numel(dataet.trial);
+    nTrials = numel(dataETlong.trial);
 
     % Blink correction
-    dataetnan = dataet;
+    dataetnan = dataETlong;
     valid_trials = true(nTrials, 1);
 
     for i = 1:nTrials
-        x = dataet.trial{i}(1, :);
-        y = dataet.trial{i}(2, :);
-        t = dataet.time{i};
+        x = dataETlong.trial{i}(1, :);
+        y = dataETlong.trial{i}(2, :);
+        t = dataETlong.time{i};
 
         [x_nan, y_nan, ~, ~, ~, is_valid] = removeAndInterpolateBlinks_checktrials(x, y, t, sampling_rate, threshold, pad_ms);
 
@@ -87,18 +88,18 @@ for s = 1:length(subjects)
 
     % Remove bad trials
     cfg = []; cfg.trials = find(valid_trials);
-    dataet = ft_selectdata(cfg, dataet);
+    dataETlong = ft_selectdata(cfg, dataETlong);
     dataetnan = ft_selectdata(cfg, dataetnan);
 
     % Recompute condition indices after cleaning
-    if size(dataet.trialinfo, 2) == 1
-        trl2 = find(dataet.trialinfo == 22);
-        trl4 = find(dataet.trialinfo == 24);
-        trl6 = find(dataet.trialinfo == 26);
+    if size(dataETlong.trialinfo, 2) == 1
+        trl2 = find(dataETlong.trialinfo == 22);
+        trl4 = find(dataETlong.trialinfo == 24);
+        trl6 = find(dataETlong.trialinfo == 26);
     else
-        trl2 = find(dataet.trialinfo(:,1) == 22);
-        trl4 = find(dataet.trialinfo(:,1) == 24);
-        trl6 = find(dataet.trialinfo(:,1) == 26);
+        trl2 = find(dataETlong.trialinfo(:,1) == 22);
+        trl4 = find(dataETlong.trialinfo(:,1) == 24);
+        trl6 = find(dataETlong.trialinfo(:,1) == 26);
     end
 
     % Define conditions
@@ -114,8 +115,8 @@ for s = 1:length(subjects)
 %         cfg.latency = [1.5 3]; dat_late  = ft_selectdata(cfg, dataSternberg);
 %         cfg.latency = [-1.5 0]; dat_base = ft_selectdata(cfg, dataSternberg);
         cfg.latency = [0 1]; dat_early = ft_selectdata(cfg, dataetnan);
-        cfg.latency = [1 3]; dat_late  = ft_selectdata(cfg, dataetnan);
-        cfg.latency = [-1.25 -.25]; dat_base = ft_selectdata(cfg, dataetnan);
+        cfg.latency = [1 2]; dat_late  = ft_selectdata(cfg, dataetnan);
+        cfg.latency = [-.75 -.25]; dat_base = ft_selectdata(cfg, dataetnan);
 
         % Compute both raw and normalized heatmaps
         [freq_early, freq_early_norm] = computeGazeHeatmap(dat_early, x_grid, y_grid, sampling_rate, smooth_val);

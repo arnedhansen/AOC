@@ -22,10 +22,10 @@ t_vec = t_vec(2:end);  % Remove first sample to match typical alignment
 nTime = length(t_vec);
 
 % Coherence parameters
-coh_win_sec = 0.2;  % 200 ms window for coherence estimation
-coh_win_samp = round(coh_win_sec * fs);  % 200ms * 500Hz = 100 samples
+coh_win_sec = 0.25;  % 250 ms window for coherence estimation
+coh_win_samp = round(coh_win_sec * fs);  % 250ms * 500Hz = 125 samples
 coh_overlap = 0.5;  % 50% overlap
-coh_step = round(coh_win_samp * (1 - coh_overlap));  % Step = 50% of window = 50 samples = 0.1s
+coh_step = round(coh_win_samp * (1 - coh_overlap));  % Step = 50% of window = 62.5 samples ≈ 62 samples = 0.125s
 
 % Alpha band
 alpha_band = [8 14];  % Hz
@@ -341,17 +341,65 @@ for s = 1:length(subjects)
             alpha_win = alpha_win(valid_win);
             vel_win = vel_win(valid_win);
 
+            % Validate signals have sufficient length and variance
+            if length(alpha_win) < 64  % Need at least 64 samples for reasonable coherence estimation
+                continue;
+            end
+            
+            % Validate signals have sufficient variance (avoid constant signals)
+            var_alpha = nanvar(alpha_win);
+            var_vel = nanvar(vel_win);
+            if var_alpha < eps || var_vel < eps
+                % One or both signals are constant - skip this window
+                continue;
+            end
+            
+            % Check if signals are identical (would give coherence = 1 artificially)
+            if max(abs(alpha_win - vel_win)) < eps * max(abs(alpha_win))
+                % Signals are essentially identical - skip to avoid artificial coherence = 1
+                continue;
+            end
+
             % Compute coherence using mscohere
             % After interpolation, both alpha and gaze are at 500Hz (fs)
+            % Use explicit window parameters for better control
             try
-                [Cxy, ~] = mscohere(alpha_win, vel_win, [], [], [], fs);
-                coh_trial(w) = mean(Cxy);  % Average coherence across frequencies
+                % For mscohere, use a shorter window to allow multiple segments
+                % If data length is 125 samples, use ~64 sample window for Welch's method
+                mscohere_win_len = min(64, floor(length(alpha_win) / 2));  % Use half the data length or 64, whichever is smaller
+                if mod(mscohere_win_len, 2) == 0
+                    mscohere_win_len = mscohere_win_len - 1;  % Make odd for better spectral estimation
+                end
+                mscohere_win_len = max(mscohere_win_len, 33);  % Minimum reasonable window size
+                
+                % Window parameters: use Hamming window with 50% overlap
+                noverlap = round(mscohere_win_len * 0.5);  % 50% overlap
+                nfft = 2^nextpow2(mscohere_win_len);  % Next power of 2 for FFT efficiency
+                window = hamming(mscohere_win_len);  % Hamming window
+                
+                [Cxy, f] = mscohere(alpha_win, vel_win, window, noverlap, nfft, fs);
+                
+                % Filter to alpha band frequencies only (8-14 Hz)
+                alpha_freq_idx = f >= alpha_band(1) & f <= alpha_band(2);
+                if any(alpha_freq_idx)
+                    coh_val = mean(Cxy(alpha_freq_idx));  % Average coherence in alpha band
+                else
+                    % Fallback: use all frequencies if alpha band not in range
+                    coh_val = mean(Cxy);
+                end
+                
+                % Clamp coherence to [0, 0.999] to avoid atanh(1) = Inf in Fisher z-transform
+                coh_val = max(0, min(0.999, coh_val));
+                coh_trial(w) = coh_val;
             catch
                 % Fallback: simple correlation
                 if length(alpha_win) > 10
                     r = corrcoef(alpha_win, vel_win);
                     if ~isnan(r(1,2))
-                        coh_trial(w) = abs(r(1,2));
+                        coh_val = abs(r(1,2));
+                        % Clamp to [0, 0.999] to avoid atanh(1) = Inf
+                        coh_val = max(0, min(0.999, coh_val));
+                        coh_trial(w) = coh_val;
                     end
                 end
             end
@@ -443,8 +491,37 @@ for s = 1:n_valid
 end
 
 % Group statistics
-coh_mean = nanmean(coh_subj_means);
-coh_sem = nanstd(coh_subj_means, [], 1) / sqrt(n_valid);
+% Use Fisher z-transform for proper averaging of coherence values
+% Coherence is bounded [0,1], so Fisher z-transform makes distribution more normal
+% IMPORTANT: Clamp coherence to [0, 0.999] to avoid atanh(1) = Inf
+coh_subj_means_clamped = coh_subj_means;
+coh_subj_means_clamped(coh_subj_means_clamped >= 1.0) = 0.999;
+coh_subj_means_clamped(coh_subj_means_clamped < 0) = 0;
+coh_subj_means_z = atanh(coh_subj_means_clamped);  % Fisher z-transform
+coh_mean_z = nanmean(coh_subj_means_z, 1);
+coh_sem_z = nanstd(coh_subj_means_z, [], 1) / sqrt(n_valid);
+coh_mean = tanh(coh_mean_z);  % Transform back to coherence scale
+coh_sem = tanh(coh_sem_z);  % Approximate SEM on coherence scale (not exact but reasonable)
+
+% Statistical testing: one-sample t-test against 0 at each time point
+p_vals = nan(1, n_windows);
+t_vals = nan(1, n_windows);
+for w = 1:n_windows
+    valid_data = coh_subj_means_z(:, w);
+    valid_data = valid_data(isfinite(valid_data));
+    if length(valid_data) > 2
+        [~, p_vals(w), ~, stats] = ttest(valid_data);
+        t_vals(w) = stats.tstat;
+    end
+end
+
+% FDR correction for multiple comparisons
+q_vals = nan(size(p_vals));
+valid_p = p_vals(isfinite(p_vals));
+if ~isempty(valid_p)
+    q_vals(isfinite(p_vals)) = mafdr(valid_p, 'BHFDR', true);
+end
+sig_mask = q_vals < 0.05;
 
 %% Plot
 close all
@@ -458,8 +535,33 @@ fill([coh_time_centers, fliplr(coh_time_centers)], ...
     [coh_mean - coh_sem, fliplr(coh_mean + coh_sem)], ...
     colors(1,:), 'FaceAlpha', 0.3, 'EdgeColor', 'none');
 
+% Shade significant regions
+if any(sig_mask)
+    d_sig = diff([0, sig_mask, 0]);
+    on_sig = find(d_sig == 1);
+    off_sig = find(d_sig == -1) - 1;
+    
+    y_max_plot = max(coh_mean + coh_sem);
+    if isfinite(y_max_plot) && y_max_plot > 0
+        ylim_sig = [0, y_max_plot * 1.1];
+    else
+        ylim_sig = [0, 1];
+    end
+    
+    for k = 1:numel(on_sig)
+        if on_sig(k) <= length(coh_time_centers) && off_sig(k) <= length(coh_time_centers)
+            x0 = coh_time_centers(on_sig(k));
+            x1 = coh_time_centers(off_sig(k));
+            patch([x0 x1 x1 x0], [ylim_sig(1) ylim_sig(1) ylim_sig(2) ylim_sig(2)], ...
+                [1 1 0.3], 'FaceAlpha', 0.25, 'EdgeColor', 'none');
+        end
+    end
+end
+
 % Mean line
-plot(coh_time_centers, coh_mean, '-', 'Color', colors(1,:), 'LineWidth', 3);
+h_mean = plot(coh_time_centers, coh_mean, '-', 'Color', colors(1,:), 'LineWidth', 3);
+uistack(h_mean, 'top');  % Ensure line is on top of significance shading
+
 xline(0, '--k', 'LineWidth', 1.5, 'Alpha', 0.6);
 xlim([-.25 1.8]);
 xticks([-.25 0 .25 .5 .75 1 1.25 1.5 1.75])
@@ -488,6 +590,16 @@ fprintf('\n=== Summary Statistics (%s) ===\n', task_name);
 fprintf('Mean coherence: %.4f (SD=%.4f, range=[%.4f, %.4f])\n', ...
     nanmean(coh_mean), nanstd(coh_mean), min(coh_mean), max(coh_mean));
 fprintf('Max coherence: %.4f at t=%.2fs\n', max(coh_mean), coh_time_centers(coh_mean == max(coh_mean)));
+
+% Report significant time points
+n_sig = sum(sig_mask);
+if n_sig > 0
+    fprintf('Significant time points (FDR-corrected p<0.05): %d/%d\n', n_sig, n_windows);
+    sig_times = coh_time_centers(sig_mask);
+    fprintf('Significant time range: %.3f to %.3f s\n', min(sig_times), max(sig_times));
+else
+    fprintf('No significant time points found (FDR-corrected p<0.05)\n');
+end
 
 fprintf('\n=== Done ===\n');
 

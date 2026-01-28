@@ -1,11 +1,17 @@
 % Updated script for computing both raw and normalized gaze heatmaps for Sternberg task
 clear all; close all;
-% Subject IDs
-load('/Volumes/Homestore/OCC/arne/subjects.mat');
 
-base_dir = '/Volumes/Homestore/OCC/arne/merged';
+% Setup paths
+startup
+setup('AOC');
 
-addpath('/Volumes/Homestore/OCC/arne/funcs');
+% Subject IDs - load from data directory
+path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
+dirs = dir(path);
+folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
+subjects = {folders.name};
+
+base_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
 % Gaze heatmap parameters
 sampling_rate = 500;
 threshold = 20;
@@ -17,19 +23,46 @@ y_grid = linspace(0, 600, num_bins);
 %%
 for s = 1:length(subjects)
     subj = subjects{s};
-    subj_dir = fullfile(base_dir, subj);
+    subj_dir = fullfile(base_dir, subj, 'gaze');
+    
+    if ~exist(subj_dir, 'dir')
+        warning('Subject directory %s not found. Skipping...', subj_dir);
+        continue;
+    end
+    
     cd(subj_dir);
 
-    load([subj '_Sternberg_all.mat']);
+    % Load dataET_sternberg (contains dataet structure)
+    if ~exist('dataET_sternberg.mat', 'file')
+        warning('dataET_sternberg.mat not found for subject %s. Skipping...', subj);
+        continue;
+    end
+    load('dataET_sternberg.mat');
+    
+    % Ensure dataet exists (it should be loaded from the .mat file)
+    if ~exist('dataet', 'var')
+        warning('dataet variable not found in dataET_sternberg.mat for subject %s. Skipping...', subj);
+        continue;
+    end
+    
+    % Use dataet from the loaded file
+    % Trial types - check if trialinfo is single column or two columns
+    if size(dataet.trialinfo, 2) == 1
+        trl2 = find(dataet.trialinfo == 22);
+        trl4 = find(dataet.trialinfo == 24);
+        trl6 = find(dataet.trialinfo == 26);
+    else
+        % If trialinfo has two columns (condition, globalID)
+        trl2 = find(dataet.trialinfo(:,1) == 22);
+        trl4 = find(dataet.trialinfo(:,1) == 24);
+        trl6 = find(dataet.trialinfo(:,1) == 26);
+    end
 
-    % Trial types
-    trl2 = find(dataSternberg.trialinfo == 22);
-    trl4 = find(dataSternberg.trialinfo == 24);
-    trl6 = find(dataSternberg.trialinfo == 26);
-
-    % Select eye tracking channels
-    cfg = []; cfg.channel = {'L-GAZE-X','L-GAZE-Y'};
-    dataet = ft_selectdata(cfg, dataSternberg);
+    % Select eye tracking channels if not already selected
+    if ~all(ismember({'L-GAZE-X','L-GAZE-Y'}, dataet.label))
+        cfg = []; cfg.channel = {'L-GAZE-X','L-GAZE-Y'};
+        dataet = ft_selectdata(cfg, dataet);
+    end
     nTrials = numel(dataet.trial);
 
     % Blink correction
@@ -54,13 +87,19 @@ for s = 1:length(subjects)
 
     % Remove bad trials
     cfg = []; cfg.trials = find(valid_trials);
-    dataSternberg = ft_selectdata(cfg, dataSternberg);
+    dataet = ft_selectdata(cfg, dataet);
     dataetnan = ft_selectdata(cfg, dataetnan);
 
     % Recompute condition indices after cleaning
-    trl2 = find(dataSternberg.trialinfo == 22);
-    trl4 = find(dataSternberg.trialinfo == 24);
-    trl6 = find(dataSternberg.trialinfo == 26);
+    if size(dataet.trialinfo, 2) == 1
+        trl2 = find(dataet.trialinfo == 22);
+        trl4 = find(dataet.trialinfo == 24);
+        trl6 = find(dataet.trialinfo == 26);
+    else
+        trl2 = find(dataet.trialinfo(:,1) == 22);
+        trl4 = find(dataet.trialinfo(:,1) == 24);
+        trl6 = find(dataet.trialinfo(:,1) == 26);
+    end
 
     % Define conditions
     cond_list = [2, 4, 6];
@@ -314,8 +353,19 @@ c.FontSize = 18;
 c.Ticks = [-.5 0 .5];
 title(c,'Effect size \it d')
 title('1-3sec')
-% hgsave(gcf, 'gaze_sternberg.fig', '-v7.3');   % legacy equivalent
+
+% Save figure
+fig_save_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/heatmaps_f-test_tzvetan';
+if ~exist(fig_save_dir, 'dir')
+    mkdir(fig_save_dir);
+end
+cd(fig_save_dir);
+savefig(gcf, 'gaze_sternberg_heatmaps.fig', '-v7.3');
+print(gcf, '-dpng', '-r300', 'gaze_sternberg_heatmaps.png');
+fprintf('Saved figure to %s\n', fig_save_dir);
+
 %%
+% Save statistics and data (in current directory or specified location)
 save statssternberg stat2early stat4early stat6early stat2late stat4late stat6late -v7.3
 
 save sterngaze allgazebase2 allgazetasklate2 allgazetaskearly2 allgazebase4 allgazetasklate4 allgazetaskearly4 allgazebase6 allgazetasklate6 allgazetaskearly6 -v7.3
@@ -359,8 +409,110 @@ cfg.maskstyle = 'outline';
 cfg.colormap = 'YlOrRd';
 % cfg.zlim = [-.8 .8];
 figure; ft_singleplotTFR(cfg,statFsb_late);
+
+% Save F-test figure
+set(gcf,'color','w');
+set(gca,'Fontsize',20);
+xlabel('x [px]');
+ylabel('y [px]');
+grid on
+c = colorbar;
+c.LineWidth = 1;
+c.FontSize = 18;
+title(c,'F-statistic')
+title('F-test: Main effect of load (1-3 sec)')
+
+fig_save_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/heatmaps_f-test_tzvetan';
+if ~exist(fig_save_dir, 'dir')
+    mkdir(fig_save_dir);
+end
+cd(fig_save_dir);
+savefig(gcf, 'gaze_sternberg_Ftest.fig', '-v7.3');
+print(gcf, '-dpng', '-r300', 'gaze_sternberg_Ftest.png');
+fprintf('Saved F-test figure to %s\n', fig_save_dir);
+
 %%
-% ----- Helper function -----
+% ----- Helper functions -----
+
+function [x_nan, y_nan, x_interp, y_interp, blink_mask, is_valid] = removeAndInterpolateBlinks_checktrials(x, y, t, fs, threshold, pad_ms)
+    % Remove and interpolate blinks based on velocity threshold
+    % Inputs:
+    %   x, y: gaze coordinates
+    %   t: time vector
+    %   fs: sampling rate (Hz)
+    %   threshold: velocity threshold for blink detection (pixels/sample)
+    %   pad_ms: padding around blinks in milliseconds
+    % Outputs:
+    %   x_nan, y_nan: data with blinks set to NaN
+    %   x_interp, y_interp: data with blinks interpolated
+    %   blink_mask: logical mask indicating blink periods
+    %   is_valid: whether trial has sufficient valid data
+    
+    % Initialize outputs
+    x_nan = x;
+    y_nan = y;
+    x_interp = x;
+    y_interp = y;
+    
+    % Detect missing/invalid data (zeros or NaN)
+    invalid = ~isfinite(x) | ~isfinite(y) | (x == 0 & y == 0);
+    
+    % Compute velocity
+    dx = diff([x(1), x]);
+    dy = diff([y(1), y]);
+    velocity = sqrt(dx.^2 + dy.^2);
+    
+    % Detect blinks based on velocity threshold
+    blink_velocity = velocity > threshold;
+    
+    % Combine invalid data and high velocity as blink indicators
+    blink_mask = invalid | blink_velocity;
+    
+    % Add padding around blinks
+    pad_samples = round(pad_ms * fs / 1000);
+    if pad_samples > 0
+        blink_idx = find(blink_mask);
+        for i = 1:length(blink_idx)
+            start_idx = max(1, blink_idx(i) - pad_samples);
+            end_idx = min(length(blink_mask), blink_idx(i) + pad_samples);
+            blink_mask(start_idx:end_idx) = true;
+        end
+    end
+    
+    % Set blinks to NaN
+    x_nan(blink_mask) = NaN;
+    y_nan(blink_mask) = NaN;
+    
+    % Interpolate blinks
+    valid_idx = ~blink_mask & isfinite(x) & isfinite(y);
+    if sum(valid_idx) > 2
+        x_interp = fillmissing(x_nan, 'linear');
+        y_interp = fillmissing(y_nan, 'linear');
+        
+        % Edge handling: if first/last samples are NaN, use nearest valid
+        if isnan(x_interp(1))
+            first_valid = find(isfinite(x_interp), 1, 'first');
+            if ~isempty(first_valid)
+                x_interp(1:first_valid-1) = x_interp(first_valid);
+                y_interp(1:first_valid-1) = y_interp(first_valid);
+            end
+        end
+        if isnan(x_interp(end))
+            last_valid = find(isfinite(x_interp), 1, 'last');
+            if ~isempty(last_valid)
+                x_interp(last_valid+1:end) = x_interp(last_valid);
+                y_interp(last_valid+1:end) = y_interp(last_valid);
+            end
+        end
+    else
+        x_interp = x_nan;
+        y_interp = y_nan;
+    end
+    
+    % Check if trial is valid (at least 50% valid samples)
+    is_valid = sum(~blink_mask) / length(blink_mask) >= 0.5;
+end
+
 function [freq_raw, freq_norm] = computeGazeHeatmap(data, x_grid, y_grid, fs, smoothing)
     pos = horzcat(data.trial{:});
     binned = histcounts2(pos(1,:), pos(2,:), x_grid, y_grid);

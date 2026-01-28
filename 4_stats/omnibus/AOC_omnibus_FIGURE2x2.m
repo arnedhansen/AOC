@@ -65,7 +65,8 @@ cfg.neighbourdist = 40;
 neighbours = ft_prepare_neighbours(cfg);
 
 %% Compute F-tests for EEG data
-disp('Computing F-tests for EEG data...')
+disp(upper('Computing F-tests for EEG data (cluster-based permutation analysis)...'));
+tic
 cfg = [];
 cfg.method = 'montecarlo';
 cfg.statistic = 'ft_statfun_depsamplesFunivariate';
@@ -90,8 +91,12 @@ cfg.design(2,:) = [1:n_U, 1:n_P, 1:n_N];
 cfg.ivar = 1;
 cfg.uvar = 2;
 
+disp(upper('  Computing F-test for N-back...'));
 [statFnb] = ft_freqstatistics(cfg, ga_nb_1tfr, ga_nb_2tfr, ga_nb_3tfr);
+disp(upper('  Computing F-test for Sternberg...'));
 [statFsb] = ft_freqstatistics(cfg, ga_sb_2tfr, ga_sb_4tfr, ga_sb_6tfr);
+toc
+disp(' ');
 
 %% Identify significant electrodes from F-test results
 % Using alpha band (8-14 Hz) and [0 2] time window
@@ -369,6 +374,8 @@ nb3_gaze = nb3_gaze(~cellfun(@isempty, nb3_gaze));
 
 % Compute F-test for gaze data (Sternberg)
 if ~isempty(sb2_gaze) && ~isempty(sb4_gaze) && ~isempty(sb6_gaze)
+    disp(upper('Computing F-test for gaze data - Sternberg (cluster-based permutation analysis)...'));
+    tic
     cfg_gaze = [];
     cfg_gaze.method = 'montecarlo';
     cfg_gaze.statistic = 'ft_statfun_depsamplesFunivariate';
@@ -394,6 +401,8 @@ if ~isempty(sb2_gaze) && ~isempty(sb4_gaze) && ~isempty(sb6_gaze)
     
     [statFgaze_sb] = ft_freqstatistics(cfg_gaze, sb2_gaze{:}, sb4_gaze{:}, sb6_gaze{:});
     statFgaze_sb.stat(statFgaze_sb.mask==0) = 0;
+    toc
+    disp(' ');
 else
     warning('Insufficient gaze data for Sternberg F-test');
     statFgaze_sb = [];
@@ -401,6 +410,8 @@ end
 
 % Compute F-test for gaze data (N-back)
 if ~isempty(nb1_gaze) && ~isempty(nb2_gaze) && ~isempty(nb3_gaze)
+    disp(upper('Computing F-test for gaze data - N-back (cluster-based permutation analysis)...'));
+    tic
     n_U = length(nb1_gaze);
     n_P = length(nb2_gaze);
     n_N = length(nb3_gaze);
@@ -412,6 +423,8 @@ if ~isempty(nb1_gaze) && ~isempty(nb2_gaze) && ~isempty(nb3_gaze)
     
     [statFgaze_nb] = ft_freqstatistics(cfg_gaze, nb1_gaze{:}, nb2_gaze{:}, nb3_gaze{:});
     statFgaze_nb.stat(statFgaze_nb.mask==0) = 0;
+    toc
+    disp(' ');
 else
     warning('Insufficient gaze data for N-back F-test');
     statFgaze_nb = [];

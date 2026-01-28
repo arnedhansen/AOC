@@ -27,45 +27,32 @@ else
 end 
 toc
 
-%% Extract power spectra per condition (needed for F-tests)
-disp('Extracting power spectra per condition...')
+%% Prepare TFR data for F-tests (full time-frequency for visualization)
+% Using consistent [-.5 2] second window for unbiased data-driven analysis
+disp('Preparing TFR data for F-tests...')
 cfg = [];
-cfg.latency = [1 3];
-cfg.avgovertime = 'yes';
+cfg.latency = [-.5 2];  % Consistent window including baseline for both tasks
 for subj = 1:length(subjects)
-    load2_pow{subj} = ft_selectdata(cfg, load2{subj});
-    load4_pow{subj} = ft_selectdata(cfg, load4{subj});
-    load6_pow{subj} = ft_selectdata(cfg, load6{subj});
-    load2_pow{subj}.dimord = 'chan_freq';
-    load2_pow{subj} = rmfield(load2_pow{subj}, 'time');
-    load4_pow{subj}.dimord = 'chan_freq';
-    load4_pow{subj} = rmfield(load4_pow{subj}, 'time');
-    load6_pow{subj}.dimord = 'chan_freq';
-    load6_pow{subj} = rmfield(load6_pow{subj}, 'time');
+    load2_tfr{subj} = ft_selectdata(cfg, load2{subj});
+    load4_tfr{subj} = ft_selectdata(cfg, load4{subj});
+    load6_tfr{subj} = ft_selectdata(cfg, load6{subj});
 end
 
-cfg.latency = [0.5 2];
 for subj = 1:length(subjects)
-    load1nb_pow{subj} = ft_selectdata(cfg, load1nb{subj});
-    load2nb_pow{subj} = ft_selectdata(cfg, load2nb{subj});
-    load3nb_pow{subj} = ft_selectdata(cfg, load3nb{subj});
-    load1nb_pow{subj}.dimord = 'chan_freq';
-    load1nb_pow{subj} = rmfield(load1nb_pow{subj}, 'time');
-    load2nb_pow{subj}.dimord = 'chan_freq';
-    load2nb_pow{subj} = rmfield(load2nb_pow{subj}, 'time');
-    load3nb_pow{subj}.dimord = 'chan_freq';
-    load3nb_pow{subj} = rmfield(load3nb_pow{subj}, 'time');
+    load1nb_tfr{subj} = ft_selectdata(cfg, load1nb{subj});
+    load2nb_tfr{subj} = ft_selectdata(cfg, load2nb{subj});
+    load3nb_tfr{subj} = ft_selectdata(cfg, load3nb{subj});
 end
 
-%% Compute grand averages for power spectra
+%% Compute grand averages for TFR data (with keepindividual for F-tests)
 cfg = [];
 cfg.keepindividual = 'yes';
-ga_sb_2pow = ft_freqgrandaverage(cfg, load2_pow{:});
-ga_sb_4pow = ft_freqgrandaverage(cfg, load4_pow{:});
-ga_sb_6pow = ft_freqgrandaverage(cfg, load6_pow{:});
-ga_nb_1pow = ft_freqgrandaverage(cfg, load1nb_pow{:});
-ga_nb_2pow = ft_freqgrandaverage(cfg, load2nb_pow{:});
-ga_nb_3pow = ft_freqgrandaverage(cfg, load3nb_pow{:});
+ga_sb_2tfr = ft_freqgrandaverage(cfg, load2_tfr{:});
+ga_sb_4tfr = ft_freqgrandaverage(cfg, load4_tfr{:});
+ga_sb_6tfr = ft_freqgrandaverage(cfg, load6_tfr{:});
+ga_nb_1tfr = ft_freqgrandaverage(cfg, load1nb_tfr{:});
+ga_nb_2tfr = ft_freqgrandaverage(cfg, load2nb_tfr{:});
+ga_nb_3tfr = ft_freqgrandaverage(cfg, load3nb_tfr{:});
 
 %% Prepare neighbours for cluster-based statistics
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/elec_aligned.mat');
@@ -103,10 +90,11 @@ cfg.design(2,:) = [1:n_U, 1:n_P, 1:n_N];
 cfg.ivar = 1;
 cfg.uvar = 2;
 
-[statFnb] = ft_freqstatistics(cfg, ga_nb_1pow, ga_nb_2pow, ga_nb_3pow);
-[statFsb] = ft_freqstatistics(cfg, ga_sb_2pow, ga_sb_4pow, ga_sb_6pow);
+[statFnb] = ft_freqstatistics(cfg, ga_nb_1tfr, ga_nb_2tfr, ga_nb_3tfr);
+[statFsb] = ft_freqstatistics(cfg, ga_sb_2tfr, ga_sb_4tfr, ga_sb_6tfr);
 
 %% Identify significant electrodes from F-test results
+% Using alpha band (8-14 Hz) and [0 2] time window
 disp('Identifying significant electrodes from F-test results...')
 
 % For Sternberg: find electrodes with significant F-values
@@ -114,7 +102,7 @@ cfg_sig = [];
 cfg_sig.parameter = 'stat';
 cfg_sig.maskparameter = 'mask';
 cfg_sig.frequency = [8 14];  % Alpha band
-cfg_sig.latency = [1 3];  % Retention period
+cfg_sig.latency = [0 2];  % Consistent window for both tasks
 cfg_sig.avgoverfreq = 'yes';
 cfg_sig.avgovertime = 'yes';
 statFsb_avg = ft_selectdata(cfg_sig, statFsb);
@@ -131,7 +119,6 @@ end
 fprintf('Sternberg significant channels (%d): %s\n', length(sb_sig_channels), strjoin(sb_sig_channels, ', '));
 
 % For N-back: find electrodes with significant F-values
-cfg_sig.latency = [0.5 2];  % N-back retention period
 statFnb_avg = ft_selectdata(cfg_sig, statFnb);
 
 nb_sig_channels = {};
@@ -144,14 +131,12 @@ for ch = 1:length(statFnb_avg.label)
 end
 fprintf('N-back significant channels (%d): %s\n', length(nb_sig_channels), strjoin(nb_sig_channels, ', '));
 
-% If no significant channels found, use predefined channels
+% Error if no significant channels found
 if isempty(sb_sig_channels)
-    warning('No significant channels found for Sternberg, using predefined channels');
-    sb_sig_channels = {'P5', 'PPO5h'};  % Based on F-stat comment in code
+    error('No significant channels found for Sternberg. Something is severely wrong with the analysis.');
 end
 if isempty(nb_sig_channels)
-    warning('No significant channels found for N-back, using predefined channels');
-    nb_sig_channels = {'P7', 'PPO9h'};  % Based on F-stat comment in code
+    error('No significant channels found for N-back. Something is severely wrong with the analysis.');
 end
 
 %% Prepare gaze data for F-test analysis
@@ -259,8 +244,8 @@ for s = 1:length(subjects)
         
         cfg = []; cfg.channel = {'L-GAZE-X','L-GAZE-Y'};
         cfg.trials = trl;
-        cfg.latency = [0 3]; dat_task = ft_selectdata(cfg, dataetnan);
-        cfg.latency = [-.75 -.25]; dat_base = ft_selectdata(cfg, dataetnan);
+        cfg.latency = [0 2]; dat_task = ft_selectdata(cfg, dataetnan);  % Consistent [0 2] window
+        cfg.latency = [-.5 -.25]; dat_base = ft_selectdata(cfg, dataetnan);  % Consistent baseline window
         
         % Compute heatmaps
         [freq_task, ~] = computeGazeHeatmap(dat_task, x_grid, y_grid, sampling_rate, smooth_val);
@@ -340,7 +325,7 @@ for s = 1:length(subjects)
         cfg = []; cfg.channel = {'L-GAZE-X','L-GAZE-Y'};
         cfg.trials = trl;
         cfg.latency = [0 2]; dat_task = ft_selectdata(cfg, dataetnan);
-        cfg.latency = [-.75 -.25]; dat_base = ft_selectdata(cfg, dataetnan);
+        cfg.latency = [-.5 -.25]; dat_base = ft_selectdata(cfg, dataetnan);  % Consistent baseline window
         
         % Compute heatmaps
         [freq_task, ~] = computeGazeHeatmap(dat_task, x_grid, y_grid, sampling_rate, smooth_val);
@@ -444,13 +429,13 @@ subplot(2,2,1);
 cfg = [];
 cfg.channel = sb_sig_channels;
 cfg.avgoverchan = 'yes';
-cfg.frequency = [1 40];
-cfg.latency = [-1 3];
+cfg.frequency = [1 30];  % Visualization frequency range
+cfg.latency = [-.5 2];  % Consistent visualization window
 freq_sb = ft_selectdata(cfg, statFsb);
-meanpow = squeeze(mean(freq_sb.stat, 1));
+meanpow = squeeze(mean(freq_sb.stat, 1));  % Average over channels
 
 tim_interp = linspace(freq_sb.time(1), freq_sb.time(end), 500);
-freq_interp = linspace(1, 40, 500);
+freq_interp = linspace(1, 30, 500);  % Match visualization frequency range
 [tim_grid_orig, freq_grid_orig] = meshgrid(freq_sb.time, freq_sb.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 
@@ -463,10 +448,10 @@ ft_plot_matrix(flip(pow_interp), 'highlightstyle', 'outline', 'highlight', flip(
 ax = gca; hold(ax, 'on');
 x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
 xline(ax, x0, 'k-', 'LineWidth', 1);
-xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-1 0 1 2 3])));
-xticklabels({'-1','0','1','2','3'});
+xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-.5 0 1 2])));
+xticklabels({'-0.5','0','1','2'});
 yticks([1 125 250 375]);
-yticklabels({'40','30','20','10'});
+yticklabels({'30','20','10','1'});
 set(gca, 'Fontsize', 18);
 xlabel('Time [sec]');
 ylabel('Frequency [Hz]');
@@ -507,8 +492,8 @@ subplot(2,2,3);
 cfg_rain = [];
 cfg_rain.channel = sb_sig_channels;
 cfg_rain.avgoverchan = 'yes';
-cfg_rain.frequency = [8 14];
-cfg_rain.latency = [1 3];
+cfg_rain.frequency = [8 14];  % Alpha band
+cfg_rain.latency = [0 2];  % Consistent window
 cfg_rain.avgoverfreq = 'yes';
 cfg_rain.avgovertime = 'yes';
 
@@ -601,13 +586,13 @@ subplot(2,2,1);
 cfg = [];
 cfg.channel = nb_sig_channels;
 cfg.avgoverchan = 'yes';
-cfg.frequency = [1 40];
-cfg.latency = [-1 2];
+cfg.frequency = [1 30];  % Visualization frequency range
+cfg.latency = [-.5 2];  % Consistent visualization window
 freq_nb = ft_selectdata(cfg, statFnb);
-meanpow = squeeze(mean(freq_nb.stat, 1));
+meanpow = squeeze(mean(freq_nb.stat, 1));  % Average over channels
 
 tim_interp = linspace(freq_nb.time(1), freq_nb.time(end), 500);
-freq_interp = linspace(1, 40, 500);
+freq_interp = linspace(1, 30, 500);  % Match visualization frequency range
 [tim_grid_orig, freq_grid_orig] = meshgrid(freq_nb.time, freq_nb.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 
@@ -620,10 +605,10 @@ ft_plot_matrix(flip(pow_interp), 'highlightstyle', 'outline', 'highlight', flip(
 ax = gca; hold(ax, 'on');
 x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
 xline(ax, x0, 'k-', 'LineWidth', 1);
-xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-1 0 1 2])));
-xticklabels({'-1','0','1','2'});
+xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-.5 0 1 2])));
+xticklabels({'-0.5','0','1','2'});
 yticks([1 125 250 375]);
-yticklabels({'40','30','20','10'});
+yticklabels({'30','20','10','1'});
 set(gca, 'Fontsize', 18);
 xlabel('Time [sec]');
 ylabel('Frequency [Hz]');
@@ -663,8 +648,8 @@ subplot(2,2,3);
 cfg_rain = [];
 cfg_rain.channel = nb_sig_channels;
 cfg_rain.avgoverchan = 'yes';
-cfg_rain.frequency = [8 14];
-cfg_rain.latency = [0.5 2];
+cfg_rain.frequency = [8 14];  % Alpha band
+cfg_rain.latency = [0 2];  % Consistent window
 cfg_rain.avgoverfreq = 'yes';
 cfg_rain.avgovertime = 'yes';
 eeg_low_nb = [];

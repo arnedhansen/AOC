@@ -16,10 +16,11 @@ startup
 % Set up save directories (cross-platform)
 if ispc
     figures_dir = 'W:\Students\Arne\AOC\figures\stats\omnibus';
+    data_dir = 'W:\Students\Arne\AOC\data\features';
 else
     figures_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/omnibus';
+    data_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features';
 end
-if ~exist(figures_dir, 'dir'), mkdir(figures_dir); end 
 
 %% Load variables
 tic
@@ -32,10 +33,9 @@ end
 toc
 
 %% Prepare TFR data for F-tests (full time-frequency for visualization)
-% Using consistent [-.5 2] second window for unbiased data-driven analysis
 disp('Preparing TFR data for F-tests...')
 cfg = [];
-cfg.latency = [-.5 2];  % Consistent window including baseline for both tasks
+cfg.latency = [-.5 2]; 
 for subj = 1:length(subjects)
     load2_tfr{subj} = ft_selectdata(cfg, load2{subj});
     load4_tfr{subj} = ft_selectdata(cfg, load4{subj});
@@ -59,8 +59,6 @@ ga_nb_2tfr = ft_freqgrandaverage(cfg, load2nb_tfr{:});
 ga_nb_3tfr = ft_freqgrandaverage(cfg, load3nb_tfr{:});
 
 %% Prepare neighbours for cluster-based statistics
-% neighbourdist is in same units as elec.chanpos (typically cm). Use ~4 cm so only
-% immediate neighbours are linked (~4-10 per channel). 40 was wrong (whole-head scale → ~124 neighbours).
 if ispc
     load('W:\Students\Arne\toolboxes\headmodel\elec_aligned.mat');
 else
@@ -102,18 +100,17 @@ cfg.ivar = 1;
 cfg.uvar = 2;
 
 disp(upper('  Computing F-test for N-back...'));
-tic
 [statFnb] = ft_freqstatistics(cfg, ga_nb_1tfr, ga_nb_2tfr, ga_nb_3tfr);
-toc
 disp(upper('  Computing F-test for Sternberg...'));
-tic
 [statFsb] = ft_freqstatistics(cfg, ga_sb_2tfr, ga_sb_4tfr, ga_sb_6tfr);
-toc
+
+data_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features';
+save(fullfile(data_dir, 'AOC_omnibus_FIGURE2x2_statFnb_statFsb.mat'), 'statFnb', 'statFsb');
+disp(upper('stats saved...'))
 
 %% Identify significant electrodes from F-test results
-% Channels where proportion of alpha-[0 2] voxels with mask==1 is >= sig_prop_thresh;
-% fallback to lower threshold if none pass. Then restrict to posterior (PO, O, I).
-sig_prop_thresh = 0.25;
+% Channels where proportion of alpha-[0 2] voxels with mask==1 is >= sig_prop_thresh
+sig_prop_thresh = 0.05;
 
 disp(upper(['Identifying significant electrodes from F-test results at proportion threshold ' num2str(sig_prop_thresh)]));
 cfg_sig = [];
@@ -156,7 +153,7 @@ if isempty(nb_sig_channels)
 end
 
 % Restrict to posterior channels only (PO, O, or I in the name)
-is_posterior = @(c) contains(char(c), 'P') | contains(char(c), 'O') | contains(char(c), 'I');
+is_posterior = @(c) contains(char(c), 'PO') | contains(char(c), 'O') | contains(char(c), 'I');
 sb_sig_channels = sb_sig_channels(cellfun(is_posterior, sb_sig_channels));
 nb_sig_channels = nb_sig_channels(cellfun(is_posterior, nb_sig_channels));
 

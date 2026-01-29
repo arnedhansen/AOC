@@ -1,18 +1,26 @@
-%% AOC Omnibus — Cluster Stats and Alpha Plots
-% Loads omnibus_data.mat. Runs cluster-based permutation (N-back load, Sternberg vs N-back), extracts ROI alpha, raincloud/box/scatter plots, paired t-tests. Produces figures and stats.
+%% AOC Omnibus — 2x2 Figures for N-back and Sternberg
+% Creates 2x2 figures with:
+%   Subplot 1: TFR visualization of F-test results for EEG data
+%   Subplot 2: TFR visualization of F-test results for ET data
+%   Subplot 3: Raincloud plots for EEG data condition differences (highest vs. lowest load)
+%   Subplot 4: Raincloud plots for ET data condition differences (highest vs. lowest load)
 %
 % Key outputs:
-%   Cluster permutation results; TFR/alpha figures; rainclouds with significance; paired t-tests
+%   AOC_omnibus_sternberg_2x2_figure.png
+%   AOC_omnibus_nback_2x2_figure.png
 
 %% Setup
 startup
 [subjects, path, colors, headmodel] = setup('AOC');
 
-% Set up save directories
-control_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/omnibus';
-figures_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/omnibus';
-if ~exist(control_dir, 'dir'), mkdir(control_dir); end
-if ~exist(figures_dir, 'dir'), mkdir(figures_dir); end 
+% Set up save directories (cross-platform)
+if ispc
+    figures_dir = 'W:\Students\Arne\AOC\figures\stats\omnibus';
+    data_dir = 'W:\Students\Arne\AOC\data\features';
+else
+    figures_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/omnibus';
+    data_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features';
+end
 
 %% Load variables
 tic
@@ -24,1532 +32,914 @@ else
 end 
 toc
 
-%% Visualize N-back
-% close all
-% cfg = [];
-% cfg.figure = 'gcf';
-% %cfg.ylim = [3 40];
-% %cfg.zlim = [-2 2];
-% cfg.layout = headmodel.layANThead;
-% figure; ft_multiplotTFR(cfg, ga_nb);
-
-%% Compute omnibus GA Sternberg vs. GA N-back
+%% Prepare TFR data for F-tests (full time-frequency for visualization)
+disp('Preparing TFR data for F-tests...')
 cfg = [];
-cfg.operation = 'subtract';
-cfg.parameter = 'powspctrm';
-%omnibus = ft_math(cfg,ga_sb,ga_nb);
-
-%% Visualize Omnibus
-% close all
-% cfg = [];
-% cfg.figure = 'gcf';
-% cfg.ylim = [3 40];
-% % cfg.zlim = [-3 3];
-% cfg.layout = headmodel.layANThead;
-% figure; ft_multiplotTFR(cfg, omnibus);
-
-%% Sternberg per condition
-cfg = [];
-ga_sb_2 = ft_freqgrandaverage(cfg,load2{:});
-ga_sb_4 = ft_freqgrandaverage(cfg,load4{:});
-ga_sb_6 = ft_freqgrandaverage(cfg,load6{:});
-ga_sb   = ft_freqgrandaverage(cfg,load2{:},load4{:},load6{:});
-ga_nb_1 = ft_freqgrandaverage(cfg,load1nb{:});
-ga_nb_2 = ft_freqgrandaverage(cfg,load2nb{:});
-ga_nb_3 = ft_freqgrandaverage(cfg,load3nb{:});
-ga_nb   = ft_freqgrandaverage(cfg,load1nb{:},load2nb{:},load3nb{:});
-
-% %%
-% close all
-% cfg = [];
-% cfg.figure = 'gcf';
-% cfg.ylim = [3 40];
-% % cfg.zlim = [-3 3];
-% cfg.layout = headmodel.layANThead;
-% figure; ft_multiplotTFR(cfg, ga_nb);
-% 
-% %% single 
-% cfg = [];
-% cfg.figure = 'gcf';
-% cfg.zlim = [-.2 .2];
-% cfg.xlim = [-1 2];
-% cfg.channel = {'P3', 'P4', 'POz', 'PO3', 'PO4', 'PPO1', 'PPO2', 'PPO5h', 'PPO6h'};% nb
-% cfg.layout = headmodel.layANThead;
-% figure; ft_singleplotTFR(cfg, ga_nb);
-
-%% plot SB tfr and topo
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-cfg = [];
-cfg.channel = {'Pz', 'POz', 'P2', 'PPO2'};
-cfg.avgoverchan = 'yes';
-cfg.frequency = [1 40];
-cfg.latency   = [-1 3];
-freq = ft_selectdata(cfg,ga_sb);
-meanpow = squeeze(mean(freq.powspctrm, 1));
-
-% The finer time and frequency axes:
-tim_interp = linspace(freq.time(1), freq.time(end), 500);
-freq_interp = linspace(1, 40, 500);
-% We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab's meshgrid() does this for us:
-[tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
-[tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
-
-% And interpolate:
-pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow,...
-    tim_grid_interp, freq_grid_interp, 'spline');
-
-subplot(2,1,2);ft_plot_matrix(flip(pow_interp));
-% subplot(2,1,1);ft_plot_matrix(flip(pow_interp),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
-ax = gca; hold(ax,'on');
-
-% map 0 sec to the interpolated column index
-x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
-xline(ax, x0, 'k-', 'LineWidth', 1);
-
-% ticks (still index-based)
-xticks( round(interp1(tim_interp, 1:numel(tim_interp), [-1 0 1 2 3])) );
-xticklabels({'-1','0','1','2','3'});
-yticks([1 125 250 375 ]); % positions in the interpolated grid
-yticklabels({'40','30','20','10'}); % corresponding freq values
-
-set(gca,'Fontsize',20);
-xlabel('Time [sec]');
-ylabel('Frequency [Hz]');
-caxis([-.2 .2]);
-color_map = flipud(cbrewer('div', 'RdBu', 64)); % Red-Blue diverging color map
-colormap(color_map);
-cb = colorbar;
-cb.LineWidth = 1;
-cb.FontSize = 18;
-cb.Ticks = [-.2 0 .2];
-title(cb,"Power change \newline from baseline")
-xline(0,'k--','LineWidth',2); % black dashed line at 0 sec
-cfg = [];
-cfg.layout = headmodel.layANThead;
-cfg.figure = 'gcf';
- cfg.xlim = [1.5 3];
- cfg.ylim = [8 12];
-cfg.zlim = [-.1 .1];
-cfg.marker             = 'off';
-cfg.highlight          = 'on';
-cfg.highlightchannel = {'Pz', 'POz', 'P2', 'PPO2'};
-
-cfg.highlightsymbol    = '.';
- cfg.highlightsize      = 14;
- cfg.comment = 'no';
-% figure; 
-subplot(2,1,1);ft_topoplotTFR(cfg,ga_sb);
-colormap(color_map); % Use same colormap for topo
-% Save figure
-sgtitle('Sternberg TFR and Topography', 'FontSize', 24, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_stern_TFR_topo.png'));
-
-%% plot NB tfr and topo
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-cfg = [];
-cfg.channel = {'P3', 'P4', 'POz', 'PO3', 'PO4', 'PPO1', 'PPO2', 'PPO5h', 'PPO6h'};% nb
-cfg.avgoverchan = 'yes';
-cfg.frequency = [1 40];
-cfg.latency   = [-1 2];
-freq = ft_selectdata(cfg,ga_nb);
-meanpow = squeeze(mean(freq.powspctrm, 1));
-
-% The finer time and frequency axes:
-tim_interp = linspace(freq.time(1), freq.time(end), 500);
-freq_interp = linspace(1, 40, 500);
-% We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab's meshgrid() does this for us:
-[tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
-[tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
-
-% And interpolate:
-pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow,...
-    tim_grid_interp, freq_grid_interp, 'spline');
-
-subplot(2,1,2);ft_plot_matrix(flip(pow_interp));
-% subplot(2,1,1);ft_plot_matrix(flip(pow_interp),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
-ax = gca; hold(ax,'on');
-
-% map 0 sec to the interpolated column index
-x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
-xline(ax, x0, 'k-', 'LineWidth', 1);
-
-% ticks (still index-based)
-%xticks( round(interp1(tim_interp, 1:numel(tim_interp), [-1 0 1 2])) );
-xticklabels({'-1','0','1','2'});
-yticks([1 125 250 375 ]); % positions in the interpolated grid
-yticklabels({'40','30','20','10'}); % corresponding freq values
-
-set(gca,'Fontsize',20);
-xlabel('Time [sec]');
-ylabel('Frequency [Hz]');
-caxis([-.2 .2]);
-color_map = flipud(cbrewer('div', 'RdBu', 64)); % Red-Blue diverging color map
-colormap(color_map);
-cb = colorbar;
-cb.LineWidth = 1;
-cb.FontSize = 18;
-cb.Ticks = [-.2 0 .2];
-title(cb,"Power change \newline from baseline")
-xline(0,'k--','LineWidth',2); % black dashed line at 0 sec
-cfg = [];
-cfg.layout = headmodel.layANThead;
-cfg.figure = 'gcf';
- cfg.xlim = [0 2];
- cfg.ylim = [8 12];
-cfg.zlim = [-.15 .15];
-cfg.marker             = 'off';
-cfg.highlight          = 'on';
-% cfg.highlightchannel = {'Pz', 'POz', 'P2', 'PPO2'};
-cfg.highlightchannel = {'P3', 'P4', 'POz', 'PO3', 'PO4', 'PPO1', 'PPO2', 'PPO5h', 'PPO6h'};% nb
-
-
-cfg.highlightsymbol    = '.';
- cfg.highlightsize      = 14;
- cfg.comment = 'no';
-% figure; 
-subplot(2,1,1);ft_topoplotTFR(cfg,ga_nb);
-colormap(color_map); % Use same colormap for topo
-% Save figure
-sgtitle('N-back TFR and Topography', 'FontSize', 24, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_TFR_topo.png'));
-
-%% Control: Check baseline stability and data quality
-disp('Running data quality controls...');
-% Check baseline values across conditions
-cfg_base = [];
-cfg_base.latency = [-0.5 -0.25];
-cfg_base.avgovertime = 'yes';
-cfg_base.avgoverchan = 'yes';
-cfg_base.frequency = [8 14];  % alpha band
-cfg_base.avgoverfreq = 'yes';
-
-baseline_sb2 = zeros(length(subjects), 1);
-baseline_sb4 = zeros(length(subjects), 1);
-baseline_sb6 = zeros(length(subjects), 1);
-baseline_nb1 = zeros(length(subjects), 1);
-baseline_nb2 = zeros(length(subjects), 1);
-baseline_nb3 = zeros(length(subjects), 1);
-
-for s = 1:length(subjects)
-    tmp = ft_selectdata(cfg_base, load2{s});
-    baseline_sb2(s) = tmp.powspctrm;
-    tmp = ft_selectdata(cfg_base, load4{s});
-    baseline_sb4(s) = tmp.powspctrm;
-    tmp = ft_selectdata(cfg_base, load6{s});
-    baseline_sb6(s) = tmp.powspctrm;
-    tmp = ft_selectdata(cfg_base, load1nb{s});
-    baseline_nb1(s) = tmp.powspctrm;
-    tmp = ft_selectdata(cfg_base, load2nb{s});
-    baseline_nb2(s) = tmp.powspctrm;
-    tmp = ft_selectdata(cfg_base, load3nb{s});
-    baseline_nb3(s) = tmp.powspctrm;
+cfg.latency = [-.5 3];
+cfg.frequency = [3 30];
+for subj = 1:length(subjects)
+    load2_tfr{subj} = ft_selectdata(cfg, load2{subj});
+    load4_tfr{subj} = ft_selectdata(cfg, load4{subj});
+    load6_tfr{subj} = ft_selectdata(cfg, load6{subj});
+end
+cfg.latency = [-.5 2];
+for subj = 1:length(subjects)
+    load1nb_tfr{subj} = ft_selectdata(cfg, load1nb{subj});
+    load2nb_tfr{subj} = ft_selectdata(cfg, load2nb{subj});
+    load3nb_tfr{subj} = ft_selectdata(cfg, load3nb{subj});
 end
 
-% Plot baseline stability
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-subplot(2,1,1);
-boxplot([baseline_sb2, baseline_sb4, baseline_sb6], 'Labels', {'Load 2', 'Load 4', 'Load 6'});
-ylabel('Baseline Power (alpha band)');
-title('Sternberg Baseline Stability');
-grid on;
-
-subplot(2,1,2);
-boxplot([baseline_nb1, baseline_nb2, baseline_nb3], 'Labels', {'Load 1', 'Load 2', 'Load 3'});
-ylabel('Baseline Power (alpha band)');
-title('N-back Baseline Stability');
-grid on;
-sgtitle('Baseline Stability Check', 'FontSize', 16, 'FontWeight', 'bold');
-saveas(gcf, fullfile(control_dir, 'AOC_omnibus_baseline_stability.png'));
-
-% Check for baseline differences (should be ~0 after baseline correction)
-fprintf('Baseline means (should be ~0):\n');
-fprintf('  SB Load 2: %.4f, Load 4: %.4f, Load 6: %.4f\n', mean(baseline_sb2), mean(baseline_sb4), mean(baseline_sb6));
-fprintf('  NB Load 1: %.4f, Load 2: %.4f, Load 3: %.4f\n', mean(baseline_nb1), mean(baseline_nb2), mean(baseline_nb3));
-
-%% extract power spectra SB
-cfg = [];
-cfg.latency = [1 3];
-cfg.avgovertime = 'yes';
-for subj = 1 :length(subjects)
-load2_pow{subj}= ft_selectdata(cfg,load2{subj});
-load4_pow{subj}= ft_selectdata(cfg,load4{subj});
-load6_pow{subj}= ft_selectdata(cfg,load6{subj});
-load2_pow{subj}.dimord = 'chan_freq';
-load2_pow{subj} = rmfield(load2_pow{subj},'time');
-load4_pow{subj}.dimord = 'chan_freq';
-load4_pow{subj} = rmfield(load4_pow{subj},'time');
-load6_pow{subj}.dimord = 'chan_freq';
-load6_pow{subj} = rmfield(load6_pow{subj},'time');
-end
-cfg.latency = [.5 2];
-for subj = 1 :length(subjects)
-load1nb_pow{subj}= ft_selectdata(cfg,load1nb{subj});
-load2nb_pow{subj}= ft_selectdata(cfg,load2nb{subj});
-load3nb_pow{subj}= ft_selectdata(cfg,load3nb{subj});
-load1nb_pow{subj}.dimord = 'chan_freq';
-load1nb_pow{subj} = rmfield(load1nb_pow{subj},'time');
-load2nb_pow{subj}.dimord = 'chan_freq';
-load2nb_pow{subj} = rmfield(load2nb_pow{subj},'time');
-load3nb_pow{subj}.dimord = 'chan_freq';
-load3nb_pow{subj} = rmfield(load3nb_pow{subj},'time');
-end
-
-%% sternberg pow per condition
+%% Compute grand averages for TFR data (with keepindividual for F-tests)
 cfg = [];
 cfg.keepindividual = 'yes';
-ga_sb_2pow = ft_freqgrandaverage(cfg,load2_pow{:});
-ga_sb_4pow = ft_freqgrandaverage(cfg,load4_pow{:});
-ga_sb_6pow = ft_freqgrandaverage(cfg,load6_pow{:});
-ga_nb_2pow = ft_freqgrandaverage(cfg,load2nb_pow{:});
-ga_nb_1pow = ft_freqgrandaverage(cfg,load1nb_pow{:});
-ga_nb_3pow = ft_freqgrandaverage(cfg,load3nb_pow{:});
+ga_sb_2tfr = ft_freqgrandaverage(cfg, load2_tfr{:});
+ga_sb_4tfr = ft_freqgrandaverage(cfg, load4_tfr{:});
+ga_sb_6tfr = ft_freqgrandaverage(cfg, load6_tfr{:});
+ga_nb_1tfr = ft_freqgrandaverage(cfg, load1nb_tfr{:});
+ga_nb_2tfr = ft_freqgrandaverage(cfg, load2nb_tfr{:});
+ga_nb_3tfr = ft_freqgrandaverage(cfg, load3nb_tfr{:});
 
-%%
-close all
+%% Prepare neighbours for cluster-based statistics
+if ispc
+    load('W:\Students\Arne\toolboxes\headmodel\elec_aligned.mat');
+else
+    load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/elec_aligned.mat');
+end
 cfg = [];
-cfg.figure = 'gcf';
-% cfg.ylim = [3 40];
-% cfg.zlim = [-3 3];
-cfg.layout = headmodel.layANThead;
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-ft_multiplotER(cfg, ga_sb_2pow,ga_sb_4pow,ga_sb_6pow);
-% Save figure (multiplot: .fig only)
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_stern_power_spectra_multiplot.fig'));
-
-%% plot with SE sternberg
-% close all
-figure;
-subplot(2,1,1);
-cfg = [];
-cfg.channel ={'Pz', 'POz', 'P2', 'PPO2'};
-cfg.channel = {'P5', 'PPO5h'};% based on F stat
-cfg.avgoverchan = 'yes';
-tlk2_ind        = ft_selectdata(cfg,ga_sb_2pow);
-tlk4_ind        = ft_selectdata(cfg,ga_sb_4pow);
-tlk6_ind        = ft_selectdata(cfg,ga_sb_6pow);
-% plot load 6
-x = tlk6_ind.freq'; % x-axis def
-y = mean(squeeze(tlk6_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk6_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
-low = y - e; % lower bound
-high = y + e; % upper bound
-
-
-% plot load 6 (highest - red)
-hp1 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'r', 'HandleVisibility', 'off');
-hold on;
-hl1 = line(x, y);
-set(hp1, 'facecolor', [0.97, 0.26, 0.26], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl1, 'color', [0.97, 0.26, 0.26], 'linewidth', 2);
-
-% plot load 4 (middle - green)
-x = tlk4_ind.freq'; % x-axis def
-y = mean(squeeze(tlk4_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk4_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
-low = y - e; % lower bound
-high = y + e; % upper bound
-
-hp2 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'g', 'HandleVisibility', 'off');
-hl2 = line(x, y);
-set(hp2, 'facecolor', [0.2, 0.8, 0.2], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl2, 'color', [0.2, 0.8, 0.2], 'linewidth', 2);
-
-% plot load 2 (lowest - blue)
-x = tlk2_ind.freq'; % x-axis def
-y = mean(squeeze(tlk2_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk2_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
-low = y - e; % lower bound
-high = y + e; % upper bound
-
-hp3 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'b', 'HandleVisibility', 'off');
-hl3 = line(x, y);
-set(hp3, 'facecolor', [0.30, 0.75, 0.93], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl3, 'color', [0.30, 0.75, 0.93], 'linewidth', 2);
-
-% Label the axes
-set(gca, 'FontSize', 22);
-title('');
-xlabel('Frequency [Hz]');
-ylabel("Power change \newline from baseline");
-box on;
-grid on;
-
-%     xticks([-1 0 .5 1]);
-% xticklabels({'o' '500' '1000'})
-xlim([1  40]);
-% ylim([-1.5 2.5]);
-legend({'Load 6','Load 4','Load 2'}, 'Location','northeast','Fontsize',20);
-%% plot with SE nback
-% close all
-% figure;
-subplot(2,1,2);
-cfg = [];
-cfg.channel ={'P3', 'P4', 'POz', 'PO3', 'PO4', 'PPO1', 'PPO2', 'PPO5h', 'PPO6h'};% nb
-cfg.channel = {'P7', 'PPO9h'};% based on Fstat
-cfg.avgoverchan = 'yes';
-tlk2_ind        = ft_selectdata(cfg,ga_nb_1pow);
-tlk4_ind        = ft_selectdata(cfg,ga_nb_2pow);
-tlk6_ind        = ft_selectdata(cfg,ga_nb_3pow);
-% plot load 3 (highest - red)
-x = tlk6_ind.freq'; % x-axis def
-y = mean(squeeze(tlk6_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk6_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
-low = y - e; % lower bound
-high = y + e; % upper bound
-
-hp1 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'r', 'HandleVisibility', 'off');
-hold on;
-hl1 = line(x, y);
-set(hp1, 'facecolor', [0.97, 0.26, 0.26], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl1, 'color', [0.97, 0.26, 0.26], 'linewidth', 2);
-
-% plot load 2 (middle - green)
-x = tlk4_ind.freq'; % x-axis def
-y = mean(squeeze(tlk4_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk4_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
-low = y - e; % lower bound
-high = y + e; % upper bound
-
-hp2 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'g', 'HandleVisibility', 'off');
-hl2 = line(x, y);
-set(hp2, 'facecolor', [0.2, 0.8, 0.2], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl2, 'color', [0.2, 0.8, 0.2], 'linewidth', 2);
-
-% plot load 1 (lowest - blue)
-x = tlk2_ind.freq'; % x-axis def
-y = mean(squeeze(tlk2_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk2_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
-low = y - e; % lower bound
-high = y + e; % upper bound
-
-hp3 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'b', 'HandleVisibility', 'off');
-hl3 = line(x, y);
-set(hp3, 'facecolor', [0.30, 0.75, 0.93], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl3, 'color', [0.30, 0.75, 0.93], 'linewidth', 2);
-
-% Label the axes
-set(gca, 'FontSize', 22);
-title('');
-xlabel('Frequency [Hz]');
-ylabel("Power change \newline from baseline");
-box on;
-grid on;
-
-%     xticks([-1 0 .5 1]);
-% xticklabels({'o' '500' '1000'})
-xlim([1  40]);
-% ylim([-1.5 2.5]);
-legend({'Load 3','Load 2','Load 1'}, 'Location','southeast','Fontsize',20);
-% Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_power_spectra_SE.png'));
-%%
-close all
-cfg = [];
-cfg.figure = 'gcf';
-% cfg.ylim = [3 40];
-% cfg.zlim = [-3 3];
-cfg.layout = headmodel.layANThead;
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-ft_multiplotER(cfg, ga_nb_1pow,ga_nb_2pow,ga_nb_3pow);
-% Save figure (multiplot: .fig only)
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_power_spectra_multiplot.fig'));
-%%
-load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/elec_aligned.mat');
-cfg =[];
-cfg.method ='distance';
+cfg.method = 'distance';
 cfg.elec = elec_aligned;
 cfg.layout = headmodel.layANThead;
-cfg.feedback      = 'yes' ;
-cfg.neighbourdist=40;
+cfg.feedback = 'yes';
+cfg.neighbourdist = 0.0675; % 5 neighbours per channel
+close all
 neighbours = ft_prepare_neighbours(cfg);
-%%
-cfg                  = [];
-cfg.method           = 'montecarlo'; % use the Monte Carlo Method to calculate the significance probability
-cfg.statistic        = 'ft_statfun_depsamplesFunivariate'; % use the dependent samples F-statistic as a measure to
-                                   % evaluate the effect at the sample level
-cfg.correctm         = 'cluster';
-cfg.clusteralpha     = 0.05;       % alpha level of the sample-specific test statistic that
-                                   % will be used for thresholding
-cfg.clusterstatistic = 'maxsum';   % test statistic that will be evaluated under the
-                                                              % permutation distribution.
-cfg.minnbchan        = 2;          % minimum number of neighborhood channels that is
-                                                  %    required for a selected sample to be included
-                                                %   in the clustering algorithm (default=0).
-cfg.neighbours       = neighbours; % see below
-cfg.tail             = 1;          % 1 as the F distribution is skewed
-cfg.clustertail      = cfg.tail;  
-cfg.alpha            = 0.05;       % alpha level of the permutation test (two-tailed)
-cfg.numrandomization = 1000;        % number of draws from the permutation distribution
 
-n_U  = numel(subjects);
-n_P  = numel(subjects);
+%% Compute F-tests for EEG data
+disp(upper('Computing F-tests for EEG data (cluster-based permutation analysis)...'));
+cfg = [];
+cfg.method = 'montecarlo';
+cfg.statistic = 'ft_statfun_depsamplesFunivariate';
+cfg.correctm = 'cluster';
+cfg.clusteralpha = 0.05;
+cfg.clusterstatistic = 'maxsum';
+cfg.minnbchan = 2;
+cfg.neighbours = neighbours;
+cfg.tail = 1;
+cfg.clustertail = cfg.tail;
+cfg.alpha = 0.05;
+cfg.numrandomization = 1000;
+
+n_U = numel(subjects);
+n_P = numel(subjects);
 n_N = numel(subjects);
 
+% Ensure design matches data: all three conditions must have same number of repetitions (subjects)
+% dimord can be 'subj_chan_freq_time' or 'chan_freq_time_rpt' - check both
+dimord_sb = ga_sb_2tfr.dimord;
+tok_sb = strsplit(dimord_sb, '_');
+rpt_dim_sb = find(strcmp(tok_sb, 'rpt') | strcmp(tok_sb, 'subj'));
+if isempty(rpt_dim_sb)
+    error('Sternberg: cannot find repetition dimension (rpt or subj) in dimord: %s', dimord_sb);
+end
+n_rpt_sb2 = size(ga_sb_2tfr.powspctrm, rpt_dim_sb);
+n_rpt_sb4 = size(ga_sb_4tfr.powspctrm, rpt_dim_sb);
+n_rpt_sb6 = size(ga_sb_6tfr.powspctrm, rpt_dim_sb);
+if n_rpt_sb2 ~= n_U || n_rpt_sb4 ~= n_U || n_rpt_sb6 ~= n_U
+    error('Sternberg F-test: grand averages have different repetition counts (sb2=%d, sb4=%d, sb6=%d). Expected %d each. Use only subjects with all three conditions.', n_rpt_sb2, n_rpt_sb4, n_rpt_sb6, n_U);
+end
+dimord_nb = ga_nb_1tfr.dimord;
+tok_nb = strsplit(dimord_nb, '_');
+rpt_dim_nb = find(strcmp(tok_nb, 'rpt') | strcmp(tok_nb, 'subj'));
+if isempty(rpt_dim_nb)
+    error('N-back: cannot find repetition dimension (rpt or subj) in dimord: %s', dimord_nb);
+end
+n_rpt_nb1 = size(ga_nb_1tfr.powspctrm, rpt_dim_nb);
+n_rpt_nb2 = size(ga_nb_2tfr.powspctrm, rpt_dim_nb);
+n_rpt_nb3 = size(ga_nb_3tfr.powspctrm, rpt_dim_nb);
+if n_rpt_nb1 ~= n_U || n_rpt_nb2 ~= n_U || n_rpt_nb3 ~= n_U
+    error('N-back F-test: grand averages have different repetition counts (nb1=%d, nb2=%d, nb3=%d). Expected %d each.', n_rpt_nb1, n_rpt_nb2, n_rpt_nb3, n_U);
+end
+
 clear design
-design = zeros(2,3*n_U);
-cfg.design(1,:)           = [ones(1,n_U), ones(1,n_P)*2,ones(1,n_N)*3]; % design matrix
-cfg.design(2,:)           = [1:n_U,1:n_P, 1:n_N]; 
-cfg.ivar                  = 1; % number or list with indices indicating the independent variable(subj)
-cfg.uvar                  = 2;% units-of-observation (subjects or trials
-[statFnb] = ft_freqstatistics(cfg, ga_nb_1pow,ga_nb_2pow,ga_nb_3pow);
-[statFsb] = ft_freqstatistics(cfg, ga_sb_2pow,ga_sb_4pow,ga_sb_6pow);
-%%
+design = zeros(2, 3*n_U);
+cfg.design(1,:) = [ones(1,n_U), ones(1,n_P)*2, ones(1,n_N)*3];
+cfg.design(2,:) = [1:n_U, 1:n_P, 1:n_N];
+cfg.ivar = 1;
+cfg.uvar = 2;
+
+disp(upper('  Computing F-test for N-back...'));
+[statFnb] = ft_freqstatistics(cfg, ga_nb_1tfr, ga_nb_2tfr, ga_nb_3tfr);
+
+% Rebuild cfg for Sternberg (avoid any in-place modification from N-back call)
+cfg_sb = [];
+cfg_sb.method = 'montecarlo';
+cfg_sb.statistic = 'ft_statfun_depsamplesFunivariate';
+cfg_sb.correctm = 'cluster';
+cfg_sb.clusteralpha = 0.05;
+cfg_sb.clusterstatistic = 'maxsum';
+cfg_sb.minnbchan = 2;
+cfg_sb.neighbours = neighbours;
+cfg_sb.tail = 1;
+cfg_sb.clustertail = 1;
+cfg_sb.alpha = 0.05;
+cfg_sb.numrandomization = 1000;
+cfg_sb.design = zeros(2, 3*n_U);
+cfg_sb.design(1,:) = [ones(1,n_U), ones(1,n_P)*2, ones(1,n_N)*3];
+cfg_sb.design(2,:) = [1:n_U, 1:n_P, 1:n_N];
+cfg_sb.ivar = 1;
+cfg_sb.uvar = 2;
+disp(upper('  Computing F-test for Sternberg...'));
+[statFsb] = ft_freqstatistics(cfg_sb, ga_sb_2tfr, ga_sb_4tfr, ga_sb_6tfr);
+
+data_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features';
+save(fullfile(data_dir, 'AOC_omnibus_FIGURE2x2_statFnb_statFsb.mat'), 'statFnb', 'statFsb');
+disp(upper('stats saved...'))
+
+%% Identify significant electrodes from F-test results
+% Channels where proportion of alpha-[0 2] voxels with mask==1 is >= sig_prop_thresh
+sig_prop_thresh = 0.1;
+
+disp(upper(['Identifying significant electrodes from F-test results at proportion threshold ' num2str(sig_prop_thresh)]));
+cfg_sig = [];
+cfg_sig.parameter = 'stat';
+cfg_sig.maskparameter = 'mask';
+cfg_sig.frequency = [8 14];
+cfg_sig.latency = [0 2];
+statFsb_roi = ft_selectdata(cfg_sig, statFsb);
+statFnb_roi = ft_selectdata(cfg_sig, statFnb);
+
+% Choose channels where proportion of (freq x time) with mask==1 >= sig_prop_thresh
+sb_sig_channels = {};
+mask_sb = statFsb_roi.mask;
+for ch = 1:length(statFsb_roi.label)
+    m = squeeze(mask_sb(ch,:,:));
+    n = numel(m);
+    if n == 0, continue; end
+    prop_sig = sum(m(:) > 0.5) / n;
+    if prop_sig >= sig_prop_thresh
+        sb_sig_channels{end+1} = statFsb_roi.label{ch};
+    end
+end
+nb_sig_channels = {};
+mask_nb = statFnb_roi.mask;
+for ch = 1:length(statFnb_roi.label)
+    m = squeeze(mask_nb(ch,:,:));
+    n = numel(m);
+    if n == 0, continue; end
+    prop_sig = sum(m(:) > 0.5) / n;
+    if prop_sig >= sig_prop_thresh
+        nb_sig_channels{end+1} = statFnb_roi.label{ch};
+    end
+end
+
+% if isempty(sb_sig_channels)
+%     error('No significant channels for Sternberg. Lower sig_prop_thresh.');
+% end
+% if isempty(nb_sig_channels)
+%     error('No significant channels for N-back. Lower sig_prop_thresh.');
+% end
+
+% Restrict to posterior channels only (PO, O, or I in the name)
+is_posterior = @(c) contains(char(c), 'PO') | contains(char(c), 'O') | contains(char(c), 'I');
+sb_sig_channels = sb_sig_channels(cellfun(is_posterior, sb_sig_channels));
+nb_sig_channels = nb_sig_channels(cellfun(is_posterior, nb_sig_channels));
+
+% Output chosen channels and counts for each task
+fprintf('\nSternberg: %d significant channel(s): %s\n', length(sb_sig_channels), strjoin(sb_sig_channels, ', '));
+fprintf('N-back:    %d significant channel(s): %s\n\n', length(nb_sig_channels), strjoin(nb_sig_channels, ', '));
+
+% Topoplots
 close all
-cfg = [];
-cfg.layout = headmodel.layANThead;
-cfg.parameter = 'stat';
-cfg.maskparameter ='mask';
-% cfg.maskstyle = 'outline';
-% cfg.zlim = [-.8 .8];
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-ft_multiplotER(cfg,statFsb);
-% Save figure (multiplot: .fig only)
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_stern_Fstat_multiplot.fig'));
-%% 
+cfg_avg = [];
+cfg_avg.parameter = 'stat';
+cfg_avg.frequency = [8 14];
+cfg_avg.latency = [0 2];
+cfg_avg.avgoverfreq = 'yes';
+cfg_avg.avgovertime = 'yes';
+statFnb_avg = ft_selectdata(cfg_avg, statFnb);
+statFsb_avg = ft_selectdata(cfg_avg, statFsb);
+statFnb_avg.stat = abs(statFnb_avg.stat);
+statFsb_avg.stat = abs(statFsb_avg.stat);
+cfg_topo = [];
+cfg_topo.layout = headmodel.layANThead;
+cfg_topo.parameter = 'stat';
+cfg_topo.marker = 'off';
+cfg_topo.highlight = 'on';
+cfg_topo.highlightsymbol = '.';
+cfg_topo.highlightsize = 14;
+cfg_topo.comment = 'no';
+figure('Color', 'w', 'Position', [0, 0, 600, 600]);
+cfg_topo.highlightchannel = nb_sig_channels;
+ft_topoplotER(cfg_topo, statFnb_avg);
+title('N-back');
+figure('Color', 'w', 'Position', [600, 0, 600, 600]);
+cfg_topo.highlightchannel = sb_sig_channels;
+ft_topoplotER(cfg_topo, statFsb_avg);
+title('Sternberg');
 
-cfg = [];
-cfg.layout = headmodel.layANThead;
-cfg.parameter = 'stat';
-cfg.maskparameter ='mask';
-cfg.linecolor = 'k';
-cfg.linewidth = 2;
-cfg.comment = 'no';
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-ft_multiplotER(cfg,statFnb);
-% Save figure (multiplot: .fig only)
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_Fstat_multiplot.fig'));
-%%
-cfg = [];
-cfg.layout = headmodel.layANThead;
-cfg.figure = 'gcf';
-cfg.marker             = 'off';
-cfg.highlight          = 'on';
-% cfg.highlightchannel = {'P7', 'P3', 'P5', 'PO3', 'TP7', 'PO7', 'TPP9h', 'PO9', 'P9', 'TPP7h', 'PPO9h', 'PPO5h', 'POO9h'};% sb
-cfg.highlightchannel = {'P7', 'P3', 'O1', 'P5', 'P1', 'PO3', 'TP7', 'PO7', 'TPP9h', 'PO9', 'P9', 'CPP5h', 'CPP3h', 'PPO1', 'I1', 'TPP7h', 'PPO9h', 'PPO5h', 'POO9h', 'POO3h', 'OI1h'};% sb
-cfg.highlightsymbol    = '.';
- cfg.highlightsize      = 14;
- cfg.comment = 'no';
-cfg.parameter = 'stat';
-% cfg.xlim = [7.267857 9.963710];% sb
-cfg.xlim = [8.975230 17.601959];% nb
-% cfg.zlim = [0 7];%sb
-cfg.zlim = [0 20];%sb
+%% Prepare gaze data for F-test analysis
+disp('Preparing gaze data for F-test analysis...')
 
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-ft_topoplotER(cfg,statFnb);
-caxis([0 20]);
-cb = colorbar;
-cb.LineWidth = 1;
-cb.FontSize = 30;
-cb.Ticks = [0 20];
-title(cb,'F-values')
-% Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_Fstat_topoplot.png'));
-%% do omnibus again and test
-cfg = [];
-ga_nb = ft_freqgrandaverage(cfg,nb_high_low{:});
-ga_sb = ft_freqgrandaverage(cfg,sb_high_low{:});
-%%
-% close all
-cfg = [];
-cfg.figure = 'gcf';
-cfg.ylim = [3 40];
-% cfg.zlim = [-2 2];
-cfg.layout = headmodel.layANThead;
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-ft_multiplotTFR(cfg, ga_sb);
-color_map = flipud(cbrewer('div', 'RdBu', 64));
-colormap(color_map);
-% Save figure (multiplot: .fig only)
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_stern_highlow_TFR_multiplot.fig'));
-%%
-cfg = [];
-cfg.operation = 'subtract';
-cfg.parameter = 'powspctrm';
-omnibus = ft_math(cfg,ga_sb,ga_nb);
-%%
-% close all
-cfg = [];
-cfg.figure = 'gcf';
-cfg.ylim = [3 40];
-% cfg.zlim = [-3 3];
-cfg.layout = headmodel.layANThead;
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-ft_multiplotTFR(cfg, omnibus);
-color_map = flipud(cbrewer('div', 'RdBu', 64));
-colormap(color_map);
-% Save figure (multiplot: .fig only)
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternvsnback_TFR_multiplot.fig'));
-%% compute omnibus stat test freq time and elec
-cfg = [];
-cfg.latency          = [0 3];
-% cfg.frequency        = [5 30];
-cfg.method           = 'montecarlo';
-cfg.statistic        = 'ft_statfun_depsamplesT';
-cfg.correctm         = 'cluster';
-cfg.clusteralpha     = 0.05;
-cfg.clusterstatistic = 'maxsum';
-cfg.tail             = 0;
-cfg.clustertail      = 0;
-cfg.alpha            = 0.05;       % alpha level of the permutation test (two-tailed)
-cfg.numrandomization = 1000;
-cfg.neighbours       = neighbours;
-cfg.minnbchan        = 2;
-n_subj = numel(load6);
-design = zeros(2,2*n_subj);
-for i = 1:n_subj
-  design(1,i) = i;
-end
-for i = 1:n_subj
-  design(1,n_subj+i) = i;
-end
-design(2,1:n_subj)        = 1;
-design(2,n_subj+1:2*n_subj) = 2;
+% Gaze heatmap parameters
+sampling_rate = 500;
+threshold = 20;
+pad_ms = 150;
+num_bins = 1000;
+smooth_val = 5;
+x_grid = linspace(0, 800, num_bins);
+y_grid = linspace(0, 600, num_bins);
 
-cfg.design   = design;
-cfg.uvar     = 1;
-cfg.ivar     = 2;
+% Initialize gaze data structures
+allgazetask_sb2 = {}; allgazetask_sb4 = {}; allgazetask_sb6 = {};
+allgazebase_sb2 = {}; allgazebase_sb4 = {}; allgazebase_sb6 = {};
+allgazetask_nb1 = {}; allgazetask_nb2 = {}; allgazetask_nb3 = {};
+allgazebase_nb1 = {}; allgazebase_nb2 = {}; allgazebase_nb3 = {};
 
-[stat] = ft_freqstatistics(cfg, sb_high_low{:}, nb_high_low{:});
-% Calculate Cohen's d properly for paired samples
-% Extract data values for effect size calculation
-n = numel(load6);  % number of subjects (paired samples)
-% Calculate mean difference and SD of differences for Cohen's d
-% For each time-frequency point, calculate d = mean_diff / SD_diff
-n_freq = numel(stat.freq);
-n_time = numel(stat.time);
-sb_data = zeros(n, n_freq, n_time);
-nb_data = zeros(n, n_freq, n_time);
-for s = 1:n
-    % Select matching time and frequency ranges (use ranges, not vectors)
-    cfg_sel = [];
-    cfg_sel.latency = [min(stat.time) max(stat.time)];
-    cfg_sel.frequency = [min(stat.freq) max(stat.freq)];
-    cfg_sel.avgoverchan = 'yes';
-    sb_sel = ft_selectdata(cfg_sel, sb_high_low{s});
-    nb_sel = ft_selectdata(cfg_sel, nb_high_low{s});
+% Process Sternberg gaze data
+for s = 1:length(subjects)
+    subj = subjects{s};
+    subj_dir = fullfile(path, subj, 'gaze');
     
-    % Extract data and match to stat dimensions
-    sb_tmp = squeeze(sb_sel.powspctrm);
-    nb_tmp = squeeze(nb_sel.powspctrm);
-    
-    % If we got a scalar (averaged everything), we need to extract differently
-    if isscalar(sb_tmp) || (ndims(sb_tmp) == 2 && (size(sb_tmp, 1) ~= n_freq || size(sb_tmp, 2) ~= n_time))
-        % Extract data channel by channel and average, matching stat dimensions
-        % Get one channel to check structure
-        cfg_check = [];
-        cfg_check.latency = [min(stat.time) max(stat.time)];
-        cfg_check.frequency = [min(stat.freq) max(stat.freq)];
-        cfg_check.channel = sb_high_low{s}.label(1);
-        tmp_check = ft_selectdata(cfg_check, sb_high_low{s});
-        if ndims(tmp_check.powspctrm) == 3 && size(tmp_check.powspctrm, 1) == 1
-            % Extract all channels and average
-            all_sb = zeros(length(sb_high_low{s}.label), length(tmp_check.freq), length(tmp_check.time));
-            all_nb = zeros(length(nb_high_low{s}.label), length(tmp_check.freq), length(tmp_check.time));
-            for ch = 1:length(sb_high_low{s}.label)
-                cfg_ch = [];
-                cfg_ch.latency = [min(stat.time) max(stat.time)];
-                cfg_ch.frequency = [min(stat.freq) max(stat.freq)];
-                cfg_ch.channel = sb_high_low{s}.label(ch);
-                tmp_sb = ft_selectdata(cfg_ch, sb_high_low{s});
-                tmp_nb = ft_selectdata(cfg_ch, nb_high_low{s});
-                all_sb(ch, :, :) = squeeze(tmp_sb.powspctrm);
-                all_nb(ch, :, :) = squeeze(tmp_nb.powspctrm);
-            end
-            sb_tmp = squeeze(mean(all_sb, 1));  % average over channels
-            nb_tmp = squeeze(mean(all_nb, 1));  % average over channels
-        end
+    if ~exist(subj_dir, 'dir')
+        warning('Subject directory %s not found. Skipping...', subj_dir);
+        continue;
     end
     
-    % Match dimensions to stat structure
-    if ndims(sb_tmp) == 2
-        if size(sb_tmp, 1) == n_freq && size(sb_tmp, 2) == n_time
-            % Exact match
-            sb_data(s, :, :) = sb_tmp;
-            nb_data(s, :, :) = nb_tmp;
-        else
-            % Need to interpolate to match stat dimensions
-            [freq_orig, time_orig] = meshgrid(sb_sel.freq, sb_sel.time);
-            [freq_stat, time_stat] = meshgrid(stat.freq, stat.time);
-            sb_data(s, :, :) = interp2(freq_orig, time_orig, sb_tmp', freq_stat, time_stat, 'linear', NaN)';
-            nb_data(s, :, :) = interp2(freq_orig, time_orig, nb_tmp', freq_stat, time_stat, 'linear', NaN)';
-        end
+    cd(subj_dir);
+    
+    % Load dataET_sternberg
+    if ~exist('dataET_sternberg.mat', 'file')
+        warning('dataET_sternberg.mat not found for subject %s. Skipping...', subj);
+        continue;
+    end
+    load('dataET_sternberg.mat');
+    
+    if ~exist('dataETlong', 'var')
+        warning('dataETlong variable not found for subject %s. Skipping...', subj);
+        continue;
+    end
+    
+    % Trial types
+    if size(dataETlong.trialinfo, 2) == 1
+        trl2 = find(dataETlong.trialinfo == 22);
+        trl4 = find(dataETlong.trialinfo == 24);
+        trl6 = find(dataETlong.trialinfo == 26);
     else
-        error('Unexpected dimensions in powspctrm');
-    end
-end
-% Calculate differences (Sternberg - N-back)
-diff_data = sb_data - nb_data;
-mean_diff = squeeze(mean(diff_data, 1, 'omitnan'));  % mean across subjects [freq x time]
-sd_diff = squeeze(std(diff_data, 0, 1, 'omitnan'));   % sample SD across subjects [freq x time]
-% Cohen's d = mean_diff / sd_diff (for paired samples)
-cohens_d = mean_diff ./ (sd_diff + eps);  % add eps to avoid division by zero
-% Expand effectsize to match stat dimensions [chan×freq×time]
-% Since effectsize was calculated channel-averaged, replicate across all channels
-% cohens_d is [freq×time] = [136×41], need [chan×freq×time] = [125×136×41]
-cohens_d_3d = reshape(cohens_d, [1, size(cohens_d, 1), size(cohens_d, 2)]); % [1×136×41]
-stat.effectsize = repmat(cohens_d_3d, [length(stat.label), 1, 1]); % [125×136×41]
-%% now compute stat but only for the electrodes per pre registration
-cfg                  = [];
-cfg.latency          = [0 2];
-cfg.channel          = {'M1', 'M2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
-cfg.avgoverchan      = 'yes';
-cfg.method           = 'montecarlo';
-cfg.statistic        = 'ft_statfun_depsamplesT';
-cfg.correctm         = 'cluster';
-cfg.clusteralpha     = 0.05;
-cfg.clusterstatistic = 'maxsum';
-cfg.tail             = 0;
-cfg.clustertail      = 0;
-cfg.alpha            = 0.05;       % alpha level of the permutation test (two-tailed)
-cfg.numrandomization = 1000;
-n_subj = numel(load6);
-design = zeros(2,2*n_subj);
-for i = 1:n_subj
-  design(1,i) = i;
-end
-for i = 1:n_subj
-  design(1,n_subj+i) = i;
-end
-design(2,1:n_subj)        = 1;
-design(2,n_subj+1:2*n_subj) = 2;
-
-cfg.design   = design;
-cfg.uvar     = 1;
-cfg.ivar     = 2;
-
-[statprereg] = ft_freqstatistics(cfg, sb_high_low{:}, nb_high_low{:});
-% Calculate Cohen's d properly for paired samples
-n = numel(load6);  % number of subjects (paired samples)
-% Extract data values for effect size calculation
-n_freq = numel(statprereg.freq);
-n_time = numel(statprereg.time);
-sb_data = zeros(n, n_freq, n_time);
-nb_data = zeros(n, n_freq, n_time);
-for s = 1:n
-    % Select matching time and frequency ranges (use ranges, not vectors)
-    cfg_sel = [];
-    cfg_sel.latency = [min(statprereg.time) max(statprereg.time)];
-    cfg_sel.frequency = [min(statprereg.freq) max(statprereg.freq)];
-    cfg_sel.avgoverchan = 'yes';
-    sb_sel = ft_selectdata(cfg_sel, sb_high_low{s});
-    nb_sel = ft_selectdata(cfg_sel, nb_high_low{s});
-    
-    % Extract data and match to stat dimensions
-    sb_tmp = squeeze(sb_sel.powspctrm);
-    nb_tmp = squeeze(nb_sel.powspctrm);
-    
-    % If we got a scalar (averaged everything), we need to extract differently
-    if isscalar(sb_tmp) || (ndims(sb_tmp) == 2 && (size(sb_tmp, 1) ~= n_freq || size(sb_tmp, 2) ~= n_time))
-        % Extract data channel by channel and average, matching stat dimensions
-        % Get one channel to check structure
-        cfg_check = [];
-        cfg_check.latency = [min(statprereg.time) max(statprereg.time)];
-        cfg_check.frequency = [min(statprereg.freq) max(statprereg.freq)];
-        cfg_check.channel = sb_high_low{s}.label(1);
-        tmp_check = ft_selectdata(cfg_check, sb_high_low{s});
-        if ndims(tmp_check.powspctrm) == 3 && size(tmp_check.powspctrm, 1) == 1
-            % Extract all channels and average
-            all_sb = zeros(length(sb_high_low{s}.label), length(tmp_check.freq), length(tmp_check.time));
-            all_nb = zeros(length(nb_high_low{s}.label), length(tmp_check.freq), length(tmp_check.time));
-            for ch = 1:length(sb_high_low{s}.label)
-                cfg_ch = [];
-                cfg_ch.latency = [min(statprereg.time) max(statprereg.time)];
-                cfg_ch.frequency = [min(statprereg.freq) max(statprereg.freq)];
-                cfg_ch.channel = sb_high_low{s}.label(ch);
-                tmp_sb = ft_selectdata(cfg_ch, sb_high_low{s});
-                tmp_nb = ft_selectdata(cfg_ch, nb_high_low{s});
-                all_sb(ch, :, :) = squeeze(tmp_sb.powspctrm);
-                all_nb(ch, :, :) = squeeze(tmp_nb.powspctrm);
-            end
-            sb_tmp = squeeze(mean(all_sb, 1));  % average over channels
-            nb_tmp = squeeze(mean(all_nb, 1));  % average over channels
-        end
+        trl2 = find(dataETlong.trialinfo(:,1) == 22);
+        trl4 = find(dataETlong.trialinfo(:,1) == 24);
+        trl6 = find(dataETlong.trialinfo(:,1) == 26);
     end
     
-    % Match dimensions to stat structure
-    if ndims(sb_tmp) == 2
-        if size(sb_tmp, 1) == n_freq && size(sb_tmp, 2) == n_time
-            % Exact match
-            sb_data(s, :, :) = sb_tmp;
-            nb_data(s, :, :) = nb_tmp;
-        else
-            % Need to interpolate to match stat dimensions
-            [freq_orig, time_orig] = meshgrid(sb_sel.freq, sb_sel.time);
-            [freq_stat, time_stat] = meshgrid(statprereg.freq, statprereg.time);
-            sb_data(s, :, :) = interp2(freq_orig, time_orig, sb_tmp', freq_stat, time_stat, 'linear', NaN)';
-            nb_data(s, :, :) = interp2(freq_orig, time_orig, nb_tmp', freq_stat, time_stat, 'linear', NaN)';
+    % Select eye tracking channels
+    if ~all(ismember({'L-GAZE-X','L-GAZE-Y'}, dataETlong.label))
+        cfg = []; cfg.channel = {'L-GAZE-X','L-GAZE-Y'};
+        dataETlong = ft_selectdata(cfg, dataETlong);
+    end
+    nTrials = numel(dataETlong.trial);
+    
+    % Blink correction
+    dataetnan = dataETlong;
+    valid_trials = true(nTrials, 1);
+    
+    for i = 1:nTrials
+        x = dataETlong.trial{i}(1, :);
+        y = dataETlong.trial{i}(2, :);
+        t = dataETlong.time{i};
+        
+        [x_nan, y_nan, ~, ~, ~, is_valid] = removeAndInterpolateBlinks_checktrials(x, y, t, sampling_rate, threshold, pad_ms);
+        
+        if ~is_valid
+            valid_trials(i) = false;
+            continue;
         end
+        
+        dataetnan.trial{i}(1,:) = x_nan;
+        dataetnan.trial{i}(2,:) = y_nan;
+    end
+    
+    % Remove bad trials
+    cfg = []; cfg.trials = find(valid_trials);
+    dataETlong = ft_selectdata(cfg, dataETlong);
+    dataetnan = ft_selectdata(cfg, dataetnan);
+    
+    % Recompute condition indices after cleaning
+    if size(dataETlong.trialinfo, 2) == 1
+        trl2 = find(dataETlong.trialinfo == 22);
+        trl4 = find(dataETlong.trialinfo == 24);
+        trl6 = find(dataETlong.trialinfo == 26);
     else
-        error('Unexpected dimensions in powspctrm');
+        trl2 = find(dataETlong.trialinfo(:,1) == 22);
+        trl4 = find(dataETlong.trialinfo(:,1) == 24);
+        trl6 = find(dataETlong.trialinfo(:,1) == 26);
+    end
+    
+    % Process each condition
+    for cond_idx = 1:3
+        if cond_idx == 1, trl = trl2; cond = 2;
+        elseif cond_idx == 2, trl = trl4; cond = 4;
+        else, trl = trl6; cond = 6;
+        end
+        
+        cfg = []; cfg.channel = {'L-GAZE-X','L-GAZE-Y'};
+        cfg.trials = trl;
+        % Select trials first, then check time range
+        dataetnan_trl = ft_selectdata(cfg, dataetnan);
+        % Check available time range for task window
+        if ~isempty(dataetnan_trl.time) && numel(dataetnan_trl.time) > 0
+            all_times = cellfun(@(x) [min(x), max(x)], dataetnan_trl.time, 'UniformOutput', false);
+            all_times_mat = cell2mat(all_times(:));
+            min_time = min(all_times_mat(:,1));
+            max_time = max(all_times_mat(:,2));
+            task_time_range = [max(0, min_time), min(2, max_time)];
+        else
+            task_time_range = [0 2];  % Default range
+        end
+        cfg.latency = task_time_range;
+        cfg = rmfield(cfg, 'trials');  % selection by time only; trials already subset in dataetnan_trl
+        dat_task = ft_selectdata(cfg, dataetnan_trl);  % Consistent [0 2] window
+        % Check available time range for baseline window
+        if ~isempty(dataetnan_trl.time) && numel(dataetnan_trl.time) > 0
+            base_time_range = [max(-.5, min_time), min(-.25, max_time)];
+            if base_time_range(1) < base_time_range(2)
+                cfg.latency = base_time_range;
+                dat_base = ft_selectdata(cfg, dataetnan_trl);  % Consistent baseline window
+            else
+                % If baseline window not available, create empty structure
+                dat_base = dat_task;
+                dat_base.trial = cell(1, numel(dat_task.trial));
+                dat_base.time = cell(1, numel(dat_task.trial));
+                for i = 1:numel(dat_task.trial)
+                    dat_base.trial{i} = zeros(size(dat_task.trial{i}, 1), 0);
+                    dat_base.time{i} = [];
+                end
+            end
+        else
+            % If no time data, create empty baseline structure
+            dat_base = dat_task;
+            dat_base.trial = cell(1, numel(dat_task.trial));
+            dat_base.time = cell(1, numel(dat_task.trial));
+            for i = 1:numel(dat_task.trial)
+                dat_base.trial{i} = zeros(size(dat_task.trial{i}, 1), 0);
+                dat_base.time{i} = [];
+            end
+        end
+        
+        % Compute heatmaps
+        [freq_task, ~] = computeGazeHeatmap(dat_task, x_grid, y_grid, sampling_rate, smooth_val);
+        [freq_base, ~] = computeGazeHeatmap(dat_base, x_grid, y_grid, sampling_rate, smooth_val);
+        
+        eval(sprintf('allgazetask_sb%d{s} = freq_task;', cond));
+        eval(sprintf('allgazebase_sb%d{s} = freq_base;', cond));
     end
 end
-% Calculate differences (Sternberg - N-back)
-diff_data = sb_data - nb_data;
-mean_diff = squeeze(mean(diff_data, 1, 'omitnan'));  % mean across subjects [freq x time]
-sd_diff = squeeze(std(diff_data, 0, 1, 'omitnan'));   % sample SD across subjects [freq x time]
-% Cohen's d = mean_diff / sd_diff (for paired samples)
-cohens_d = mean_diff ./ (sd_diff + eps);  % add eps to avoid division by zero
-% Expand effectsize to match statprereg dimensions [chan×freq×time]
-% Since effectsize was calculated channel-averaged, replicate across all channels
-% cohens_d is [freq×time], need [chan×freq×time]
-cohens_d_3d = reshape(cohens_d, [1, size(cohens_d, 1), size(cohens_d, 2)]); % [1×freq×time]
-statprereg.effectsize = repmat(cohens_d_3d, [length(statprereg.label), 1, 1]); % [chan×freq×time]
-%%
 
-% close all
-% Ensure effectsize has correct dimensions [chan×freq×time] for plotting
-if isfield(stat, 'effectsize')
-    if ndims(stat.effectsize) == 2
-        % Expand from [freq×time] to [chan×freq×time]
-        cohens_d_2d = stat.effectsize;
-        cohens_d_3d = reshape(cohens_d_2d, [1, size(cohens_d_2d, 1), size(cohens_d_2d, 2)]);
-        stat.effectsize = repmat(cohens_d_3d, [length(stat.label), 1, 1]);
+% Process N-back gaze data
+for s = 1:length(subjects)
+    subj = subjects{s};
+    subj_dir = fullfile(path, subj, 'gaze');
+    
+    if ~exist(subj_dir, 'dir')
+        continue;
+    end
+    
+    cd(subj_dir);
+    
+    if ~exist('dataET_nback.mat', 'file')
+        warning('dataET_nback.mat not found for subject %s. Skipping...', subj);
+        continue;
+    end
+    load('dataET_nback.mat');
+    
+    % Select eye tracking channels
+    if ~all(ismember({'L-GAZE-X','L-GAZE-Y'}, dataet.label))
+        cfg = []; cfg.channel = {'L-GAZE-X','L-GAZE-Y'};
+        dataet = ft_selectdata(cfg, dataet);
+    end
+    nTrials = numel(dataet.trial);
+    
+    % Blink correction
+    dataetnan = dataet;
+    valid_trials = true(nTrials, 1);
+    
+    for i = 1:nTrials
+        x = dataet.trial{i}(1, :);
+        y = dataet.trial{i}(2, :);
+        t = dataet.time{i};
+        
+        [x_nan, y_nan, ~, ~, ~, is_valid] = removeAndInterpolateBlinks_checktrials(x, y, t, sampling_rate, threshold, pad_ms);
+        
+        if ~is_valid
+            valid_trials(i) = false;
+            continue;
+        end
+        
+        dataetnan.trial{i}(1,:) = x_nan;
+        dataetnan.trial{i}(2,:) = y_nan;
+    end
+    
+    cfg = []; cfg.trials = find(valid_trials);
+    dataet = ft_selectdata(cfg, dataet);
+    dataetnan = ft_selectdata(cfg, dataetnan);
+    
+    % Trial types for N-back
+    if size(dataet.trialinfo, 2) == 1
+        trl1 = find(dataet.trialinfo == 1);
+        trl2 = find(dataet.trialinfo == 2);
+        trl3 = find(dataet.trialinfo == 3);
+    else
+        trl1 = find(dataet.trialinfo(:,1) == 1);
+        trl2 = find(dataet.trialinfo(:,1) == 2);
+        trl3 = find(dataet.trialinfo(:,1) == 3);
+    end
+    
+    % Process each condition
+    for cond_idx = 1:3
+        if cond_idx == 1, trl = trl1; cond = 1;
+        elseif cond_idx == 2, trl = trl2; cond = 2;
+        else, trl = trl3; cond = 3;
+        end
+        
+        cfg = []; cfg.channel = {'L-GAZE-X','L-GAZE-Y'};
+        cfg.trials = trl;
+        % Select trials first, then check time range
+        dataetnan_trl = ft_selectdata(cfg, dataetnan);
+        % Check available time range for task window
+        if ~isempty(dataetnan_trl.time) && numel(dataetnan_trl.time) > 0
+            all_times = cellfun(@(x) [min(x), max(x)], dataetnan_trl.time, 'UniformOutput', false);
+            all_times_mat = cell2mat(all_times(:));
+            min_time = min(all_times_mat(:,1));
+            max_time = max(all_times_mat(:,2));
+            task_time_range = [max(0, min_time), min(2, max_time)];
+        else
+            task_time_range = [0 2];  % Default range
+        end
+        % Skip if no overlap between [0 2] and data (avoids 0 trials -> ft_checkdata error)
+        if task_time_range(1) >= task_time_range(2)
+            eval(sprintf('allgazetask_nb%d{s} = [];', cond));
+            eval(sprintf('allgazebase_nb%d{s} = [];', cond));
+            continue;
+        end
+        cfg.latency = task_time_range;
+        cfg = rmfield(cfg, 'trials');  % selection by time only; trials already subset in dataetnan_trl
+        dat_task = ft_selectdata(cfg, dataetnan_trl);  % Consistent [0 2] window
+        % Skip if latency selection left no trials (robustness)
+        if numel(dat_task.trial) == 0
+            eval(sprintf('allgazetask_nb%d{s} = [];', cond));
+            eval(sprintf('allgazebase_nb%d{s} = [];', cond));
+            continue;
+        end
+        % Check available time range for baseline window
+        if ~isempty(dataetnan_trl.time) && numel(dataetnan_trl.time) > 0
+            base_time_range = [max(-.5, min_time), min(-.25, max_time)];
+            if base_time_range(1) < base_time_range(2)
+                cfg.latency = base_time_range;
+                dat_base = ft_selectdata(cfg, dataetnan_trl);  % Consistent baseline window
+            else
+                % If baseline window not available, create empty structure
+                dat_base = dat_task;
+                dat_base.trial = cell(1, numel(dat_task.trial));
+                dat_base.time = cell(1, numel(dat_task.trial));
+                for i = 1:numel(dat_task.trial)
+                    dat_base.trial{i} = zeros(size(dat_task.trial{i}, 1), 0);
+                    dat_base.time{i} = [];
+                end
+            end
+        else
+            % If no time data, create empty baseline structure
+            dat_base = dat_task;
+            dat_base.trial = cell(1, numel(dat_task.trial));
+            dat_base.time = cell(1, numel(dat_task.trial));
+            for i = 1:numel(dat_task.trial)
+                dat_base.trial{i} = zeros(size(dat_task.trial{i}, 1), 0);
+                dat_base.time{i} = [];
+            end
+        end
+        
+        % Compute heatmaps
+        [freq_task, ~] = computeGazeHeatmap(dat_task, x_grid, y_grid, sampling_rate, smooth_val);
+        [freq_base, ~] = computeGazeHeatmap(dat_base, x_grid, y_grid, sampling_rate, smooth_val);
+        
+        eval(sprintf('allgazetask_nb%d{s} = freq_task;', cond));
+        eval(sprintf('allgazebase_nb%d{s} = freq_base;', cond));
     end
 end
-cfg = [];
-cfg.layout = headmodel.layANThead;
-cfg.parameter = 'effectsize';
-cfg.maskparameter ='mask';
-cfg.maskstyle = 'outline';
-% cfg.zlim = [-.8 .8];
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-ft_multiplotTFR(cfg,stat);
-color_map = flipud(cbrewer('div', 'RdBu', 64));
-colormap(color_map);
-% Save figure (multiplot: .fig only)
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternvsnback_effectsize_multiplot.fig'));
 
-%% do stats
-stattfr = statprereg;
-% Check if statprereg.effectsize has valid data, if not use stat.effectsize
-if ~isfield(statprereg, 'effectsize') || all(isnan(statprereg.effectsize(:)))
-    warning('statprereg.effectsize is missing or all NaNs. Using stat.effectsize instead.');
-    stattfr.stat = stat.effectsize;
-    % Also update label to match stat if needed
-    if isfield(stat, 'label') && ~isempty(stat.label)
-        stattfr.label = stat.label;
+% Remove empty cells and create baseline-corrected data
+sb2_gaze = {}; sb4_gaze = {}; sb6_gaze = {};
+nb1_gaze = {}; nb2_gaze = {}; nb3_gaze = {};
+
+for subj = 1:length(subjects)
+    if ~isempty(allgazebase_sb2) && length(allgazebase_sb2) >= subj && ~isempty(allgazebase_sb2{subj})
+        sb2_gaze{subj} = allgazebase_sb2{subj};
+        sb2_gaze{subj}.powspctrm = allgazetask_sb2{subj}.powspctrm - allgazebase_sb2{subj}.powspctrm;
+        sb4_gaze{subj} = allgazebase_sb4{subj};
+        sb4_gaze{subj}.powspctrm = allgazetask_sb4{subj}.powspctrm - allgazebase_sb4{subj}.powspctrm;
+        sb6_gaze{subj} = allgazebase_sb6{subj};
+        sb6_gaze{subj}.powspctrm = allgazetask_sb6{subj}.powspctrm - allgazebase_sb6{subj}.powspctrm;
     end
+    if ~isempty(allgazebase_nb1) && length(allgazebase_nb1) >= subj && ~isempty(allgazebase_nb1{subj})
+        nb1_gaze{subj} = allgazebase_nb1{subj};
+        nb1_gaze{subj}.powspctrm = allgazetask_nb1{subj}.powspctrm - allgazebase_nb1{subj}.powspctrm;
+        nb2_gaze{subj} = allgazebase_nb2{subj};
+        nb2_gaze{subj}.powspctrm = allgazetask_nb2{subj}.powspctrm - allgazebase_nb2{subj}.powspctrm;
+        nb3_gaze{subj} = allgazebase_nb3{subj};
+        nb3_gaze{subj}.powspctrm = allgazetask_nb3{subj}.powspctrm - allgazebase_nb3{subj}.powspctrm;
+    end
+end
+
+% Remove empty cells
+sb2_gaze = sb2_gaze(~cellfun(@isempty, sb2_gaze));
+sb4_gaze = sb4_gaze(~cellfun(@isempty, sb4_gaze));
+sb6_gaze = sb6_gaze(~cellfun(@isempty, sb6_gaze));
+nb1_gaze = nb1_gaze(~cellfun(@isempty, nb1_gaze));
+nb2_gaze = nb2_gaze(~cellfun(@isempty, nb2_gaze));
+nb3_gaze = nb3_gaze(~cellfun(@isempty, nb3_gaze));
+
+% Compute F-test for gaze data (Sternberg)
+if ~isempty(sb2_gaze) && ~isempty(sb4_gaze) && ~isempty(sb6_gaze)
+    disp(upper('Computing F-test for gaze data - Sternberg (cluster-based permutation analysis)...'));
+    tic
+    cfg_gaze = [];
+    cfg_gaze.method = 'montecarlo';
+    cfg_gaze.statistic = 'ft_statfun_depsamplesFunivariate';
+    cfg_gaze.correctm = 'cluster';
+    cfg_gaze.clusteralpha = 0.05;
+    cfg_gaze.clusterstatistic = 'maxsum';
+    cfg_gaze.neighbours = [];
+    cfg_gaze.tail = 1;
+    cfg_gaze.clustertail = cfg_gaze.tail;
+    cfg_gaze.alpha = 0.05;
+    cfg_gaze.numrandomization = 1000;
+    
+    n_U = length(sb2_gaze);
+    n_P = length(sb4_gaze);
+    n_N = length(sb6_gaze);
+    
+    design_gaze = zeros(2, 3*n_U);
+    design_gaze(1,:) = [ones(1,n_U), ones(1,n_P)*2, ones(1,n_N)*3];
+    design_gaze(2,:) = [1:n_U, 1:n_P, 1:n_N];
+    cfg_gaze.design = design_gaze;
+    cfg_gaze.ivar = 1;
+    cfg_gaze.uvar = 2;
+    
+    [statFgaze_sb] = ft_freqstatistics(cfg_gaze, sb2_gaze{:}, sb4_gaze{:}, sb6_gaze{:});
+    statFgaze_sb.stat(statFgaze_sb.mask==0) = 0;
+    toc
+    disp(' ');
 else
-    stattfr.stat = statprereg.effectsize;
+    warning('Insufficient gaze data for Sternberg F-test');
+    statFgaze_sb = [];
 end
 
-% figure;
+% Compute F-test for gaze data (N-back)
+if ~isempty(nb1_gaze) && ~isempty(nb2_gaze) && ~isempty(nb3_gaze)
+    disp(upper('Computing F-test for gaze data - N-back (cluster-based permutation analysis)...'));
+    tic
+    n_U = length(nb1_gaze);
+    n_P = length(nb2_gaze);
+    n_N = length(nb3_gaze);
+    
+    design_gaze = zeros(2, 3*n_U);
+    design_gaze(1,:) = [ones(1,n_U), ones(1,n_P)*2, ones(1,n_N)*3];
+    design_gaze(2,:) = [1:n_U, 1:n_P, 1:n_N];
+    cfg_gaze.design = design_gaze;
+    
+    [statFgaze_nb] = ft_freqstatistics(cfg_gaze, nb1_gaze{:}, nb2_gaze{:}, nb3_gaze{:});
+    statFgaze_nb.stat(statFgaze_nb.mask==0) = 0;
+    toc
+    disp(' ');
+else
+    warning('Insufficient gaze data for N-back F-test');
+    statFgaze_nb = [];
+end
+
+%% Create final 2x2 figures for both tasks
+disp('Creating final 2x2 figures...');
+
+% STERNBERG FIGURE
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+
+% Subplot 1: TFR visualization of F-test results for EEG
+subplot(2,2,1);
 cfg = [];
-cfg.channel = {'CP2', 'Pz','P2', 'CPP4h', 'CPP2h', 'CPz'};
+cfg.channel = sb_sig_channels;
 cfg.avgoverchan = 'yes';
-%cfg.frequency = [2 40];
-%cfg.latency   = [0 2];
+cfg.frequency = [1 30];  % Visualization frequency range
+% Check actual time range and use intersection
+actual_time_range = [max(-.5, statFsb.time(1)), min(2, statFsb.time(end))];
+cfg.latency = actual_time_range;  % Use available time range
+freq_sb = ft_selectdata(cfg, statFsb);
+meanpow = squeeze(mean(freq_sb.stat, 1));  % Average over channels
 
-% cfg.latency          = [0 3];
-% cfg.channel          = {'M1', 'M2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
-% cfg.method           = 'montecarlo';
-% cfg.statistic        = 'ft_statfun_depsamplesT';
-% cfg.correctm         = 'cluster';
-% cfg.clusteralpha     = 0.05;
-% cfg.clusterstatistic = 'maxsum';
-% cfg.tail             = 0;
-% cfg.clustertail      = 0;
-% cfg.alpha            = 0.05;
-% cfg.numrandomization = 1000;
-% cfg.neighbours       = neighbours;
-% cfg.minnbchan        = 2;
-
-% Check available channels before selection
-if isfield(stattfr, 'label') && ~isempty(stattfr.label)
-    [common_chans, ~, ~] = intersect(stattfr.label, cfg.channel);
-    if isempty(common_chans)
-        warning('None of the requested channels exist in stattfr.label. Available channels: %s', strjoin(stattfr.label(1:min(10,end)), ', '));
-        % Try using all available channels or a subset
-        if length(stattfr.label) > 0
-            warning('Using first available channel instead.');
-            cfg.channel = stattfr.label(1);
-        end
-    end
-end
-
-freq = ft_selectdata(cfg,stattfr);
-% After avgoverchan, freq.stat is [1×freq×time], so just squeeze to get [freq×time]
-% No need to average again since there's only 1 channel dimension
-meanpow = squeeze(freq.stat);
-meanmask = squeeze(freq.mask);
-
-% Validate data
-if all(isnan(meanpow(:)))
-    % Provide detailed diagnostics
-    fprintf('ERROR: meanpow is all NaNs after channel selection.\n');
-    fprintf('stattfr.stat size: %s, NaNs: %d/%d\n', mat2str(size(stattfr.stat)), sum(isnan(stattfr.stat(:))), numel(stattfr.stat));
-    fprintf('freq.stat size: %s, NaNs: %d/%d\n', mat2str(size(freq.stat)), sum(isnan(freq.stat(:))), numel(freq.stat));
-    if isfield(stattfr, 'label')
-        fprintf('stattfr.label: %d channels\n', length(stattfr.label));
-        fprintf('Requested channels: %s\n', strjoin(cfg.channel, ', '));
-    end
-    error('meanpow is all NaNs after channel selection. Check diagnostics above.');
-end
-if ~isequal(size(meanpow), [length(freq.freq), length(freq.time)])
-    error('meanpow dimensions [%s] do not match expected [%d×%d]', mat2str(size(meanpow)), length(freq.freq), length(freq.time));
-end
-% The finer time and frequency axes:
-tim_interp = linspace(freq.time(1), freq.time(end), 500);
-freq_interp = linspace(2, 40, 500);
-% We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab's meshgrid() does this for us:
-[tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
+tim_interp = linspace(freq_sb.time(1), freq_sb.time(end), 500);
+freq_interp = linspace(1, 30, 500);  % Match visualization frequency range
+[tim_grid_orig, freq_grid_orig] = meshgrid(freq_sb.time, freq_sb.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 
-% And interpolate:
-% Handle NaN values before interpolation
-meanpow_clean = meanpow;
-meanmask_clean = meanmask;
+pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow, ...
+    tim_grid_interp, freq_grid_interp, 'spline');
+mask_interp = interp2(tim_grid_orig, freq_grid_orig, double(squeeze(freq_sb.mask)), ...
+    tim_grid_interp, freq_grid_interp, 'nearest', 0);
 
-% Check if we have enough valid data (need at least 4 points for 2D interpolation)
-valid_data = ~isnan(meanpow_clean);
-n_valid = sum(valid_data(:));
-
-if n_valid < 4
-    % Not enough data points for interpolation, use original data
-    warning('Insufficient valid data for interpolation (%d valid points), using original resolution', n_valid);
-    pow_interp = meanpow_clean;
-    mask_interp = double(meanmask_clean);
-    tim_interp = freq.time;
-    freq_interp = freq.freq;
-    [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
-else
-    % Fill NaN values using inpainting (fill with nearest valid neighbor)
-    if any(isnan(meanpow_clean(:)))
-        % Simple approach: fill NaNs with 0 or mean of valid values
-        % For better results, use inpaint_nans if available, otherwise use fillmissing
-        if exist('inpaint_nans', 'file') == 2
-            meanpow_clean = inpaint_nans(meanpow_clean);
-        else
-            % Use fillmissing with 'nearest' method
-            meanpow_clean = fillmissing(meanpow_clean, 'nearest', 2); % fill along dimension 2 (time)
-            meanpow_clean = fillmissing(meanpow_clean, 'nearest', 1); % fill along dimension 1 (freq)
-            % If still NaNs, fill with 0
-            meanpow_clean(isnan(meanpow_clean)) = 0;
-        end
-    end
-    
-    % Now interpolate to finer grid
-    try
-        pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow_clean,...
-            tim_grid_interp, freq_grid_interp, 'linear', NaN);
-        mask_interp = interp2(tim_grid_orig, freq_grid_orig, double(meanmask_clean),...
-            tim_grid_interp, freq_grid_interp, 'nearest', 0);
-        
-        % Check if interpolation produced all NaNs
-        if all(isnan(pow_interp(:)))
-            warning('Interpolation produced all NaNs, using original resolution');
-            pow_interp = meanpow_clean;
-            mask_interp = double(meanmask_clean);
-            tim_interp = freq.time;
-            freq_interp = freq.freq;
-            [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
-        end
-    catch ME
-        warning('Interpolation failed: %s. Using original resolution.', ME.message);
-        pow_interp = meanpow_clean;
-        mask_interp = double(meanmask_clean);
-        tim_interp = freq.time;
-        freq_interp = freq.freq;
-        [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
-    end
-end
-% Check if we have valid data to plot
-if all(isnan(pow_interp(:)))
-    error('Cannot plot: pow_interp contains only NaN values. Check that freq.stat has valid data.');
-end
-
-%% Plot TFR Effect Size Comparison
-close all
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-% Ensure pow_interp has finite values for plotting
-pow_interp_plot = pow_interp;
-pow_interp_plot(~isfinite(pow_interp_plot)) = 0; % Replace Inf/NaN with 0 for plotting
-ft_plot_matrix(flip(pow_interp_plot),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
-freq_flipped = fliplr(freq_interp);
-target_freqs = [5 10 15 20 25 30];
-ytick_idx = round(interp1(freq_flipped, 1:length(freq_flipped), target_freqs));
-yticks(fliplr(ytick_idx));
-yticklabels({'30', '25', '20', '15', '10', '5'});
-ylim([ytick_idx(end) ytick_idx(1)*1.05])
-xticks([0 125 250 375 500])
-xticklabels({num2str(freq.time(1)),'0.5', '1', '1.5', num2str(freq.time(end))});
-set(gca,'Fontsize',20);
+ft_plot_matrix(flip(pow_interp), 'highlightstyle', 'outline', 'highlight', flip(abs(round(mask_interp))));
+ax = gca; hold(ax, 'on');
+x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
+xline(ax, x0, 'k-', 'LineWidth', 1);
+xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-.5 0 1 2])));
+xticklabels({'-0.5','0','1','2'});
+yticks([1 125 250 375]);
+yticklabels({'30','20','10','1'});
+set(gca, 'Fontsize', 18);
 xlabel('Time [sec]');
 ylabel('Frequency [Hz]');
-maxval = max(abs(pow_interp_plot(:)));
-caxis([-maxval maxval]);
-color_map = flipud(cbrewer('div', 'RdBu', 64));
-colormap(color_map);
+caxis([0 max(pow_interp(:))]);
+% Use blue-to-red colormap (same as omnibus script)
+color_map = flipud(cbrewer('div', 'RdBu', 64)); % Blue-to-red diverging color map
+colormap(gca, color_map);
 cb = colorbar;
 cb.LineWidth = 1;
-cb.FontSize = 18;
-title(cb,'Effect Size\it d')
-sgtitle('Sternberg vs N-back Effect Size', 'FontSize', 24, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternvsnback_effectsize.png'));
+cb.FontSize = 16;
+title(cb, 'F-values');
+title('EEG F-test (Sternberg)');
 
-%% extract power spectra omnibus
-cfg = [];
-cfg.latency = [1 2];
-cfg.avgovertime = 'yes';
-for subj = 1 :length(subjects)
-sb_hl_pow{subj}= ft_selectdata(cfg,sb_high_low{subj});
-nb_hl_pow{subj}= ft_selectdata(cfg,nb_high_low{subj});
-sb_hl_pow{subj}.dimord = 'chan_freq';
-sb_hl_pow{subj} = rmfield(sb_hl_pow{subj},'time');
-nb_hl_pow{subj}.dimord = 'chan_freq';
-nb_hl_pow{subj} = rmfield(nb_hl_pow{subj},'time');
+% Subplot 2: TFR visualization of F-test results for ET
+subplot(2,2,2);
+if ~isempty(statFgaze_sb)
+    cfg = [];
+    cfg.parameter = 'stat';
+    cfg.maskparameter = 'mask';
+    cfg.maskstyle = 'outline';
+    % Use blue-to-red colormap (same as omnibus script)
+    cfg.colormap = flipud(cbrewer('div', 'RdBu', 64)); % Blue-to-red diverging color map
+    ft_singleplotTFR(cfg, statFgaze_sb);
+    set(gca, 'Fontsize', 18);
+    xlabel('x [px]');
+    ylabel('y [px]');
+    grid on;
+    c = colorbar;
+    c.LineWidth = 1;
+    c.FontSize = 16;
+    title(c, 'F-statistic');
+    title('ET F-test (Sternberg)');
+else
+    text(0.5, 0.5, 'Insufficient gaze data', 'HorizontalAlignment', 'center', 'FontSize', 16);
+    title('ET F-test (Sternberg)');
 end
-%% sternberg pow per condition
-cfg = [];
-cfg.keepindividual = 'yes';
-ga_sb_hl_pow = ft_freqgrandaverage(cfg,sb_hl_pow{:});
-ga_nb_hl_pow = ft_freqgrandaverage(cfg,nb_hl_pow{:});
 
-%%
-close all
-cfg = [];
-cfg.figure = 'gcf';
-% cfg.ylim = [3 40];
-% cfg.zlim = [-3 3];
-cfg.layout = headmodel.layANThead;
+% Subplot 3: Raincloud plots for EEG (highest vs lowest load)
+subplot(2,2,3);
+% Extract highest vs lowest load for EEG (using significant channels)
+cfg_rain = [];
+cfg_rain.channel = sb_sig_channels;
+cfg_rain.avgoverchan = 'yes';
+cfg_rain.frequency = [8 14];  % Alpha band
+cfg_rain.latency = [0 2];  % Consistent window
+cfg_rain.avgoverfreq = 'yes';
+cfg_rain.avgovertime = 'yes';
+
+eeg_low_sb = [];
+eeg_high_sb = [];
+for subj = 1:length(load2)
+    if length(load2) >= subj && length(load6) >= subj
+        tmp_low = ft_selectdata(cfg_rain, load2{subj});
+        tmp_high = ft_selectdata(cfg_rain, load6{subj});
+        if ~isempty(tmp_low) && ~isempty(tmp_high)
+            eeg_low_sb(end+1) = tmp_low.powspctrm;
+            eeg_high_sb(end+1) = tmp_high.powspctrm;
+        end
+    end
+end
+% Raincloud plot for EEG
+positions = [0.3, 0.7];
+[f_low, xi_low] = ksdensity(eeg_low_sb);
+fill(positions(1) + f_low*0.05, xi_low, [0.30, 0.75, 0.93], 'FaceAlpha', 0.5); hold on;
+[f_high, xi_high] = ksdensity(eeg_high_sb);
+fill(positions(2) + f_high*0.05, xi_high, [0.97, 0.26, 0.26], 'FaceAlpha', 0.5);
+box_h = boxplot([eeg_low_sb(:), eeg_high_sb(:)], 'Labels', {'Low', 'High'}, 'Widths', 0.05, 'Positions', positions);
+set(box_h, 'LineWidth', 2);
+jitter = 0.05;
+scatter(positions(1) + (rand(size(eeg_low_sb))-0.5)*jitter, eeg_low_sb, 'k.', 'SizeData', 50);
+scatter(positions(2) + (rand(size(eeg_high_sb))-0.5)*jitter, eeg_high_sb, 'k.', 'SizeData', 50);
+[~, p] = ttest(eeg_low_sb, eeg_high_sb);
+sig_label = getSigLabel(p);
+y_max = max([eeg_low_sb(:); eeg_high_sb(:)]) * 1.25;
+if ~isempty(sig_label)
+    line(positions, [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
+    text(mean(positions), y_max + 0.02, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'center');
+end
+title('EEG: Load 2 vs Load 6');
+ylabel('Change from baseline');
+xlim([0 1]);
+box on;
+set(gca, 'FontSize', 16);
+
+% Subplot 4: Raincloud plots for ET (highest vs lowest load)
+subplot(2,2,4);
+% Extract gaze data for highest vs lowest load
+et_low_sb = [];
+et_high_sb = [];
+for subj = 1:min(length(sb2_gaze), length(sb6_gaze))
+    if ~isempty(sb2_gaze{subj}) && ~isempty(sb6_gaze{subj})
+        % Average over spatial dimension
+        et_low_sb(end+1) = mean(sb2_gaze{subj}.powspctrm(:), 'omitnan');
+        et_high_sb(end+1) = mean(sb6_gaze{subj}.powspctrm(:), 'omitnan');
+    end
+end
+if ~isempty(et_low_sb) && ~isempty(et_high_sb)
+    % Raincloud plot for ET
+    positions = [0.3, 0.7];
+    [f_low, xi_low] = ksdensity(et_low_sb);
+    fill(positions(1) + f_low*0.05, xi_low, [0.30, 0.75, 0.93], 'FaceAlpha', 0.5); hold on;
+    [f_high, xi_high] = ksdensity(et_high_sb);
+    fill(positions(2) + f_high*0.05, xi_high, [0.97, 0.26, 0.26], 'FaceAlpha', 0.5);
+    box_h = boxplot([et_low_sb(:), et_high_sb(:)], 'Labels', {'Low', 'High'}, 'Widths', 0.05, 'Positions', positions);
+    set(box_h, 'LineWidth', 2);
+    jitter = 0.05;
+    scatter(positions(1) + (rand(size(et_low_sb))-0.5)*jitter, et_low_sb, 'k.', 'SizeData', 50);
+    scatter(positions(2) + (rand(size(et_high_sb))-0.5)*jitter, et_high_sb, 'k.', 'SizeData', 50);
+    [~, p] = ttest(et_low_sb, et_high_sb);
+    sig_label = getSigLabel(p);
+    y_max = max([et_low_sb(:); et_high_sb(:)]) * 1.25;
+    if ~isempty(sig_label)
+        line(positions, [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
+        text(mean(positions), y_max + 0.02, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'center');
+    end
+    title('ET: Load 2 vs Load 6');
+    ylabel('Change from baseline');
+    xlim([0 1]);
+    box on;
+    set(gca, 'FontSize', 16);
+else
+    text(0.5, 0.5, 'Insufficient gaze data', 'HorizontalAlignment', 'center', 'FontSize', 16);
+    title('ET: Load 2 vs Load 6');
+end
+
+sgtitle('Sternberg: F-tests and Condition Differences', 'FontSize', 20, 'FontWeight', 'bold');
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternberg_2x2_figure.png'));
+
+% N-BACK FIGURE
 figure;
 set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-ft_multiplotER(cfg, ga_sb_hl_pow,ga_nb_hl_pow);
-% Save figure (multiplot: .fig only)
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_highlow_power_spectra_multiplot.fig'));
 
-%% plot with SE sternberg
-% close all
-figure;
+% Subplot 1: TFR visualization of F-test results for EEG
+subplot(2,2,1);
 cfg = [];
-%cfg.channel ={'CP2', 'Pz','P2', 'CPP4h', 'CPP2h', 'CPz'};
-cfg.channel = {'M1', 'M2', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
+cfg.channel = nb_sig_channels;
 cfg.avgoverchan = 'yes';
-tlk_sb_ind        = ft_selectdata(cfg,ga_sb_hl_pow);
-tlk_nb_ind        = ft_selectdata(cfg,ga_nb_hl_pow);
+cfg.frequency = [1 30];  % Visualization frequency range
+% Check actual time range and use intersection
+actual_time_range = [max(-.5, statFnb.time(1)), min(2, statFnb.time(end))];
+cfg.latency = actual_time_range;  % Use available time range
+freq_nb = ft_selectdata(cfg, statFnb);
+meanpow = squeeze(mean(freq_nb.stat, 1));  % Average over channels
 
-% plot load sb
-x = tlk_sb_ind.freq'; % x-axis def
-y = mean(squeeze(tlk_sb_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk_sb_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
-low = y - e; % lower bound
-high = y + e; % upper bound
+tim_interp = linspace(freq_nb.time(1), freq_nb.time(end), 500);
+freq_interp = linspace(1, 30, 500);  % Match visualization frequency range
+[tim_grid_orig, freq_grid_orig] = meshgrid(freq_nb.time, freq_nb.freq);
+[tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 
-hp1 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'r', 'HandleVisibility', 'off');
-hold on;
-hl1 = line(x, y);
-set(hp1, 'facecolor', [0.97, 0.26, 0.26], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl1, 'color', [0.97, 0.26, 0.26], 'linewidth', 2);
+pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow, ...
+    tim_grid_interp, freq_grid_interp, 'spline');
+mask_interp = interp2(tim_grid_orig, freq_grid_orig, double(squeeze(freq_nb.mask)), ...
+    tim_grid_interp, freq_grid_interp, 'nearest', 0);
 
-% plot load nb
-x = tlk_nb_ind.freq'; % x-axis def
-y = mean(squeeze(tlk_nb_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk_nb_ind.powspctrm), 0)' ./ sqrt(numel(subjects)); % SEM (using sample SD)
-low = y - e; % lower bound
-high = y + e; % upper bound
+ft_plot_matrix(flip(pow_interp), 'highlightstyle', 'outline', 'highlight', flip(abs(round(mask_interp))));
+ax = gca; hold(ax, 'on');
+x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
+xline(ax, x0, 'k-', 'LineWidth', 1);
+xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-.5 0 1 2])));
+xticklabels({'-0.5','0','1','2'});
+yticks([1 125 250 375]);
+yticklabels({'30','20','10','1'});
+set(gca, 'Fontsize', 18);
+xlabel('Time [sec]');
+ylabel('Frequency [Hz]');
+caxis([0 max(pow_interp(:))]);
+% Use blue-to-red colormap (same as omnibus script)
+color_map = flipud(cbrewer('div', 'RdBu', 64)); % Blue-to-red diverging color map
+colormap(gca, color_map);
+cb = colorbar;
+cb.LineWidth = 1;
+cb.FontSize = 16;
+title(cb, 'F-values');
+title('EEG F-test (N-back)');
 
-hp2 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'b', 'HandleVisibility', 'off');
-hl2 = line(x, y);
-set(hp2, 'facecolor', [0.30, 0.75, 0.93], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl2, 'color', [0.30, 0.75, 0.93], 'linewidth', 2);
-
-% Label the axes
-set(gca, 'FontSize', 22);
-title('');
-xlabel('Frequency [Hz]');
-ylabel("Power change \newline from baseline");
-xlim([3  30]);
-yline(0, '--')
-% ylim([-1.5 2.5]);
-legend({'Sternberg high-low','N-back high-low'}, 'Location','southeast','Fontsize',20);
-% Save figure
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_highlow_power_spectra_SE.png'));
-
-%% timewins
-clc
-tsb = [0 2];
-tnb = [0 2];
-
-%% extract values sternberg
-clc
-% Track subject IDs for raincloud export (assume load6 indices match subjects array)
-sb_subject_ids = cell(length(load6), 1);
-for subj = 1:length(load6)
-    % select retention
-    cfg = [];
-    cfg.latency = tsb;
-    cfg.frequency = [8 14];
-    cfg.channel   = {'O1', 'O2', 'PO7', 'PO8', 'PO9', 'PO10', 'P9', 'P10', 'I1', 'Iz', 'I2', 'PPO9h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'}; elecsName = 'prereg';
-    % cfg.channel = {'M2', 'CP5', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP3h', 'CPP4h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'CPP1h', 'CPP2h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
-    % cfg.channel = {'CP5', 'P5', 'TP7', 'CPP5h', 'TPP7h'};
-    % cfg.channel = {'P5', 'PPO5h'};% based on F stat
-    cfg.avgoverfreq = 'yes';
-    cfg.avgovertime = 'yes';
-    cfg.avgoverchan = 'yes';
-    val6{subj} = ft_selectdata(cfg,load6{subj});
-    sb6(subj) = val6{subj}.powspctrm;
-    
-    val4{subj} = ft_selectdata(cfg,load4{subj});
-    sb4(subj) = val4{subj}.powspctrm;
-    
-    val2{subj} = ft_selectdata(cfg,load2{subj});
-    sb2(subj) = val2{subj}.powspctrm;
-    
-    % Store subject ID (load6 should match subjects array indices)
-    if iscell(subjects) && length(subjects) >= subj
-        sb_subject_ids{subj} = subjects{subj};
-    else
-        sb_subject_ids{subj} = num2str(subj);  % Fallback to index
-    end
-end
-
-% exclude outliers
-% exclude outliers from sb6, sb4 and sb2 using z-score
-sb2 = sb2(:);
-sb4 = sb4(:);
-sb6 = sb6(:);
-
-% Control: Visualize outliers before exclusion
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-subplot(2,2,1);
-scatter(1:length(sb2), sb2, 'filled', 'k'); hold on;
-scatter(1:length(sb4), sb4, 'filled', 'b');
-scatter(1:length(sb6), sb6, 'filled', 'r');
-xlabel('Subject'); ylabel('Alpha Power');
-ylim([-.5 .5])
-title('Sternberg: Before Outlier Exclusion');
-legend({'Load 2', 'Load 4', 'Load 6'}, 'Location', 'best');
-grid on;
-
-Z = zscore([sb2 sb4 sb6], 0, 1); % z per condition across subjects
-keepIdx = all(abs(Z) < 2, 2); % keep subjects that are not outliers in any condition
-
-% Control: Show which subjects are excluded
-n_excluded = sum(~keepIdx);
-fprintf('Sternberg: Excluding %d subjects (%.1f%%) as outliers\n', n_excluded, 100*n_excluded/length(keepIdx));
-if n_excluded > 0
-    fprintf('  Excluded subject indices: %s\n', num2str(find(~keepIdx)));
-end
-
+% Subplot 2: TFR visualization of F-test results for ET
 subplot(2,2,2);
-imagesc(Z); colorbar;
-xlabel('Condition'); ylabel('Subject');
-title('Z-scores (Sternberg)');
-xticklabels({'Load 2', 'Load 4', 'Load 6'});
-hold on;
-for i = 1:length(keepIdx)
-    if ~keepIdx(i)
-        plot([0.5 3.5], [i i], 'r-', 'LineWidth', 2);
-    end
-end
-
-sb2 = sb2(keepIdx);
-sb4 = sb4(keepIdx);
-sb6 = sb6(keepIdx);
-sb_subject_ids = sb_subject_ids(keepIdx);  % Track which subjects remain
-% Note: After outlier exclusion, all arrays should have the same length
-
-% Control: Visualize after exclusion
-subplot(2,2,3);
-scatter(1:length(sb2), sb2, 'filled', 'k'); hold on;
-scatter(1:length(sb4), sb4, 'filled', 'b');
-scatter(1:length(sb6), sb6, 'filled', 'r');
-xlabel('Subject'); ylabel('Alpha Power');
-title('Sternberg: After Outlier Exclusion');
-legend({'Load 2', 'Load 4', 'Load 6'}, 'Location', 'best');
-ylim([-.5 .5])
-grid on;
-
-subplot(2,2,4);
-Z_after = zscore([sb2 sb4 sb6], 0, 1);
-imagesc(Z_after); colorbar;
-xlabel('Condition'); ylabel('Subject');
-title('Z-scores After Exclusion');
-xticklabels({'Load 2', 'Load 4', 'Load 6'});
-sgtitle('Sternberg Outlier Exclusion Control', 'FontSize', 16, 'FontWeight', 'bold');
-saveas(gcf, fullfile(control_dir, 'AOC_omnibus_stern_outlier_exclusion.png'));
-
-%% extract values nback
-% Track subject IDs for raincloud export (assume load3nb indices match subjects array)
-nb_subject_ids = cell(length(load3nb), 1);
-for subj = 1:length(load3nb)
-    % select retention
+if ~isempty(statFgaze_nb)
     cfg = [];
-    cfg.latency = tnb;
-    cfg.frequency = [8 14];
-    cfg.channel   = {'O1', 'O2', 'PO7', 'PO8', 'PO9', 'PO10', 'P9', 'P10', 'I1', 'Iz', 'I2', 'PPO9h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'}; elecsName = 'prereg';
-    % cfg.channel = {'M2', 'CP5', 'P7', 'P3', 'Pz', 'P4', 'P8', 'POz', 'O1', 'O2', 'P5', 'P1', 'P2', 'P6', 'PO3', 'PO4', 'TP7', 'TP8', 'PO7', 'PO8', 'TPP9h', 'TPP10h', 'PO9', 'PO10', 'P9', 'P10', 'CPP5h', 'CPP3h', 'CPP4h', 'CPP6h', 'PPO1', 'PPO2', 'I1', 'Iz', 'I2', 'TPP7h', 'CPP1h', 'CPP2h', 'TPP8h', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO9h', 'POO3h', 'POO4h', 'POO10h', 'OI1h', 'OI2h'};
-    % cfg.channel = {'CP5', 'P5', 'TP7', 'CPP5h', 'TPP7h'};
-    % cfg.channel = {'P7', 'PPO9h'};% based on Fstat
-    cfg.avgoverfreq = 'yes';
-    cfg.avgovertime = 'yes';
-    cfg.avgoverchan = 'yes';
-    val3{subj} = ft_selectdata(cfg,load3nb{subj});
-    nb3(subj) = val3{subj}.powspctrm;
-    
-    val2nb{subj} = ft_selectdata(cfg,load2nb{subj});
-    nb2(subj) = val2nb{subj}.powspctrm;
-    
-    val1{subj} = ft_selectdata(cfg,load1nb{subj});
-    nb1(subj) = val1{subj}.powspctrm;
-    
-    % Store subject ID (load3nb should match subjects array indices)
-    if iscell(subjects) && length(subjects) >= subj
-        nb_subject_ids{subj} = subjects{subj};
-    else
-        nb_subject_ids{subj} = num2str(subj);  % Fallback to index
-    end
+    cfg.parameter = 'stat';
+    cfg.maskparameter = 'mask';
+    cfg.maskstyle = 'outline';
+    % Use blue-to-red colormap (same as omnibus script)
+    cfg.colormap = flipud(cbrewer('div', 'RdBu', 64)); % Blue-to-red diverging color map
+    ft_singleplotTFR(cfg, statFgaze_nb);
+    set(gca, 'Fontsize', 18);
+    xlabel('x [px]');
+    ylabel('y [px]');
+    grid on;
+    c = colorbar;
+    c.LineWidth = 1;
+    c.FontSize = 16;
+    title(c, 'F-statistic');
+    title('ET F-test (N-back)');
+else
+    text(0.5, 0.5, 'Insufficient gaze data', 'HorizontalAlignment', 'center', 'FontSize', 16);
+    title('ET F-test (N-back)');
 end
 
-% exclude outliers
-nb1 = nb1(:);
-nb2 = nb2(:);
-nb3 = nb3(:);
-
-% Control: Visualize outliers before exclusion
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-subplot(2,2,1);
-scatter(1:length(nb1), nb1, 'filled', 'k'); hold on;
-scatter(1:length(nb2), nb2, 'filled', 'b');
-scatter(1:length(nb3), nb3, 'filled', 'r');
-xlabel('Subject'); ylabel('Alpha Power');
-ylim([-.5 .5])
-title('N-back: Before Outlier Exclusion');
-legend({'Load 1', 'Load 2', 'Load 3'}, 'Location', 'best');
-grid on;
-
-Z = zscore([nb1 nb2 nb3], 0, 1); % z per condition across subjects
-keepIdx = all(abs(Z) < 2, 2); % keep subjects that are not outliers in any condition
-
-% Control: Show which subjects are excluded
-n_excluded = sum(~keepIdx);
-fprintf('N-back: Excluding %d subjects (%.1f%%) as outliers\n', n_excluded, 100*n_excluded/length(keepIdx));
-if n_excluded > 0
-    fprintf('  Excluded subject indices: %s\n', num2str(find(~keepIdx)));
-end
-
-subplot(2,2,2);
-imagesc(Z); colorbar;
-xlabel('Condition'); ylabel('Subject');
-title('Z-scores (N-back)');
-xticklabels({'Load 1', 'Load 2', 'Load 3'});
-hold on;
-for i = 1:length(keepIdx)
-    if ~keepIdx(i)
-        plot([0.5 3.5], [i i], 'r-', 'LineWidth', 2);
-    end
-end
-
-nb1 = nb1(keepIdx);
-nb2 = nb2(keepIdx);
-nb3 = nb3(keepIdx);
-nb_subject_ids = nb_subject_ids(keepIdx);  % Track which subjects remain
-% Note: After outlier exclusion, all arrays should have the same length
-
-% Control: Visualize after exclusion
+% Subplot 3: Raincloud plots for EEG (highest vs lowest load)
 subplot(2,2,3);
-scatter(1:length(nb1), nb1, 'filled', 'k'); hold on;
-scatter(1:length(nb2), nb2, 'filled', 'b');
-scatter(1:length(nb3), nb3, 'filled', 'r');
-xlabel('Subject'); ylabel('Alpha Power');
-ylim([-.5 .5])
-title('N-back: After Outlier Exclusion');
-legend({'Load 1', 'Load 2', 'Load 3'}, 'Location', 'best');
-grid on;
+cfg_rain = [];
+cfg_rain.channel = nb_sig_channels;
+cfg_rain.avgoverchan = 'yes';
+cfg_rain.frequency = [8 14];  % Alpha band
+cfg_rain.latency = [0 2];  % Consistent window
+cfg_rain.avgoverfreq = 'yes';
+cfg_rain.avgovertime = 'yes';
+eeg_low_nb = [];
+eeg_high_nb = [];
+for subj = 1:length(load1nb)
+    if length(load1nb) >= subj && length(load3nb) >= subj
+        tmp_low = ft_selectdata(cfg_rain, load1nb{subj});
+        tmp_high = ft_selectdata(cfg_rain, load3nb{subj});
+        if ~isempty(tmp_low) && ~isempty(tmp_high)
+            eeg_low_nb(end+1) = tmp_low.powspctrm;
+            eeg_high_nb(end+1) = tmp_high.powspctrm;
+        end
+    end
+end
+% Raincloud plot for EEG
+positions = [0.3, 0.7];
+[f_low, xi_low] = ksdensity(eeg_low_nb);
+fill(positions(1) + f_low*0.05, xi_low, [0.30, 0.75, 0.93], 'FaceAlpha', 0.5); hold on;
+[f_high, xi_high] = ksdensity(eeg_high_nb);
+fill(positions(2) + f_high*0.05, xi_high, [0.97, 0.26, 0.26], 'FaceAlpha', 0.5);
+box_h = boxplot([eeg_low_nb(:), eeg_high_nb(:)], 'Labels', {'Low', 'High'}, 'Widths', 0.05, 'Positions', positions);
+set(box_h, 'LineWidth', 2);
+jitter = 0.05;
+scatter(positions(1) + (rand(size(eeg_low_nb))-0.5)*jitter, eeg_low_nb, 'k.', 'SizeData', 50);
+scatter(positions(2) + (rand(size(eeg_high_nb))-0.5)*jitter, eeg_high_nb, 'k.', 'SizeData', 50);
+[~, p] = ttest(eeg_low_nb, eeg_high_nb);
+sig_label = getSigLabel(p);
+y_max = max([eeg_low_nb(:); eeg_high_nb(:)]) * 1.25;
+if ~isempty(sig_label)
+    line(positions, [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
+    text(mean(positions), y_max + 0.02, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'center');
+end
+title('EEG: Load 1 vs Load 3');
+ylabel('Change from baseline');
+xlim([0 1]);
+box on;
+set(gca, 'FontSize', 16);
 
+% Subplot 4: Raincloud plots for ET (highest vs lowest load)
 subplot(2,2,4);
-Z_after = zscore([nb1 nb2 nb3], 0, 1);
-imagesc(Z_after); colorbar;
-xlabel('Condition'); ylabel('Subject');
-title('Z-scores After Exclusion');
-xticklabels({'Load 1', 'Load 2', 'Load 3'});
-sgtitle('N-back Outlier Exclusion Control', 'FontSize', 16, 'FontWeight', 'bold');
-saveas(gcf, fullfile(control_dir, 'AOC_omnibus_nback_outlier_exclusion.png'));
-
-%% Save data for raincloud plots (Python)
-% Create CSV files with ID, Task, Condition, AlphaPower
-raincloud_data_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
-if ~exist(raincloud_data_dir, 'dir'), mkdir(raincloud_data_dir); end
-
-% Prepare data for Sternberg (after outlier exclusion)
-n_sb = length(sb2);
-sb_data = table();
-sb_data.ID = repmat(sb_subject_ids(:), 3, 1);  % Repeat for each condition
-sb_data.Task = repmat({'sternberg'}, n_sb*3, 1);
-sb_data.Condition = [repmat({'WM load 2'}, n_sb, 1); repmat({'WM load 4'}, n_sb, 1); repmat({'WM load 6'}, n_sb, 1)];
-sb_data.AlphaPower = [sb2(:); sb4(:); sb6(:)];
-
-% Prepare data for N-back (after outlier exclusion)
-n_nb = length(nb1);
-nb_data = table();
-nb_data.ID = repmat(nb_subject_ids(:), 3, 1);  % Repeat for each condition
-nb_data.Task = repmat({'nback'}, n_nb*3, 1);
-nb_data.Condition = [repmat({'1-back'}, n_nb, 1); repmat({'2-back'}, n_nb, 1); repmat({'3-back'}, n_nb, 1)];
-nb_data.AlphaPower = [nb1(:); nb2(:); nb3(:)];
-
-% Combine and save
-raincloud_data = [sb_data; nb_data];
-% Ensure ID is string/cell for proper CSV export
-if iscell(raincloud_data.ID)
-    raincloud_data.ID = string(raincloud_data.ID);
+et_low_nb = [];
+et_high_nb = [];
+for subj = 1:min(length(nb1_gaze), length(nb3_gaze))
+    if ~isempty(nb1_gaze{subj}) && ~isempty(nb3_gaze{subj})
+        et_low_nb(end+1) = mean(nb1_gaze{subj}.powspctrm(:), 'omitnan');
+        et_high_nb(end+1) = mean(nb3_gaze{subj}.powspctrm(:), 'omitnan');
+    end
 end
-writetable(raincloud_data, fullfile(raincloud_data_dir, 'AOC_omnibus_raincloud_data.csv'));
-fprintf('Saved raincloud data to: %s\n', fullfile(raincloud_data_dir, 'AOC_omnibus_raincloud_data.csv'));
-fprintf('  Sternberg: %d subjects, N-back: %d subjects\n', n_sb, n_nb);
-
-%% Raincloud Plots (MATLAB - will be replaced by Python)
-% Note: Python raincloud plots will be generated separately
-% close all
-% figure();
-% set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-% clf;
-subplot(1,2,2);
-positions = [.3, .6, .9];  % Adjusted x-positions
-
-% Kernel Density Plots
-[f_sb2, xi_sb2] = ksdensity(sb2);
-fill(positions(1) + f_sb2*0.05, xi_sb2, 'k', 'FaceAlpha', 0.5); hold on;
-
-[f_sb4, xi_sb4] = ksdensity(sb4);
-fill(positions(2) + f_sb4*0.05, xi_sb4, 'b', 'FaceAlpha', 0.5); hold on;
-
-[f_sb6, xi_sb6] = ksdensity(sb6);
-fill(positions(3) + f_sb6*0.05, xi_sb6, 'r', 'FaceAlpha', 0.5); hold on;
-
-% Boxplots
-box_h = boxplot([sb2(:), sb4(:), sb6(:)], ...
-    'Labels', {'load 2', 'load 4', 'load 6'}, ...
-    'Widths', 0.05, ...
-    'Positions', positions);
-set(box_h, 'LineWidth', 2);
-
-% Raindrop scatter
-jitter = 0.05;
-scatter(positions(1) + (rand(size(sb2))-0.5)*jitter, sb2, 'k.');
-scatter(positions(2) + (rand(size(sb4))-0.5)*jitter, sb4, 'b.');
-scatter(positions(3) + (rand(size(sb6))-0.5)*jitter, sb6, 'r.');
-
-% Axis & Label
-% ylabel('\muV');
-ylabel('Alpha power [change from bl] ');
-xlim([0 1]);
-title(['Sternberg (time: ', num2str(tsb), ')']);
-box on;
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-
-% Significance tests
-[~, p_24] = ttest(sb2, sb4);
-[~, p_46] = ttest(sb4, sb6);
-[~, p_26] = ttest(sb2, sb6);
-
-% Significance annotations
-y_max = max([sb2(:); sb4(:); sb6(:)]) * 1.25;  % smaller margin above data overall height above
-y_step = y_max*0.01;  % tighter vertical spacing between lines
-
-sig_label = getSigLabel(p_24);
-if ~isempty(sig_label)
-    line([positions(1), positions(2)], [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
-    text(mean([positions(1), positions(2)]), y_max + 0.02, sig_label, ...
-        'FontSize', 14, 'HorizontalAlignment', 'center');
-    y_max = y_max + y_step;
+if ~isempty(et_low_nb) && ~isempty(et_high_nb)
+    % Raincloud plot for ET
+    positions = [0.3, 0.7];
+    [f_low, xi_low] = ksdensity(et_low_nb);
+    fill(positions(1) + f_low*0.05, xi_low, [0.30, 0.75, 0.93], 'FaceAlpha', 0.5); hold on;
+    [f_high, xi_high] = ksdensity(et_high_nb);
+    fill(positions(2) + f_high*0.05, xi_high, [0.97, 0.26, 0.26], 'FaceAlpha', 0.5);
+    box_h = boxplot([et_low_nb(:), et_high_nb(:)], 'Labels', {'Low', 'High'}, 'Widths', 0.05, 'Positions', positions);
+    set(box_h, 'LineWidth', 2);
+    jitter = 0.05;
+    scatter(positions(1) + (rand(size(et_low_nb))-0.5)*jitter, et_low_nb, 'k.', 'SizeData', 50);
+    scatter(positions(2) + (rand(size(et_high_nb))-0.5)*jitter, et_high_nb, 'k.', 'SizeData', 50);
+    [~, p] = ttest(et_low_nb, et_high_nb);
+    sig_label = getSigLabel(p);
+    y_max = max([et_low_nb(:); et_high_nb(:)]) * 1.25;
+    if ~isempty(sig_label)
+        line(positions, [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
+        text(mean(positions), y_max + 0.02, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'center');
+    end
+    title('ET: Load 1 vs Load 3');
+    ylabel('Change from baseline');
+    xlim([0 1]);
+    box on;
+    set(gca, 'FontSize', 16);
+else
+    text(0.5, 0.5, 'Insufficient gaze data', 'HorizontalAlignment', 'center', 'FontSize', 16);
+    title('ET: Load 1 vs Load 3');
 end
 
-sig_label = getSigLabel(p_46);
-if ~isempty(sig_label)
-    line([positions(2), positions(3)], [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
-    text(mean([positions(2), positions(3)]), y_max + 0.02, sig_label, ...
-        'FontSize', 14, 'HorizontalAlignment', 'center');
-    y_max = y_max + y_step;
-end
+sgtitle('N-back: F-tests and Condition Differences', 'FontSize', 20, 'FontWeight', 'bold');
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_2x2_figure.png'));
 
-sig_label = getSigLabel(p_26);
-if ~isempty(sig_label)
-    line([positions(1), positions(3)], [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
-    text(mean([positions(1), positions(3)]), y_max + 0.02, sig_label, ...
-        'FontSize', 14, 'HorizontalAlignment', 'center');
-end
-% ylim([min([sb2(:); sb4(:); sb6(:)]) - 0.5, y_max + 0.1]);
-%ylim([-y_max y_max])
-xlim([0 1.3])
+disp('2x2 figures created successfully!');
 
-% 
-% % Significance annotations
-% y_max = max([sb2(:); sb4(:); sb6(:)]) + 5;
-% 
-% sig_label = getSigLabel(p_24);
-% if ~isempty(sig_label)
-%     line([positions(1), positions(2)], [y_max, y_max], 'Color', 'k', 'LineWidth', .5);
-%     text(mean([positions(1), positions(2)]), y_max, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'Center');
-%     y_max = y_max + 2;
-% end
-% 
-% sig_label = getSigLabel(p_46);
-% if ~isempty(sig_label)
-%     line([positions(2), positions(3)], [y_max, y_max], 'Color', 'k', 'LineWidth', .5);
-%     text(mean([positions(2), positions(3)]), y_max, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'Center');
-%     y_max = y_max + 2;
-% end
-% 
-% sig_label = getSigLabel(p_26);
-% if ~isempty(sig_label)
-%     line([positions(1), positions(3)], [y_max, y_max], 'Color', 'k', 'LineWidth', .5);
-%     text(mean([positions(1), positions(3)]), y_max, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'Center');
-% end
-% 
-% ylim([min([sb2(:); sb4(:); sb6(:)]) - 5, y_max + 2]);
+%% Helper functions
 
-subplot(1,2,1);
-positions = [.3, .6, .9];  % Adjusted x-positions
-
-% Kernel Density Plots
-[f_sb2, xi_sb2] = ksdensity(nb1);
-fill(positions(1) + f_sb2*0.05, xi_sb2, 'k', 'FaceAlpha', 0.5); hold on;
-
-[f_sb4, xi_sb4] = ksdensity(nb2);
-fill(positions(2) + f_sb4*0.05, xi_sb4, 'b', 'FaceAlpha', 0.5); hold on;
-
-[f_sb6, xi_sb6] = ksdensity(nb3);
-fill(positions(3) + f_sb6*0.05, xi_sb6, 'r', 'FaceAlpha', 0.5); hold on;
-
-% Boxplots
-box_h = boxplot([nb1(:), nb2(:), nb3(:)], ...
-    'Labels', {'load 1', 'load 2', 'load 3'}, ...
-    'Widths', 0.05, ...
-    'Positions', positions);
-set(box_h, 'LineWidth', 2);
-
-% Raindrop scatter
-jitter = 0.05;
-scatter(positions(1) + (rand(size(nb1))-0.5)*jitter, nb1, 'k.');
-scatter(positions(2) + (rand(size(nb2))-0.5)*jitter, nb2, 'b.');
-scatter(positions(3) + (rand(size(nb3))-0.5)*jitter, nb3, 'r.');
-
-% Axis & Label
-% ylabel('\muV');
-ylabel('Alpha power [change from bl] ');
-xlim([0 1]);
-title(['N-back (time: ', num2str(tnb), ')']);
-box on;
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-
-% Significance tests
-[~, p_24] = ttest(nb1, nb2);
-[~, p_46] = ttest(nb2, nb3);
-[~, p_26] = ttest(nb1, nb3);
-
-% Significance annotations
-y_max = max([nb1(:); nb2(:); nb3(:)]) * 1.35;  % smaller margin above data overall height above
-y_step = 0.1;  % tighter vertical spacing between lines
-
-sig_label = getSigLabel(p_24);
-if ~isempty(sig_label)
-    line([positions(1), positions(2)], [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
-    text(mean([positions(1), positions(2)]), y_max + 0.02, sig_label, ...
-        'FontSize', 14, 'HorizontalAlignment', 'center');
-    y_max = y_max + y_step;
-end
-
-sig_label = getSigLabel(p_46);
-if ~isempty(sig_label)
-    line([positions(2), positions(3)], [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
-    text(mean([positions(2), positions(3)]), y_max + 0.02, sig_label, ...
-        'FontSize', 14, 'HorizontalAlignment', 'center');
-    y_max = y_max + y_step;
-end
-
-sig_label = getSigLabel(p_26);
-if ~isempty(sig_label)
-    line([positions(1), positions(3)], [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
-    text(mean([positions(1), positions(3)]), y_max + 0.02, sig_label, ...
-        'FontSize', 14, 'HorizontalAlignment', 'center');
-end
-% ylim([min([sb2(:); sb4(:); sb6(:)]) - 0.5, y_max + 0.1]);
-%ylim([-y_max y_max])
-xlim([0 1.3])
-
-% Save
-tnb_str = sprintf('%d', tnb);
-tsb_str = sprintf('%d', tsb);
-saveas(gcf, fullfile(figures_dir, ['AOC_omnibus_rainclouds_matlab.png']));
-
-%% Control: Summary statistics and data quality report
-disp('Generating summary control report...');
-summary_file = fullfile(control_dir, 'AOC_omnibus_summary_report.txt');
-fid = fopen(summary_file, 'w');
-fprintf(fid, 'AOC Omnibus Analysis Summary Report\n');
-fprintf(fid, '====================================\n\n');
-fprintf(fid, 'Analysis Date: %s\n\n', datestr(now));
-
-fprintf(fid, 'Sample Information:\n');
-fprintf(fid, '  Total subjects: %d\n', length(subjects));
-fprintf(fid, '  Sternberg after outlier exclusion: %d\n', length(sb2));
-fprintf(fid, '  N-back after outlier exclusion: %d\n\n', length(nb1));
-
-fprintf(fid, 'Baseline Stability (alpha band, should be ~0):\n');
-fprintf(fid, '  Sternberg Load 2: %.4f (SD: %.4f)\n', mean(baseline_sb2), std(baseline_sb2));
-fprintf(fid, '  Sternberg Load 4: %.4f (SD: %.4f)\n', mean(baseline_sb4), std(baseline_sb4));
-fprintf(fid, '  Sternberg Load 6: %.4f (SD: %.4f)\n', mean(baseline_sb6), std(baseline_sb6));
-fprintf(fid, '  N-back Load 1: %.4f (SD: %.4f)\n', mean(baseline_nb1), std(baseline_nb1));
-fprintf(fid, '  N-back Load 2: %.4f (SD: %.4f)\n', mean(baseline_nb2), std(baseline_nb2));
-fprintf(fid, '  N-back Load 3: %.4f (SD: %.4f)\n\n', mean(baseline_nb3), std(baseline_nb3));
-
-fprintf(fid, 'Alpha Power Statistics (after outlier exclusion):\n');
-fprintf(fid, '  Sternberg Load 2: M=%.4f, SD=%.4f, Range=[%.4f, %.4f]\n', mean(sb2), std(sb2), min(sb2), max(sb2));
-fprintf(fid, '  Sternberg Load 4: M=%.4f, SD=%.4f, Range=[%.4f, %.4f]\n', mean(sb4), std(sb4), min(sb4), max(sb4));
-fprintf(fid, '  Sternberg Load 6: M=%.4f, SD=%.4f, Range=[%.4f, %.4f]\n', mean(sb6), std(sb6), min(sb6), max(sb6));
-fprintf(fid, '  N-back Load 1: M=%.4f, SD=%.4f, Range=[%.4f, %.4f]\n', mean(nb1), std(nb1), min(nb1), max(nb1));
-fprintf(fid, '  N-back Load 2: M=%.4f, SD=%.4f, Range=[%.4f, %.4f]\n', mean(nb2), std(nb2), min(nb2), max(nb2));
-fprintf(fid, '  N-back Load 3: M=%.4f, SD=%.4f, Range=[%.4f, %.4f]\n\n', mean(nb3), std(nb3), min(nb3), max(nb3));
-
-fprintf(fid, 'Statistical Tests (paired t-tests, uncorrected):\n');
-[~, p_24_sb] = ttest(sb2, sb4);
-[~, p_46_sb] = ttest(sb4, sb6);
-[~, p_26_sb] = ttest(sb2, sb6);
-[~, p_12_nb] = ttest(nb1, nb2);
-[~, p_23_nb] = ttest(nb2, nb3);
-[~, p_13_nb] = ttest(nb1, nb3);
-fprintf(fid, '  Sternberg Load 2 vs 4: p=%.4f\n', p_24_sb);
-fprintf(fid, '  Sternberg Load 4 vs 6: p=%.4f\n', p_46_sb);
-fprintf(fid, '  Sternberg Load 2 vs 6: p=%.4f\n', p_26_sb);
-fprintf(fid, '  N-back Load 1 vs 2: p=%.4f\n', p_12_nb);
-fprintf(fid, '  N-back Load 2 vs 3: p=%.4f\n', p_23_nb);
-fprintf(fid, '  N-back Load 1 vs 3: p=%.4f\n\n', p_13_nb);
-
-fprintf(fid, 'Analysis Parameters:\n');
-fprintf(fid, '  Baseline window: [-0.5 -0.25] s\n');
-fprintf(fid, '  Alpha band: 8-14 Hz\n');
-fprintf(fid, '  Sternberg time window: [%.1f %.1f] s\n', tsb(1), tsb(2));
-fprintf(fid, '  N-back time window: [%.1f %.1f] s\n', tnb(1), tnb(2));
-fprintf(fid, '  Cluster permutation alpha: 0.05 (two-tailed)\n');
-fprintf(fid, '  Outlier threshold: |z| > 2\n\n');
-
-fprintf(fid, 'Files Saved:\n');
-fprintf(fid, '  Controls: %s\n', control_dir);
-fprintf(fid, '  Figures: %s\n', figures_dir);
-fclose(fid);
-fprintf('Summary report saved to: %s\n', summary_file);
-
-%% Helper function
 function sig_label = getSigLabel(p)
     if p < 0.001
         sig_label = '***';
@@ -1560,4 +950,107 @@ function sig_label = getSigLabel(p)
     else
         sig_label = '';
     end
+end
+
+function [x_nan, y_nan, x_interp, y_interp, blink_mask, is_valid] = removeAndInterpolateBlinks_checktrials(x, y, t, fs, threshold, pad_ms)
+    % Remove and interpolate blinks based on velocity threshold
+    % Inputs:
+    %   x, y: gaze coordinates
+    %   t: time vector
+    %   fs: sampling rate (Hz)
+    %   threshold: velocity threshold for blink detection (pixels/sample)
+    %   pad_ms: padding around blinks in milliseconds
+    % Outputs:
+    %   x_nan, y_nan: data with blinks set to NaN
+    %   x_interp, y_interp: data with blinks interpolated
+    %   blink_mask: logical mask indicating blink periods
+    %   is_valid: whether trial has sufficient valid data
+    
+    % Initialize outputs
+    x_nan = x;
+    y_nan = y;
+    x_interp = x;
+    y_interp = y;
+    
+    % Detect missing/invalid data (zeros or NaN)
+    invalid = ~isfinite(x) | ~isfinite(y) | (x == 0 & y == 0);
+    
+    % Compute velocity
+    dx = diff([x(1), x]);
+    dy = diff([y(1), y]);
+    velocity = sqrt(dx.^2 + dy.^2);
+    
+    % Detect blinks based on velocity threshold
+    blink_velocity = velocity > threshold;
+    
+    % Combine invalid data and high velocity as blink indicators
+    blink_mask = invalid | blink_velocity;
+    
+    % Add padding around blinks
+    pad_samples = round(pad_ms * fs / 1000);
+    if pad_samples > 0
+        blink_idx = find(blink_mask);
+        for i = 1:length(blink_idx)
+            start_idx = max(1, blink_idx(i) - pad_samples);
+            end_idx = min(length(blink_mask), blink_idx(i) + pad_samples);
+            blink_mask(start_idx:end_idx) = true;
+        end
+    end
+    
+    % Set blinks to NaN
+    x_nan(blink_mask) = NaN;
+    y_nan(blink_mask) = NaN;
+    
+    % Interpolate blinks
+    valid_idx = ~blink_mask & isfinite(x) & isfinite(y);
+    if sum(valid_idx) > 2
+        x_interp = fillmissing(x_nan, 'linear');
+        y_interp = fillmissing(y_nan, 'linear');
+        
+        % Edge handling: if first/last samples are NaN, use nearest valid
+        if isnan(x_interp(1))
+            first_valid = find(isfinite(x_interp), 1, 'first');
+            if ~isempty(first_valid)
+                x_interp(1:first_valid-1) = x_interp(first_valid);
+                y_interp(1:first_valid-1) = y_interp(first_valid);
+            end
+        end
+        if isnan(x_interp(end))
+            last_valid = find(isfinite(x_interp), 1, 'last');
+            if ~isempty(last_valid)
+                x_interp(last_valid+1:end) = x_interp(last_valid);
+                y_interp(last_valid+1:end) = y_interp(last_valid);
+            end
+        end
+    else
+        x_interp = x_nan;
+        y_interp = y_nan;
+    end
+    
+    % Check if trial is valid (at least 50% valid samples)
+    is_valid = sum(~blink_mask) / length(blink_mask) >= 0.5;
+end
+
+function [freq_raw, freq_norm] = computeGazeHeatmap(data, x_grid, y_grid, fs, smoothing)
+    pos = horzcat(data.trial{:});
+    binned = histcounts2(pos(1,:), pos(2,:), x_grid, y_grid);
+    dwell_time = binned / fs;
+    smoothed = imgaussfilt(dwell_time, smoothing);
+
+    freq_raw = [];
+    freq_raw.powspctrm(1,:,:) = flipud(smoothed');
+    freq_raw.time = x_grid(2:end);
+    freq_raw.freq = y_grid(2:end);
+    freq_raw.label = {'et'};
+    freq_raw.dimord = 'chan_freq_time';
+
+    norm_time = dwell_time / sum(dwell_time(:));
+    norm_smooth = imgaussfilt(norm_time, smoothing);
+
+    freq_norm = [];
+    freq_norm.powspctrm(1,:,:) = flipud(norm_smooth');
+    freq_norm.time = x_grid(2:end);
+    freq_norm.freq = y_grid(2:end);
+    freq_norm.label = {'et'};
+    freq_norm.dimord = 'chan_freq_time';
 end

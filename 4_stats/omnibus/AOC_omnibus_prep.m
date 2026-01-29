@@ -5,6 +5,8 @@
 % Key outputs:
 %   omnibus_data.mat (baselined TFR, load diffs, GAs)
 %   omnibus_data_NOBASELINE.mat (per-condition TFR only, no baseline; no diffs; _nob suffix)
+%
+% run time approx. 30 minutes
 
 %% Setup
 tic

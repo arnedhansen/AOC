@@ -21,7 +21,7 @@ MATLAB builds long-format CSVs; R fits the LMM per universe and plots specificat
 | Alpha      | canonical (8–14 Hz), IAF |
 | Gaze       | gaze_density (Fixations), scan_path_length, gaze_velocity, microsaccades |
 
-**Note:** Current MATLAB script uses the *existing* merged matrices (one electrode set, one latency, one alpha/FOOOF). Alpha and gaze values are repeated across electrode/latency/FOOOF/alpha-type universes; only the *gaze measure* varies the data (Fixations, ScanPathLength, GazeVelocity, MSRate). To populate all 192 universes with distinct alpha/gaze, run full feature extraction for each combination (or add that logic to this script).
+**Note:** The MATLAB script builds the table from per-subject power and gaze files and computes trial-level alpha (raw and FOOOF) and gaze (fixations, SPL, velocity, microsaccades) for all electrode/latency/alpha/gaze combinations, so each of the 192 universes has the correct alpha and gaze_value per trial.
 
 ## Model: alpha ~ gaze × condition + (1|subjectID)
 
@@ -37,7 +37,7 @@ MATLAB builds long-format CSVs; R fits the LMM per universe and plots specificat
 ## Running
 
 1. **MATLAB (Science Cloud or Mac):**  
-   Open `AOC_multiverse_prep.m`, ensure paths point to your `merged_data_*_trials.mat` and per-subject `power_*_early_trials.mat` / `power_*_full_trials.mat` under `base_features/<subjectID>/eeg/`. Run the script. CSVs are written next to the script.
+   Run `AOC_multiverse_prep.m` once. It builds the tables from per-subject files (no merged file needed). Paths: on Windows (Science Cloud) `base_data = W:\Students\Arne\AOC`, `base_features = W:\...\data\features`; on Mac the script uses `/Volumes/...`. CSVs are written to the script’s folder (`multiverse_sternberg.csv`, `multiverse_nback.csv`).
 
 2. **R:**  
    Set working directory to this folder (or set env `AOC_MULTIVERSE_DIR` to this path), then:
@@ -47,6 +47,17 @@ MATLAB builds long-format CSVs; R fits the LMM per universe and plots specificat
    ```
    Figure path is configurable: set env **`AOC_MULTIVERSE_FIGURES`** (e.g. on Science Cloud) or it defaults to  
    `'/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/tests/multiverse'`. R creates the folder if needed.
+
+## Science Cloud checklist (before running MATLAB)
+
+- **Paths:** Script uses `ispc` → Windows paths `W:\Students\Arne\AOC` and `W:\...\data\features`. Ensure this drive/folder exists and contains subject folders.
+- **Subject list:** From `setup('AOC')` if on path, else from folder names under `base_features`. At least one subject folder must exist.
+- **Per subject, per task (Sternberg / N-back):**
+  - **Required:** `base_features/<subjectID>/eeg/power_*_early_trials.mat`, `power_*_full_trials.mat`; `base_features/<subjectID>/gaze/dataET_sternberg.mat` or `dataET_nback.mat`. Subject is skipped if any of these are missing.
+  - **0–500 ms alpha:** From precomputed `eeg/tfr_*_trials.mat` if present; otherwise from long time-domain EEG: script loads `dataEEG_TFR_*.mat` or `dataEEG_*.mat`, selects the 0–0.5 s epoch, and runs mtmfft to get trial-level power. So 0–500 ms is always computed when preprocessing output (dataEEG or dataEEG_TFR) exists.
+- **Channel labels:** Taken from the first subject’s `power_stern_early_trials.mat` (field `powload2_early.label`). At least one subject must have Sternberg power so the script does not error at “Resolving channel sets”.
+- **On path:** FieldTrip (for `ft_selectdata`, `ft_freqanalysis`). Optional: `ft_freqanalysis_Arne_FOOOF` for FOOOFed alpha; `detect_microsaccades` for microsaccade counts (otherwise NaNs in try/catch).
+- **Output:** If no subject has both EEG and gaze for a task, the script errors with a clear “table is empty” message.
 
 ## Output figures
 
@@ -63,7 +74,7 @@ MATLAB builds long-format CSVs; R fits the LMM per universe and plots specificat
 4. **Alpha:** canonical = 8–14 Hz; IAF as in AOC_eeg_fex_sternberg.m (peak in 8–14, power in IAF−4/+2 Hz with guards).
 5. **Gaze density:** as in your pipeline (Fixations: count of L_fixation/R_fixation events per trial in analysis window).
 6. **Gaze velocity:** same epoch as alpha; same epoch for EEG and ET always.
-7. **Microsaccades:** per trial (rate or count per trial).
+7. **Microsaccades:** per trial (rate or count per trial). In the **0–500 ms** window, microsaccades are often suppressed post-stimulus, so many trials may have NaN; the pipeline writes these as NaN, and R drops them via `complete.cases()` and skips universes with fewer than 10 valid rows—no error.
 8. **Scan path length:** normalized (e.g. by duration or screen).
 9. **Exclusion:** not necessary (preprocessed).
 10. **Condition:** 3 WM loads (Sternberg: 2/4/6; N-back: 1/2/3); factor with default treatment coding.

@@ -28,7 +28,8 @@ v_common_theme <- theme(
   plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
 )
 
-dat <- read.csv(csv_path, stringsAsFactors = FALSE)
+# Treat MATLAB NaN as missing so complete.cases and LMM work correctly
+dat <- read.csv(csv_path, stringsAsFactors = FALSE, na.strings = c("NA", "NaN", ""))
 dat$subjectID <- as.factor(dat$subjectID)
 dat$Condition <- as.factor(dat$Condition)
 

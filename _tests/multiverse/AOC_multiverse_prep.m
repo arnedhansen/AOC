@@ -86,6 +86,9 @@ tbl_s = build_task_multiverse('sternberg', subjects, path_preproc, base_features
     ch_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, ...
     n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_universes, alphaRange);
 disp(upper(['Sternberg table rows: ' num2str(height(tbl_s))]))
+if height(tbl_s) == 0
+  error('AOC_multiverse_prep:NoData', 'Sternberg table is empty. Ensure at least one subject has both power_stern_*_trials.mat and dataET_sternberg.mat under base_features/<subjectID>/eeg and .../gaze.')
+end
 writetable(tbl_s, fullfile(out_dir, 'multiverse_sternberg.csv'));
 disp(upper(['Written: ' fullfile(out_dir, 'multiverse_sternberg.csv')]))
 
@@ -95,6 +98,9 @@ tbl_n = build_task_multiverse('nback', subjects, path_preproc, base_features, ..
     ch_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, ...
     n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_universes, alphaRange);
 disp(upper(['N-back table rows: ' num2str(height(tbl_n))]))
+if height(tbl_n) == 0
+  error('AOC_multiverse_prep:NoData', 'N-back table is empty. Ensure at least one subject has both power_nback_*_trials.mat and dataET_nback.mat under base_features/<subjectID>/eeg and .../gaze.')
+end
 writetable(tbl_n, fullfile(out_dir, 'multiverse_nback.csv'));
 disp(upper(['Written: ' fullfile(out_dir, 'multiverse_nback.csv')]))
 
@@ -171,6 +177,20 @@ function pow_050 = get_power_050_from_TFR(tfr_all, ind_cond, latency_050)
   pow_050 = sel;
 end
 
+function [pow_050_2, pow_050_4, pow_050_6] = get_power_050_from_timedomain(dataEEG, cond_codes, t_050, cfg_mtmfft)
+  % Take long trial data, select 0-0.5 s epoch, run mtmfft → trial-level spectrum (rpt_chan_freq).
+  ind2 = find(dataEEG.trialinfo(:,1) == cond_codes(1));
+  ind4 = find(dataEEG.trialinfo(:,1) == cond_codes(2));
+  ind6 = find(dataEEG.trialinfo(:,1) == cond_codes(3));
+  cfg_lat = []; cfg_lat.latency = t_050;
+  cfg_t2 = []; cfg_t2.trials = ind2; d2 = ft_selectdata(cfg_t2, dataEEG); d2 = ft_selectdata(cfg_lat, d2);
+  cfg_t4 = []; cfg_t4.trials = ind4; d4 = ft_selectdata(cfg_t4, dataEEG); d4 = ft_selectdata(cfg_lat, d4);
+  cfg_t6 = []; cfg_t6.trials = ind6; d6 = ft_selectdata(cfg_t6, dataEEG); d6 = ft_selectdata(cfg_lat, d6);
+  pow_050_2 = ft_freqanalysis(cfg_mtmfft, d2);
+  pow_050_4 = ft_freqanalysis(cfg_mtmfft, d4);
+  pow_050_6 = ft_freqanalysis(cfg_mtmfft, d6);
+end
+
 function alpha_fooof = run_fooof_one_trial(pow_trial, chIdx, freq, band, cfg_fooof)
   alpha_fooof = NaN;
   if isempty(chIdx), return, end
@@ -232,6 +252,10 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
   cfg_fooof.foilim = [2 40]; cfg_fooof.pad = 5; cfg_fooof.output = 'fooof';
   cfg_fooof.keeptrials = 'no';
 
+  cfg_mtmfft = [];
+  cfg_mtmfft.method = 'mtmfft'; cfg_mtmfft.taper = 'hanning';
+  cfg_mtmfft.foilim = [2 40]; cfg_mtmfft.pad = 5; cfg_mtmfft.keeptrials = 'yes';
+
   task_cell = {}; u_id_cell = []; elec_cell = {}; fooof_cell = {}; lat_cell = {};
   alpha_type_cell = {}; gaze_meas_cell = {}; subjectID_cell = []; Trial_cell = []; Condition_cell = [];
   alpha_val_cell = []; gaze_val_cell = [];
@@ -272,6 +296,12 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
     pow_050_2 = []; pow_050_4 = []; pow_050_6 = [];
     tfr_path = fullfile(eeg_dir, tfr_file);
     eeg_tfr_path = fullfile(eeg_dir, eeg_tfr_file);
+    if strcmp(task_name, 'sternberg')
+      eeg_td_file = 'dataEEG_sternberg.mat';
+    else
+      eeg_td_file = 'dataEEG_nback.mat';
+    end
+    eeg_td_path = fullfile(eeg_dir, eeg_td_file);
     if isfile(tfr_path)
       disp(upper('  Loading TFR for 0-0.5 s from precomputed file.'))
       load(tfr_path, 'tfr_all');
@@ -281,21 +311,23 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
       pow_050_2 = get_power_050_from_TFR(tfr_all, ind2, t_050);
       pow_050_4 = get_power_050_from_TFR(tfr_all, ind4, t_050);
       pow_050_6 = get_power_050_from_TFR(tfr_all, ind6, t_050);
-    elseif isfile(eeg_tfr_path)
-      disp(upper('  Computing TFR for 0-0.5 s from dataEEG_TFR (may take a while).'))
-      load(eeg_tfr_path, 'dataTFR');
-      cfg = []; cfg.method = 'mtmconvol'; cfg.output = 'pow'; cfg.taper = 'hanning';
-      cfg.foi = 3:1:30; cfg.t_ftimwin = ones(28,1)*1; cfg.toi = -1.5:0.05:3; cfg.pad = 'maxperlen'; cfg.keeptrials = 'yes';
-      tfr_all = ft_freqanalysis(cfg, dataTFR);
-      ind2 = find(tfr_all.trialinfo(:,1) == cond_codes(1));
-      ind4 = find(tfr_all.trialinfo(:,1) == cond_codes(2));
-      ind6 = find(tfr_all.trialinfo(:,1) == cond_codes(3));
-      pow_050_2 = get_power_050_from_TFR(tfr_all, ind2, t_050);
-      pow_050_4 = get_power_050_from_TFR(tfr_all, ind4, t_050);
-      pow_050_6 = get_power_050_from_TFR(tfr_all, ind6, t_050);
-      disp(upper('  TFR 0-0.5 s computed.'))
     else
-      disp(upper('  TFR not found; 0-500 ms alpha will be NaN. Run trial-level TFR or provide tfr_*_trials.mat / dataEEG_TFR_*.mat.'))
+      data_td = [];
+      if isfile(eeg_tfr_path)
+        disp(upper('  Loading time-domain EEG (dataEEG_TFR); computing 0-0.5 s power from epoch (mtmfft).'))
+        load(eeg_tfr_path, 'dataTFR');
+        data_td = dataTFR;
+      elseif isfile(eeg_td_path)
+        disp(upper('  Loading time-domain EEG (dataEEG); computing 0-0.5 s power from epoch (mtmfft).'))
+        load(eeg_td_path, 'dataEEG');
+        if ~exist('dataEEG', 'var'), load(eeg_td_path, 'dataTFR'); data_td = dataTFR; else, data_td = dataEEG; end
+      end
+      if ~isempty(data_td)
+        [pow_050_2, pow_050_4, pow_050_6] = get_power_050_from_timedomain(data_td, cond_codes, t_050, cfg_mtmfft);
+        disp(upper('  0-500 ms power computed from long EEG epoch.'))
+      else
+        disp(upper('  No TFR or time-domain EEG found; 0-500 ms alpha will be NaN. Run preprocessing (dataEEG_* or dataEEG_TFR_*).'))
+      end
     end
 
     %% Subject IAF from full (occipital)

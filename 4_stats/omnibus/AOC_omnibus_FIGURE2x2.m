@@ -66,7 +66,6 @@ neighbours = ft_prepare_neighbours(cfg);
 
 %% Compute F-tests for EEG data
 disp(upper('Computing F-tests for EEG data (cluster-based permutation analysis)...'));
-tic
 cfg = [];
 cfg.method = 'montecarlo';
 cfg.statistic = 'ft_statfun_depsamplesFunivariate';
@@ -92,11 +91,13 @@ cfg.ivar = 1;
 cfg.uvar = 2;
 
 disp(upper('  Computing F-test for N-back...'));
+tic
 [statFnb] = ft_freqstatistics(cfg, ga_nb_1tfr, ga_nb_2tfr, ga_nb_3tfr);
+toc
 disp(upper('  Computing F-test for Sternberg...'));
+tic
 [statFsb] = ft_freqstatistics(cfg, ga_sb_2tfr, ga_sb_4tfr, ga_sb_6tfr);
 toc
-disp(' ');
 
 %% Identify significant electrodes from F-test results
 % Using alpha band (8-14 Hz) and [0 2] time window
@@ -249,8 +250,46 @@ for s = 1:length(subjects)
         
         cfg = []; cfg.channel = {'L-GAZE-X','L-GAZE-Y'};
         cfg.trials = trl;
-        cfg.latency = [0 2]; dat_task = ft_selectdata(cfg, dataetnan);  % Consistent [0 2] window
-        cfg.latency = [-.5 -.25]; dat_base = ft_selectdata(cfg, dataetnan);  % Consistent baseline window
+        % Select trials first, then check time range
+        dataetnan_trl = ft_selectdata(cfg, dataetnan);
+        % Check available time range for task window
+        if ~isempty(dataetnan_trl.time) && numel(dataetnan_trl.time) > 0
+            all_times = cellfun(@(x) [min(x), max(x)], dataetnan_trl.time, 'UniformOutput', false);
+            all_times_mat = cell2mat(all_times(:));
+            min_time = min(all_times_mat(:,1));
+            max_time = max(all_times_mat(:,2));
+            task_time_range = [max(0, min_time), min(2, max_time)];
+        else
+            task_time_range = [0 2];  % Default range
+        end
+        cfg.latency = task_time_range;
+        dat_task = ft_selectdata(cfg, dataetnan_trl);  % Consistent [0 2] window
+        % Check available time range for baseline window
+        if ~isempty(dataetnan_trl.time) && numel(dataetnan_trl.time) > 0
+            base_time_range = [max(-.5, min_time), min(-.25, max_time)];
+            if base_time_range(1) < base_time_range(2)
+                cfg.latency = base_time_range;
+                dat_base = ft_selectdata(cfg, dataetnan_trl);  % Consistent baseline window
+            else
+                % If baseline window not available, create empty structure
+                dat_base = dat_task;
+                dat_base.trial = cell(1, numel(dat_task.trial));
+                dat_base.time = cell(1, numel(dat_task.trial));
+                for i = 1:numel(dat_task.trial)
+                    dat_base.trial{i} = zeros(size(dat_task.trial{i}, 1), 0);
+                    dat_base.time{i} = [];
+                end
+            end
+        else
+            % If no time data, create empty baseline structure
+            dat_base = dat_task;
+            dat_base.trial = cell(1, numel(dat_task.trial));
+            dat_base.time = cell(1, numel(dat_task.trial));
+            for i = 1:numel(dat_task.trial)
+                dat_base.trial{i} = zeros(size(dat_task.trial{i}, 1), 0);
+                dat_base.time{i} = [];
+            end
+        end
         
         % Compute heatmaps
         [freq_task, ~] = computeGazeHeatmap(dat_task, x_grid, y_grid, sampling_rate, smooth_val);
@@ -329,8 +368,46 @@ for s = 1:length(subjects)
         
         cfg = []; cfg.channel = {'L-GAZE-X','L-GAZE-Y'};
         cfg.trials = trl;
-        cfg.latency = [0 2]; dat_task = ft_selectdata(cfg, dataetnan);
-        cfg.latency = [-.5 -.25]; dat_base = ft_selectdata(cfg, dataetnan);  % Consistent baseline window
+        % Select trials first, then check time range
+        dataetnan_trl = ft_selectdata(cfg, dataetnan);
+        % Check available time range for task window
+        if ~isempty(dataetnan_trl.time) && numel(dataetnan_trl.time) > 0
+            all_times = cellfun(@(x) [min(x), max(x)], dataetnan_trl.time, 'UniformOutput', false);
+            all_times_mat = cell2mat(all_times(:));
+            min_time = min(all_times_mat(:,1));
+            max_time = max(all_times_mat(:,2));
+            task_time_range = [max(0, min_time), min(2, max_time)];
+        else
+            task_time_range = [0 2];  % Default range
+        end
+        cfg.latency = task_time_range;
+        dat_task = ft_selectdata(cfg, dataetnan_trl);  % Consistent [0 2] window
+        % Check available time range for baseline window
+        if ~isempty(dataetnan_trl.time) && numel(dataetnan_trl.time) > 0
+            base_time_range = [max(-.5, min_time), min(-.25, max_time)];
+            if base_time_range(1) < base_time_range(2)
+                cfg.latency = base_time_range;
+                dat_base = ft_selectdata(cfg, dataetnan_trl);  % Consistent baseline window
+            else
+                % If baseline window not available, create empty structure
+                dat_base = dat_task;
+                dat_base.trial = cell(1, numel(dat_task.trial));
+                dat_base.time = cell(1, numel(dat_task.trial));
+                for i = 1:numel(dat_task.trial)
+                    dat_base.trial{i} = zeros(size(dat_task.trial{i}, 1), 0);
+                    dat_base.time{i} = [];
+                end
+            end
+        else
+            % If no time data, create empty baseline structure
+            dat_base = dat_task;
+            dat_base.trial = cell(1, numel(dat_task.trial));
+            dat_base.time = cell(1, numel(dat_task.trial));
+            for i = 1:numel(dat_task.trial)
+                dat_base.trial{i} = zeros(size(dat_task.trial{i}, 1), 0);
+                dat_base.time{i} = [];
+            end
+        end
         
         % Compute heatmaps
         [freq_task, ~] = computeGazeHeatmap(dat_task, x_grid, y_grid, sampling_rate, smooth_val);
@@ -443,7 +520,9 @@ cfg = [];
 cfg.channel = sb_sig_channels;
 cfg.avgoverchan = 'yes';
 cfg.frequency = [1 30];  % Visualization frequency range
-cfg.latency = [-.5 2];  % Consistent visualization window
+% Check actual time range and use intersection
+actual_time_range = [max(-.5, statFsb.time(1)), min(2, statFsb.time(end))];
+cfg.latency = actual_time_range;  % Use available time range
 freq_sb = ft_selectdata(cfg, statFsb);
 meanpow = squeeze(mean(freq_sb.stat, 1));  % Average over channels
 
@@ -469,7 +548,9 @@ set(gca, 'Fontsize', 18);
 xlabel('Time [sec]');
 ylabel('Frequency [Hz]');
 caxis([0 max(pow_interp(:))]);
-colormap(gca, 'YlOrRd');
+% Use blue-to-red colormap (same as omnibus script)
+color_map = flipud(cbrewer('div', 'RdBu', 64)); % Blue-to-red diverging color map
+colormap(gca, color_map);
 cb = colorbar;
 cb.LineWidth = 1;
 cb.FontSize = 16;
@@ -483,7 +564,8 @@ if ~isempty(statFgaze_sb)
     cfg.parameter = 'stat';
     cfg.maskparameter = 'mask';
     cfg.maskstyle = 'outline';
-    cfg.colormap = 'YlOrRd';
+    % Use blue-to-red colormap (same as omnibus script)
+    cfg.colormap = flipud(cbrewer('div', 'RdBu', 64)); % Blue-to-red diverging color map
     ft_singleplotTFR(cfg, statFgaze_sb);
     set(gca, 'Fontsize', 18);
     xlabel('x [px]');
@@ -600,7 +682,9 @@ cfg = [];
 cfg.channel = nb_sig_channels;
 cfg.avgoverchan = 'yes';
 cfg.frequency = [1 30];  % Visualization frequency range
-cfg.latency = [-.5 2];  % Consistent visualization window
+% Check actual time range and use intersection
+actual_time_range = [max(-.5, statFnb.time(1)), min(2, statFnb.time(end))];
+cfg.latency = actual_time_range;  % Use available time range
 freq_nb = ft_selectdata(cfg, statFnb);
 meanpow = squeeze(mean(freq_nb.stat, 1));  % Average over channels
 
@@ -626,7 +710,9 @@ set(gca, 'Fontsize', 18);
 xlabel('Time [sec]');
 ylabel('Frequency [Hz]');
 caxis([0 max(pow_interp(:))]);
-colormap(gca, 'YlOrRd');
+% Use blue-to-red colormap (same as omnibus script)
+color_map = flipud(cbrewer('div', 'RdBu', 64)); % Blue-to-red diverging color map
+colormap(gca, color_map);
 cb = colorbar;
 cb.LineWidth = 1;
 cb.FontSize = 16;
@@ -640,7 +726,8 @@ if ~isempty(statFgaze_nb)
     cfg.parameter = 'stat';
     cfg.maskparameter = 'mask';
     cfg.maskstyle = 'outline';
-    cfg.colormap = 'YlOrRd';
+    % Use blue-to-red colormap (same as omnibus script)
+    cfg.colormap = flipud(cbrewer('div', 'RdBu', 64)); % Blue-to-red diverging color map
     ft_singleplotTFR(cfg, statFgaze_nb);
     set(gca, 'Fontsize', 18);
     xlabel('x [px]');

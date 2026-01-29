@@ -252,10 +252,10 @@ for subj = 1:length(subjects)
         load dataEEG_nback
 
         %% Frequency analysis
-        % Identify indices of trials belonging to conditions
-        ind1 = find(dataEEG.trialinfo == 21);
-        ind1 = find(dataEEG.trialinfo == 22);
-        ind3 = find(dataEEG.trialinfo == 23);
+        % Identify indices of trials belonging to conditions (21=1-back, 22=2-back, 23=3-back)
+        ind1 = find(dataEEG.trialinfo(:, 1) == 21);
+        ind2 = find(dataEEG.trialinfo(:, 1) == 22);
+        ind3 = find(dataEEG.trialinfo(:, 1) == 23);
 
         % Select data
         cfg = [];
@@ -276,7 +276,7 @@ for subj = 1:length(subjects)
         cfg.trials = ind1;
         powload1_trials = ft_freqanalysis(cfg,dat);
         powload1_trials.trialinfo = ones(1,length(powload1_trials.powspctrm(:, 1, 1)));
-        cfg.trials = ind1;
+        cfg.trials = ind2;
         powload2_trials = ft_freqanalysis(cfg,dat);
         powload2_trials.trialinfo = ones(1,length(powload2_trials.powspctrm(:, 1, 1)))*2;
         cfg.trials = ind3;

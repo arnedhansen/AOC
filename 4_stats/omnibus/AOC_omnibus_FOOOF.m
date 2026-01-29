@@ -1,15 +1,14 @@
-%% AOC Omnibus — 2x2 Figures for N-back and Sternberg (plain: raw TFR, no FOOOF)
-% Uses omnibus_data.mat from AOC_omnibus_prep.m (raw TFR, dB baseline, 3–30 Hz).
-% Creates 2x2 figures with:
+%% AOC Omnibus — 2x2 Figures for N-back and Sternberg (FOOOF)
+% Uses omnibus_data_FOOOF.mat (FOOOF TFR). Creates 2x2 figures with:
 %   Subplot 1: TFR visualization of F-test results for EEG data
 %   Subplot 2: TFR visualization of F-test results for ET data
 %   Subplot 3: Raincloud plots for EEG data condition differences (highest vs. lowest load)
 %   Subplot 4: Raincloud plots for ET data condition differences (highest vs. lowest load)
 %
 % Key outputs:
-%   AOC_omnibus_sternberg_2x2_figure.png
-%   AOC_omnibus_nback_2x2_figure.png
-%   AOC_omnibus_FIGURE2x2_statFnb_statFsb.mat
+%   AOC_omnibus_sternberg_2x2_figure_FOOOF.png
+%   AOC_omnibus_nback_2x2_figure_FOOOF.png
+%   AOC_omnibus_statFnb_statFsb_FOOOF.mat
 
 %% Setup
 startup
@@ -26,11 +25,11 @@ end
 
 %% Load variables
 tic
-disp('Loading omnibus data...')
+disp('Loading omnibus data (FOOOF)...')
 if ispc
-    load W:\Students\Arne\AOC\data\features\omnibus_data.mat
+    load W:\Students\Arne\AOC\data\features\omnibus_data_FOOOF.mat
 else
-    load /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/omnibus_data.mat
+    load /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/omnibus_data_FOOOF.mat
 end 
 toc
 
@@ -153,7 +152,7 @@ cfg_sb.uvar = 2;
 disp(upper('  Computing F-test for Sternberg...'));
 [statFsb] = ft_freqstatistics(cfg_sb, ga_sb_2tfr, ga_sb_4tfr, ga_sb_6tfr);
 
-save(fullfile(data_dir, 'AOC_omnibus_FIGURE2x2_statFnb_statFsb.mat'), 'statFnb', 'statFsb');
+save(fullfile(data_dir, 'AOC_omnibus_statFnb_statFsb_FOOOF.mat'), 'statFnb', 'statFsb');
 disp(upper('stats saved...'))
 
 %% Identify significant electrodes from F-test results
@@ -777,7 +776,7 @@ else
 end
 
 sgtitle('Sternberg: F-tests and Condition Differences', 'FontSize', 20, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternberg_2x2_figure.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternberg_2x2_figure_FOOOF.png'));
 
 % N-BACK FIGURE
 figure;
@@ -935,7 +934,7 @@ else
 end
 
 sgtitle('N-back: F-tests and Condition Differences', 'FontSize', 20, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_2x2_figure.png'));
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_2x2_figure_FOOOF.png'));
 
 disp('2x2 figures created successfully!');
 

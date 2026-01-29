@@ -4,3 +4,4 @@
 *.Rhistory
 .idea/
 *.iml
+.DS_Store

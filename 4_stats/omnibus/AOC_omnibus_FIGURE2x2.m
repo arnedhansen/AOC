@@ -59,6 +59,8 @@ ga_nb_2tfr = ft_freqgrandaverage(cfg, load2nb_tfr{:});
 ga_nb_3tfr = ft_freqgrandaverage(cfg, load3nb_tfr{:});
 
 %% Prepare neighbours for cluster-based statistics
+% neighbourdist is in same units as elec.chanpos (typically cm). Use ~4 cm so only
+% immediate neighbours are linked (~4-10 per channel). 40 was wrong (whole-head scale → ~124 neighbours).
 if ispc
     load('W:\Students\Arne\toolboxes\headmodel\elec_aligned.mat');
 else
@@ -69,7 +71,8 @@ cfg.method = 'distance';
 cfg.elec = elec_aligned;
 cfg.layout = headmodel.layANThead;
 cfg.feedback = 'yes';
-cfg.neighbourdist = 40;
+cfg.neighbourdist = 0.0675; % 5 neighbours per channel
+close all
 neighbours = ft_prepare_neighbours(cfg);
 
 %% Compute F-tests for EEG data
@@ -108,50 +111,87 @@ tic
 toc
 
 %% Identify significant electrodes from F-test results
-% Using alpha band (8-14 Hz) and [0 2] time window
-disp('Identifying significant electrodes from F-test results...')
+% Channels where proportion of alpha-[0 2] voxels with mask==1 is >= sig_prop_thresh;
+% fallback to lower threshold if none pass. Then restrict to posterior (PO, O, I).
+sig_prop_thresh = 0.25;
 
-% For Sternberg: find electrodes with significant F-values
+disp(upper(['Identifying significant electrodes from F-test results at proportion threshold ' num2str(sig_prop_thresh)]));
 cfg_sig = [];
 cfg_sig.parameter = 'stat';
 cfg_sig.maskparameter = 'mask';
-cfg_sig.frequency = [8 14];  % Alpha band
-cfg_sig.latency = [0 2];  % Consistent window for both tasks
-cfg_sig.avgoverfreq = 'yes';
-cfg_sig.avgovertime = 'yes';
-statFsb_avg = ft_selectdata(cfg_sig, statFsb);
+cfg_sig.frequency = [8 14];
+cfg_sig.latency = [0 2];
+statFsb_roi = ft_selectdata(cfg_sig, statFsb);
+statFnb_roi = ft_selectdata(cfg_sig, statFnb);
 
-% Find channels with significant clusters
+% Choose channels where proportion of (freq x time) with mask==1 >= sig_prop_thresh
 sb_sig_channels = {};
-sb_sig_mask = squeeze(statFsb_avg.mask);
-sb_sig_stat = squeeze(statFsb_avg.stat);
-for ch = 1:length(statFsb_avg.label)
-    if sb_sig_mask(ch) > 0 && sb_sig_stat(ch) > 0
-        sb_sig_channels{end+1} = statFsb_avg.label{ch};
+mask_sb = statFsb_roi.mask;
+for ch = 1:length(statFsb_roi.label)
+    m = squeeze(mask_sb(ch,:,:));
+    n = numel(m);
+    if n == 0, continue; end
+    prop_sig = sum(m(:) > 0.5) / n;
+    if prop_sig >= sig_prop_thresh
+        sb_sig_channels{end+1} = statFsb_roi.label{ch};
     end
 end
-fprintf('Sternberg significant channels (%d): %s\n', length(sb_sig_channels), strjoin(sb_sig_channels, ', '));
-
-% For N-back: find electrodes with significant F-values
-statFnb_avg = ft_selectdata(cfg_sig, statFnb);
-
 nb_sig_channels = {};
-nb_sig_mask = squeeze(statFnb_avg.mask);
-nb_sig_stat = squeeze(statFnb_avg.stat);
-for ch = 1:length(statFnb_avg.label)
-    if nb_sig_mask(ch) > 0 && nb_sig_stat(ch) > 0
-        nb_sig_channels{end+1} = statFnb_avg.label{ch};
+mask_nb = statFnb_roi.mask;
+for ch = 1:length(statFnb_roi.label)
+    m = squeeze(mask_nb(ch,:,:));
+    n = numel(m);
+    if n == 0, continue; end
+    prop_sig = sum(m(:) > 0.5) / n;
+    if prop_sig >= sig_prop_thresh
+        nb_sig_channels{end+1} = statFnb_roi.label{ch};
     end
 end
-fprintf('N-back significant channels (%d): %s\n', length(nb_sig_channels), strjoin(nb_sig_channels, ', '));
 
-% Error if no significant channels found
 if isempty(sb_sig_channels)
-    error('No significant channels found for Sternberg. Something is severely wrong with the analysis.');
+    error('No significant channels for Sternberg. Lower sig_prop_thresh.');
 end
 if isempty(nb_sig_channels)
-    error('No significant channels found for N-back. Something is severely wrong with the analysis.');
+    error('No significant channels for N-back. Lower sig_prop_thresh.');
 end
+
+% Restrict to posterior channels only (PO, O, or I in the name)
+is_posterior = @(c) contains(char(c), 'P') | contains(char(c), 'O') | contains(char(c), 'I');
+sb_sig_channels = sb_sig_channels(cellfun(is_posterior, sb_sig_channels));
+nb_sig_channels = nb_sig_channels(cellfun(is_posterior, nb_sig_channels));
+
+% Output chosen channels and counts for each task
+fprintf('\nSternberg: %d significant channel(s): %s\n', length(sb_sig_channels), strjoin(sb_sig_channels, ', '));
+fprintf('N-back:    %d significant channel(s): %s\n\n', length(nb_sig_channels), strjoin(nb_sig_channels, ', '));
+
+% Topoplots
+close all
+cfg_avg = [];
+cfg_avg.parameter = 'stat';
+cfg_avg.frequency = [8 14];
+cfg_avg.latency = [0 2];
+cfg_avg.avgoverfreq = 'yes';
+cfg_avg.avgovertime = 'yes';
+statFnb_avg = ft_selectdata(cfg_avg, statFnb);
+statFsb_avg = ft_selectdata(cfg_avg, statFsb);
+statFnb_avg.stat = abs(statFnb_avg.stat);
+statFsb_avg.stat = abs(statFsb_avg.stat);
+cfg_topo = [];
+cfg_topo.layout = headmodel.layANThead;
+cfg_topo.parameter = 'stat';
+cfg_topo.marker = 'off';
+cfg_topo.highlight = 'on';
+cfg_topo.highlightsymbol = '.';
+cfg_topo.highlightsize = 14;
+cfg_topo.comment = 'no';
+figure('Color', 'w', 'Position', [0, 0, 600, 600]);
+cfg_topo.highlightchannel = nb_sig_channels;
+ft_topoplotER(cfg_topo, statFnb_avg);
+title('N-back');
+figure('Color', 'w', 'Position', [600, 0, 600, 600]);
+cfg_topo.highlightchannel = sb_sig_channels;
+ft_topoplotER(cfg_topo, statFsb_avg);
+title('Sternberg');
 
 %% Prepare gaze data for F-test analysis
 disp('Preparing gaze data for F-test analysis...')
@@ -271,6 +311,7 @@ for s = 1:length(subjects)
             task_time_range = [0 2];  % Default range
         end
         cfg.latency = task_time_range;
+        cfg = rmfield(cfg, 'trials');  % selection by time only; trials already subset in dataetnan_trl
         dat_task = ft_selectdata(cfg, dataetnan_trl);  % Consistent [0 2] window
         % Check available time range for baseline window
         if ~isempty(dataetnan_trl.time) && numel(dataetnan_trl.time) > 0
@@ -388,8 +429,21 @@ for s = 1:length(subjects)
         else
             task_time_range = [0 2];  % Default range
         end
+        % Skip if no overlap between [0 2] and data (avoids 0 trials -> ft_checkdata error)
+        if task_time_range(1) >= task_time_range(2)
+            eval(sprintf('allgazetask_nb%d{s} = [];', cond));
+            eval(sprintf('allgazebase_nb%d{s} = [];', cond));
+            continue;
+        end
         cfg.latency = task_time_range;
+        cfg = rmfield(cfg, 'trials');  % selection by time only; trials already subset in dataetnan_trl
         dat_task = ft_selectdata(cfg, dataetnan_trl);  % Consistent [0 2] window
+        % Skip if latency selection left no trials (robustness)
+        if numel(dat_task.trial) == 0
+            eval(sprintf('allgazetask_nb%d{s} = [];', cond));
+            eval(sprintf('allgazebase_nb%d{s} = [];', cond));
+            continue;
+        end
         % Check available time range for baseline window
         if ~isempty(dataetnan_trl.time) && numel(dataetnan_trl.time) > 0
             base_time_range = [max(-.5, min_time), min(-.25, max_time)];

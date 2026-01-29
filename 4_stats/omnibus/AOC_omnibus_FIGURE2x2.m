@@ -13,8 +13,12 @@
 startup
 [subjects, path, colors, headmodel] = setup('AOC');
 
-% Set up save directories
-figures_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/omnibus';
+% Set up save directories (cross-platform)
+if ispc
+    figures_dir = 'W:\Students\Arne\AOC\figures\stats\omnibus';
+else
+    figures_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/stats/omnibus';
+end
 if ~exist(figures_dir, 'dir'), mkdir(figures_dir); end 
 
 %% Load variables
@@ -55,7 +59,11 @@ ga_nb_2tfr = ft_freqgrandaverage(cfg, load2nb_tfr{:});
 ga_nb_3tfr = ft_freqgrandaverage(cfg, load3nb_tfr{:});
 
 %% Prepare neighbours for cluster-based statistics
-load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/elec_aligned.mat');
+if ispc
+    load('W:\Students\Arne\toolboxes\headmodel\elec_aligned.mat');
+else
+    load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/elec_aligned.mat');
+end
 cfg = [];
 cfg.method = 'distance';
 cfg.elec = elec_aligned;

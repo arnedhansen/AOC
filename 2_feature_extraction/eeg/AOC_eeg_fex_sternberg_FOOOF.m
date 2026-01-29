@@ -67,7 +67,7 @@ for subj = 1:length(subjects)
         cfg_fooof            = [];
         cfg_fooof.method     = 'mtmfft';
         cfg_fooof.taper      = 'hanning';
-        cfg_fooof.foilim     = [2 40];
+        cfg_fooof.foilim     = [3 30];   % match methods & N-back for comparable alpha
         cfg_fooof.pad        = 5;
         cfg_fooof.output     = 'fooof';
         cfg_fooof.keeptrials = 'no';   % average across trials before FOOOF
@@ -356,7 +356,7 @@ for subj = 1:length(subjects)
         analysisPeriodFull  = [0 2];
         analysisPeriodEarly = [0 1];
         analysisPeriodLate  = [1 2];
-        freq_range          = [2 40];
+        freq_range          = [3 30];   % match FOOOF foilim
 
         pow2_fooof          = select_data(analysisPeriodFull,  freq_range, tfr2_fooof);
         pow2_fooof_bl       = select_data(analysisPeriodFull,  freq_range, tfr2_fooof_bl);

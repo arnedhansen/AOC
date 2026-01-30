@@ -7,8 +7,6 @@
 %   AOC_omnibus_sternberg_EEG_raincloud_matlab.png, AOC_omnibus_sternberg_ET_raincloud_matlab.png
 %   AOC_omnibus_nback_EEG_TFR.png, AOC_omnibus_nback_ET_TFR.png
 %   AOC_omnibus_nback_EEG_raincloud_matlab.png, AOC_omnibus_nback_ET_raincloud_matlab.png
-% Composites (2x2): AOC_omnibus_sternberg_2x2.png, AOC_omnibus_sternberg_2x2.pdf
-%                   AOC_omnibus_nback_2x2.png, AOC_omnibus_nback_2x2.pdf
 % Stats: AOC_omnibus_FIGURE2x2_statFnb_statFsb.mat
 
 %% Setup
@@ -623,22 +621,27 @@ else
 end
 
 %% Create figures
+clc
 close all
 disp('Creating figures...');
 colors = color_def('AOC');
+% F-test colormap
+key = [0 0.33 0.66 1];
+key_rgb = [1 1 1; 1 1 0; 1 0.65 0; 1 0 0];
+cmap_f = interp1(key, key_rgb, linspace(0, 1, 64));
 
 % --- Sternberg: EEG TFR ---
 figure('Color', 'w', 'Position', [0, 0, 1512, 982]);
 cfg = [];
 cfg.channel = sb_sig_channels;
 cfg.avgoverchan = 'yes';
-cfg.frequency = [1 30];
+cfg.frequency = [4 30];
 actual_time_range = [max(-.5, statFsb.time(1)), min(2, statFsb.time(end))];
 cfg.latency = actual_time_range;
 freq_sb = ft_selectdata(cfg, statFsb);
 meanpow = squeeze(mean(freq_sb.stat, 1));
 tim_interp = linspace(freq_sb.time(1), freq_sb.time(end), 500);
-freq_interp = linspace(1, 30, 500);
+freq_interp = linspace(4, 30, 500);
 [tim_grid_orig, freq_grid_orig] = meshgrid(freq_sb.time, freq_sb.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow, tim_grid_interp, freq_grid_interp, 'spline');
@@ -646,29 +649,30 @@ mask_interp = interp2(tim_grid_orig, freq_grid_orig, double(squeeze(freq_sb.mask
 ft_plot_matrix(flip(pow_interp), 'highlightstyle', 'outline', 'highlight', flip(abs(round(mask_interp))));
 ax = gca; hold(ax, 'on');
 x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
-xline(ax, x0, 'k-', 'LineWidth', 1);
-xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-.5 0 1 2])));
-xticklabels({'-0.5','0','1','2'});
-yticks([1 125 250 375]);
-yticklabels({'30','20','10','1'});
+xline(ax, x0, 'k--', 'LineWidth', 1);
+xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-.5 0 .5 1 1.5 2])));
+xticklabels({'-0.5','0','0.5','1','1.5','2'});
+yticks(round(interp1([5 30], [1 500], [5 10 15 20 25 30])));
+yticklabels({'30','25','20','15','10','5'});  % labels only: top=30 Hz, bottom=5 Hz (data unchanged)
+ylim([1 500]);
 set(gca, 'Fontsize', 18);
 xlabel('Time [sec]');
 ylabel('Frequency [Hz]');
-caxis([0 max(pow_interp(:))]);
-colormap(gca, flipud(cbrewer('div', 'RdBu', 64)));
+clim([0 max(pow_interp(:))*0.95]);
+colormap(cmap_f);
 cb = colorbar; cb.LineWidth = 1; cb.FontSize = 16;
 title(cb, 'F-values');
 title('EEG F-test (Sternberg)');
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternberg_EEG_TFR.png'));
 
-% --- Sternberg: ET TFR ---
+% --- Sternberg: ET TFR (white→red colormap) ---
 figure('Color', 'w', 'Position', [0, 0, 1512, 982]);
 if ~isempty(statFgaze_sb)
     cfg = []; cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline';
-    cfg.colormap = flipud(cbrewer('div', 'RdBu', 64));
+    cfg.colormap = cmap_f;
     ft_singleplotTFR(cfg, statFgaze_sb);
     set(gca, 'Fontsize', 18);
-    xlabel('x [px]'); ylabel('y [px]'); grid on;
+    xlabel('x [px]'); ylabel('y [px]');
     c = colorbar; c.LineWidth = 1; c.FontSize = 16; title(c, 'F-statistic');
     title('ET F-test (Sternberg)');
 else
@@ -689,20 +693,26 @@ for subj = 1:length(load2)
         end
     end
 end
-figure('Color', 'w', 'Position', [0, 0, 500, 500]);
+figure('Color', 'w', 'Position', [0, 0, 1512, 982]);
 positions = [0.2, 0.5, 0.8];
 for k = 1:3
     tmp = {eeg_sb2, eeg_sb4, eeg_sb6}; dat = tmp{k};
     if isempty(dat), continue; end
     [f, xi] = ksdensity(dat);
-    fill(positions(k) + f*0.04, xi, colors(k,:), 'FaceAlpha', 0.5); hold on;
+    % Close polygon at position line so density is a proper half-violin
+    x_fill = [positions(k), positions(k) + f*0.04, positions(k)];
+    y_fill = [xi(1), xi, xi(end)];
+    fill(x_fill, y_fill, colors(k,:), 'FaceAlpha', 0.5); hold on;
 end
 box_h = boxplot([eeg_sb2(:), eeg_sb4(:), eeg_sb6(:)], 'Labels', {'Load 2', 'Load 4', 'Load 6'}, 'Widths', 0.04, 'Positions', positions);
-set(box_h, 'LineWidth', 2);
+set(box_h, 'LineWidth', 2, 'Color', 'k');
 jitter = 0.04;
-scatter(positions(1) + (rand(size(eeg_sb2))-0.5)*jitter, eeg_sb2, 'k.', 'SizeData', 50);
-scatter(positions(2) + (rand(size(eeg_sb4))-0.5)*jitter, eeg_sb4, 'k.', 'SizeData', 50);
-scatter(positions(3) + (rand(size(eeg_sb6))-0.5)*jitter, eeg_sb6, 'k.', 'SizeData', 50);
+scatter(positions(1) + (rand(size(eeg_sb2))-0.5)*jitter, eeg_sb2, 'k.', 'SizeData', 100);
+scatter(positions(2) + (rand(size(eeg_sb4))-0.5)*jitter, eeg_sb4, 'k.', 'SizeData', 100);
+scatter(positions(3) + (rand(size(eeg_sb6))-0.5)*jitter, eeg_sb6, 'k.', 'SizeData', 100);
+yline(0, 'k--');
+max_abs = max(abs([eeg_sb2(:); eeg_sb4(:); eeg_sb6(:)]));
+ylim([-max_abs, max_abs]*1.05);
 title('EEG: Sternberg (Load 2, 4, 6)');
 xlabel('WM load'); ylabel('Change from baseline (dB)');
 xlim([0 1]); box on; set(gca, 'FontSize', 16);
@@ -717,20 +727,25 @@ for subj = 1:min([length(sb2_gaze), length(sb4_gaze), length(sb6_gaze)])
         et_sb6(end+1) = mean(sb6_gaze{subj}.powspctrm(:), 'omitnan');
     end
 end
-figure('Color', 'w', 'Position', [0, 0, 500, 500]);
+figure('Color', 'w', 'Position', [0, 0, 1512, 982]);
 if ~isempty(et_sb2) && ~isempty(et_sb4) && ~isempty(et_sb6)
     positions = [0.2, 0.5, 0.8];
     for k = 1:3
         tmp = {et_sb2, et_sb4, et_sb6}; dat = tmp{k};
         [f, xi] = ksdensity(dat);
-        fill(positions(k) + f*0.04, xi, colors(k,:), 'FaceAlpha', 0.5); hold on;
+        x_fill = [positions(k), positions(k) + f*0.04, positions(k)];
+        y_fill = [xi(1), xi, xi(end)];
+        fill(x_fill, y_fill, colors(k,:), 'FaceAlpha', 0.5); hold on;
     end
     box_h = boxplot([et_sb2(:), et_sb4(:), et_sb6(:)], 'Labels', {'Load 2', 'Load 4', 'Load 6'}, 'Widths', 0.04, 'Positions', positions);
-    set(box_h, 'LineWidth', 2);
+    set(box_h, 'LineWidth', 2, 'Color', 'k');
     jitter = 0.04;
-    scatter(positions(1) + (rand(size(et_sb2))-0.5)*jitter, et_sb2, 'k.', 'SizeData', 50);
-    scatter(positions(2) + (rand(size(et_sb4))-0.5)*jitter, et_sb4, 'k.', 'SizeData', 50);
-    scatter(positions(3) + (rand(size(et_sb6))-0.5)*jitter, et_sb6, 'k.', 'SizeData', 50);
+    scatter(positions(1) + (rand(size(et_sb2))-0.5)*jitter, et_sb2, 'k.', 'SizeData', 100);
+    scatter(positions(2) + (rand(size(et_sb4))-0.5)*jitter, et_sb4, 'k.', 'SizeData', 100);
+    scatter(positions(3) + (rand(size(et_sb6))-0.5)*jitter, et_sb6, 'k.', 'SizeData', 100);
+    yline(0, 'k--');
+    max_abs = max(abs([et_sb2(:); et_sb4(:); et_sb6(:)]));
+    ylim([-max_abs, max_abs]*1.05);
     title('ET: Sternberg (Load 2, 4, 6)');
     xlabel('WM load'); ylabel('Change from baseline (a.u.)');
     xlim([0 1]); box on; set(gca, 'FontSize', 16);
@@ -740,36 +755,14 @@ else
 end
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternberg_ET_raincloud_matlab.png'));
 
-% --- Sternberg: 2x2 composite (from saved PNGs) ---
-sb_figs = {'AOC_omnibus_sternberg_EEG_TFR.png', 'AOC_omnibus_sternberg_ET_TFR.png', ...
-           'AOC_omnibus_sternberg_EEG_raincloud_matlab.png', 'AOC_omnibus_sternberg_ET_raincloud_matlab.png'};
-composite_size = [500 500];  % [height width] per panel
-for i = 1:4
-    p = fullfile(figures_dir, sb_figs{i});
-    if ~exist(p, 'file'), continue; end
-    im = imread(p);
-    if size(im, 3) == 1, im = repmat(im, [1 1 3]); end
-    ims_sb{i} = imresize(im, composite_size);
-end
-if length(ims_sb) == 4
-    grid_sb = [ims_sb{1} ims_sb{2}; ims_sb{3} ims_sb{4}];
-    imwrite(grid_sb, fullfile(figures_dir, 'AOC_omnibus_sternberg_2x2.png'));
-    fig_comp = figure('Color', 'w', 'Visible', 'off');
-    for i = 1:4
-        subplot(2, 2, i); imshow(ims_sb{i}); axis image off;
-    end
-    exportgraphics(fig_comp, fullfile(figures_dir, 'AOC_omnibus_sternberg_2x2.pdf'), 'ContentType', 'vector');
-    close(fig_comp);
-end
-
-% --- N-back: EEG TFR ---
+% --- N-back: EEG TFR (4–30 Hz, x-ticks every 500 ms, white→red colormap) ---
 figure('Color', 'w', 'Position', [0, 0, 1512, 982]);
-cfg = []; cfg.channel = nb_sig_channels; cfg.avgoverchan = 'yes'; cfg.frequency = [1 30];
+cfg = []; cfg.channel = nb_sig_channels; cfg.avgoverchan = 'yes'; cfg.frequency = [4 30];
 actual_time_range = [max(-.5, statFnb.time(1)), min(2, statFnb.time(end))]; cfg.latency = actual_time_range;
 freq_nb = ft_selectdata(cfg, statFnb);
 meanpow = squeeze(mean(freq_nb.stat, 1));
 tim_interp = linspace(freq_nb.time(1), freq_nb.time(end), 500);
-freq_interp = linspace(1, 30, 500);
+freq_interp = linspace(4, 30, 500);
 [tim_grid_orig, freq_grid_orig] = meshgrid(freq_nb.time, freq_nb.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow, tim_grid_interp, freq_grid_interp, 'spline');
@@ -777,22 +770,24 @@ mask_interp = interp2(tim_grid_orig, freq_grid_orig, double(squeeze(freq_nb.mask
 ft_plot_matrix(flip(pow_interp), 'highlightstyle', 'outline', 'highlight', flip(abs(round(mask_interp))));
 ax = gca; hold(ax, 'on');
 x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
-xline(ax, x0, 'k-', 'LineWidth', 1);
-xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-.5 0 1 2]))); xticklabels({'-0.5','0','1','2'});
-yticks([1 125 250 375]); yticklabels({'30','20','10','1'});
+xline(ax, x0, 'k--', 'LineWidth', 1);
+xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-.5 0 .5 1 1.5 2]))); xticklabels({'-0.5','0','0.5','1','1.5','2'});
+yticks(round(interp1([5 30], [1 500], [5 10 15 20 25 30]))); yticklabels({'30','25','20','15','10','5'});  % labels only
+ylim([1 500]);
 set(gca, 'Fontsize', 18); xlabel('Time [sec]'); ylabel('Frequency [Hz]');
-caxis([0 max(pow_interp(:))]); colormap(gca, flipud(cbrewer('div', 'RdBu', 64)));
+clim([0 max(pow_interp(:))*0.95]);
+colormap(cmap_f);
 cb = colorbar; cb.LineWidth = 1; cb.FontSize = 16; title(cb, 'F-values');
 title('EEG F-test (N-back)');
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_EEG_TFR.png'));
 
-% --- N-back: ET TFR ---
+% --- N-back: ET TFR (white→red colormap) ---
 figure('Color', 'w', 'Position', [0, 0, 1512, 982]);
 if ~isempty(statFgaze_nb)
     cfg = []; cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline';
-    cfg.colormap = flipud(cbrewer('div', 'RdBu', 64));
+    cfg.colormap = cmap_f;
     ft_singleplotTFR(cfg, statFgaze_nb);
-    set(gca, 'Fontsize', 18); xlabel('x [px]'); ylabel('y [px]'); grid on;
+    set(gca, 'Fontsize', 18); xlabel('x [px]'); ylabel('y [px]');
     c = colorbar; c.LineWidth = 1; c.FontSize = 16; title(c, 'F-statistic');
     title('ET F-test (N-back)');
 else
@@ -813,20 +808,25 @@ for subj = 1:length(load1nb)
         end
     end
 end
-figure('Color', 'w', 'Position', [0, 0, 500, 500]);
+figure('Color', 'w', 'Position', [0, 0, 1512, 982]);
 positions = [0.2, 0.5, 0.8];
 for k = 1:3
     tmp = {eeg_nb1, eeg_nb2, eeg_nb3}; dat = tmp{k};
     if isempty(dat), continue; end
     [f, xi] = ksdensity(dat);
-    fill(positions(k) + f*0.04, xi, colors(k,:), 'FaceAlpha', 0.5); hold on;
+    x_fill = [positions(k), positions(k) + f*0.04, positions(k)];
+    y_fill = [xi(1), xi, xi(end)];
+    fill(x_fill, y_fill, colors(k,:), 'FaceAlpha', 0.5); hold on;
 end
 box_h = boxplot([eeg_nb1(:), eeg_nb2(:), eeg_nb3(:)], 'Labels', {'1-back', '2-back', '3-back'}, 'Widths', 0.04, 'Positions', positions);
-set(box_h, 'LineWidth', 2);
+set(box_h, 'LineWidth', 2, 'Color', 'k');
 jitter = 0.04;
-scatter(positions(1) + (rand(size(eeg_nb1))-0.5)*jitter, eeg_nb1, 'k.', 'SizeData', 50);
-scatter(positions(2) + (rand(size(eeg_nb2))-0.5)*jitter, eeg_nb2, 'k.', 'SizeData', 50);
-scatter(positions(3) + (rand(size(eeg_nb3))-0.5)*jitter, eeg_nb3, 'k.', 'SizeData', 50);
+scatter(positions(1) + (rand(size(eeg_nb1))-0.5)*jitter, eeg_nb1, 'k.', 'SizeData', 100);
+scatter(positions(2) + (rand(size(eeg_nb2))-0.5)*jitter, eeg_nb2, 'k.', 'SizeData', 100);
+scatter(positions(3) + (rand(size(eeg_nb3))-0.5)*jitter, eeg_nb3, 'k.', 'SizeData', 100);
+yline(0, 'k--');
+max_abs = max(abs([eeg_nb1(:); eeg_nb2(:); eeg_nb3(:)]));
+ylim([-max_abs, max_abs]*1.05);
 title('EEG: N-back (1-, 2-, 3-back)');
 xlabel('N-back load'); ylabel('Change from baseline (dB)');
 xlim([0 1]); box on; set(gca, 'FontSize', 16);
@@ -841,20 +841,25 @@ for subj = 1:min([length(nb1_gaze), length(nb2_gaze), length(nb3_gaze)])
         et_nb3(end+1) = mean(nb3_gaze{subj}.powspctrm(:), 'omitnan');
     end
 end
-figure('Color', 'w', 'Position', [0, 0, 500, 500]);
+figure('Color', 'w', 'Position', [0, 0, 1512, 982]);
 if ~isempty(et_nb1) && ~isempty(et_nb2) && ~isempty(et_nb3)
     positions = [0.2, 0.5, 0.8];
     for k = 1:3
         tmp = {et_nb1, et_nb2, et_nb3}; dat = tmp{k};
         [f, xi] = ksdensity(dat);
-        fill(positions(k) + f*0.04, xi, colors(k,:), 'FaceAlpha', 0.5); hold on;
+        x_fill = [positions(k), positions(k) + f*0.04, positions(k)];
+        y_fill = [xi(1), xi, xi(end)];
+        fill(x_fill, y_fill, colors(k,:), 'FaceAlpha', 0.5); hold on;
     end
     box_h = boxplot([et_nb1(:), et_nb2(:), et_nb3(:)], 'Labels', {'1-back', '2-back', '3-back'}, 'Widths', 0.04, 'Positions', positions);
-    set(box_h, 'LineWidth', 2);
+    set(box_h, 'LineWidth', 2, 'Color', 'k');
     jitter = 0.04;
-    scatter(positions(1) + (rand(size(et_nb1))-0.5)*jitter, et_nb1, 'k.', 'SizeData', 50);
-    scatter(positions(2) + (rand(size(et_nb2))-0.5)*jitter, et_nb2, 'k.', 'SizeData', 50);
-    scatter(positions(3) + (rand(size(et_nb3))-0.5)*jitter, et_nb3, 'k.', 'SizeData', 50);
+    scatter(positions(1) + (rand(size(et_nb1))-0.5)*jitter, et_nb1, 'k.', 'SizeData', 100);
+    scatter(positions(2) + (rand(size(et_nb2))-0.5)*jitter, et_nb2, 'k.', 'SizeData', 100);
+    scatter(positions(3) + (rand(size(et_nb3))-0.5)*jitter, et_nb3, 'k.', 'SizeData', 100);
+    yline(0, 'k--');
+    max_abs = max(abs([et_nb1(:); et_nb2(:); et_nb3(:)]));
+    ylim([-max_abs, max_abs]*1.05);
     title('ET: N-back (1-, 2-, 3-back)');
     xlabel('N-back load'); ylabel('Change from baseline (a.u.)');
     xlim([0 1]); box on; set(gca, 'FontSize', 16);
@@ -863,29 +868,6 @@ else
     title('ET: N-back (1-, 2-, 3-back)');
 end
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_ET_raincloud_matlab.png'));
-
-% --- N-back: 2x2 composite (from saved PNGs) ---
-nb_figs = {'AOC_omnibus_nback_EEG_TFR.png', 'AOC_omnibus_nback_ET_TFR.png', ...
-           'AOC_omnibus_nback_EEG_raincloud_matlab.png', 'AOC_omnibus_nback_ET_raincloud_matlab.png'};
-for i = 1:4
-    p = fullfile(figures_dir, nb_figs{i});
-    if ~exist(p, 'file'), continue; end
-    im = imread(p);
-    if size(im, 3) == 1, im = repmat(im, [1 1 3]); end
-    ims_nb{i} = imresize(im, composite_size);
-end
-if length(ims_nb) == 4
-    grid_nb = [ims_nb{1} ims_nb{2}; ims_nb{3} ims_nb{4}];
-    imwrite(grid_nb, fullfile(figures_dir, 'AOC_omnibus_nback_2x2.png'));
-    fig_comp = figure('Color', 'w', 'Visible', 'off');
-    for i = 1:4
-        subplot(2, 2, i); imshow(ims_nb{i}); axis image off;
-    end
-    exportgraphics(fig_comp, fullfile(figures_dir, 'AOC_omnibus_nback_2x2.pdf'), 'ContentType', 'vector');
-    close(fig_comp);
-end
-
-disp('Figures saved successfully.');
 
 %% Helper functions
 

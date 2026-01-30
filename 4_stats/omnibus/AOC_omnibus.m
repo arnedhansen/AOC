@@ -1,15 +1,15 @@
-%% AOC Omnibus — 2x2 Figures for N-back and Sternberg (plain: raw TFR, no FOOOF)
+%% AOC Omnibus — Figures for N-back and Sternberg (plain: raw TFR, no FOOOF)
 % Uses omnibus_data.mat from AOC_omnibus_prep.m (raw TFR, dB baseline, 3–30 Hz).
-% Creates 2x2 figures with:
-%   Subplot 1: TFR visualization of F-test results for EEG data
-%   Subplot 2: TFR visualization of F-test results for ET data
-%   Subplot 3: Raincloud plots for EEG data condition differences (highest vs. lowest load)
-%   Subplot 4: Raincloud plots for ET data condition differences (highest vs. lowest load)
+% Creates one figure per plot (colors from color_def('AOC')).
 %
-% Key outputs:
-%   AOC_omnibus_sternberg_2x2_figure.png
-%   AOC_omnibus_nback_2x2_figure.png
-%   AOC_omnibus_FIGURE2x2_statFnb_statFsb.mat
+% Figure outputs (individual):
+%   AOC_omnibus_sternberg_EEG_TFR.png, AOC_omnibus_sternberg_ET_TFR.png
+%   AOC_omnibus_sternberg_EEG_raincloud_matlab.png, AOC_omnibus_sternberg_ET_raincloud_matlab.png
+%   AOC_omnibus_nback_EEG_TFR.png, AOC_omnibus_nback_ET_TFR.png
+%   AOC_omnibus_nback_EEG_raincloud_matlab.png, AOC_omnibus_nback_ET_raincloud_matlab.png
+% Composites (2x2): AOC_omnibus_sternberg_2x2.png, AOC_omnibus_sternberg_2x2.pdf
+%                   AOC_omnibus_nback_2x2.png, AOC_omnibus_nback_2x2.pdf
+% Stats: AOC_omnibus_FIGURE2x2_statFnb_statFsb.mat
 
 %% Setup
 startup
@@ -158,7 +158,7 @@ disp(upper('stats saved...'))
 
 %% Identify significant electrodes from F-test results
 % Channels where proportion of alpha-[0 2] voxels with mask==1 is >= sig_prop_thresh
-sig_prop_thresh = 0.1;
+sig_prop_thresh = 1/3;
 
 disp(upper(['Identifying significant electrodes from F-test results at proportion threshold ' num2str(sig_prop_thresh)]));
 cfg_sig = [];
@@ -193,13 +193,6 @@ for ch = 1:length(statFnb_roi.label)
     end
 end
 
-% if isempty(sb_sig_channels)
-%     error('No significant channels for Sternberg. Lower sig_prop_thresh.');
-% end
-% if isempty(nb_sig_channels)
-%     error('No significant channels for N-back. Lower sig_prop_thresh.');
-% end
-
 % Restrict to posterior channels only (PO, O, or I in the name)
 is_posterior = @(c) contains(char(c), 'PO') | contains(char(c), 'O') | contains(char(c), 'I');
 sb_sig_channels = sb_sig_channels(cellfun(is_posterior, sb_sig_channels));
@@ -232,11 +225,15 @@ cfg_topo.comment = 'no';
 figure('Color', 'w', 'Position', [0, 0, 600, 600]);
 cfg_topo.highlightchannel = nb_sig_channels;
 ft_topoplotER(cfg_topo, statFnb_avg);
-title('N-back');
+text(0.35, 0.25, nb_sig_channels)
+title('N-back Significant Electrodes');
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_topo_f-stats_nback.png'));
 figure('Color', 'w', 'Position', [600, 0, 600, 600]);
 cfg_topo.highlightchannel = sb_sig_channels;
 ft_topoplotER(cfg_topo, statFsb_avg);
-title('Sternberg');
+text(0.35, 0.25, sb_sig_channels)
+title('Sternberg Significant Electrodes');
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_topo_f-stats_stern.png'));
 
 %% Prepare gaze data for F-test analysis
 disp('Preparing gaze data for F-test analysis...')
@@ -265,7 +262,6 @@ for s = 1:length(subjects)
         warning('Subject directory %s not found. Skipping...', subj_dir);
         continue;
     end
-    
     cd(subj_dir);
     
     % Load dataET_sternberg
@@ -345,6 +341,12 @@ for s = 1:length(subjects)
         cfg.trials = trl;
         % Select trials first, then check time range
         dataetnan_trl = ft_selectdata(cfg, dataetnan);
+        % Skip if no trials for this condition (avoids ft_selectdata/ft_checkdata error on empty)
+        if isempty(dataetnan_trl.trial) || numel(dataetnan_trl.trial) == 0
+            eval(sprintf('allgazetask_sb%d{s} = [];', cond));
+            eval(sprintf('allgazebase_sb%d{s} = [];', cond));
+            continue;
+        end
         % Check available time range for task window
         if ~isempty(dataetnan_trl.time) && numel(dataetnan_trl.time) > 0
             all_times = cellfun(@(x) [min(x), max(x)], dataetnan_trl.time, 'UniformOutput', false);
@@ -442,15 +444,15 @@ for s = 1:length(subjects)
     dataet = ft_selectdata(cfg, dataet);
     dataetnan = ft_selectdata(cfg, dataetnan);
     
-    % Trial types for N-back
+    % Trial types for N-back (trigger codes 21/22/23 = 1/2/3-back)
     if size(dataet.trialinfo, 2) == 1
-        trl1 = find(dataet.trialinfo == 1);
-        trl2 = find(dataet.trialinfo == 2);
-        trl3 = find(dataet.trialinfo == 3);
+        trl1 = find(dataet.trialinfo == 21);
+        trl2 = find(dataet.trialinfo == 22);
+        trl3 = find(dataet.trialinfo == 23);
     else
-        trl1 = find(dataet.trialinfo(:,1) == 1);
-        trl2 = find(dataet.trialinfo(:,1) == 2);
-        trl3 = find(dataet.trialinfo(:,1) == 3);
+        trl1 = find(dataet.trialinfo(:,1) == 21);
+        trl2 = find(dataet.trialinfo(:,1) == 22);
+        trl3 = find(dataet.trialinfo(:,1) == 23);
     end
     
     % Process each condition
@@ -464,6 +466,12 @@ for s = 1:length(subjects)
         cfg.trials = trl;
         % Select trials first, then check time range
         dataetnan_trl = ft_selectdata(cfg, dataetnan);
+        % Skip if no trials for this condition (avoids ft_selectdata/ft_checkdata error on empty)
+        if isempty(dataetnan_trl.trial) || numel(dataetnan_trl.trial) == 0
+            eval(sprintf('allgazetask_nb%d{s} = [];', cond));
+            eval(sprintf('allgazebase_nb%d{s} = [];', cond));
+            continue;
+        end
         % Check available time range for task window
         if ~isempty(dataetnan_trl.time) && numel(dataetnan_trl.time) > 0
             all_times = cellfun(@(x) [min(x), max(x)], dataetnan_trl.time, 'UniformOutput', false);
@@ -614,35 +622,27 @@ else
     statFgaze_nb = [];
 end
 
-%% Create final 2x2 figures for both tasks
-disp('Creating final 2x2 figures...');
+%% Create figures
+close all
+disp('Creating figures...');
+colors = color_def('AOC');
 
-% STERNBERG FIGURE
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-
-% Subplot 1: TFR visualization of F-test results for EEG
-subplot(2,2,1);
+% --- Sternberg: EEG TFR ---
+figure('Color', 'w', 'Position', [0, 0, 1512, 982]);
 cfg = [];
 cfg.channel = sb_sig_channels;
 cfg.avgoverchan = 'yes';
-cfg.frequency = [1 30];  % Visualization frequency range
-% Check actual time range and use intersection
+cfg.frequency = [1 30];
 actual_time_range = [max(-.5, statFsb.time(1)), min(2, statFsb.time(end))];
-cfg.latency = actual_time_range;  % Use available time range
+cfg.latency = actual_time_range;
 freq_sb = ft_selectdata(cfg, statFsb);
-meanpow = squeeze(mean(freq_sb.stat, 1));  % Average over channels
-
+meanpow = squeeze(mean(freq_sb.stat, 1));
 tim_interp = linspace(freq_sb.time(1), freq_sb.time(end), 500);
-freq_interp = linspace(1, 30, 500);  % Match visualization frequency range
+freq_interp = linspace(1, 30, 500);
 [tim_grid_orig, freq_grid_orig] = meshgrid(freq_sb.time, freq_sb.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
-
-pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow, ...
-    tim_grid_interp, freq_grid_interp, 'spline');
-mask_interp = interp2(tim_grid_orig, freq_grid_orig, double(squeeze(freq_sb.mask)), ...
-    tim_grid_interp, freq_grid_interp, 'nearest', 0);
-
+pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow, tim_grid_interp, freq_grid_interp, 'spline');
+mask_interp = interp2(tim_grid_orig, freq_grid_orig, double(squeeze(freq_sb.mask)), tim_grid_interp, freq_grid_interp, 'nearest', 0);
 ft_plot_matrix(flip(pow_interp), 'highlightstyle', 'outline', 'highlight', flip(abs(round(mask_interp))));
 ax = gca; hold(ax, 'on');
 x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
@@ -655,289 +655,237 @@ set(gca, 'Fontsize', 18);
 xlabel('Time [sec]');
 ylabel('Frequency [Hz]');
 caxis([0 max(pow_interp(:))]);
-% Use blue-to-red colormap (same as omnibus script)
-color_map = flipud(cbrewer('div', 'RdBu', 64)); % Blue-to-red diverging color map
-colormap(gca, color_map);
-cb = colorbar;
-cb.LineWidth = 1;
-cb.FontSize = 16;
+colormap(gca, flipud(cbrewer('div', 'RdBu', 64)));
+cb = colorbar; cb.LineWidth = 1; cb.FontSize = 16;
 title(cb, 'F-values');
 title('EEG F-test (Sternberg)');
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternberg_EEG_TFR.png'));
 
-% Subplot 2: TFR visualization of F-test results for ET
-subplot(2,2,2);
+% --- Sternberg: ET TFR ---
+figure('Color', 'w', 'Position', [0, 0, 1512, 982]);
 if ~isempty(statFgaze_sb)
-    cfg = [];
-    cfg.parameter = 'stat';
-    cfg.maskparameter = 'mask';
-    cfg.maskstyle = 'outline';
-    % Use blue-to-red colormap (same as omnibus script)
-    cfg.colormap = flipud(cbrewer('div', 'RdBu', 64)); % Blue-to-red diverging color map
+    cfg = []; cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline';
+    cfg.colormap = flipud(cbrewer('div', 'RdBu', 64));
     ft_singleplotTFR(cfg, statFgaze_sb);
     set(gca, 'Fontsize', 18);
-    xlabel('x [px]');
-    ylabel('y [px]');
-    grid on;
-    c = colorbar;
-    c.LineWidth = 1;
-    c.FontSize = 16;
-    title(c, 'F-statistic');
+    xlabel('x [px]'); ylabel('y [px]'); grid on;
+    c = colorbar; c.LineWidth = 1; c.FontSize = 16; title(c, 'F-statistic');
     title('ET F-test (Sternberg)');
 else
     text(0.5, 0.5, 'Insufficient gaze data', 'HorizontalAlignment', 'center', 'FontSize', 16);
     title('ET F-test (Sternberg)');
 end
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternberg_ET_TFR.png'));
 
-% Subplot 3: Raincloud plots for EEG (highest vs lowest load)
-subplot(2,2,3);
-% Extract highest vs lowest load for EEG (using significant channels)
-cfg_rain = [];
-cfg_rain.channel = sb_sig_channels;
-cfg_rain.avgoverchan = 'yes';
-cfg_rain.frequency = [8 14];  % Alpha band
-cfg_rain.latency = [0 2];  % Consistent window
-cfg_rain.avgoverfreq = 'yes';
-cfg_rain.avgovertime = 'yes';
-
-eeg_low_sb = [];
-eeg_high_sb = [];
+% --- Sternberg: EEG raincloud (all loads 2, 4, 6) ---
+cfg_rain = []; cfg_rain.channel = sb_sig_channels; cfg_rain.avgoverchan = 'yes';
+cfg_rain.frequency = [8 14]; cfg_rain.latency = [0 2]; cfg_rain.avgoverfreq = 'yes'; cfg_rain.avgovertime = 'yes';
+eeg_sb2 = []; eeg_sb4 = []; eeg_sb6 = [];
 for subj = 1:length(load2)
-    if length(load2) >= subj && length(load6) >= subj
-        tmp_low = ft_selectdata(cfg_rain, load2{subj});
-        tmp_high = ft_selectdata(cfg_rain, load6{subj});
-        if ~isempty(tmp_low) && ~isempty(tmp_high)
-            eeg_low_sb(end+1) = tmp_low.powspctrm;
-            eeg_high_sb(end+1) = tmp_high.powspctrm;
+    if length(load2) >= subj && length(load4) >= subj && length(load6) >= subj
+        t2 = ft_selectdata(cfg_rain, load2{subj}); t4 = ft_selectdata(cfg_rain, load4{subj}); t6 = ft_selectdata(cfg_rain, load6{subj});
+        if ~isempty(t2) && ~isempty(t4) && ~isempty(t6)
+            eeg_sb2(end+1) = t2.powspctrm; eeg_sb4(end+1) = t4.powspctrm; eeg_sb6(end+1) = t6.powspctrm;
         end
     end
 end
-% Raincloud plot for EEG
-positions = [0.3, 0.7];
-[f_low, xi_low] = ksdensity(eeg_low_sb);
-fill(positions(1) + f_low*0.05, xi_low, [0.30, 0.75, 0.93], 'FaceAlpha', 0.5); hold on;
-[f_high, xi_high] = ksdensity(eeg_high_sb);
-fill(positions(2) + f_high*0.05, xi_high, [0.97, 0.26, 0.26], 'FaceAlpha', 0.5);
-box_h = boxplot([eeg_low_sb(:), eeg_high_sb(:)], 'Labels', {'Low', 'High'}, 'Widths', 0.05, 'Positions', positions);
+figure('Color', 'w', 'Position', [0, 0, 500, 500]);
+positions = [0.2, 0.5, 0.8];
+for k = 1:3
+    tmp = {eeg_sb2, eeg_sb4, eeg_sb6}; dat = tmp{k};
+    if isempty(dat), continue; end
+    [f, xi] = ksdensity(dat);
+    fill(positions(k) + f*0.04, xi, colors(k,:), 'FaceAlpha', 0.5); hold on;
+end
+box_h = boxplot([eeg_sb2(:), eeg_sb4(:), eeg_sb6(:)], 'Labels', {'Load 2', 'Load 4', 'Load 6'}, 'Widths', 0.04, 'Positions', positions);
 set(box_h, 'LineWidth', 2);
-jitter = 0.05;
-scatter(positions(1) + (rand(size(eeg_low_sb))-0.5)*jitter, eeg_low_sb, 'k.', 'SizeData', 50);
-scatter(positions(2) + (rand(size(eeg_high_sb))-0.5)*jitter, eeg_high_sb, 'k.', 'SizeData', 50);
-[~, p] = ttest(eeg_low_sb, eeg_high_sb);
-sig_label = getSigLabel(p);
-y_max = max([eeg_low_sb(:); eeg_high_sb(:)]) * 1.25;
-if ~isempty(sig_label)
-    line(positions, [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
-    text(mean(positions), y_max + 0.02, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'center');
-end
-title('EEG: Load 2 vs Load 6');
-ylabel('Change from baseline');
-xlim([0 1]);
-box on;
-set(gca, 'FontSize', 16);
+jitter = 0.04;
+scatter(positions(1) + (rand(size(eeg_sb2))-0.5)*jitter, eeg_sb2, 'k.', 'SizeData', 50);
+scatter(positions(2) + (rand(size(eeg_sb4))-0.5)*jitter, eeg_sb4, 'k.', 'SizeData', 50);
+scatter(positions(3) + (rand(size(eeg_sb6))-0.5)*jitter, eeg_sb6, 'k.', 'SizeData', 50);
+title('EEG: Sternberg (Load 2, 4, 6)');
+xlabel('WM load'); ylabel('Change from baseline (dB)');
+xlim([0 1]); box on; set(gca, 'FontSize', 16);
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternberg_EEG_raincloud_matlab.png'));
 
-% Subplot 4: Raincloud plots for ET (highest vs lowest load)
-subplot(2,2,4);
-% Extract gaze data for highest vs lowest load
-et_low_sb = [];
-et_high_sb = [];
-for subj = 1:min(length(sb2_gaze), length(sb6_gaze))
-    if ~isempty(sb2_gaze{subj}) && ~isempty(sb6_gaze{subj})
-        % Average over spatial dimension
-        et_low_sb(end+1) = mean(sb2_gaze{subj}.powspctrm(:), 'omitnan');
-        et_high_sb(end+1) = mean(sb6_gaze{subj}.powspctrm(:), 'omitnan');
+% --- Sternberg: ET raincloud (all loads 2, 4, 6) ---
+et_sb2 = []; et_sb4 = []; et_sb6 = [];
+for subj = 1:min([length(sb2_gaze), length(sb4_gaze), length(sb6_gaze)])
+    if ~isempty(sb2_gaze{subj}) && ~isempty(sb4_gaze{subj}) && ~isempty(sb6_gaze{subj})
+        et_sb2(end+1) = mean(sb2_gaze{subj}.powspctrm(:), 'omitnan');
+        et_sb4(end+1) = mean(sb4_gaze{subj}.powspctrm(:), 'omitnan');
+        et_sb6(end+1) = mean(sb6_gaze{subj}.powspctrm(:), 'omitnan');
     end
 end
-if ~isempty(et_low_sb) && ~isempty(et_high_sb)
-    % Raincloud plot for ET
-    positions = [0.3, 0.7];
-    [f_low, xi_low] = ksdensity(et_low_sb);
-    fill(positions(1) + f_low*0.05, xi_low, [0.30, 0.75, 0.93], 'FaceAlpha', 0.5); hold on;
-    [f_high, xi_high] = ksdensity(et_high_sb);
-    fill(positions(2) + f_high*0.05, xi_high, [0.97, 0.26, 0.26], 'FaceAlpha', 0.5);
-    box_h = boxplot([et_low_sb(:), et_high_sb(:)], 'Labels', {'Low', 'High'}, 'Widths', 0.05, 'Positions', positions);
-    set(box_h, 'LineWidth', 2);
-    jitter = 0.05;
-    scatter(positions(1) + (rand(size(et_low_sb))-0.5)*jitter, et_low_sb, 'k.', 'SizeData', 50);
-    scatter(positions(2) + (rand(size(et_high_sb))-0.5)*jitter, et_high_sb, 'k.', 'SizeData', 50);
-    [~, p] = ttest(et_low_sb, et_high_sb);
-    sig_label = getSigLabel(p);
-    y_max = max([et_low_sb(:); et_high_sb(:)]) * 1.25;
-    if ~isempty(sig_label)
-        line(positions, [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
-        text(mean(positions), y_max + 0.02, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'center');
+figure('Color', 'w', 'Position', [0, 0, 500, 500]);
+if ~isempty(et_sb2) && ~isempty(et_sb4) && ~isempty(et_sb6)
+    positions = [0.2, 0.5, 0.8];
+    for k = 1:3
+        tmp = {et_sb2, et_sb4, et_sb6}; dat = tmp{k};
+        [f, xi] = ksdensity(dat);
+        fill(positions(k) + f*0.04, xi, colors(k,:), 'FaceAlpha', 0.5); hold on;
     end
-    title('ET: Load 2 vs Load 6');
-    ylabel('Change from baseline');
-    xlim([0 1]);
-    box on;
-    set(gca, 'FontSize', 16);
+    box_h = boxplot([et_sb2(:), et_sb4(:), et_sb6(:)], 'Labels', {'Load 2', 'Load 4', 'Load 6'}, 'Widths', 0.04, 'Positions', positions);
+    set(box_h, 'LineWidth', 2);
+    jitter = 0.04;
+    scatter(positions(1) + (rand(size(et_sb2))-0.5)*jitter, et_sb2, 'k.', 'SizeData', 50);
+    scatter(positions(2) + (rand(size(et_sb4))-0.5)*jitter, et_sb4, 'k.', 'SizeData', 50);
+    scatter(positions(3) + (rand(size(et_sb6))-0.5)*jitter, et_sb6, 'k.', 'SizeData', 50);
+    title('ET: Sternberg (Load 2, 4, 6)');
+    xlabel('WM load'); ylabel('Change from baseline (a.u.)');
+    xlim([0 1]); box on; set(gca, 'FontSize', 16);
 else
     text(0.5, 0.5, 'Insufficient gaze data', 'HorizontalAlignment', 'center', 'FontSize', 16);
-    title('ET: Load 2 vs Load 6');
+    title('ET: Sternberg (Load 2, 4, 6)');
+end
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternberg_ET_raincloud_matlab.png'));
+
+% --- Sternberg: 2x2 composite (from saved PNGs) ---
+sb_figs = {'AOC_omnibus_sternberg_EEG_TFR.png', 'AOC_omnibus_sternberg_ET_TFR.png', ...
+           'AOC_omnibus_sternberg_EEG_raincloud_matlab.png', 'AOC_omnibus_sternberg_ET_raincloud_matlab.png'};
+composite_size = [500 500];  % [height width] per panel
+for i = 1:4
+    p = fullfile(figures_dir, sb_figs{i});
+    if ~exist(p, 'file'), continue; end
+    im = imread(p);
+    if size(im, 3) == 1, im = repmat(im, [1 1 3]); end
+    ims_sb{i} = imresize(im, composite_size);
+end
+if length(ims_sb) == 4
+    grid_sb = [ims_sb{1} ims_sb{2}; ims_sb{3} ims_sb{4}];
+    imwrite(grid_sb, fullfile(figures_dir, 'AOC_omnibus_sternberg_2x2.png'));
+    fig_comp = figure('Color', 'w', 'Visible', 'off');
+    for i = 1:4
+        subplot(2, 2, i); imshow(ims_sb{i}); axis image off;
+    end
+    exportgraphics(fig_comp, fullfile(figures_dir, 'AOC_omnibus_sternberg_2x2.pdf'), 'ContentType', 'vector');
+    close(fig_comp);
 end
 
-sgtitle('Sternberg: F-tests and Condition Differences', 'FontSize', 20, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternberg_2x2_figure.png'));
-
-% N-BACK FIGURE
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
-
-% Subplot 1: TFR visualization of F-test results for EEG
-subplot(2,2,1);
-cfg = [];
-cfg.channel = nb_sig_channels;
-cfg.avgoverchan = 'yes';
-cfg.frequency = [1 30];  % Visualization frequency range
-% Check actual time range and use intersection
-actual_time_range = [max(-.5, statFnb.time(1)), min(2, statFnb.time(end))];
-cfg.latency = actual_time_range;  % Use available time range
+% --- N-back: EEG TFR ---
+figure('Color', 'w', 'Position', [0, 0, 1512, 982]);
+cfg = []; cfg.channel = nb_sig_channels; cfg.avgoverchan = 'yes'; cfg.frequency = [1 30];
+actual_time_range = [max(-.5, statFnb.time(1)), min(2, statFnb.time(end))]; cfg.latency = actual_time_range;
 freq_nb = ft_selectdata(cfg, statFnb);
-meanpow = squeeze(mean(freq_nb.stat, 1));  % Average over channels
-
+meanpow = squeeze(mean(freq_nb.stat, 1));
 tim_interp = linspace(freq_nb.time(1), freq_nb.time(end), 500);
-freq_interp = linspace(1, 30, 500);  % Match visualization frequency range
+freq_interp = linspace(1, 30, 500);
 [tim_grid_orig, freq_grid_orig] = meshgrid(freq_nb.time, freq_nb.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
-
-pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow, ...
-    tim_grid_interp, freq_grid_interp, 'spline');
-mask_interp = interp2(tim_grid_orig, freq_grid_orig, double(squeeze(freq_nb.mask)), ...
-    tim_grid_interp, freq_grid_interp, 'nearest', 0);
-
+pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow, tim_grid_interp, freq_grid_interp, 'spline');
+mask_interp = interp2(tim_grid_orig, freq_grid_orig, double(squeeze(freq_nb.mask)), tim_grid_interp, freq_grid_interp, 'nearest', 0);
 ft_plot_matrix(flip(pow_interp), 'highlightstyle', 'outline', 'highlight', flip(abs(round(mask_interp))));
 ax = gca; hold(ax, 'on');
 x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
 xline(ax, x0, 'k-', 'LineWidth', 1);
-xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-.5 0 1 2])));
-xticklabels({'-0.5','0','1','2'});
-yticks([1 125 250 375]);
-yticklabels({'30','20','10','1'});
-set(gca, 'Fontsize', 18);
-xlabel('Time [sec]');
-ylabel('Frequency [Hz]');
-caxis([0 max(pow_interp(:))]);
-% Use blue-to-red colormap (same as omnibus script)
-color_map = flipud(cbrewer('div', 'RdBu', 64)); % Blue-to-red diverging color map
-colormap(gca, color_map);
-cb = colorbar;
-cb.LineWidth = 1;
-cb.FontSize = 16;
-title(cb, 'F-values');
+xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-.5 0 1 2]))); xticklabels({'-0.5','0','1','2'});
+yticks([1 125 250 375]); yticklabels({'30','20','10','1'});
+set(gca, 'Fontsize', 18); xlabel('Time [sec]'); ylabel('Frequency [Hz]');
+caxis([0 max(pow_interp(:))]); colormap(gca, flipud(cbrewer('div', 'RdBu', 64)));
+cb = colorbar; cb.LineWidth = 1; cb.FontSize = 16; title(cb, 'F-values');
 title('EEG F-test (N-back)');
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_EEG_TFR.png'));
 
-% Subplot 2: TFR visualization of F-test results for ET
-subplot(2,2,2);
+% --- N-back: ET TFR ---
+figure('Color', 'w', 'Position', [0, 0, 1512, 982]);
 if ~isempty(statFgaze_nb)
-    cfg = [];
-    cfg.parameter = 'stat';
-    cfg.maskparameter = 'mask';
-    cfg.maskstyle = 'outline';
-    % Use blue-to-red colormap (same as omnibus script)
-    cfg.colormap = flipud(cbrewer('div', 'RdBu', 64)); % Blue-to-red diverging color map
+    cfg = []; cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline';
+    cfg.colormap = flipud(cbrewer('div', 'RdBu', 64));
     ft_singleplotTFR(cfg, statFgaze_nb);
-    set(gca, 'Fontsize', 18);
-    xlabel('x [px]');
-    ylabel('y [px]');
-    grid on;
-    c = colorbar;
-    c.LineWidth = 1;
-    c.FontSize = 16;
-    title(c, 'F-statistic');
+    set(gca, 'Fontsize', 18); xlabel('x [px]'); ylabel('y [px]'); grid on;
+    c = colorbar; c.LineWidth = 1; c.FontSize = 16; title(c, 'F-statistic');
     title('ET F-test (N-back)');
 else
     text(0.5, 0.5, 'Insufficient gaze data', 'HorizontalAlignment', 'center', 'FontSize', 16);
     title('ET F-test (N-back)');
 end
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_ET_TFR.png'));
 
-% Subplot 3: Raincloud plots for EEG (highest vs lowest load)
-subplot(2,2,3);
-cfg_rain = [];
-cfg_rain.channel = nb_sig_channels;
-cfg_rain.avgoverchan = 'yes';
-cfg_rain.frequency = [8 14];  % Alpha band
-cfg_rain.latency = [0 2];  % Consistent window
-cfg_rain.avgoverfreq = 'yes';
-cfg_rain.avgovertime = 'yes';
-eeg_low_nb = [];
-eeg_high_nb = [];
+% --- N-back: EEG raincloud (all loads 1-, 2-, 3-back) ---
+cfg_rain = []; cfg_rain.channel = nb_sig_channels; cfg_rain.avgoverchan = 'yes';
+cfg_rain.frequency = [8 14]; cfg_rain.latency = [0 2]; cfg_rain.avgoverfreq = 'yes'; cfg_rain.avgovertime = 'yes';
+eeg_nb1 = []; eeg_nb2 = []; eeg_nb3 = [];
 for subj = 1:length(load1nb)
-    if length(load1nb) >= subj && length(load3nb) >= subj
-        tmp_low = ft_selectdata(cfg_rain, load1nb{subj});
-        tmp_high = ft_selectdata(cfg_rain, load3nb{subj});
-        if ~isempty(tmp_low) && ~isempty(tmp_high)
-            eeg_low_nb(end+1) = tmp_low.powspctrm;
-            eeg_high_nb(end+1) = tmp_high.powspctrm;
+    if length(load1nb) >= subj && length(load2nb) >= subj && length(load3nb) >= subj
+        t1 = ft_selectdata(cfg_rain, load1nb{subj}); t2 = ft_selectdata(cfg_rain, load2nb{subj}); t3 = ft_selectdata(cfg_rain, load3nb{subj});
+        if ~isempty(t1) && ~isempty(t2) && ~isempty(t3)
+            eeg_nb1(end+1) = t1.powspctrm; eeg_nb2(end+1) = t2.powspctrm; eeg_nb3(end+1) = t3.powspctrm;
         end
     end
 end
-% Raincloud plot for EEG
-positions = [0.3, 0.7];
-[f_low, xi_low] = ksdensity(eeg_low_nb);
-fill(positions(1) + f_low*0.05, xi_low, [0.30, 0.75, 0.93], 'FaceAlpha', 0.5); hold on;
-[f_high, xi_high] = ksdensity(eeg_high_nb);
-fill(positions(2) + f_high*0.05, xi_high, [0.97, 0.26, 0.26], 'FaceAlpha', 0.5);
-box_h = boxplot([eeg_low_nb(:), eeg_high_nb(:)], 'Labels', {'Low', 'High'}, 'Widths', 0.05, 'Positions', positions);
+figure('Color', 'w', 'Position', [0, 0, 500, 500]);
+positions = [0.2, 0.5, 0.8];
+for k = 1:3
+    tmp = {eeg_nb1, eeg_nb2, eeg_nb3}; dat = tmp{k};
+    if isempty(dat), continue; end
+    [f, xi] = ksdensity(dat);
+    fill(positions(k) + f*0.04, xi, colors(k,:), 'FaceAlpha', 0.5); hold on;
+end
+box_h = boxplot([eeg_nb1(:), eeg_nb2(:), eeg_nb3(:)], 'Labels', {'1-back', '2-back', '3-back'}, 'Widths', 0.04, 'Positions', positions);
 set(box_h, 'LineWidth', 2);
-jitter = 0.05;
-scatter(positions(1) + (rand(size(eeg_low_nb))-0.5)*jitter, eeg_low_nb, 'k.', 'SizeData', 50);
-scatter(positions(2) + (rand(size(eeg_high_nb))-0.5)*jitter, eeg_high_nb, 'k.', 'SizeData', 50);
-[~, p] = ttest(eeg_low_nb, eeg_high_nb);
-sig_label = getSigLabel(p);
-y_max = max([eeg_low_nb(:); eeg_high_nb(:)]) * 1.25;
-if ~isempty(sig_label)
-    line(positions, [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
-    text(mean(positions), y_max + 0.02, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'center');
-end
-title('EEG: Load 1 vs Load 3');
-ylabel('Change from baseline');
-xlim([0 1]);
-box on;
-set(gca, 'FontSize', 16);
+jitter = 0.04;
+scatter(positions(1) + (rand(size(eeg_nb1))-0.5)*jitter, eeg_nb1, 'k.', 'SizeData', 50);
+scatter(positions(2) + (rand(size(eeg_nb2))-0.5)*jitter, eeg_nb2, 'k.', 'SizeData', 50);
+scatter(positions(3) + (rand(size(eeg_nb3))-0.5)*jitter, eeg_nb3, 'k.', 'SizeData', 50);
+title('EEG: N-back (1-, 2-, 3-back)');
+xlabel('N-back load'); ylabel('Change from baseline (dB)');
+xlim([0 1]); box on; set(gca, 'FontSize', 16);
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_EEG_raincloud_matlab.png'));
 
-% Subplot 4: Raincloud plots for ET (highest vs lowest load)
-subplot(2,2,4);
-et_low_nb = [];
-et_high_nb = [];
-for subj = 1:min(length(nb1_gaze), length(nb3_gaze))
-    if ~isempty(nb1_gaze{subj}) && ~isempty(nb3_gaze{subj})
-        et_low_nb(end+1) = mean(nb1_gaze{subj}.powspctrm(:), 'omitnan');
-        et_high_nb(end+1) = mean(nb3_gaze{subj}.powspctrm(:), 'omitnan');
+% --- N-back: ET raincloud (all loads 1-, 2-, 3-back) ---
+et_nb1 = []; et_nb2 = []; et_nb3 = [];
+for subj = 1:min([length(nb1_gaze), length(nb2_gaze), length(nb3_gaze)])
+    if ~isempty(nb1_gaze{subj}) && ~isempty(nb2_gaze{subj}) && ~isempty(nb3_gaze{subj})
+        et_nb1(end+1) = mean(nb1_gaze{subj}.powspctrm(:), 'omitnan');
+        et_nb2(end+1) = mean(nb2_gaze{subj}.powspctrm(:), 'omitnan');
+        et_nb3(end+1) = mean(nb3_gaze{subj}.powspctrm(:), 'omitnan');
     end
 end
-if ~isempty(et_low_nb) && ~isempty(et_high_nb)
-    % Raincloud plot for ET
-    positions = [0.3, 0.7];
-    [f_low, xi_low] = ksdensity(et_low_nb);
-    fill(positions(1) + f_low*0.05, xi_low, [0.30, 0.75, 0.93], 'FaceAlpha', 0.5); hold on;
-    [f_high, xi_high] = ksdensity(et_high_nb);
-    fill(positions(2) + f_high*0.05, xi_high, [0.97, 0.26, 0.26], 'FaceAlpha', 0.5);
-    box_h = boxplot([et_low_nb(:), et_high_nb(:)], 'Labels', {'Low', 'High'}, 'Widths', 0.05, 'Positions', positions);
-    set(box_h, 'LineWidth', 2);
-    jitter = 0.05;
-    scatter(positions(1) + (rand(size(et_low_nb))-0.5)*jitter, et_low_nb, 'k.', 'SizeData', 50);
-    scatter(positions(2) + (rand(size(et_high_nb))-0.5)*jitter, et_high_nb, 'k.', 'SizeData', 50);
-    [~, p] = ttest(et_low_nb, et_high_nb);
-    sig_label = getSigLabel(p);
-    y_max = max([et_low_nb(:); et_high_nb(:)]) * 1.25;
-    if ~isempty(sig_label)
-        line(positions, [y_max, y_max], 'Color', 'k', 'LineWidth', 1.2);
-        text(mean(positions), y_max + 0.02, sig_label, 'FontSize', 14, 'HorizontalAlignment', 'center');
+figure('Color', 'w', 'Position', [0, 0, 500, 500]);
+if ~isempty(et_nb1) && ~isempty(et_nb2) && ~isempty(et_nb3)
+    positions = [0.2, 0.5, 0.8];
+    for k = 1:3
+        tmp = {et_nb1, et_nb2, et_nb3}; dat = tmp{k};
+        [f, xi] = ksdensity(dat);
+        fill(positions(k) + f*0.04, xi, colors(k,:), 'FaceAlpha', 0.5); hold on;
     end
-    title('ET: Load 1 vs Load 3');
-    ylabel('Change from baseline');
-    xlim([0 1]);
-    box on;
-    set(gca, 'FontSize', 16);
+    box_h = boxplot([et_nb1(:), et_nb2(:), et_nb3(:)], 'Labels', {'1-back', '2-back', '3-back'}, 'Widths', 0.04, 'Positions', positions);
+    set(box_h, 'LineWidth', 2);
+    jitter = 0.04;
+    scatter(positions(1) + (rand(size(et_nb1))-0.5)*jitter, et_nb1, 'k.', 'SizeData', 50);
+    scatter(positions(2) + (rand(size(et_nb2))-0.5)*jitter, et_nb2, 'k.', 'SizeData', 50);
+    scatter(positions(3) + (rand(size(et_nb3))-0.5)*jitter, et_nb3, 'k.', 'SizeData', 50);
+    title('ET: N-back (1-, 2-, 3-back)');
+    xlabel('N-back load'); ylabel('Change from baseline (a.u.)');
+    xlim([0 1]); box on; set(gca, 'FontSize', 16);
 else
     text(0.5, 0.5, 'Insufficient gaze data', 'HorizontalAlignment', 'center', 'FontSize', 16);
-    title('ET: Load 1 vs Load 3');
+    title('ET: N-back (1-, 2-, 3-back)');
+end
+saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_ET_raincloud_matlab.png'));
+
+% --- N-back: 2x2 composite (from saved PNGs) ---
+nb_figs = {'AOC_omnibus_nback_EEG_TFR.png', 'AOC_omnibus_nback_ET_TFR.png', ...
+           'AOC_omnibus_nback_EEG_raincloud_matlab.png', 'AOC_omnibus_nback_ET_raincloud_matlab.png'};
+for i = 1:4
+    p = fullfile(figures_dir, nb_figs{i});
+    if ~exist(p, 'file'), continue; end
+    im = imread(p);
+    if size(im, 3) == 1, im = repmat(im, [1 1 3]); end
+    ims_nb{i} = imresize(im, composite_size);
+end
+if length(ims_nb) == 4
+    grid_nb = [ims_nb{1} ims_nb{2}; ims_nb{3} ims_nb{4}];
+    imwrite(grid_nb, fullfile(figures_dir, 'AOC_omnibus_nback_2x2.png'));
+    fig_comp = figure('Color', 'w', 'Visible', 'off');
+    for i = 1:4
+        subplot(2, 2, i); imshow(ims_nb{i}); axis image off;
+    end
+    exportgraphics(fig_comp, fullfile(figures_dir, 'AOC_omnibus_nback_2x2.pdf'), 'ContentType', 'vector');
+    close(fig_comp);
 end
 
-sgtitle('N-back: F-tests and Condition Differences', 'FontSize', 20, 'FontWeight', 'bold');
-saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_2x2_figure.png'));
-
-disp('2x2 figures created successfully!');
+disp('Figures saved successfully.');
 
 %% Helper functions
 

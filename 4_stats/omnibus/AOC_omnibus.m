@@ -1,13 +1,14 @@
 %% AOC Omnibus — Figures for N-back and Sternberg (plain: raw TFR, no FOOOF)
-% Uses omnibus_data.mat from AOC_omnibus_prep.m (raw TFR, dB baseline, 3–30 Hz).
-% Creates one figure per plot (colors from color_def('AOC')).
 %
-% Figure outputs (individual):
-%   AOC_omnibus_sternberg_EEG_TFR.png, AOC_omnibus_sternberg_ET_TFR.png
-%   AOC_omnibus_sternberg_EEG_raincloud_matlab.png, AOC_omnibus_sternberg_ET_raincloud_matlab.png
-%   AOC_omnibus_nback_EEG_TFR.png, AOC_omnibus_nback_ET_TFR.png
-%   AOC_omnibus_nback_EEG_raincloud_matlab.png, AOC_omnibus_nback_ET_raincloud_matlab.png
-% Stats: AOC_omnibus_FIGURE2x2_statFnb_statFsb.mat
+% WORKFLOW:
+%   1. Load TFR data per condition (load2, load4, load6; load1nb, load2nb, load3nb)
+%   2. Time-average [0-2s] → power spectra (chan × freq, no time dimension)
+%   3. F-test on power spectra → identify significant electrodes via mask
+%   4. Extract electrodes where mask==1 in alpha band [8-14 Hz]
+%   5. Visualize: topoplot of F-values, TFR of grand avg at sig electrodes, rainclouds
+%
+% Uses omnibus_data.mat from AOC_omnibus_prep.m (raw TFR, dB baseline, 3–30 Hz).
+% Stats: AOC_omnibus_statFnb_statFsb.mat
 
 %% Setup
 startup
@@ -32,8 +33,56 @@ else
 end 
 toc
 
-%% Prepare TFR data for F-tests (full time-frequency for visualization)
-disp('Preparing TFR data for F-tests...')
+%% Prepare power spectra for F-tests (time-averaged)
+% F-test on time-averaged power spectra (freq × electrode), not full TFR
+% This concentrates the effect and reduces the search space
+disp('Preparing power spectra for F-tests (time-averaged)...')
+
+% Sternberg: average over task window [0 2]s
+cfg = [];
+cfg.latency = [0 2];
+cfg.frequency = [3 30];
+cfg.avgovertime = 'yes';
+for subj = 1:length(subjects)
+    load2_pow{subj} = ft_selectdata(cfg, load2{subj});
+    load4_pow{subj} = ft_selectdata(cfg, load4{subj});
+    load6_pow{subj} = ft_selectdata(cfg, load6{subj});
+    % Update dimord and remove time field for power spectra
+    load2_pow{subj}.dimord = 'chan_freq';
+    load4_pow{subj}.dimord = 'chan_freq';
+    load6_pow{subj}.dimord = 'chan_freq';
+    if isfield(load2_pow{subj}, 'time'), load2_pow{subj} = rmfield(load2_pow{subj}, 'time'); end
+    if isfield(load4_pow{subj}, 'time'), load4_pow{subj} = rmfield(load4_pow{subj}, 'time'); end
+    if isfield(load6_pow{subj}, 'time'), load6_pow{subj} = rmfield(load6_pow{subj}, 'time'); end
+end
+
+% N-back: average over task window [0 2]s
+cfg.latency = [0 2];
+for subj = 1:length(subjects)
+    load1nb_pow{subj} = ft_selectdata(cfg, load1nb{subj});
+    load2nb_pow{subj} = ft_selectdata(cfg, load2nb{subj});
+    load3nb_pow{subj} = ft_selectdata(cfg, load3nb{subj});
+    % Update dimord and remove time field for power spectra
+    load1nb_pow{subj}.dimord = 'chan_freq';
+    load2nb_pow{subj}.dimord = 'chan_freq';
+    load3nb_pow{subj}.dimord = 'chan_freq';
+    if isfield(load1nb_pow{subj}, 'time'), load1nb_pow{subj} = rmfield(load1nb_pow{subj}, 'time'); end
+    if isfield(load2nb_pow{subj}, 'time'), load2nb_pow{subj} = rmfield(load2nb_pow{subj}, 'time'); end
+    if isfield(load3nb_pow{subj}, 'time'), load3nb_pow{subj} = rmfield(load3nb_pow{subj}, 'time'); end
+end
+
+%% Compute grand averages for power spectra (with keepindividual for F-tests)
+cfg = [];
+cfg.keepindividual = 'yes';
+ga_sb_2pow = ft_freqgrandaverage(cfg, load2_pow{:});
+ga_sb_4pow = ft_freqgrandaverage(cfg, load4_pow{:});
+ga_sb_6pow = ft_freqgrandaverage(cfg, load6_pow{:});
+ga_nb_1pow = ft_freqgrandaverage(cfg, load1nb_pow{:});
+ga_nb_2pow = ft_freqgrandaverage(cfg, load2nb_pow{:});
+ga_nb_3pow = ft_freqgrandaverage(cfg, load3nb_pow{:});
+
+%% Prepare full TFR grand averages for visualization (keep time dimension)
+disp('Preparing full TFR grand averages for visualization...')
 cfg = [];
 cfg.latency = [-.5 3];
 cfg.frequency = [3 30];
@@ -49,9 +98,8 @@ for subj = 1:length(subjects)
     load3nb_tfr{subj} = ft_selectdata(cfg, load3nb{subj});
 end
 
-%% Compute grand averages for TFR data (with keepindividual for F-tests)
+% Grand averages for TFR visualization (without keepindividual)
 cfg = [];
-cfg.keepindividual = 'yes';
 ga_sb_2tfr = ft_freqgrandaverage(cfg, load2_tfr{:});
 ga_sb_4tfr = ft_freqgrandaverage(cfg, load4_tfr{:});
 ga_sb_6tfr = ft_freqgrandaverage(cfg, load6_tfr{:});
@@ -74,140 +122,80 @@ cfg.neighbourdist = 0.0675; % 5 neighbours per channel
 close all
 neighbours = ft_prepare_neighbours(cfg);
 
-%% Compute F-tests for EEG data
-disp(upper('Computing F-tests for EEG data (cluster-based permutation analysis)...'));
+%% Compute F-tests for EEG data (on power spectra, not full TFR)
+disp('Computing F-tests for EEG power spectra...');
+n_subj = numel(subjects);
+
 cfg = [];
-cfg.method = 'montecarlo';
-cfg.statistic = 'ft_statfun_depsamplesFunivariate';
-cfg.correctm = 'cluster';
-cfg.clusteralpha = 0.05;
+cfg.method           = 'montecarlo';
+cfg.statistic        = 'ft_statfun_depsamplesFunivariate';
+cfg.correctm         = 'cluster';
+cfg.clusteralpha     = 0.05;
 cfg.clusterstatistic = 'maxsum';
-cfg.minnbchan = 2;
-cfg.neighbours = neighbours;
-cfg.tail = 1;
-cfg.clustertail = cfg.tail;
-cfg.alpha = 0.05;
+cfg.minnbchan        = 2;
+cfg.neighbours       = neighbours;
+cfg.tail             = 1;
+cfg.clustertail      = 1;
+cfg.alpha            = 0.05;
 cfg.numrandomization = 1000;
+cfg.design(1,:)      = [ones(1,n_subj), ones(1,n_subj)*2, ones(1,n_subj)*3];
+cfg.design(2,:)      = [1:n_subj, 1:n_subj, 1:n_subj];
+cfg.ivar             = 1;
+cfg.uvar             = 2;
 
-n_U = numel(subjects);
-n_P = numel(subjects);
-n_N = numel(subjects);
+disp('  N-back F-test...');
+[statFnb] = ft_freqstatistics(cfg, ga_nb_1pow, ga_nb_2pow, ga_nb_3pow);
 
-% Ensure design matches data: all three conditions must have same number of repetitions (subjects)
-% dimord can be 'subj_chan_freq_time' or 'chan_freq_time_rpt' - check both
-dimord_sb = ga_sb_2tfr.dimord;
-tok_sb = strsplit(dimord_sb, '_');
-rpt_dim_sb = find(strcmp(tok_sb, 'rpt') | strcmp(tok_sb, 'subj'));
-if isempty(rpt_dim_sb)
-    error('Sternberg: cannot find repetition dimension (rpt or subj) in dimord: %s', dimord_sb);
-end
-n_rpt_sb2 = size(ga_sb_2tfr.powspctrm, rpt_dim_sb);
-n_rpt_sb4 = size(ga_sb_4tfr.powspctrm, rpt_dim_sb);
-n_rpt_sb6 = size(ga_sb_6tfr.powspctrm, rpt_dim_sb);
-if n_rpt_sb2 ~= n_U || n_rpt_sb4 ~= n_U || n_rpt_sb6 ~= n_U
-    error('Sternberg F-test: grand averages have different repetition counts (sb2=%d, sb4=%d, sb6=%d). Expected %d each. Use only subjects with all three conditions.', n_rpt_sb2, n_rpt_sb4, n_rpt_sb6, n_U);
-end
-dimord_nb = ga_nb_1tfr.dimord;
-tok_nb = strsplit(dimord_nb, '_');
-rpt_dim_nb = find(strcmp(tok_nb, 'rpt') | strcmp(tok_nb, 'subj'));
-if isempty(rpt_dim_nb)
-    error('N-back: cannot find repetition dimension (rpt or subj) in dimord: %s', dimord_nb);
-end
-n_rpt_nb1 = size(ga_nb_1tfr.powspctrm, rpt_dim_nb);
-n_rpt_nb2 = size(ga_nb_2tfr.powspctrm, rpt_dim_nb);
-n_rpt_nb3 = size(ga_nb_3tfr.powspctrm, rpt_dim_nb);
-if n_rpt_nb1 ~= n_U || n_rpt_nb2 ~= n_U || n_rpt_nb3 ~= n_U
-    error('N-back F-test: grand averages have different repetition counts (nb1=%d, nb2=%d, nb3=%d). Expected %d each.', n_rpt_nb1, n_rpt_nb2, n_rpt_nb3, n_U);
-end
+disp('  Sternberg F-test...');
+[statFsb] = ft_freqstatistics(cfg, ga_sb_2pow, ga_sb_4pow, ga_sb_6pow);
 
-clear design
-design = zeros(2, 3*n_U);
-cfg.design(1,:) = [ones(1,n_U), ones(1,n_P)*2, ones(1,n_N)*3];
-cfg.design(2,:) = [1:n_U, 1:n_P, 1:n_N];
-cfg.ivar = 1;
-cfg.uvar = 2;
-
-disp(upper('  Computing F-test for N-back...'));
-[statFnb] = ft_freqstatistics(cfg, ga_nb_1tfr, ga_nb_2tfr, ga_nb_3tfr);
-
-% Rebuild cfg for Sternberg (avoid any in-place modification from N-back call)
-cfg_sb = [];
-cfg_sb.method = 'montecarlo';
-cfg_sb.statistic = 'ft_statfun_depsamplesFunivariate';
-cfg_sb.correctm = 'cluster';
-cfg_sb.clusteralpha = 0.05;
-cfg_sb.clusterstatistic = 'maxsum';
-cfg_sb.minnbchan = 2;
-cfg_sb.neighbours = neighbours;
-cfg_sb.tail = 1;
-cfg_sb.clustertail = 1;
-cfg_sb.alpha = 0.05;
-cfg_sb.numrandomization = 1000;
-cfg_sb.design = zeros(2, 3*n_U);
-cfg_sb.design(1,:) = [ones(1,n_U), ones(1,n_P)*2, ones(1,n_N)*3];
-cfg_sb.design(2,:) = [1:n_U, 1:n_P, 1:n_N];
-cfg_sb.ivar = 1;
-cfg_sb.uvar = 2;
-disp(upper('  Computing F-test for Sternberg...'));
-[statFsb] = ft_freqstatistics(cfg_sb, ga_sb_2tfr, ga_sb_4tfr, ga_sb_6tfr);
-
-save(fullfile(data_dir, 'AOC_omnibus_FIGURE2x2_statFnb_statFsb.mat'), 'statFnb', 'statFsb');
-disp(upper('stats saved...'))
+save(fullfile(data_dir, 'AOC_omnibus_statFnb_statFsb.mat'), 'statFnb', 'statFsb');
+disp('Stats saved.')
 
 %% Identify significant electrodes from F-test results
-% Channels where proportion of alpha-[0 2] voxels with mask==1 is >= sig_prop_thresh
-sig_prop_thresh = 1/3;
+% Extract electrodes directly from mask in alpha frequency range [8-14 Hz]
 
-disp(upper(['Identifying significant electrodes from F-test results at proportion threshold ' num2str(sig_prop_thresh)]));
-cfg_sig = [];
-cfg_sig.parameter = 'stat';
-cfg_sig.maskparameter = 'mask';
-cfg_sig.frequency = [8 14];
-cfg_sig.latency = [0 2];
-statFsb_roi = ft_selectdata(cfg_sig, statFsb);
-statFnb_roi = ft_selectdata(cfg_sig, statFnb);
+% Load
+% load(fullfile(data_dir, 'AOC_omnibus_statFnb_statFsb.mat'), 'statFnb', 'statFsb');
 
-% Choose channels where proportion of (freq x time) with mask==1 >= sig_prop_thresh
+disp(upper('Identifying significant electrodes from F-test results (alpha band 8-14 Hz)...'));
+
+% Extract channels where mask == 1 in alpha band (any frequency bin significant)
+% For power spectra, mask is chan x freq (no time dimension)
 sb_sig_channels = {};
-mask_sb = statFsb_roi.mask;
-for ch = 1:length(statFsb_roi.label)
-    m = squeeze(mask_sb(ch,:,:));
-    n = numel(m);
-    if n == 0, continue; end
-    prop_sig = sum(m(:) > 0.5) / n;
-    if prop_sig >= sig_prop_thresh
-        sb_sig_channels{end+1} = statFsb_roi.label{ch};
-    end
-end
-nb_sig_channels = {};
-mask_nb = statFnb_roi.mask;
-for ch = 1:length(statFnb_roi.label)
-    m = squeeze(mask_nb(ch,:,:));
-    n = numel(m);
-    if n == 0, continue; end
-    prop_sig = sum(m(:) > 0.5) / n;
-    if prop_sig >= sig_prop_thresh
-        nb_sig_channels{end+1} = statFnb_roi.label{ch};
+mask_sb = statFsb.mask;
+freq_idx_sb = statFsb.freq >= 8 & statFsb.freq <= 14;
+for ch = 1:length(statFsb.label)
+    m = mask_sb(ch, freq_idx_sb);
+    if any(m(:) > 0.5)
+        sb_sig_channels{end+1} = statFsb.label{ch};
     end
 end
 
-% Restrict to posterior channels only (PO, O, or I in the name)
-is_posterior = @(c) contains(char(c), 'PO') | contains(char(c), 'O') | contains(char(c), 'I');
-sb_sig_channels = sb_sig_channels(cellfun(is_posterior, sb_sig_channels));
-nb_sig_channels = nb_sig_channels(cellfun(is_posterior, nb_sig_channels));
+nb_sig_channels = {};
+mask_nb = statFnb.mask;
+freq_idx_nb = statFnb.freq >= 8 & statFnb.freq <= 14;
+for ch = 1:length(statFnb.label)
+    m = mask_nb(ch, freq_idx_nb);
+    if any(m(:) > 0.5)
+        nb_sig_channels{end+1} = statFnb.label{ch};
+    end
+end
 
 % Output chosen channels and counts for each task
 fprintf('\nSternberg: %d significant channel(s): %s\n', length(sb_sig_channels), strjoin(sb_sig_channels, ', '));
 fprintf('N-back:    %d significant channel(s): %s\n\n', length(nb_sig_channels), strjoin(nb_sig_channels, ', '));
 
-% Topoplots
+% Topoplots (same F-test colormap as TFR: white→yellow→orange→red)
 close all
+key = [0 0.33 0.66 1];
+key_rgb = [1 1 1; 1 1 0; 1 0.65 0; 1 0 0];
+cmap_f_topo = interp1(key, key_rgb, linspace(0, 1, 64));
 cfg_avg = [];
 cfg_avg.parameter = 'stat';
 cfg_avg.frequency = [8 14];
-cfg_avg.latency = [0 2];
 cfg_avg.avgoverfreq = 'yes';
-cfg_avg.avgovertime = 'yes';
+% Note: no avgovertime needed - power spectra have no time dimension
 statFnb_avg = ft_selectdata(cfg_avg, statFnb);
 statFsb_avg = ft_selectdata(cfg_avg, statFsb);
 statFnb_avg.stat = abs(statFnb_avg.stat);
@@ -215,6 +203,7 @@ statFsb_avg.stat = abs(statFsb_avg.stat);
 cfg_topo = [];
 cfg_topo.layout = headmodel.layANThead;
 cfg_topo.parameter = 'stat';
+cfg_topo.colormap = cmap_f_topo;
 cfg_topo.marker = 'off';
 cfg_topo.highlight = 'on';
 cfg_topo.highlightsymbol = '.';
@@ -223,13 +212,17 @@ cfg_topo.comment = 'no';
 figure('Color', 'w', 'Position', [0, 0, 600, 600]);
 cfg_topo.highlightchannel = nb_sig_channels;
 ft_topoplotER(cfg_topo, statFnb_avg);
-text(0.35, 0.25, nb_sig_channels)
+clim([0 max(statFnb_avg.stat(:))]);
+cb = colorbar; cb.LineWidth = 1; cb.FontSize = 16; title(cb, 'F-values');
+text(-0.45, 0.1, nb_sig_channels)
 title('N-back Significant Electrodes');
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_topo_f-stats_nback.png'));
 figure('Color', 'w', 'Position', [600, 0, 600, 600]);
 cfg_topo.highlightchannel = sb_sig_channels;
 ft_topoplotER(cfg_topo, statFsb_avg);
-text(0.35, 0.25, sb_sig_channels)
+clim([0 max(statFnb_avg.stat(:))]);
+cb = colorbar; cb.LineWidth = 1; cb.FontSize = 16; title(cb, 'F-values');
+text(-0.45, 0.1, sb_sig_channels)
 title('Sternberg Significant Electrodes');
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_topo_f-stats_stern.png'));
 
@@ -624,29 +617,33 @@ end
 clc
 close all
 disp('Creating figures...');
-colors = color_def('AOC');
 % F-test colormap
 key = [0 0.33 0.66 1];
 key_rgb = [1 1 1; 1 1 0; 1 0.65 0; 1 0 0];
 cmap_f = interp1(key, key_rgb, linspace(0, 1, 64));
 
-% --- Sternberg: EEG TFR ---
+% --- Sternberg: EEG TFR (using full TFR grand averages for visualization) ---
+% Compute high-low difference from TFR grand averages
+cfg_diff = [];
+cfg_diff.operation = 'subtract';
+cfg_diff.parameter = 'powspctrm';
+ga_sb_diff = ft_math(cfg_diff, ga_sb_6tfr, ga_sb_2tfr);
+
 figure('Color', 'w', 'Position', [0, 0, 1512, 982]);
 cfg = [];
 cfg.channel = sb_sig_channels;
 cfg.avgoverchan = 'yes';
 cfg.frequency = [4 30];
-actual_time_range = [max(-.5, statFsb.time(1)), min(2, statFsb.time(end))];
+actual_time_range = [max(-.5, ga_sb_diff.time(1)), min(2, ga_sb_diff.time(end))];
 cfg.latency = actual_time_range;
-freq_sb = ft_selectdata(cfg, statFsb);
-meanpow = squeeze(mean(freq_sb.stat, 1));
+freq_sb = ft_selectdata(cfg, ga_sb_diff);
+meanpow = squeeze(mean(freq_sb.powspctrm, 1));
 tim_interp = linspace(freq_sb.time(1), freq_sb.time(end), 500);
 freq_interp = linspace(4, 30, 500);
 [tim_grid_orig, freq_grid_orig] = meshgrid(freq_sb.time, freq_sb.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow, tim_grid_interp, freq_grid_interp, 'spline');
-mask_interp = interp2(tim_grid_orig, freq_grid_orig, double(squeeze(freq_sb.mask)), tim_grid_interp, freq_grid_interp, 'nearest', 0);
-ft_plot_matrix(flip(pow_interp), 'highlightstyle', 'outline', 'highlight', flip(abs(round(mask_interp))));
+ft_plot_matrix(flip(pow_interp));
 ax = gca; hold(ax, 'on');
 x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
 xline(ax, x0, 'k--', 'LineWidth', 1);
@@ -658,11 +655,12 @@ ylim([1 500]);
 set(gca, 'Fontsize', 18);
 xlabel('Time [sec]');
 ylabel('Frequency [Hz]');
-clim([0 max(pow_interp(:))*0.95]);
+max_abs = max(abs(pow_interp(:)));
+clim([-max_abs max_abs]);
 colormap(cmap_f);
 cb = colorbar; cb.LineWidth = 1; cb.FontSize = 16;
-title(cb, 'F-values');
-title('EEG F-test (Sternberg)');
+title(cb, 'Power (dB)');
+title('EEG TFR: Sternberg High-Low');
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternberg_EEG_TFR.png'));
 
 % --- Sternberg: ET TFR (white→red colormap) ---
@@ -755,19 +753,24 @@ else
 end
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternberg_ET_raincloud_matlab.png'));
 
-% --- N-back: EEG TFR (4–30 Hz, x-ticks every 500 ms, white→red colormap) ---
+% --- N-back: EEG TFR (using full TFR grand averages for visualization) ---
+% Compute high-low difference from TFR grand averages
+cfg_diff = [];
+cfg_diff.operation = 'subtract';
+cfg_diff.parameter = 'powspctrm';
+ga_nb_diff = ft_math(cfg_diff, ga_nb_3tfr, ga_nb_1tfr);
+
 figure('Color', 'w', 'Position', [0, 0, 1512, 982]);
 cfg = []; cfg.channel = nb_sig_channels; cfg.avgoverchan = 'yes'; cfg.frequency = [4 30];
-actual_time_range = [max(-.5, statFnb.time(1)), min(2, statFnb.time(end))]; cfg.latency = actual_time_range;
-freq_nb = ft_selectdata(cfg, statFnb);
-meanpow = squeeze(mean(freq_nb.stat, 1));
+actual_time_range = [max(-.5, ga_nb_diff.time(1)), min(2, ga_nb_diff.time(end))]; cfg.latency = actual_time_range;
+freq_nb = ft_selectdata(cfg, ga_nb_diff);
+meanpow = squeeze(mean(freq_nb.powspctrm, 1));
 tim_interp = linspace(freq_nb.time(1), freq_nb.time(end), 500);
 freq_interp = linspace(4, 30, 500);
 [tim_grid_orig, freq_grid_orig] = meshgrid(freq_nb.time, freq_nb.freq);
 [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
 pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow, tim_grid_interp, freq_grid_interp, 'spline');
-mask_interp = interp2(tim_grid_orig, freq_grid_orig, double(squeeze(freq_nb.mask)), tim_grid_interp, freq_grid_interp, 'nearest', 0);
-ft_plot_matrix(flip(pow_interp), 'highlightstyle', 'outline', 'highlight', flip(abs(round(mask_interp))));
+ft_plot_matrix(flip(pow_interp));
 ax = gca; hold(ax, 'on');
 x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
 xline(ax, x0, 'k--', 'LineWidth', 1);
@@ -775,10 +778,11 @@ xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-.5 0 .5 1 1.5 2]))); xti
 yticks(round(interp1([5 30], [1 500], [5 10 15 20 25 30]))); yticklabels({'30','25','20','15','10','5'});  % labels only
 ylim([1 500]);
 set(gca, 'Fontsize', 18); xlabel('Time [sec]'); ylabel('Frequency [Hz]');
-clim([0 max(pow_interp(:))*0.95]);
+max_abs = max(abs(pow_interp(:)));
+clim([-max_abs max_abs]);
 colormap(cmap_f);
-cb = colorbar; cb.LineWidth = 1; cb.FontSize = 16; title(cb, 'F-values');
-title('EEG F-test (N-back)');
+cb = colorbar; cb.LineWidth = 1; cb.FontSize = 16; title(cb, 'Power (dB)');
+title('EEG TFR: N-back High-Low');
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_EEG_TFR.png'));
 
 % --- N-back: ET TFR (white→red colormap) ---

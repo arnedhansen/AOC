@@ -209,6 +209,19 @@ for subj = 1:length(subjects)
             fooof_aperiodic(:, 4, timePnt) = local_rsq;
         end
 
+        % Exclude bad FOOOF fits (r_squared < 0.90)
+        r_sq_thresh = 0.90;
+        bad_fits = squeeze(fooof_aperiodic(:, 4, :)) < r_sq_thresh;
+        n_bad = sum(bad_fits(:));
+        if n_bad > 0
+            fprintf('  Excluding %d / %d channel x time FOOOF fits (r^2 < %.2f)\n', ...
+                n_bad, numel(bad_fits), r_sq_thresh);
+            for tp = 1:nTimePnts
+                fooof_powspctrm(bad_fits(:, tp), :, tp) = NaN;
+                fooof_powspec(bad_fits(:, tp), :, tp) = NaN;
+            end
+        end
+
         % Construct condition-specific FieldTrip freq-like struct
         tfr_ff                = [];
         tfr_ff.label          = fooof_test.label;
@@ -235,99 +248,93 @@ for subj = 1:length(subjects)
 
     latWin = [toi_start(tim) (toi_start(tim) + winLen)];
 
-    cond_titles = {'1-back','2-back','3-back'};
-    trl_all     = {ind1, ind2, ind3};
-
     figure('Position', [0 0 1500 420], 'Color', 'w');
 
-    for c = 1:3
+    cfg_sel         = [];
+    cfg_sel.latency = latWin;
+    cfg_sel.trials  = ind1;
+    datTFR_win_sc   = ft_selectdata(cfg_sel, dataTFR);
 
-        trlIdx = trl_all{c};
+    fooof_sc = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win_sc);
 
-        cfg_sel         = [];
-        cfg_sel.latency = latWin;
-        cfg_sel.trials  = trlIdx;
-        datTFR_win_sc   = ft_selectdata(cfg_sel, dataTFR);
-
-        fooof_sc = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win_sc);
-
-        if iscell(fooof_sc.fooofparams)
-            repdata_sc = fooof_sc.fooofparams{1};
-        else
-            repdata_sc = fooof_sc.fooofparams;
-        end
-
-        freq_sc = fooof_sc.freq(:);
-        nChan   = numel(repdata_sc);
-
-        ps_all     = nan(numel(freq_sc), nChan);
-        ap_all     = nan(numel(freq_sc), nChan);
-        model_all  = nan(numel(freq_sc), nChan);
-        pkcomp_all = nan(numel(freq_sc), nChan);
-
-        for ch = 1:nChan
-
-            ps_tmp = repdata_sc(ch).power_spectrum(:);
-            ps_all(:, ch) = ps_tmp;
-
-            ap = repdata_sc(ch).aperiodic_params(:);
-            if numel(ap) == 2
-                offset = ap(1);
-                expo   = ap(2);
-                ap_fit = offset - expo .* log10(freq_sc);
-            else
-                offset = ap(1);
-                knee   = ap(2);
-                expo   = ap(3);
-                ap_fit = offset - log10(knee + freq_sc.^expo);
-            end
-            ap_all(:, ch) = ap_fit(:);
-
-            if isfield(repdata_sc(ch), 'fooofed_spectrum') && ~isempty(repdata_sc(ch).fooofed_spectrum)
-                model_fit = repdata_sc(ch).fooofed_spectrum(:);
-            else
-                pk = repdata_sc(ch).peak_params;
-                gauss_sum = zeros(numel(freq_sc), 1);
-                if ~isempty(pk)
-                    for p = 1:size(pk, 1)
-                        cf  = pk(p, 1);
-                        amp = pk(p, 2);
-                        bw  = pk(p, 3);
-                        gauss_sum = gauss_sum + amp .* exp(-(freq_sc - cf).^2 ./ (2*bw.^2));
-                    end
-                end
-                model_fit = ap_fit(:) + gauss_sum(:);
-            end
-
-            model_all(:, ch)  = model_fit(:);
-            pkcomp_all(:, ch) = model_fit(:) - ap_fit(:);
-        end
-
-        ps_in     = mean(ps_all,     2, 'omitnan');
-        ap_fit    = mean(ap_all,     2, 'omitnan');
-        pk_comp   = mean(pkcomp_all, 2, 'omitnan');
-        ps_corr   = ps_in - ap_fit;
-
-        if c == 1
-            subplot(1,3,1); hold on
-            plot(freq_sc, ps_in, 'LineWidth', 2)
-            title('Original Powspctrm')
-            xlabel('Frequency (Hz)'); ylabel('Power (FOOOF/log space)')
-            set(gca, 'FontSize', 13); xlim([min(freq_sc) max(freq_sc)])
-
-            subplot(1,3,2); hold on
-            plot(freq_sc, ps_corr, 'LineWidth', 2)
-            title('Original - Aperiodic')
-            xlabel('Frequency (Hz)'); ylabel('Power (FOOOF/log space)')
-            set(gca, 'FontSize', 13); xlim([min(freq_sc) max(freq_sc)])
-
-            subplot(1,3,3); hold on
-            plot(freq_sc, pk_comp, 'LineWidth', 2)
-            title('Model fit - Aperiodic (stored)')
-            xlabel('Frequency (Hz)'); ylabel('Power (FOOOF/log space)')
-            set(gca, 'FontSize', 13); xlim([min(freq_sc) max(freq_sc)])
-        end
+    if iscell(fooof_sc.fooofparams)
+        repdata_sc = fooof_sc.fooofparams{1};
+    else
+        repdata_sc = fooof_sc.fooofparams;
     end
+
+    freq_sc = fooof_sc.freq(:);
+    nChan   = numel(repdata_sc);
+
+    ps_all     = nan(numel(freq_sc), nChan);
+    ap_all     = nan(numel(freq_sc), nChan);
+    model_all  = nan(numel(freq_sc), nChan);
+    pkcomp_all = nan(numel(freq_sc), nChan);
+
+    for ch = 1:nChan
+
+        ps_tmp = repdata_sc(ch).power_spectrum(:);
+        ps_all(:, ch) = ps_tmp;
+
+        ap = repdata_sc(ch).aperiodic_params(:);
+        if numel(ap) == 2
+            offset = ap(1);
+            expo   = ap(2);
+            ap_fit = offset - expo .* log10(freq_sc);
+        else
+            offset = ap(1);
+            knee   = ap(2);
+            expo   = ap(3);
+            ap_fit = offset - log10(knee + freq_sc.^expo);
+        end
+        ap_all(:, ch) = ap_fit(:);
+
+        if isfield(repdata_sc(ch), 'fooofed_spectrum') && ~isempty(repdata_sc(ch).fooofed_spectrum)
+            model_fit = repdata_sc(ch).fooofed_spectrum(:);
+        else
+            pk = repdata_sc(ch).peak_params;
+            gauss_sum = zeros(numel(freq_sc), 1);
+            if ~isempty(pk)
+                for p = 1:size(pk, 1)
+                    cf  = pk(p, 1);
+                    amp = pk(p, 2);
+                    bw  = pk(p, 3);
+                    gauss_sum = gauss_sum + amp .* exp(-(freq_sc - cf).^2 ./ (2*bw.^2));
+                end
+            end
+            model_fit = ap_fit(:) + gauss_sum(:);
+        end
+
+        model_all(:, ch)  = model_fit(:);
+        pkcomp_all(:, ch) = model_fit(:) - ap_fit(:);
+    end
+
+    ps_in      = mean(ps_all,     2, 'omitnan');
+    ap_mean    = mean(ap_all,     2, 'omitnan');
+    model_mean = mean(model_all,  2, 'omitnan');
+    pk_comp    = mean(pkcomp_all, 2, 'omitnan');
+    ps_corr    = ps_in - ap_mean;
+
+    subplot(1,3,1)
+    plot(freq_sc, ps_in, 'k', 'LineWidth', 2); hold on
+    plot(freq_sc, ap_mean, 'b--', 'LineWidth', 2)
+    plot(freq_sc, model_mean, 'r', 'LineWidth', 2); hold off
+    legend('Original', 'Aperiodic', 'Model fit', 'Location', 'best')
+    title('Original Powspctrm')
+    xlabel('Frequency (Hz)'); ylabel('Power (FOOOF/log space)')
+    set(gca, 'FontSize', 13); xlim([min(freq_sc) max(freq_sc)])
+
+    subplot(1,3,2)
+    plot(freq_sc, ps_corr, 'LineWidth', 2)
+    title('Original - Aperiodic')
+    xlabel('Frequency (Hz)'); ylabel('Power (FOOOF/log space)')
+    set(gca, 'FontSize', 13); xlim([min(freq_sc) max(freq_sc)])
+
+    subplot(1,3,3)
+    plot(freq_sc, pk_comp, 'LineWidth', 2)
+    title('Model fit - Aperiodic (stored)')
+    xlabel('Frequency (Hz)'); ylabel('Power (FOOOF/log space)')
+    set(gca, 'FontSize', 13); xlim([min(freq_sc) max(freq_sc)])
 
     sgtitle(sprintf('FOOOF sanity check (AOC NBACK): Subject %s | Window [%.2f %.2f] s | t = %.2f s', ...
         subjects{subj}, latWin(1), latWin(2), tfr1_fooof.time(tim)), 'FontSize', 18)
@@ -341,7 +348,7 @@ for subj = 1:length(subjects)
         mkdir(savePathControls)
     end
 
-    saveName = sprintf('AOC_controls_FOOOF_modelMinusAperiodic_nback_subj%s.png', subjects{subj});
+    saveName = sprintf('AOC_controls_FOOOF_nback_subj%s.png', subjects{subj});
     saveas(gcf, fullfile(savePathControls, saveName));
 
     %% Baselined FOOOF TFR

@@ -3,7 +3,7 @@
 %   A) Trial-by-trial covariation of posterior alpha power and microsaccade rate
 %      — Within-subject Spearman correlations (Fisher-z, group t-test)
 %      — GLMM: MSRate ~ AlphaZ * Condition + (1|ID) via fitlme
-%   B) Peri-microsaccadic alpha envelope (±500 ms, event-locked)
+%   B) Peri-microsaccadic alpha envelope (±1000 ms, event-locked)
 %      — Grand average real vs surrogate (random events matched per trial)
 %      — Cluster-permutation test on baseline-corrected difference
 %
@@ -25,9 +25,9 @@ fs       = 500;           % EEG & ET sampling rate (Hz)
 anaWin   = [0 2];         % retention window (s)
 
 % Peri-microsaccadic parameters
-periWin_s  = 0.5;                             % ±500 ms
-periSamp   = round(periWin_s * fs);           % 250 samples
-nPeriSamp  = 2 * periSamp + 1;               % 501 samples
+periWin_s  = 1.0;                             % ±1000 ms
+periSamp   = round(periWin_s * fs);           % 500 samples
+nPeriSamp  = 2 * periSamp + 1;               % 1001 samples
 periTime   = linspace(-periWin_s, periWin_s, nPeriSamp) * 1000; % ms
 
 % Cluster-permutation parameters
@@ -83,7 +83,7 @@ for taskIdx = 1:2
     %%                       SUBJECT LOOP
     %% ================================================================
     for s = 1:numel(subjects)
-        clc
+        
         fprintf('Task: %s | Subject %s (%d/%d)\n', taskName, subjects{s}, s, numel(subjects));
 
         dpeeg  = fullfile(path, subjects{s}, 'eeg');
@@ -395,8 +395,8 @@ for taskIdx = 1:2
     nS_valid = sum(validS);
     fprintf('  Valid subjects for peri-MS: %d / %d\n', nS_valid, numel(subjects));
 
-    % Baseline correction (% change from -500 to -250 ms pre-event baseline)
-    bl_idx = periTime >= -500 & periTime <= -250;
+    % Baseline correction (% change from -1000 to -750 ms pre-event baseline)
+    bl_idx = periTime >= -1000 & periTime <= -750;
     periMS_bl   = nan(size(periMS_mat));
     periSurr_bl = nan(size(periSurr_mat));
     for si = 1:nS_valid

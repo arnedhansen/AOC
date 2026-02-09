@@ -41,7 +41,7 @@ toc
 % This concentrates the effect and reduces the search space
 disp('Preparing power spectra for F-tests (time-averaged)...')
 
-% Sternberg: average over task window [0 2]s
+% Sternberg
 cfg = [];
 cfg.latency = [0 2];
 cfg.frequency = [3 30];
@@ -59,7 +59,7 @@ for subj = 1:length(subjects)
     if isfield(load6_pow{subj}, 'time'), load6_pow{subj} = rmfield(load6_pow{subj}, 'time'); end
 end
 
-% N-back: average over task window [0 2]s
+% N-back
 cfg.latency = [0 2];
 for subj = 1:length(subjects)
     load1nb_pow{subj} = ft_selectdata(cfg, load1nb{subj});
@@ -87,7 +87,7 @@ ga_nb_3pow = ft_freqgrandaverage(cfg, load3nb_pow{:});
 %% Prepare full TFR grand averages for visualization (keep time dimension)
 disp('Preparing full TFR grand averages for visualization...')
 cfg = [];
-cfg.latency = [-.5 3];
+cfg.latency = [-.5 2];
 cfg.frequency = [3 30];
 for subj = 1:length(subjects)
     load2_tfr{subj} = ft_selectdata(cfg, load2{subj});
@@ -121,7 +121,7 @@ cfg.method = 'distance';
 cfg.elec = elec_aligned;
 cfg.layout = headmodel.layANThead;
 cfg.feedback = 'yes';
-cfg.neighbourdist = 0.0675; % 5 neighbours per channel
+cfg.neighbourdist = 0.0675; % ca. 5 neighbours per channel
 close all
 neighbours = ft_prepare_neighbours(cfg);
 
@@ -196,7 +196,6 @@ cfg_avg = [];
 cfg_avg.parameter = 'stat';
 cfg_avg.frequency = [8 14];
 cfg_avg.avgoverfreq = 'yes';
-% Note: no avgovertime needed - power spectra have no time dimension
 statFnb_avg = ft_selectdata(cfg_avg, statFnb);
 statFsb_avg = ft_selectdata(cfg_avg, statFsb);
 statFnb_avg.stat = abs(statFnb_avg.stat);
@@ -621,6 +620,8 @@ disp('Creating figures...');
 key = [0 0.33 0.66 1];
 key_rgb = [1 1 1; 1 1 0; 1 0.65 0; 1 0 0];
 cmap_f = interp1(key, key_rgb, linspace(0, 1, 64));
+% Diverging colormap for TFR difference plots (blue-white-red)
+cmap_bwr = flipud(cbrewer('div', 'RdBu', 64));
 
 % --- Sternberg: EEG TFR (using full TFR grand averages for visualization) ---
 % Compute high-low difference from TFR grand averages
@@ -653,7 +654,7 @@ xlabel('Time [sec]');
 ylabel('Frequency [Hz]');
 max_abs = max(abs(pow_interp(:)));
 clim([-max_abs max_abs]);
-colormap(cmap_f);
+colormap(cmap_bwr);
 cb = colorbar; cb.LineWidth = 1; cb.FontSize = 16;
 title(cb, 'Power');
 title('EEG TFR: Sternberg High-Low');
@@ -708,7 +709,7 @@ yline(0, 'k--');
 max_abs = max(abs([eeg_sb2(:); eeg_sb4(:); eeg_sb6(:)]));
 ylim([-max_abs, max_abs]*1.05);
 title('EEG: Sternberg (Load 2, 4, 6)');
-xlabel('WM load'); ylabel('Change from baseline (dB)');
+xlabel('WM load'); ylabel('Change from baseline (log_{10} power)');
 xlim([0 1]); box on; set(gca, 'FontSize', 16);
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_sternberg_EEG_raincloud_matlab_FOOOF.png'));
 
@@ -776,7 +777,7 @@ ylim([1 500]);
 set(gca, 'Fontsize', 18); xlabel('Time [sec]'); ylabel('Frequency [Hz]');
 max_abs = max(abs(pow_interp(:)));
 clim([-max_abs max_abs]);
-colormap(cmap_f);
+colormap(cmap_bwr);
 cb = colorbar; cb.LineWidth = 1; cb.FontSize = 16; title(cb, 'Power');
 title('EEG TFR: N-back High-Low');
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_EEG_TFR_FOOOF.png'));
@@ -828,7 +829,7 @@ yline(0, 'k--');
 max_abs = max(abs([eeg_nb1(:); eeg_nb2(:); eeg_nb3(:)]));
 ylim([-max_abs, max_abs]*1.05);
 title('EEG: N-back (1-, 2-, 3-back)');
-xlabel('N-back load'); ylabel('Change from baseline (dB)');
+xlabel('N-back load'); ylabel('Change from baseline (log_{10} power)');
 xlim([0 1]); box on; set(gca, 'FontSize', 16);
 saveas(gcf, fullfile(figures_dir, 'AOC_omnibus_nback_EEG_raincloud_matlab_FOOOF.png'));
 

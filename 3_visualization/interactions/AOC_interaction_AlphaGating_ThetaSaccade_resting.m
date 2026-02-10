@@ -31,6 +31,14 @@
 % Prerequisites:
 %   Run AOC_preprocessing_resting.m first to create dataEEG_resting.mat
 %   and dataET_resting.mat with segInfo.
+%   Run AOC_eeg_fex_resting_FOOOF.m to create fooof_resting.mat
+%   (aperiodic-corrected oscillatory power via sliding-window FOOOF).
+%
+% FOOOF correction:
+%   Alpha and theta power now come from the FOOOF oscillatory component
+%   (model fit - aperiodic) rather than raw Hilbert envelopes.
+%   This removes shared 1/f fluctuations that confound alpha-theta
+%   comodulation in broadband power.
 
 %% Setup
 startup
@@ -139,15 +147,20 @@ for s = 1:nSubj
     dpeeg  = fullfile(path, subjects{s}, 'eeg');
     dpgaze = fullfile(path, subjects{s}, 'gaze');
 
-    %% Load preprocessed resting-state data
+    %% Load preprocessed resting-state data + FOOOF
     try
-        eegFile = fullfile(dpeeg, 'dataEEG_resting.mat');
-        etFile  = fullfile(dpgaze, 'dataET_resting.mat');
+        eegFile   = fullfile(dpeeg, 'dataEEG_resting.mat');
+        etFile    = fullfile(dpgaze, 'dataET_resting.mat');
+        fooofFile = fullfile(dpeeg, 'fooof_resting.mat');
         if ~exist(eegFile, 'file') || ~exist(etFile, 'file')
             fprintf('missing resting data, skipping.\n'); continue;
         end
-        load(eegFile, 'dataEEG', 'segInfo');
-        load(etFile,  'dataET');
+        if ~exist(fooofFile, 'file')
+            fprintf('missing FOOOF data, skipping.\n'); continue;
+        end
+        load(eegFile,   'dataEEG', 'segInfo');
+        load(etFile,    'dataET');
+        load(fooofFile, 'fooof_resting');
     catch
         fprintf('load error, skipping.\n'); continue;
     end
@@ -172,16 +185,14 @@ for s = 1:nSubj
     end
 
     %% Extract continuous time series
-    % EEG: average across ROI channels
-    post_idx  = ismember(dataEEG.label, roi_posterior);
+    % EEG: average across ROI channels (frontal needed for coherence + theta phase)
     front_idx = ismember(dataEEG.label, roi_frontal);
 
-    if sum(post_idx) == 0 || sum(front_idx) == 0
-        fprintf('ROI channels not found, skipping.\n');
-        clear dataEEG dataET segInfo; continue;
+    if sum(front_idx) == 0
+        fprintf('frontal ROI channels not found, skipping.\n');
+        clear dataEEG dataET segInfo fooof_resting; continue;
     end
 
-    eeg_post_raw  = mean(dataEEG.trial{1}(post_idx, :), 1);   % posterior average
     eeg_front_raw = mean(dataEEG.trial{1}(front_idx, :), 1);  % frontal average
     t_eeg = dataEEG.time{1};
     nSamp = numel(t_eeg);
@@ -215,14 +226,26 @@ for s = 1:nSubj
     gazeY = fillmissing(gazeY, 'linear', 'EndValues', 'nearest');
     gazeY = -gazeY;  % invert for Cartesian convention
 
-    %% Bandpass filter + Hilbert (full continuous recording)
-    % Alpha envelope (posterior)
-    [b_a, a_a] = butter(4, bandAlpha / (fs/2), 'bandpass');
-    post_alpha_filt = filtfilt(b_a, a_a, eeg_post_raw);
-    alpha_analytic  = hilbert(post_alpha_filt);
-    alpha_env       = abs(alpha_analytic);
+    %% FOOOF-based oscillatory alpha and theta power (per sliding window)
+    fooof_post_idx   = ismember(fooof_resting.label, roi_posterior);
+    fooof_front_idx  = ismember(fooof_resting.label, roi_frontal);
+    fooof_alpha_fidx = fooof_resting.freq >= bandAlpha(1) & fooof_resting.freq <= bandAlpha(2);
+    fooof_theta_fidx = fooof_resting.freq >= thetaBand(1) & fooof_resting.freq <= thetaBand(2);
 
-    % Theta envelope + phase (frontal)
+    if sum(fooof_post_idx) == 0
+        fprintf('posterior FOOOF channels not found, skipping.\n');
+        clear dataEEG dataET segInfo fooof_resting; continue;
+    end
+
+    % Mean oscillatory power across ROI channels and frequency bins per window
+    fooof_alpha_ts = squeeze(mean(mean( ...
+        fooof_resting.powspctrm(fooof_post_idx, fooof_alpha_fidx, :), 1, 'omitnan'), 2, 'omitnan'));
+    fooof_theta_ts = squeeze(mean(mean( ...
+        fooof_resting.powspctrm(fooof_front_idx, fooof_theta_fidx, :), 1, 'omitnan'), 2, 'omitnan'));
+    fooof_time = fooof_resting.time;
+    clear fooof_resting  % free memory
+
+    %% Theta envelope + phase (frontal) — needed for saccade-locked analysis
     [b_t, a_t] = butter(4, thetaBand / (fs/2), 'bandpass');
     front_theta_filt = filtfilt(b_t, a_t, eeg_front_raw);
     theta_analytic   = hilbert(front_theta_filt);
@@ -278,9 +301,11 @@ for s = 1:nSubj
         for w = 1:nWin
             idx = winStarts(w):(winStarts(w) + winSamp - 1);
 
-            % Mean alpha and theta envelope power
-            win_alpha(w) = mean(alpha_env(idx), 'omitnan');
-            win_theta(w) = mean(theta_env(idx), 'omitnan');
+            % FOOOF oscillatory alpha and theta power (aperiodic-corrected)
+            winCenterTime = t_eeg(min(winStarts(w) + round(winSamp/2), nSamp));
+            [~, fooof_widx] = min(abs(fooof_time - winCenterTime));
+            win_alpha(w) = fooof_alpha_ts(fooof_widx);
+            win_theta(w) = fooof_theta_ts(fooof_widx);
 
             % Saccade rate in this window
             sacc_in_win = sacc_onsets_all(sacc_onsets_all >= idx(1) & sacc_onsets_all <= idx(end));
@@ -412,7 +437,8 @@ for s = 1:nSubj
 
     end % segment loop
 
-    clear eeg_post_raw eeg_front_raw alpha_env theta_env theta_phase ...
+    clear eeg_front_raw theta_env theta_phase ...
+          fooof_alpha_ts fooof_theta_ts fooof_time ...
           gazeX gazeY gazeA vel_full segInfo
     fprintf('done.\n');
 
@@ -586,10 +612,10 @@ for seg = 1:2
     m_xc = mean(xc_seg(valid_xc, :), 1);
     se_xc = std(xc_seg(valid_xc, :), [], 1) / sqrt(sum(valid_xc));
     fill([lagVec, fliplr(lagVec)], [m_xc + se_xc, fliplr(m_xc - se_xc)], ...
-        segColors(seg,:), 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+        segColors(seg,:), 'FaceAlpha', 0.2, 'EdgeColor', 'none', 'HandleVisibility', 'off');
     plot(lagVec, m_xc, '-', 'Color', segColors(seg,:), 'LineWidth', 2.5);
 end
-xline(0, 'k:', 'LineWidth', 1.5);
+xline(0, 'k:', 'LineWidth', 1.5, 'HandleVisibility', 'off');
 xlabel('Lag (s)  [\alpha leads \rightarrow]')
 ylabel('Cross-correlation (r)')
 legend(segLabels, 'Location', 'best', 'FontSize', fontSize-10)
@@ -630,10 +656,10 @@ for seg = 1:2
 end
 yline(0, 'k:', 'LineWidth', 1.5);
 set(gca, 'XTick', [1 2], 'XTickLabel', segLabels, 'FontSize', fontSize-6)
-ylabel('Spearman r (\alpha - \theta)')
-title('\alpha-\theta Comodulation', 'FontSize', fontSize-4)
+ylabel('Spearman r (\alpha_{osc} - \theta_{osc})')
+title('\alpha-\theta Oscillatory Comodulation', 'FontSize', fontSize-4)
 
-sgtitle('Resting State: Alpha-Theta Temporal Coupling', 'FontSize', fontSize)
+sgtitle('Resting State: Alpha-Theta Temporal Coupling (FOOOF-corrected)', 'FontSize', fontSize)
 saveas(gcf, fullfile(outdir, 'AOC_Resting_1_AlphaThetaCoupling.png'));
 
 %% ====================================================================
@@ -650,10 +676,10 @@ for seg = 1:2
     m_pow = mean(thetaPow_grand(vt, :, seg), 1);
     se_pow = std(thetaPow_grand(vt, :, seg), [], 1) / sqrt(sum(vt));
     fill([epochTimeVec, fliplr(epochTimeVec)], [m_pow + se_pow, fliplr(m_pow - se_pow)], ...
-        segColors(seg,:), 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+        segColors(seg,:), 'FaceAlpha', 0.2, 'EdgeColor', 'none', 'HandleVisibility', 'off');
     plot(epochTimeVec, m_pow, '-', 'Color', segColors(seg,:), 'LineWidth', 2.5);
 end
-xline(0, 'r--', 'LineWidth', 1.5);
+xline(0, 'r--', 'LineWidth', 1.5, 'HandleVisibility', 'off');
 xlabel('Time from saccade onset (s)')
 ylabel('\theta Power (a.u.)')
 legend(segLabels, 'Location', 'best', 'FontSize', fontSize-10)
@@ -668,10 +694,10 @@ for seg = 1:2
     m_itc = mean(ITC_grand(vi, :, seg), 1);
     se_itc = std(ITC_grand(vi, :, seg), [], 1) / sqrt(sum(vi));
     fill([epochTimeVec, fliplr(epochTimeVec)], [m_itc + se_itc, fliplr(m_itc - se_itc)], ...
-        segColors(seg,:), 'FaceAlpha', 0.2, 'EdgeColor', 'none');
+        segColors(seg,:), 'FaceAlpha', 0.2, 'EdgeColor', 'none', 'HandleVisibility', 'off');
     plot(epochTimeVec, m_itc, '-', 'Color', segColors(seg,:), 'LineWidth', 2.5);
 end
-xline(0, 'r--', 'LineWidth', 1.5);
+xline(0, 'r--', 'LineWidth', 1.5, 'HandleVisibility', 'off');
 xlabel('Time from saccade onset (s)')
 ylabel('Inter-Trial Coherence')
 legend(segLabels, 'Location', 'best', 'FontSize', fontSize-10)
@@ -679,17 +705,13 @@ title('Saccade-Locked \theta ITC', 'FontSize', fontSize-4)
 set(gca, 'FontSize', fontSize-6)
 
 %% Panel C: Polar histogram of theta phase at saccade onset
-subplot(2,2,3);
+ax_temp = subplot(2,2,3);
+pos_polar = ax_temp.Position;
+delete(ax_temp);
+h_pol = polaraxes('Position', pos_polar);
+hold(h_pol, 'on');
 for seg = 1:2
     if isempty(phase_pool{seg}), continue; end
-
-    % Use polarhistogram for the first segment, then overlay
-    if seg == 1
-        h_pol = polaraxes('Position', get(gca, 'Position'));
-        hold(h_pol, 'on');
-        delete(gca);  % remove the Cartesian subplot
-    end
-
     polarhistogram(h_pol, phase_pool{seg}, 36, ...
         'FaceColor', segColors(seg,:), 'FaceAlpha', 0.4, ...
         'EdgeColor', segColors(seg,:), 'Normalization', 'probability');
@@ -741,8 +763,11 @@ for seg = 1:2
     end
 end
 set(gca, 'XTick', [1.5 4.5], 'XTickLabel', segLabels, 'FontSize', fontSize-6)
-ylabel('Retention \theta Power')
-legend({'Low \alpha', 'High \alpha'}, 'Location', 'best', 'FontSize', fontSize-10)
+ylabel('Oscillatory \theta Power (FOOOF)')
+set(get(gca, 'Children'), 'HandleVisibility', 'off')
+h_lo = plot(nan, nan, 's', 'MarkerFaceColor', colors(1,:), 'MarkerEdgeColor', 'none', 'MarkerSize', 12);
+h_hi = plot(nan, nan, 's', 'MarkerFaceColor', colors(3,:), 'MarkerEdgeColor', 'none', 'MarkerSize', 12);
+legend([h_lo, h_hi], {'Low \alpha', 'High \alpha'}, 'Location', 'best', 'FontSize', fontSize-10)
 title('\alpha Gating \rightarrow \theta Power', 'FontSize', fontSize-4)
 
 %% Panel B: Alpha median split → Saccade rate
@@ -790,7 +815,7 @@ subplot(2,2,4); axis off
 xlim([0 1]); ylim([0 1]);
 
 path_str = {
-    '\bf Hierarchical Mediation Model (Resting) \rm'
+    '\bf Hierarchical Mediation Model (Resting, FOOOF) \rm'
     ''
     sprintf('a-path (\\alpha \\rightarrow \\theta):      \\beta = %.3f, p = %.4f', beta_a, p_a)
     sprintf('b-path (\\theta \\rightarrow MS|\\alpha):  \\beta = %.3f, p = %.4f', beta_b, p_b)
@@ -806,7 +831,7 @@ path_str = {
 text(0.05, 0.95, path_str, 'FontSize', fontSize-8, 'VerticalAlignment', 'top', ...
     'Interpreter', 'tex', 'FontName', 'FixedWidth');
 
-sgtitle('Resting State: Alpha Gating of Theta-Saccade System', 'FontSize', fontSize)
+sgtitle('Resting State: Alpha Gating of Theta-Saccade System (FOOOF-corrected)', 'FontSize', fontSize)
 saveas(gcf, fullfile(outdir, 'AOC_Resting_3_AlphaGating.png'));
 
 %% ====================================================================

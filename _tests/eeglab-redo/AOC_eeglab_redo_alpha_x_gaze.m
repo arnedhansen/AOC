@@ -1424,12 +1424,13 @@ end
 
 function p_fdr = fdr_bh_local(p)
 %FDR_BH_LOCAL  Benjamini-Hochberg FDR correction.
-%   Returns adjusted p-values.
+%   Returns adjusted p-values. Works for row or column vectors.
 p_fdr = nan(size(p));
 valid = isfinite(p);
 if ~any(valid), return; end
 
 pv = p(valid);
+pv = pv(:);          % force column
 m  = numel(pv);
 [ps, si] = sort(pv);
 ranks = (1:m)';
@@ -1442,7 +1443,7 @@ for k = m-1:-1:1
 end
 
 % Unsort
-p_adj = nan(size(pv));
+p_adj = nan(m, 1);
 p_adj(si) = adj;
 p_fdr(valid) = p_adj;
 end

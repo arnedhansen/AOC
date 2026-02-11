@@ -40,9 +40,10 @@ clearvars; close all; clc;
 
 % --- EEGLAB ---
 if ispc
-    addpath('W:\4marius_bdf\eeglab');
+    addpath('W:\Utility\eeglab\eeglab2024.2.1');
 else
-    addpath('/Volumes/g_psyplafor_methlab$/4marius_bdf/eeglab');
+    addpath('/Volumes/g_psyplafor_methlab$/Utility/eeglab/eeglab2024.2.1');
+   
 end
 eeglab; close all; clc;
 
@@ -1430,6 +1431,7 @@ valid = isfinite(p);
 if ~any(valid), return; end
 
 pv = p(valid);
+pv = pv(:);
 m  = numel(pv);
 [ps, si] = sort(pv);
 ranks = (1:m)';
@@ -1442,7 +1444,7 @@ for k = m-1:-1:1
 end
 
 % Unsort
-p_adj = nan(size(pv));
+p_adj = nan(m, 1);
 p_adj(si) = adj;
 p_fdr(valid) = p_adj;
 end

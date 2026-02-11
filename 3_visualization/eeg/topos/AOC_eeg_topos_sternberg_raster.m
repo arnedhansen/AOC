@@ -34,10 +34,14 @@ for subj = 1:length(subjects)
     disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' TFR data loaded.'])
 end
 
-% Compute grand average
+% Compute grand average per condition
 gatfr2 = ft_freqgrandaverage([],tfr2_all{:});
 gatfr4 = ft_freqgrandaverage([],tfr4_all{:});
 gatfr6 = ft_freqgrandaverage([],tfr6_all{:});
+
+% Collapse across all WM loads
+gatfr = gatfr2;
+gatfr.powspctrm = (gatfr2.powspctrm + gatfr4.powspctrm + gatfr6.powspctrm) / 3;
 
 %% Plot alpha power TOPOS
 close all
@@ -59,16 +63,16 @@ cmap = flipud(cbrewer('div', 'RdBu', 64));
 % Plot
 figure;
 set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
-sgtitle('Sternberg WM load 6 Theta, Alpha, and Beta Topoplots over Time', 'FontSize', 20, 'FontWeight', 'bold')
+sgtitle('Sternberg Theta, Alpha, and Beta Topoplots over Time', 'FontSize', 20, 'FontWeight', 'bold')
 
 for f = 1:freqs
     freqband_name = freq_bands{f, 1};
     freqband_range = freq_bands{f, 2};
 
-    % Find max power value for this frequency band (EEG channels only, all timepoints 0-2s)
-    freq_idx = find(gatfr6.freq >= freqband_range(1) & gatfr6.freq <= freqband_range(2));
-    timepnts_idx = find(gatfr6.time >= 0 & gatfr6.time <= 2);
-    dat = gatfr6.powspctrm(1:125, freq_idx, timepnts_idx);
+    % Find max power value for this frequency band (EEG channels only, collapsed data, all timepoints 0-2s)
+    freq_idx = find(gatfr.freq >= freqband_range(1) & gatfr.freq <= freqband_range(2));
+    timepnts_idx = find(gatfr.time >= 0 & gatfr.time <= 2);
+    dat = gatfr.powspctrm(1:125, freq_idx, timepnts_idx);
     max_spctrm = prctile(abs(dat(:)), 95);
 
     for tp = 1:timepnts
@@ -90,11 +94,11 @@ for f = 1:freqs
         cfg.gridscale = 300;
         cfg.ylim = freqband_range;
         cfg.zlim = [-max_spctrm max_spctrm];
-        startTmpnt = find(gatfr6.time == timepoints(tp));
-        endTmpnt = find(gatfr6.time == timepoints(tp+1));
-        cfg.xlim = [gatfr6.time(startTmpnt) gatfr6.time(endTmpnt)];
+        startTmpnt = find(gatfr.time == timepoints(tp));
+        endTmpnt = find(gatfr.time == timepoints(tp+1));
+        cfg.xlim = [gatfr.time(startTmpnt) gatfr.time(endTmpnt)];
 
-        ft_topoplotTFR(cfg, gatfr6);
+        ft_topoplotTFR(cfg, gatfr);
         title(sprintf('%.0f - %.0f ms', 1000*timepoints(tp), 1000*timepoints(tp+1)), 'FontSize', 12);
     end
 
@@ -108,16 +112,14 @@ for f = 1:freqs
     ylabel(cb, 'Power [dB]', 'FontSize', 15);
 end
 
-% Frequency band row labels (normalized figure coordinates)
-annotation('textbox', [0.005, 0.70, 0.025, 0.20], 'String', 'Theta (4-8Hz)', ...
-    'FontSize', 16, 'FontWeight', 'bold', 'Rotation', 90, ...
-    'EdgeColor', 'none', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
-annotation('textbox', [0.005, 0.38, 0.025, 0.20], 'String', 'Alpha (8-14Hz)', ...
-    'FontSize', 16, 'FontWeight', 'bold', 'Rotation', 90, ...
-    'EdgeColor', 'none', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
-annotation('textbox', [0.005, 0.06, 0.025, 0.20], 'String', 'Beta (14-30Hz)', ...
-    'FontSize', 16, 'FontWeight', 'bold', 'Rotation', 90, ...
-    'EdgeColor', 'none', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
+% Frequency band row labels
+ax_label = axes('Position', [0 0 1 1], 'Visible', 'off');
+text(ax_label, 0.02, 0.80, 'Theta (4-8Hz)', 'FontSize', 16, 'FontWeight', 'bold', ...
+    'Rotation', 90, 'HorizontalAlignment', 'center', 'Units', 'normalized');
+text(ax_label, 0.02, 0.48, 'Alpha (8-14Hz)', 'FontSize', 16, 'FontWeight', 'bold', ...
+    'Rotation', 90, 'HorizontalAlignment', 'center', 'Units', 'normalized');
+text(ax_label, 0.02, 0.17, 'Beta (14-30Hz)', 'FontSize', 16, 'FontWeight', 'bold', ...
+    'Rotation', 90, 'HorizontalAlignment', 'center', 'Units', 'normalized');
 
 % Save figure
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/raster/AOC_alpha_power_sternberg_rasterplot_WM6.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/raster/AOC_alpha_power_sternberg_rasterplot.png');

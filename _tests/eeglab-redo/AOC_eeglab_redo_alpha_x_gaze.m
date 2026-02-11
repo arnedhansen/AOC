@@ -40,10 +40,9 @@ clearvars; close all; clc;
 
 % --- EEGLAB ---
 if ispc
-    addpath('W:\Utility\eeglab\eeglab2024.2.1');
+    addpath('W:\4marius_bdf\eeglab');
 else
-    addpath('/Volumes/g_psyplafor_methlab$/Utility/eeglab/eeglab2024.2.1');
-   
+    addpath('/Volumes/g_psyplafor_methlab$/4marius_bdf/eeglab');
 end
 eeglab; close all; clc;
 
@@ -1425,13 +1424,13 @@ end
 
 function p_fdr = fdr_bh_local(p)
 %FDR_BH_LOCAL  Benjamini-Hochberg FDR correction.
-%   Returns adjusted p-values.
+%   Returns adjusted p-values. Works for row or column vectors.
 p_fdr = nan(size(p));
 valid = isfinite(p);
 if ~any(valid), return; end
 
 pv = p(valid);
-pv = pv(:);
+pv = pv(:);          % force column
 m  = numel(pv);
 [ps, si] = sort(pv);
 ranks = (1:m)';

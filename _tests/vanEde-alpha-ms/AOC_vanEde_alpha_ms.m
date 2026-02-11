@@ -30,7 +30,11 @@ clc; close all;
 try
     layANThead = headmodel.layANThead;
 catch
-    tmp = load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/layANThead.mat');
+    if ispc
+        tmp = load('W:\Students\Arne\toolboxes\headmodel\layANThead.mat');
+    else
+        tmp = load('/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/headmodel/layANThead.mat');
+    end
     layANThead = tmp.layANThead;
 end
 
@@ -98,7 +102,11 @@ nPosSamp     = posEpochSamp(2) - posEpochSamp(1) + 1;
 posTime      = linspace(posEpochLim(1), posEpochLim(2), nPosSamp) * 1000; % ms
 
 % --- Output directory ---
-figDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/tests/vanEde-alpha-ms';
+if ispc
+    figDir = 'W:\Students\Arne\AOC\figures\tests\vanEde-alpha-ms';
+else
+    figDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/tests/vanEde-alpha-ms';
+end
 if ~exist(figDir, 'dir'), mkdir(figDir); end
 
 % --- Figure settings ---

@@ -122,4 +122,4 @@ text(ax_label, 0.02, 0.17, 'Beta (14-30Hz)', 'FontSize', 16, 'FontWeight', 'bold
     'Rotation', 90, 'HorizontalAlignment', 'center', 'Units', 'normalized');
 
 % Save figure
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/raster/AOC_alpha_power_sternberg_rasterplot.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/raster/AOC_eeg_topos_sternberg_raster.png');

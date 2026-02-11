@@ -139,7 +139,7 @@ cb = colorbar;
 set(findall(gcf,'Type','axes'),'FontSize',fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');
 title('1-back');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_nback_topo1.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_topos_nback_load1.png');
 
 % Plot 2-back
 figure('Color', 'w');
@@ -149,7 +149,7 @@ cb = colorbar;
 set(findall(gcf,'Type','axes'),'FontSize',fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');
 title('2-back');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_nback_topo2.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_topos_nback_load2.png');
 
 % Plot 3-back
 figure('Color', 'w');
@@ -159,7 +159,7 @@ cb = colorbar;
 set(findall(gcf,'Type','axes'),'FontSize',fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');
 title('3-back');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_nback_topo3.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_topos_nback_load3.png');
 
 %% Plot alpha power TOPOS DIFFERENCE
 close all
@@ -202,4 +202,4 @@ title('N-back Task Alpha Power Difference (3-back - 1-back)', 'FontSize', 25);
 ft_topoplotER(cfg, ga_diff);
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_nback_topo_diff.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/AOC_eeg_topos_nback_diff.png');

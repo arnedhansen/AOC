@@ -1,0 +1,417 @@
+%% AOC Omnibus — N-Back: Within-Subject Trial Split by Alpha Power Change
+% Splits trials within each subject by baselined alpha power (reduction vs amplification),
+% averages SPL time-course per group per subject, then performs paired statistics across
+% subjects. Uses AlphaPowerLateBL from merged_data_nback_trials.mat.
+%
+% Key outputs:
+%   SPL time-series figures (reduction vs amplification trials) per condition and overall
+%   Paired Cohen's dz over time with FDR-corrected significance
+
+%% Setup
+startup
+[subjects, path, colors, ~] = setup('AOC');
+
+% Figure config
+fontSize = 25;
+
+% Common reference grid
+fs_full     = 500;
+t_full      = -0.5:1/fs_full:2;
+t_plot_full = t_full(2:end);
+Tf          = numel(t_plot_full);
+
+% Time series for binned display
+time_series = linspace(-0.5, 2, 51);
+T = numel(time_series) - 1;
+
+% Set up paths (cross-platform)
+if ispc
+    base_data = 'W:\Students\Arne\AOC\data\features';
+    output_dir = 'W:\Students\Arne\AOC\figures\interactions\omnibus_alpha_split';
+else
+    base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features';
+    output_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/omnibus_alpha_split';
+end
+if ~exist(output_dir, 'dir')
+    mkdir(output_dir);
+end
+
+%% Load trial-level merged data
+merged_path = fullfile(base_data, 'merged_data_nback_trials.mat');
+if ~isfile(merged_path)
+    error('Merged data file not found: %s', merged_path);
+end
+
+fprintf('Loading merged trial data from: %s\n', merged_path);
+load(merged_path, 'merged_data_nback_trials');
+
+fprintf('Loaded %d trials for %d unique subjects\n', ...
+    height(merged_data_nback_trials), length(unique(merged_data_nback_trials.ID)));
+
+%% Define conditions
+conditions = {'1-back', '2-back', '3-back'};
+cond_codes_merged = [1, 2, 3]; % Condition codes in merged data (after -20 subtraction)
+
+%% Process each condition separately + overall mean
+all_analyses = [conditions, {'Mean across all conditions'}];
+
+for analysis_idx = 1:length(all_analyses)
+    analysis_name = all_analyses{analysis_idx};
+    fprintf('\n=== Processing: %s ===\n', analysis_name);
+    
+    if strcmp(analysis_name, 'Mean across all conditions')
+        cond_label = 'mean';
+    else
+        cond_label = lower(strrep(analysis_name, ' ', ''));
+    end
+    
+    %% Per-subject: split trials by alpha and compute SPL
+    scan_reduction = nan(length(subjects), Tf);
+    scan_amplification = nan(length(subjects), Tf);
+    valid_subj_count = 0;
+    n_red_trials_total = 0;
+    n_amp_trials_total = 0;
+    
+    for subj = 1:length(subjects)
+        subjID_str = subjects{subj};
+        subjID_num = str2double(subjID_str);
+        
+        fprintf('  Subject %s (%d/%d)... ', subjID_str, subj, length(subjects));
+        
+        %% Get trial-level alpha power for this subject
+        rows = merged_data_nback_trials(merged_data_nback_trials.ID == subjID_num, :);
+        
+        if isempty(rows)
+            fprintf('no merged data. Skipping.\n');
+            continue;
+        end
+        
+        % Filter by condition if needed
+        if ~strcmp(analysis_name, 'Mean across all conditions')
+            cond_idx = find(strcmp(conditions, analysis_name));
+            cond_code = cond_codes_merged(cond_idx);
+            rows = rows(rows.Condition == cond_code, :);
+        end
+        
+        if isempty(rows)
+            fprintf('no trials for this condition. Skipping.\n');
+            continue;
+        end
+        
+        % Get alpha power (baselined) and trial numbers
+        alpha_bl = rows.AlphaPowerLateBL;
+        trial_nums = rows.Trial;
+        
+        % Split by alpha change: < 0 = reduction, > 0 = amplification
+        valid = isfinite(alpha_bl) & alpha_bl ~= 0;
+        red_trials = trial_nums(valid & alpha_bl < 0);
+        amp_trials = trial_nums(valid & alpha_bl > 0);
+        
+        if length(red_trials) < 2 || length(amp_trials) < 2
+            fprintf('too few trials (red=%d, amp=%d). Skipping.\n', ...
+                length(red_trials), length(amp_trials));
+            continue;
+        end
+        
+        %% Load gaze data
+        datapath_gaze = fullfile(base_data, subjID_str, 'gaze', 'gaze_series_nback_trials.mat');
+        
+        if ~isfile(datapath_gaze)
+            fprintf('missing gaze file. Skipping.\n');
+            continue;
+        end
+        
+        try
+            load(datapath_gaze, 'ScanPathSeries', 'ScanPathSeriesT', 'trialinfo');
+        catch ME
+            fprintf('error loading gaze: %s. Skipping.\n', ME.message);
+            continue;
+        end
+        
+        if isempty(ScanPathSeries)
+            fprintf('empty ScanPathSeries. Skipping.\n');
+            continue;
+        end
+        
+        % Get trial numbers from gaze data
+        if exist('trialinfo', 'var')
+            if size(trialinfo, 2) >= 2
+                gaze_trial_nums = trialinfo(:, 2);
+            elseif size(trialinfo, 1) == 2
+                gaze_trial_nums = trialinfo(2, :)';
+            else
+                fprintf('unexpected trialinfo shape. Skipping.\n');
+                continue;
+            end
+        else
+            fprintf('trialinfo not found. Skipping.\n');
+            continue;
+        end
+        
+        %% Interpolate each trial to common grid
+        n_gaze_trials = numel(ScanPathSeries);
+        subj_trials_full = nan(n_gaze_trials, Tf);
+        
+        for trl = 1:n_gaze_trials
+            srl_full = ScanPathSeries{trl};
+            tt_full  = ScanPathSeriesT{trl};
+            
+            if isempty(srl_full) || isempty(tt_full)
+                continue;
+            end
+            
+            try
+                subj_trials_full(trl, :) = interp1(tt_full, srl_full, t_plot_full, 'linear', NaN);
+            catch
+            end
+        end
+        
+        %% Match trials and compute group means
+        red_mask = ismember(gaze_trial_nums, red_trials);
+        amp_mask = ismember(gaze_trial_nums, amp_trials);
+        
+        if sum(red_mask) < 2 || sum(amp_mask) < 2
+            fprintf('too few matched gaze trials (red=%d, amp=%d). Skipping.\n', ...
+                sum(red_mask), sum(amp_mask));
+            continue;
+        end
+        
+        valid_subj_count = valid_subj_count + 1;
+        scan_reduction(valid_subj_count, :) = nanmean(subj_trials_full(red_mask, :), 1);
+        scan_amplification(valid_subj_count, :) = nanmean(subj_trials_full(amp_mask, :), 1);
+        
+        n_red_trials_total = n_red_trials_total + sum(red_mask);
+        n_amp_trials_total = n_amp_trials_total + sum(amp_mask);
+        
+        fprintf('OK (red=%d, amp=%d trials)\n', sum(red_mask), sum(amp_mask));
+        
+        clear ScanPathSeries ScanPathSeriesT trialinfo;
+    end
+    
+    scan_reduction = scan_reduction(1:valid_subj_count, :);
+    scan_amplification = scan_amplification(1:valid_subj_count, :);
+    
+    fprintf('\n  Valid subjects: %d\n', valid_subj_count);
+    fprintf('  Total trials: %d reduction, %d amplification\n', ...
+        n_red_trials_total, n_amp_trials_total);
+    
+    if valid_subj_count < 3
+        warning('Not enough valid subjects for %s (%d < 3). Skipping.', analysis_name, valid_subj_count);
+        continue;
+    end
+    
+    %% Statistical comparison: PAIRED t-tests at each time point
+    p_vals = nan(1, Tf);
+    cohens_dz = nan(1, Tf);
+    
+    for t = 1:Tf
+        red_vals = scan_reduction(:, t);
+        amp_vals = scan_amplification(:, t);
+        
+        valid = isfinite(red_vals) & isfinite(amp_vals);
+        
+        if sum(valid) >= 3
+            [~, p, ~, stats] = ttest(amp_vals(valid), red_vals(valid));
+            p_vals(t) = p;
+            
+            diffs = amp_vals(valid) - red_vals(valid);
+            if nanstd(diffs) > 0
+                cohens_dz(t) = nanmean(diffs) / nanstd(diffs);
+            end
+        end
+    end
+    
+    % FDR correction
+    toi = t_plot_full >= -0.5 & t_plot_full <= 2;
+    valid_mask = toi & isfinite(p_vals);
+    p_sub = p_vals(valid_mask);
+    if ~isempty(p_sub)
+        q_sub = mafdr(p_sub, 'BHFDR', true);
+        sig_mask = false(size(p_vals));
+        sig_mask(valid_mask) = q_sub < 0.05;
+    else
+        sig_mask = false(size(p_vals));
+    end
+    
+    %% Prepare data for plotting (binned grid)
+    scan_reduction_binned = nan(valid_subj_count, T);
+    scan_amplification_binned = nan(valid_subj_count, T);
+    
+    for s = 1:valid_subj_count
+        scan_reduction_binned(s, :) = interp1(t_plot_full, scan_reduction(s, :), ...
+            time_series(2:end), 'linear', NaN);
+        scan_amplification_binned(s, :) = interp1(t_plot_full, scan_amplification(s, :), ...
+            time_series(2:end), 'linear', NaN);
+    end
+    
+    grand_reduction = nanmean(scan_reduction_binned, 1);
+    grand_amplification = nanmean(scan_amplification_binned, 1);
+    sem_reduction = nanstd(scan_reduction_binned, [], 1) ./ sqrt(sum(isfinite(scan_reduction_binned), 1));
+    sem_amplification = nanstd(scan_amplification_binned, [], 1) ./ sqrt(sum(isfinite(scan_amplification_binned), 1));
+    t_plot = time_series(2:end);
+    
+    dz_vals_binned = nan(1, T);
+    for t = 1:T
+        red_vals = scan_reduction_binned(:, t);
+        amp_vals = scan_amplification_binned(:, t);
+        valid = isfinite(red_vals) & isfinite(amp_vals);
+        if sum(valid) >= 3
+            diffs = amp_vals(valid) - red_vals(valid);
+            if nanstd(diffs) > 0
+                dz_vals_binned(t) = nanmean(diffs) / nanstd(diffs);
+            end
+        end
+    end
+    
+    sig_mask_binned = false(1, T);
+    for t = 1:T
+        t_val = time_series(t+1);
+        [~, idx] = min(abs(t_plot_full - t_val));
+        if idx <= length(sig_mask)
+            sig_mask_binned(t) = sig_mask(idx);
+        end
+    end
+    
+    %% Plot
+    close all
+    figure
+    set(gcf, 'Color', 'w', 'Position', [0 0 1512 900])
+    
+    subplot(4,1,1:3)
+    hold on
+    grid on
+    set(gca, 'GridAlpha', 0.15, 'GridLineStyle', '--', 'MinorGridAlpha', 0.05)
+    
+    sebRed = shadedErrorBar(t_plot, grand_reduction, sem_reduction, ...
+        'lineProps', {'-','Color',colors(1,:),'LineWidth',3.5}, 'transparent', true);
+    sebAmp = shadedErrorBar(t_plot, grand_amplification, sem_amplification, ...
+        'lineProps', {'-','Color',colors(3,:),'LineWidth',3.5}, 'transparent', true);
+    
+    xline(0, '--k', 'LineWidth', 1.5, 'Alpha', 0.6)
+    yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1, 'Alpha', 0.5)
+    
+    ylabel('Scan Path Length [px]', 'FontSize', fontSize, 'FontWeight', 'bold')
+    title(sprintf('N-Back SPL (Within-Subject): Reduction vs Amplification Trials (%s)', analysis_name), ...
+        'FontSize', fontSize+2, 'FontWeight', 'bold')
+    xlim([-.5 2])
+    set(gca, 'FontSize', fontSize-2)
+    box on
+    
+    legend([sebRed.mainLine, sebAmp.mainLine], ...
+        {sprintf('Reduction trials ± SEM (n=%d subj)', valid_subj_count), ...
+         sprintf('Amplification trials ± SEM (n=%d subj)', valid_subj_count)}, ...
+        'Location','northeast', 'FontSize', fontSize*0.7, 'FontWeight', 'normal', ...
+        'Box', 'on', 'EdgeColor', [0.7 0.7 0.7])
+    
+    set(gca, 'XTick', -0.5:0.5:2, 'XColor', 'none')
+    set(gca, 'YTickLabelMode', 'auto')
+    
+    subplot(4,1,4)
+    hold on
+    grid on
+    set(gca, 'GridAlpha', 0.15, 'GridLineStyle', '--', 'MinorGridAlpha', 0.05)
+    
+    y = dz_vals_binned;
+    ylab = 'Cohen''s d_z';
+    
+    ylim_range = [-max(abs(y(isfinite(y))))*1.15 max(abs(y(isfinite(y))))*1.15];
+    if any(isfinite(y))
+        ylim(ylim_range);
+    else
+        ylim_range = [-1 1];
+        ylim(ylim_range);
+    end
+    
+    d_sig = diff([0, sig_mask_binned, 0]);
+    on_sig = find(d_sig == 1);
+    off_sig = find(d_sig == -1) - 1;
+    
+    for k = 1:numel(on_sig)
+        if on_sig(k) <= length(t_plot) && off_sig(k) <= length(t_plot)
+            x0 = t_plot(on_sig(k));
+            x1 = t_plot(off_sig(k));
+            patch([x0 x1 x1 x0], [ylim_range(1) ylim_range(1) ylim_range(2) ylim_range(2)], ...
+                [1 1 0.3], 'FaceAlpha', 0.25, 'EdgeColor', 'none', 'LineStyle', 'none')
+        end
+    end
+    
+    h = plot(t_plot, y, 'k-', 'LineWidth', 3.5);
+    xline(0, '--k', 'LineWidth', 1.5, 'Alpha', 0.6)
+    yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1.5, 'Alpha', 0.7)
+    yline(0.2, ':', 'Color', [0.7 0.7 0.7], 'LineWidth', 0.8, 'Alpha', 0.5)
+    yline(-0.2, ':', 'Color', [0.7 0.7 0.7], 'LineWidth', 0.8, 'Alpha', 0.5)
+    yline(0.5, ':', 'Color', [0.7 0.7 0.7], 'LineWidth', 0.8, 'Alpha', 0.5)
+    yline(-0.5, ':', 'Color', [0.7 0.7 0.7], 'LineWidth', 0.8, 'Alpha', 0.5)
+    
+    xlim([-.5 2])
+    set(gca, 'FontSize', fontSize-2)
+    xlabel('Time [s]', 'FontSize', fontSize, 'FontWeight', 'bold')
+    ylabel(ylab, 'FontSize', fontSize, 'FontWeight', 'bold')
+    
+    if max(abs(ylim_range)) <= 1
+        yticks([-1 -0.5 -0.2 0 0.2 0.5 1]);
+    else
+        yticks([-.5 -.25 0 .25 .5]);
+    end
+    
+    if any(sig_mask_binned)
+        sig_periods = [];
+        for k = 1:numel(on_sig)
+            if on_sig(k) <= length(t_plot) && off_sig(k) <= length(t_plot)
+                sig_periods(end+1, :) = [t_plot(on_sig(k)), t_plot(off_sig(k))];
+            end
+        end
+        if ~isempty(sig_periods)
+            mid_time = mean(sig_periods, 2);
+            for k = 1:size(sig_periods, 1)
+                text(mid_time(k), ylim_range(2)*0.85, '*', ...
+                    'FontSize', fontSize, 'HorizontalAlignment', 'center', ...
+                    'Color', [0.8 0.6 0], 'FontWeight', 'bold')
+            end
+        end
+    end
+    
+    box on
+    
+    fig_name = sprintf('AOC_omnibus_splitAlpha_nback_withinsubject_%s.png', cond_label);
+    fig_path = fullfile(output_dir, fig_name);
+    saveas(gcf, fig_path);
+    fprintf('  Saved figure: %s\n', fig_name);
+    
+    %% Print summary
+    fprintf('\n--- Summary Statistics (%s) ---\n', analysis_name);
+    fprintf('Valid subjects: %d\n', valid_subj_count);
+    fprintf('Total trials: %d reduction, %d amplification\n', ...
+        n_red_trials_total, n_amp_trials_total);
+    
+    overall_diffs = nanmean(scan_amplification_binned, 2) - nanmean(scan_reduction_binned, 2);
+    valid_diffs = overall_diffs(isfinite(overall_diffs));
+    if ~isempty(valid_diffs)
+        [~, p_overall] = ttest(valid_diffs);
+        dz_overall = mean(valid_diffs) / std(valid_diffs);
+        fprintf('Overall paired t-test: t(%d)=%.3f, p=%.4f, dz=%.3f\n', ...
+            length(valid_diffs)-1, mean(valid_diffs)/(std(valid_diffs)/sqrt(length(valid_diffs))), ...
+            p_overall, dz_overall);
+    end
+    
+    if any(isfinite(dz_vals_binned))
+        [max_dz, max_idx] = max(abs(dz_vals_binned));
+        fprintf('Peak effect size: dz=%.3f at t=%.2fs\n', ...
+            dz_vals_binned(max_idx), t_plot(max_idx));
+    end
+    
+    if any(sig_mask_binned)
+        fprintf('Significant time windows (FDR q<0.05):\n');
+        for k = 1:numel(on_sig)
+            if on_sig(k) <= length(t_plot) && off_sig(k) <= length(t_plot)
+                fprintf('  %.2f - %.2f s\n', t_plot(on_sig(k)), t_plot(off_sig(k)));
+            end
+        end
+    else
+        fprintf('No significant time windows after FDR correction.\n');
+    end
+    
+end
+
+fprintf('\n=== Done ===\n');
+fprintf('All figures saved to: %s\n', output_dir);

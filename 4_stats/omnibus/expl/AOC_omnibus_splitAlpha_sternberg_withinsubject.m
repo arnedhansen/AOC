@@ -54,7 +54,7 @@ fprintf('Loaded %d trials for %d unique subjects\n', ...
 
 %% Define conditions
 conditions = {'WM load 2', 'WM load 4', 'WM load 6'};
-cond_codes = [22, 24, 26]; % Condition codes in gaze data (trialinfo col 1)
+cond_codes = [2, 4, 6]; % Condition codes in merged data (raw 22/24/26 minus 20)
 
 %% Process each condition separately + overall mean
 all_analyses = [conditions, {'Mean across all conditions'}];
@@ -138,11 +138,13 @@ for analysis_idx = 1:length(all_analyses)
         end
         
         % Get trial numbers from gaze data
+        % Note: trialinfo is saved as dataETlong.trialinfo' (transposed),
+        % so it is [2 x nTrials] with row 1 = condition, row 2 = trial number
         if exist('trialinfo', 'var')
-            if size(trialinfo, 2) >= 2
-                gaze_trial_nums = trialinfo(:, 2); % column 2 = Trial number
-            elseif size(trialinfo, 1) == 2
-                gaze_trial_nums = trialinfo(2, :)'; % row 2 = Trial number
+            if size(trialinfo, 1) == 2
+                gaze_trial_nums = trialinfo(2, :)'; % row 2 = Trial number (transposed format)
+            elseif size(trialinfo, 2) >= 2
+                gaze_trial_nums = trialinfo(:, 2); % column 2 = Trial number (original format)
             else
                 fprintf('unexpected trialinfo shape. Skipping.\n');
                 continue;

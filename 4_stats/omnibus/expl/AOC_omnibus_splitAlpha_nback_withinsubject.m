@@ -134,11 +134,13 @@ for analysis_idx = 1:length(all_analyses)
         end
         
         % Get trial numbers from gaze data
+        % Note: trialinfo is saved as dataETlong.trialinfo' (transposed),
+        % so it is [2 x nTrials] with row 1 = condition, row 2 = trial number
         if exist('trialinfo', 'var')
-            if size(trialinfo, 2) >= 2
-                gaze_trial_nums = trialinfo(:, 2);
-            elseif size(trialinfo, 1) == 2
-                gaze_trial_nums = trialinfo(2, :)';
+            if size(trialinfo, 1) == 2
+                gaze_trial_nums = trialinfo(2, :)'; % row 2 = Trial number (transposed format)
+            elseif size(trialinfo, 2) >= 2
+                gaze_trial_nums = trialinfo(:, 2); % column 2 = Trial number (original format)
             else
                 fprintf('unexpected trialinfo shape. Skipping.\n');
                 continue;

@@ -381,7 +381,7 @@ for analysis_idx = 1:length(all_analyses)
     
     grid on
     set(gca, 'GridAlpha', 0.15, 'GridLineStyle', '--', 'MinorGridAlpha', 0.05)
-    
+    addpath('W:\Students\Arne\toolboxes\shadedErrorBar')
     sebRed = shadedErrorBar(t_plot, grand_reduction, sem_reduction, ...
         'lineProps', {'-','Color',colors(1,:),'LineWidth',3.5}, 'transparent', true);
     sebAmp = shadedErrorBar(t_plot, grand_amplification, sem_amplification, ...

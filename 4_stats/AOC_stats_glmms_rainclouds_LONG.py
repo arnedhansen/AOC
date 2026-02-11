@@ -186,11 +186,15 @@ def draw_raincloud(ax, dvar, var, condition_order, pal_dict, *, bw_method=0.15):
 
     for cond_lab in condition_order:
         yvals = dvar.loc[dvar["Condition"] == cond_lab, var].dropna().to_numpy()
-        if yvals.size < 3:
+        yvals = yvals[np.isfinite(yvals)]
+        if yvals.size < 3 or np.nanstd(yvals) == 0:
             continue
 
         # KDE (half-violin on the left)
-        kde = gaussian_kde(yvals, bw_method=bw_method)
+        try:
+            kde = gaussian_kde(yvals, bw_method=bw_method)
+        except (np.linalg.LinAlgError, ValueError):
+            continue
         y_lo, y_hi = yvals.min(), yvals.max()
         yr = y_hi - y_lo if y_hi > y_lo else 1.0
         y_grid = np.linspace(y_lo - 0.05 * yr, y_hi + 0.05 * yr, 400)

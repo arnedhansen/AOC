@@ -1,5 +1,5 @@
-%% AOC TFR Raster — Sternberg (Baselined)
-% Loads tfr_stern (tfr*_bl), grand-averages, plots raster TFR topoplots. Saves figures.
+%% AOC TFR Raster — N-Back (Baselined)
+% Loads tfr_nback (tfr*_bl), grand-averages, plots raster TFR topoplots. Saves figures.
 %
 % Key outputs:
 %   TFR raster figures (baselined, per condition)
@@ -7,16 +7,18 @@
 %% Setup
 startup
 [subjects, path, colors, headmodel] = setup('AOC');
+% Exclude subject 361 because of faulty data in electrode Cz
+subjects = setdiff(subjects, {'361'});
 
 %% Define channels
 subj = 1;
 datapath = strcat(path, subjects{subj}, filesep, 'eeg');
 cd(datapath);
-load('power_stern.mat');
+load('power_nback.mat');
 % Occipital channels
 occ_channels = {};
-for i = 1:length(powload2.label)
-    label = powload2.label{i};
+for i = 1:length(powload1.label)
+    label = powload1.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
@@ -27,17 +29,17 @@ channels = occ_channels;
 for subj = 1:length(subjects)
     datapath = strcat(path,subjects{subj}, '/eeg');
     cd(datapath)
-    load tfr_stern
+    load tfr_nback
+    tfr1_all{subj} = tfr1_bl;
     tfr2_all{subj} = tfr2_bl;
-    tfr4_all{subj} = tfr4_bl;
-    tfr6_all{subj} = tfr6_bl;
+    tfr3_all{subj} = tfr3_bl;
     disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' TFR data loaded.'])
 end
 
 % Compute grand average
+gatfr1 = ft_freqgrandaverage([],tfr1_all{:});
 gatfr2 = ft_freqgrandaverage([],tfr2_all{:});
-gatfr4 = ft_freqgrandaverage([],tfr4_all{:});
-gatfr6 = ft_freqgrandaverage([],tfr6_all{:});
+gatfr3 = ft_freqgrandaverage([],tfr3_all{:});
 
 %% Plot alpha power TOPOS
 close all
@@ -59,16 +61,16 @@ cmap = flipud(cbrewer('div', 'RdBu', 64));
 % Plot
 figure;
 set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
-sgtitle('Sternberg WM load 6 Theta, Alpha, and Beta Topoplots over Time', 'FontSize', 20, 'FontWeight', 'bold')
+sgtitle('N-back 3-back Theta, Alpha, and Beta Topoplots over Time', 'FontSize', 20, 'FontWeight', 'bold')
 
 for f = 1:freqs
     freqband_name = freq_bands{f, 1};
     freqband_range = freq_bands{f, 2};
 
     % Find max power value for this frequency band (EEG channels only, all timepoints 0-2s)
-    freq_idx = find(gatfr6.freq >= freqband_range(1) & gatfr6.freq <= freqband_range(2));
-    timepnts_idx = find(gatfr6.time >= 0 & gatfr6.time <= 2);
-    dat = gatfr6.powspctrm(1:125, freq_idx, timepnts_idx);
+    freq_idx = find(gatfr3.freq >= freqband_range(1) & gatfr3.freq <= freqband_range(2));
+    timepnts_idx = find(gatfr3.time >= 0 & gatfr3.time <= 2);
+    dat = gatfr3.powspctrm(1:125, freq_idx, timepnts_idx);
     max_spctrm = prctile(abs(dat(:)), 95);
 
     for tp = 1:timepnts
@@ -90,11 +92,11 @@ for f = 1:freqs
         cfg.gridscale = 300;
         cfg.ylim = freqband_range;
         cfg.zlim = [-max_spctrm max_spctrm];
-        startTmpnt = find(gatfr6.time == timepoints(tp));
-        endTmpnt = find(gatfr6.time == timepoints(tp+1));
-        cfg.xlim = [gatfr6.time(startTmpnt) gatfr6.time(endTmpnt)];
+        startTmpnt = find(gatfr3.time == timepoints(tp));
+        endTmpnt = find(gatfr3.time == timepoints(tp+1));
+        cfg.xlim = [gatfr3.time(startTmpnt) gatfr3.time(endTmpnt)];
 
-        ft_topoplotTFR(cfg, gatfr6);
+        ft_topoplotTFR(cfg, gatfr3);
         title(sprintf('%.0f - %.0f ms', 1000*timepoints(tp), 1000*timepoints(tp+1)), 'FontSize', 12);
     end
 
@@ -120,4 +122,4 @@ annotation('textbox', [0.005, 0.06, 0.025, 0.20], 'String', 'Beta (14-30Hz)', ..
     'EdgeColor', 'none', 'HorizontalAlignment', 'center', 'VerticalAlignment', 'middle');
 
 % Save figure
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/raster/AOC_alpha_power_sternberg_rasterplot_WM6.png');
+saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/raster/AOC_alpha_power_nback_rasterplot_3back.png');

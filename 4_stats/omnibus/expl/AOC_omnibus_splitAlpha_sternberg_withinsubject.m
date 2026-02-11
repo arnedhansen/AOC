@@ -300,9 +300,6 @@ for analysis_idx = 1:length(all_analyses)
     hold on
     
     % Add subtle grid
-    grid on
-    set(gca, 'GridAlpha', 0.15, 'GridLineStyle', '--', 'MinorGridAlpha', 0.05)
-    
     % Plot with thicker lines
     sebRed = shadedErrorBar(t_plot, grand_reduction, sem_reduction, ...
         'lineProps', {'-','Color',colors(1,:),'LineWidth',3.5}, 'transparent', true);
@@ -337,9 +334,6 @@ for analysis_idx = 1:length(all_analyses)
     hold on
     
     % Add subtle grid
-    grid on
-    set(gca, 'GridAlpha', 0.15, 'GridLineStyle', '--', 'MinorGridAlpha', 0.05)
-    
     y = dz_vals_binned;
     ylab = 'Cohen''s d_z';
     

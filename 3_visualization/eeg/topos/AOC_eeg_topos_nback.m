@@ -36,7 +36,7 @@ load('power_nback.mat');
 occ_channels = {};
 for i = 1:length(powload1.label)
     label = powload1.label{i};
-    if contains(label, {'O'}) || contains(label, {'I'})
+    if contains(label, {'O'}) || contains(label, {'I'}) || contains(label, {'PO'})
         occ_channels{end+1} = label;
     end
 end

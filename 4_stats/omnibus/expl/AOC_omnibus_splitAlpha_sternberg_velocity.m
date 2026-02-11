@@ -227,16 +227,12 @@ for analysis_idx = 1:length(all_analyses)
             end
             
             % Ensure correct length (-0.5 to 2.0s at 500Hz = 1251 samples)
-            if length(X) == 1251
-                % Standard case
-            elseif length(X) > 1250
+            % Do NOT pad short trials — padding causes edge artifacts
+            if length(X) > 1251
                 X = X(1:1251);
                 Y = Y(1:1251);
-            elseif length(X) >= 1000
-                X = [X, repmat(X(end), 1, 1251 - length(X))];
-                Y = [Y, repmat(Y(end), 1, 1251 - length(Y))];
-            else
-                continue;
+            elseif length(X) < 1000
+                continue; % too short, skip
             end
             
             % Create time vector for this trial
@@ -245,15 +241,20 @@ for analysis_idx = 1:length(all_analyses)
             % Compute eye velocity using Savitzky-Golay filter
             [vx, vy] = compute_velocity_sg(X, Y, fs_full, polyOrd);
             
-            % Handle outliers
+            % Blank out edge samples where SG convolution is unreliable
+            halfwin = 11; % half of framelen=21
+            vx(1:halfwin) = NaN; vx(end-halfwin+1:end) = NaN;
+            vy(1:halfwin) = NaN; vy(end-halfwin+1:end) = NaN;
+            
+            % Handle outliers (compute z-scores on interior samples only)
             zvx = (vx - nanmean(vx)) / (nanstd(vx) + eps);
             zvy = (vy - nanmean(vy)) / (nanstd(vy) + eps);
             bad = abs(zvx) > velZthr | abs(zvy) > velZthr;
             if any(bad)
                 vx(bad) = NaN;
                 vy(bad) = NaN;
-                vx = fillmissing(vx, 'linear', 'EndValues', 'nearest');
-                vy = fillmissing(vy, 'linear', 'EndValues', 'nearest');
+                vx = fillmissing(vx, 'linear', 'EndValues', 'none');
+                vy = fillmissing(vy, 'linear', 'EndValues', 'none');
             end
             
             % Total velocity magnitude

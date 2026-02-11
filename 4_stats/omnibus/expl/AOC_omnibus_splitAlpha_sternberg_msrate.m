@@ -20,14 +20,20 @@ edges = twin(1):binWidth:twin(2);
 T = numel(edges) - 1; % 50 bins
 t_plot = edges(1:end-1) + binWidth/2; % bin centers
 
-% Output directory
-output_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/omnibus_alpha_split';
+% Set up paths (cross-platform)
+if ispc
+    base_data = 'W:\Students\Arne\AOC\data\features';
+    output_dir = 'W:\Students\Arne\AOC\figures\interactions\omnibus_alpha_split';
+else
+    base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features';
+    output_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/omnibus_alpha_split';
+end
 if ~exist(output_dir, 'dir')
     mkdir(output_dir);
 end
 
 %% Load CSV data
-csv_path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_omnibus_raincloud_data.csv';
+csv_path = fullfile(base_data, 'AOC_omnibus_raincloud_data.csv');
 if ~isfile(csv_path)
     error('CSV file not found: %s', csv_path);
 end
@@ -139,8 +145,7 @@ for analysis_idx = 1:length(all_analyses)
         end
         
         % Load gaze data
-        datapath_gaze = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', ...
-            subjID_str, 'gaze', 'gaze_series_sternberg_trials.mat');
+        datapath_gaze = fullfile(base_data, subjID_str, 'gaze', 'gaze_series_sternberg_trials.mat');
         
         if ~isfile(datapath_gaze)
             missing_gaze{end+1} = subjID_str;

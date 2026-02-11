@@ -28,14 +28,20 @@ Tf          = numel(t_plot_full);                   % full-resolution length
 time_series = linspace(-0.5, 2, 51); % 51 points -> 50 steps
 T = numel(time_series) - 1;
 
-% Output directory
-output_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/omnibus_alpha_split';
+% Set up paths (cross-platform)
+if ispc
+    base_data = 'W:\Students\Arne\AOC\data\features';
+    output_dir = 'W:\Students\Arne\AOC\figures\interactions\omnibus_alpha_split';
+else
+    base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features';
+    output_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/omnibus_alpha_split';
+end
 if ~exist(output_dir, 'dir')
     mkdir(output_dir);
 end
 
 %% Load trial-level merged data
-merged_path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/merged_data_sternberg_trials.mat';
+merged_path = fullfile(base_data, 'merged_data_sternberg_trials.mat');
 if ~isfile(merged_path)
     error('Merged data file not found: %s', merged_path);
 end
@@ -112,8 +118,7 @@ for analysis_idx = 1:length(all_analyses)
         end
         
         %% Load gaze data
-        datapath_gaze = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', ...
-            subjID_str, 'gaze', 'gaze_series_sternberg_trials.mat');
+        datapath_gaze = fullfile(base_data, subjID_str, 'gaze', 'gaze_series_sternberg_trials.mat');
         
         if ~isfile(datapath_gaze)
             fprintf('missing gaze file. Skipping.\n');

@@ -11,17 +11,22 @@ MATLAB builds long-format CSVs; R fits the LMM per universe and plots specificat
 - **AOC_multiverse_sternberg.R** — Reads Sternberg CSV, fits LMM per universe, saves specification figure to AOC figures folder.
 - **AOC_multiverse_nback.R** — Same for N-back.
 
-## Decisions (specification space)
+## Decisions (specification space — 9 dimensions, 5120 universes per task)
 
-| Dimension    | Options |
-|------------|----------|
-| Electrodes | all, posterior, parietal, occipital |
-| 1/f        | FOOOFed, non-FOOOFed |
-| Latency    | 0–500 ms, 0–1000 ms, 0–2000 ms |
-| Alpha      | canonical (8–14 Hz), IAF |
-| Gaze       | gaze_density (Fixations), scan_path_length, gaze_velocity, microsaccades |
+| Dimension      | Options |
+|--------------|----------|
+| Electrodes     | all, posterior, parietal, occipital (4) |
+| 1/f            | FOOOFed, non-FOOOFed (2) |
+| Latency        | 0–500 ms, 0–1000 ms, 0–2000 ms, **1000–2000 ms** (4) |
+| Alpha          | canonical (8–14 Hz), IAF (2) |
+| Gaze           | gaze_density, scan_path_length, gaze_velocity, microsaccades, BCEA (5) |
+| EEG baseline   | raw, dB-baselined `[-0.5, -0.25] s` (2) |
+| Gaze baseline  | raw, percentage change from `[-0.5, -0.25] s` (2) |
+| Freq method    | **Hanning, DPSS (multitaper, tapsmofrq = 2 Hz)** (2) |
 
-**Note:** The MATLAB script builds the table from per-subject power and gaze files and computes trial-level alpha (raw and FOOOF) and gaze (fixations, SPL, velocity, microsaccades) for all electrode/latency/alpha/gaze combinations, so each of the 192 universes has the correct alpha and gaze_value per trial.
+**Total:** 4 × 2 × 4 × 2 × 5 × 2 × 2 × 2 = **5120 universes per task**.
+
+**Note:** The MATLAB script computes trial-level alpha and gaze for all combinations. Power is obtained from a hierarchy of sources: pre-computed Hanning files (0–1 s, 0–2 s), precomputed TFRs (any Hanning window), and time-domain EEG via `ft_freqanalysis` (DPSS windows and Hanning fallback). DPSS uses `tapsmofrq = 2` Hz spectral smoothing. The 1000–2000 ms window captures the **late retention** interval. BCEA is the Bivariate Contour Ellipse Area (95%); gaze baseline uses percentage change `(task - base) / |base| × 100` from `[-0.5, -0.25] s`. EEG dB baseline uses pre-computed `_bl` files where available, or `10*log10(task / mean_baseline_spectrum)` computed from the `[-0.5, -0.25] s` epoch.
 
 ## Model: alpha ~ gaze × condition + (1|subjectID)
 

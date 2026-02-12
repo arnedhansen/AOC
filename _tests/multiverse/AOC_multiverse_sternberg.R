@@ -63,6 +63,9 @@ for (i in seq_along(universes)) {
   tid$latency_ms <- r1$latency_ms
   tid$alpha_type <- r1$alpha_type
   tid$gaze_measure <- r1$gaze_measure
+  tid$baseline_eeg <- r1$baseline_eeg
+  tid$baseline_gaze <- r1$baseline_gaze
+  tid$freq_method <- r1$freq_method
   M_list[[length(M_list) + 1L]] <- tid
 }
 M_results <- bind_rows(M_list)
@@ -125,14 +128,14 @@ p_curve <- wrap_plots(plist, ncol = 2) + plot_layout(guides = "collect")
 
 # Specification panel: tiles (electrodes, fooof, latency_ms, alpha_type, gaze_measure) + N per universe
 df_specs <- M_results %>% filter(term == term_primary) %>%
-  select(ordered_universe, universe_id, electrodes, fooof, latency_ms, alpha_type, gaze_measure, condition, color)
+  select(ordered_universe, universe_id, electrodes, fooof, latency_ms, alpha_type, gaze_measure, baseline_eeg, baseline_gaze, freq_method, condition, color)
 # N (number of trials) per universe from original data
 N_per_u <- dat %>% group_by(universe_id) %>% summarise(N = n(), .groups = "drop")
 df_specs <- df_specs %>% left_join(N_per_u, by = "universe_id")
 df_long <- df_specs %>%
-  pivot_longer(cols = c(electrodes, fooof, latency_ms, alpha_type, gaze_measure),
+  pivot_longer(cols = c(electrodes, fooof, latency_ms, alpha_type, gaze_measure, baseline_eeg, baseline_gaze, freq_method),
                names_to = "Variable", values_to = "value")
-v_p2_group_order <- c("electrodes", "fooof", "latency_ms", "alpha_type", "gaze_measure")
+v_p2_group_order <- c("electrodes", "fooof", "latency_ms", "alpha_type", "gaze_measure", "baseline_eeg", "baseline_gaze", "freq_method")
 df_long$Variable <- factor(df_long$Variable, levels = v_p2_group_order)
 
 p_panel <- ggplot(df_long, aes(x = ordered_universe, y = value, fill = condition)) +

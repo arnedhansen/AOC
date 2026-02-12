@@ -1,10 +1,11 @@
 %% AOC Gaze Microsaccade Suppression — Sternberg & N-Back
-% Adapted from ICET_SaccadeSuppression.m (Huw Swanborough, InfCry project).
+% Detects microsaccades per trial using detect_microsaccades.m (Engbert &
+% Kliegl, 2003). The velocity threshold is GLOBAL — computed over the full
+% computation window passed to detect_microsaccades.
 %
-% Detects microsaccades per trial using Engbert & Kliegl (2003), builds
-% binary spike trains, convolves with a Gaussian kernel to produce smoothed
-% microsaccade rate time courses, and plots per-condition rate curves with
-% SEM shading and raster plots.
+% Builds binary spike trains from detected onsets, convolves with a
+% Gaussian kernel to produce smoothed microsaccade rate time courses, and
+% plots per-condition rate curves with SEM shading and raster plots.
 %
 % Edge effects from the Gaussian smoothing kernel are handled by computing
 % over a wider window (t_comp) and cropping to the display window (t_win).
@@ -38,10 +39,6 @@ fsample   = 500;        % Hz
 screenW   = 800;
 screenH   = 600;
 blink_win = 50;         % blink removal window (samples, ±100 ms)
-
-% Engbert & Kliegl (2003) microsaccade detection
-velthres = 6;           % velocity threshold multiplier
-mindur   = 6;           % minimum duration (samples) = 12 ms at 500 Hz
 
 % Gaussian smoothing kernel for continuous rate estimation
 sigma_ms   = 50;                                     % kernel SD in ms
@@ -145,8 +142,17 @@ for iTask = 1:2
                 continue
             end
 
-            % Detect microsaccade onsets → binary spike train
-            spikeVec = detect_ms_spike_train(gx, gy, fsample, velthres, mindur);
+            % Detect microsaccades using detect_microsaccades
+            % Global threshold: computed over the full computation window
+            velData = [gx; gy];
+            [~, msDetails] = detect_microsaccades(fsample, velData, length(gx));
+
+            % Build binary spike train from onset indices
+            spikeVec = zeros(1, length(gx));
+            if ~isempty(msDetails.Onset)
+                onsets = msDetails.Onset(msDetails.Onset >= 1 & msDetails.Onset <= length(gx));
+                spikeVec(onsets) = 1;
+            end
 
             % Pad/trim to fixed computation-window length
             if length(spikeVec) >= n_comp
@@ -242,7 +248,7 @@ for iTask = 1:2
     set(gca, 'FontSize', fontSize);
     hold off
 
-    saveas(gcf, fullfile(figpath, ['AOC_gaze_microsaccades_Huw_rate_', tName, '.png']));
+    saveas(gcf, fullfile(figpath, ['AOC_gaze_microsaccades_rate_', tName, '.png']));
 
     %% ================================================================
     %  FIGURE 1b: Percentage-Change MS Rate Time Courses per Condition
@@ -275,7 +281,7 @@ for iTask = 1:2
     set(gca, 'FontSize', fontSize);
     hold off
 
-    saveas(gcf, fullfile(figpath, ['AOC_gaze_microsaccades_Huw_rate_pct_', tName, '.png']));
+    saveas(gcf, fullfile(figpath, ['AOC_gaze_microsaccades_rate_pct_', tName, '.png']));
 
     %% ================================================================
     %  FIGURE 2: Raster Plots per Condition
@@ -323,7 +329,7 @@ for iTask = 1:2
     sgtitle([upper(tName(1)), tName(2:end), ' — Microsaccade Raster'], ...
         'FontSize', fontSize + 2);
 
-    saveas(gcf, fullfile(figpath, ['AOC_gaze_microsaccades_Huw_raster_', tName, '.png']));
+    saveas(gcf, fullfile(figpath, ['AOC_gaze_microsaccades_raster_', tName, '.png']));
 
     %% ================================================================
     %  FIGURE 2b: Collapsed Raster (all conditions pooled)
@@ -367,7 +373,7 @@ for iTask = 1:2
     set(gca, 'FontSize', fontSize, 'YDir', 'reverse');
     hold off
 
-    saveas(gcf, fullfile(figpath, ['AOC_gaze_microsaccades_Huw_raster_collapsed_', tName, '.png']));
+    saveas(gcf, fullfile(figpath, ['AOC_gaze_microsaccades_raster_collapsed_', tName, '.png']));
 
     %% ================================================================
     %  FIGURE 3: Combined (Rate on top + Raster on bottom)
@@ -431,7 +437,7 @@ for iTask = 1:2
 
     linkaxes([ax1, ax2], 'x');
 
-    saveas(gcf, fullfile(figpath, ['AOC_gaze_microsaccades_Huw_combined_', tName, '.png']));
+    saveas(gcf, fullfile(figpath, ['AOC_gaze_microsaccades_combined_', tName, '.png']));
 
     %% ================================================================
     %  FIGURE 3b: Combined Percentage-Change (Rate on top + Raster on bottom)
@@ -496,77 +502,7 @@ for iTask = 1:2
 
     linkaxes([ax1p, ax2p], 'x');
 
-    saveas(gcf, fullfile(figpath, ['AOC_gaze_microsaccades_Huw_combined_pct_', tName, '.png']));
+    saveas(gcf, fullfile(figpath, ['AOC_gaze_microsaccades_combined_pct_', tName, '.png']));
 end
 
 fprintf('\n=== All figures saved to %s ===\n', figpath);
-
-%% ====================================================================
-%  LOCAL FUNCTION: Microsaccade spike train detection
-%  ====================================================================
-function spikeVec = detect_ms_spike_train(gx, gy, fsample, velthres, mindur)
-% DETECT_MS_SPIKE_TRAIN  Engbert & Kliegl (2003) microsaccade detection.
-%   Returns a binary vector with 1s at microsaccade onset samples.
-%
-%   Adapted from detect_microsaccades.m and ICET_PreProcessingv2.m.
-%   Uses FieldTrip's ft_preproc_padding for edge handling.
-
-    nSamp    = length(gx);
-    spikeVec = zeros(1, nSamp);
-    velData  = [gx; gy];
-
-    % Interpolate NaNs for velocity computation
-    for ch = 1:2
-        nanIdx = isnan(velData(ch, :));
-        if all(nanIdx)
-            return
-        end
-        if any(nanIdx)
-            goodIdx = find(~nanIdx);
-            velData(ch, nanIdx) = interp1(goodIdx, velData(ch, goodIdx), ...
-                find(nanIdx), 'nearest', 'extrap');
-        end
-    end
-
-    % Velocity via convolution kernel (Engbert et al. 2003, Eqn. 1)
-    kernel = [1 1 0 -1 -1] .* (fsample / 6);
-    n   = size(kernel, 2);
-    pad = ceil(n / 2);
-    dat = ft_preproc_padding(velData, 'localmean', pad);
-    vel = convn(dat, kernel, 'same');
-    vel = ft_preproc_padding(vel, 'remove', pad);
-
-    % Velocity thresholds (Eqn. 2)
-    medianstd = sqrt(median(vel.^2, 2) - (median(vel, 2)).^2);
-    if any(medianstd == 0 | ~isfinite(medianstd))
-        return
-    end
-    radius = velthres * medianstd;
-
-    % Ellipse test (Eqn. 3)
-    test   = sum((vel ./ radius(:, ones(1, nSamp))).^2, 1);
-    sacsmp = find(test > 1);
-    if isempty(sacsmp); return; end
-
-    % Find consecutive above-threshold segments
-    j = find(diff(sacsmp) == 1);
-    if isempty(j); return; end
-
-    j1  = [j; j + 1];
-    com = intersect(j, j + 1);
-    cut = ~ismember(j1, com);
-    if sum(cut) < 2; return; end
-
-    sacidx = reshape(j1(cut), 2, []);
-
-    % Mark onset sample for segments meeting minimum duration
-    for k = 1:size(sacidx, 2)
-        dur = sacidx(1, k):sacidx(2, k);
-        if length(dur) >= mindur
-            onset = sacsmp(dur(1));
-            if onset >= 1 && onset <= nSamp
-                spikeVec(onset) = 1;
-            end
-        end
-    end
-end

@@ -8,10 +8,14 @@
 % Creates Figures 1-4 for both tasks (8 figures total).
 %
 % Figures:
-%   1: Gaze velocity, TFR lateralisation, alpha time course, topographies
-%   2: Start vs Return MS: gaze position, TFR lat., alpha TC, topographies
+%   1: Gaze velocity, TFR lateralisation, raw + baselined alpha TC, topographies
+%   2: Start vs Return MS: gaze position, TFR lat., raw + baselined alpha TC, topographies
 %   3: Ipsilateral vs Contralateral power (start MS only)
 %   4: Inter-trial phase coherence / ITPC (start MS only)
+%
+% Alpha metrics:
+%   - Raw lateralisation: ((contra - ipsi) / (contra + ipsi)) * 100
+%   - Baselined lateralisation: raw minus pre-MS baseline mean [-500, -150 ms]
 %
 % Requirements:
 %   FieldTrip toolbox, AOC data on network drive
@@ -585,6 +589,31 @@ for taskIdx = 1:2
     ga_lat_alpha_ret = ga(squeeze(mean(lat_ret_subj(alphaIdx,:,:),1)), 2);
     sem_lat_alpha_ret = gaSEM(squeeze(mean(lat_ret_subj(alphaIdx,:,:),1)), 2);
 
+    % --- Baselined alpha lateralisation (subtract pre-MS baseline mean) ---
+    % All MS
+    alpha_lat_all_perSubj = squeeze(mean(lat_all_subj(alphaIdx,:,:), 1)); % [nTime x nValid]
+    bl_alpha_all = mean(alpha_lat_all_perSubj(blIdx, :), 1);             % [1 x nValid]
+    alpha_lat_all_bl_perSubj = alpha_lat_all_perSubj - bl_alpha_all;
+    ga_lat_alpha_all_bl  = mean(alpha_lat_all_bl_perSubj, 2, 'omitnan');
+    sem_lat_alpha_all_bl = std(alpha_lat_all_bl_perSubj, [], 2, 'omitnan') ./ ...
+        sqrt(sum(~isnan(alpha_lat_all_bl_perSubj), 2));
+
+    % Start MS
+    alpha_lat_start_perSubj = squeeze(mean(lat_start_subj(alphaIdx,:,:), 1));
+    bl_alpha_start = mean(alpha_lat_start_perSubj(blIdx, :), 1);
+    alpha_lat_start_bl_perSubj = alpha_lat_start_perSubj - bl_alpha_start;
+    ga_lat_alpha_start_bl  = mean(alpha_lat_start_bl_perSubj, 2, 'omitnan');
+    sem_lat_alpha_start_bl = std(alpha_lat_start_bl_perSubj, [], 2, 'omitnan') ./ ...
+        sqrt(sum(~isnan(alpha_lat_start_bl_perSubj), 2));
+
+    % Return MS
+    alpha_lat_ret_perSubj = squeeze(mean(lat_ret_subj(alphaIdx,:,:), 1));
+    bl_alpha_ret = mean(alpha_lat_ret_perSubj(blIdx, :), 1);
+    alpha_lat_ret_bl_perSubj = alpha_lat_ret_perSubj - bl_alpha_ret;
+    ga_lat_alpha_ret_bl  = mean(alpha_lat_ret_bl_perSubj, 2, 'omitnan');
+    sem_lat_alpha_ret_bl = std(alpha_lat_ret_bl_perSubj, [], 2, 'omitnan') ./ ...
+        sqrt(sum(~isnan(alpha_lat_ret_bl_perSubj), 2));
+
     % ITPC (all MS)
     ga_itpc_contra_all = ga(itpc_contra_all_subj, 3);
     ga_itpc_ipsi_all   = ga(itpc_ipsi_all_subj, 3);
@@ -662,8 +691,8 @@ for taskIdx = 1:2
     title('b) Spectral lateralisation (contra - ipsi)');
     set(gca, 'FontSize', fntSz); ylim([1 30]);
 
-    % --- Panel c: Alpha time course ---
-    ax1c = axes('Position', [0.07 0.08 0.55 0.26]);
+    % --- Panel c: Alpha time course (raw) ---
+    ax1c = axes('Position', [0.07 0.08 0.27 0.26]);
     ci95_a = 1.96 * sem_lat_alpha_all;
     fill([stft_toi_ms, fliplr(stft_toi_ms)], ...
         [ga_lat_alpha_all'+ci95_a', fliplr(ga_lat_alpha_all'-ci95_a')], ...
@@ -672,7 +701,20 @@ for taskIdx = 1:2
     xline(0, 'k--', 'LineWidth', 1.5);
     yline(0, 'k:', 'LineWidth', 1);
     xlabel('Time (ms)'); ylabel('8-12 Hz Lat. (%)');
-    title('c) Alpha lateralisation time course');
+    title('c) Alpha lateralisation (raw)');
+    set(gca, 'FontSize', fntSz);
+
+    % --- Panel e: Alpha time course (baselined) ---
+    ax1e = axes('Position', [0.37 0.08 0.27 0.26]);
+    ci95_bl = 1.96 * sem_lat_alpha_all_bl;
+    fill([stft_toi_ms, fliplr(stft_toi_ms)], ...
+        [ga_lat_alpha_all_bl'+ci95_bl', fliplr(ga_lat_alpha_all_bl'-ci95_bl')], ...
+        [0.5 0.8 0.5], 'FaceAlpha', 0.3, 'EdgeColor', 'none'); hold on;
+    plot(stft_toi_ms, ga_lat_alpha_all_bl, '-', 'Color', [0.1 0.6 0.2], 'LineWidth', lnWd);
+    xline(0, 'k--', 'LineWidth', 1.5);
+    yline(0, 'k:', 'LineWidth', 1);
+    xlabel('Time (ms)'); ylabel('\Delta 8-12 Hz Lat. (%)');
+    title('e) Alpha lateralisation (baselined)');
     set(gca, 'FontSize', fntSz);
 
     % --- Panel d: Topographical maps ---
@@ -683,6 +725,7 @@ for taskIdx = 1:2
     for ti = 1:nTopos
         ax_d = axes('Position', [0.66 + (ti-1)*0.065, 0.42, 0.06, 0.28]);
         cfg = [];
+        cfg.figure    = ax_d;
         cfg.layout    = layANThead;
         cfg.xlim      = topo_times_ms(ti)/1000 * [1 1] + [-0.01 0.01];
         cfg.ylim      = alphaBand;
@@ -707,13 +750,13 @@ for taskIdx = 1:2
     %  5. FIGURE 2 — Start vs Return microsaccades
     % ====================================================================
     fprintf('  Plotting Figure 2 ...\n');
-    fig2 = figure('Position', [50 50 1600 1100], 'Color', 'w');
+    fig2 = figure('Position', [50 50 1600 1400], 'Color', 'w');
 
     colL = [0.2 0.4 0.8]; colR = [0.8 0.2 0.2]; % left=blue, right=red
 
     % --- Panel a: Gaze position ---
     % Start
-    ax2a1 = subplot(3, 2, 1);
+    ax2a1 = subplot(4, 2, 1);
     plot(posTime, ga_pos_SL, '-', 'Color', colL, 'LineWidth', lnWd); hold on;
     plot(posTime, ga_pos_SR, '-', 'Color', colR, 'LineWidth', lnWd);
     xline(0, 'k--'); yline(0, 'k:');
@@ -723,7 +766,7 @@ for taskIdx = 1:2
     set(gca, 'FontSize', fntSz);
 
     % Return
-    ax2a2 = subplot(3, 2, 2);
+    ax2a2 = subplot(4, 2, 2);
     plot(posTime, ga_pos_RL, '-', 'Color', colL, 'LineWidth', lnWd); hold on;
     plot(posTime, ga_pos_RR, '-', 'Color', colR, 'LineWidth', lnWd);
     xline(0, 'k--'); yline(0, 'k:');
@@ -733,7 +776,7 @@ for taskIdx = 1:2
     set(gca, 'FontSize', fntSz);
 
     % --- Panel b: TFR lateralisation ---
-    ax2b1 = subplot(3, 2, 3);
+    ax2b1 = subplot(4, 2, 3);
     imagesc(stft_toi_ms, stft_foi, ga_lat_start);
     set(gca, 'YDir', 'normal'); colormap(ax2b1, cmap_div);
     caxis([-max(abs(ga_lat_start(:))) max(abs(ga_lat_start(:)))]);
@@ -741,7 +784,7 @@ for taskIdx = 1:2
     xlabel('Time (ms)'); ylabel('Freq (Hz)');
     title('b) Start MS — Lateralisation'); set(gca, 'FontSize', fntSz); ylim([1 30]);
 
-    ax2b2 = subplot(3, 2, 4);
+    ax2b2 = subplot(4, 2, 4);
     imagesc(stft_toi_ms, stft_foi, ga_lat_ret);
     set(gca, 'YDir', 'normal'); colormap(ax2b2, cmap_div);
     caxis([-max(abs(ga_lat_ret(:))) max(abs(ga_lat_ret(:)))]);
@@ -749,8 +792,8 @@ for taskIdx = 1:2
     xlabel('Time (ms)'); ylabel('Freq (Hz)');
     title('b) Return MS — Lateralisation'); set(gca, 'FontSize', fntSz); ylim([1 30]);
 
-    % --- Panel c: Alpha lateralisation time course ---
-    ax2c1 = subplot(3, 2, 5);
+    % --- Panel c: Alpha lateralisation time course (raw) ---
+    ax2c1 = subplot(4, 2, 5);
     ci_s = 1.96 * sem_lat_alpha_start;
     fill([stft_toi_ms, fliplr(stft_toi_ms)], ...
         [ga_lat_alpha_start'+ci_s', fliplr(ga_lat_alpha_start'-ci_s')], ...
@@ -758,10 +801,10 @@ for taskIdx = 1:2
     plot(stft_toi_ms, ga_lat_alpha_start, 'b-', 'LineWidth', lnWd);
     xline(0, 'k--'); yline(0, 'k:');
     xlabel('Time (ms)'); ylabel('8-12 Hz Lat. (%)');
-    title('c) Start MS — Alpha lateralisation');
+    title('c) Start MS — Alpha lateralisation (raw)');
     set(gca, 'FontSize', fntSz);
 
-    ax2c2 = subplot(3, 2, 6);
+    ax2c2 = subplot(4, 2, 6);
     ci_r = 1.96 * sem_lat_alpha_ret;
     fill([stft_toi_ms, fliplr(stft_toi_ms)], ...
         [ga_lat_alpha_ret'+ci_r', fliplr(ga_lat_alpha_ret'-ci_r')], ...
@@ -769,7 +812,30 @@ for taskIdx = 1:2
     plot(stft_toi_ms, ga_lat_alpha_ret, 'b-', 'LineWidth', lnWd);
     xline(0, 'k--'); yline(0, 'k:');
     xlabel('Time (ms)'); ylabel('8-12 Hz Lat. (%)');
-    title('c) Return MS — Alpha lateralisation');
+    title('c) Return MS — Alpha lateralisation (raw)');
+    set(gca, 'FontSize', fntSz);
+
+    % --- Panel d: Baselined alpha lateralisation ---
+    ax2d1 = subplot(4, 2, 7);
+    ci_s_bl = 1.96 * sem_lat_alpha_start_bl;
+    fill([stft_toi_ms, fliplr(stft_toi_ms)], ...
+        [ga_lat_alpha_start_bl'+ci_s_bl', fliplr(ga_lat_alpha_start_bl'-ci_s_bl')], ...
+        [0.5 0.8 0.5], 'FaceAlpha', 0.3, 'EdgeColor', 'none'); hold on;
+    plot(stft_toi_ms, ga_lat_alpha_start_bl, '-', 'Color', [0.1 0.6 0.2], 'LineWidth', lnWd);
+    xline(0, 'k--'); yline(0, 'k:');
+    xlabel('Time (ms)'); ylabel('\Delta 8-12 Hz Lat. (%)');
+    title('d) Start MS — Alpha lateralisation (baselined)');
+    set(gca, 'FontSize', fntSz);
+
+    ax2d2 = subplot(4, 2, 8);
+    ci_r_bl = 1.96 * sem_lat_alpha_ret_bl;
+    fill([stft_toi_ms, fliplr(stft_toi_ms)], ...
+        [ga_lat_alpha_ret_bl'+ci_r_bl', fliplr(ga_lat_alpha_ret_bl'-ci_r_bl')], ...
+        [0.5 0.8 0.5], 'FaceAlpha', 0.3, 'EdgeColor', 'none'); hold on;
+    plot(stft_toi_ms, ga_lat_alpha_ret_bl, '-', 'Color', [0.1 0.6 0.2], 'LineWidth', lnWd);
+    xline(0, 'k--'); yline(0, 'k:');
+    xlabel('Time (ms)'); ylabel('\Delta 8-12 Hz Lat. (%)');
+    title('d) Return MS — Alpha lateralisation (baselined)');
     set(gca, 'FontSize', fntSz);
 
     sgtitle(sprintf('%s — Figure 2: Start vs Return microsaccades (N=%d)', tsk, nValid), ...
@@ -784,8 +850,9 @@ for taskIdx = 1:2
     freq_topo_ret   = make_ft_freq_local(chanLabels, stft_foi, stft_toi, ga_lat_topo_ret);
     for ti = 1:numel(topo_t_ms)
         % Start
-        subplot(2, numel(topo_t_ms), ti);
+        ax_s = subplot(2, numel(topo_t_ms), ti);
         cfg = [];
+        cfg.figure = ax_s;
         cfg.layout = layANThead; cfg.xlim = topo_t_ms(ti)/1000*[1 1]+[-0.01 0.01];
         cfg.ylim = alphaBand; cfg.zlim = 'maxabs'; cfg.colorbar = 'no';
         cfg.comment = 'no'; cfg.style = 'straight'; cfg.shading = 'interp';
@@ -793,7 +860,8 @@ for taskIdx = 1:2
         ft_topoplotTFR(cfg, freq_topo_start);
         title(sprintf('Start %dms', topo_t_ms(ti)), 'FontSize', fntSz-3);
         % Return
-        subplot(2, numel(topo_t_ms), ti + numel(topo_t_ms));
+        ax_r = subplot(2, numel(topo_t_ms), ti + numel(topo_t_ms));
+        cfg.figure = ax_r;
         ft_topoplotTFR(cfg, freq_topo_ret);
         title(sprintf('Return %dms', topo_t_ms(ti)), 'FontSize', fntSz-3);
     end
@@ -911,6 +979,7 @@ for taskIdx = 1:2
     ax4c1 = subplot(2, 3, 3);
     freq_itpc_L = make_ft_freq_local(chanLabels, stft_foi, stft_toi, ga_itpc_topo_L_start);
     cfg = [];
+    cfg.figure = ax4c1;
     cfg.layout = layANThead; cfg.xlim = itpc_topoWin; cfg.ylim = itpc_freqWin;
     cfg.zlim = 'maxabs'; cfg.colorbar = 'yes'; cfg.comment = 'no';
     cfg.style = 'straight'; cfg.shading = 'interp'; cfg.marker = 'off';
@@ -921,6 +990,7 @@ for taskIdx = 1:2
     % Right MS ITPC topo
     ax4c2 = subplot(2, 3, 6);
     freq_itpc_R = make_ft_freq_local(chanLabels, stft_foi, stft_toi, ga_itpc_topo_R_start);
+    cfg.figure = ax4c2;
     ft_topoplotTFR(cfg, freq_itpc_R);
     title('d) Right MS — ITPC (8-12 Hz, 0-250ms)', 'FontSize', fntSz-2);
 
@@ -931,9 +1001,11 @@ for taskIdx = 1:2
 
     % --- Figure 4d: ITPC difference topography ---
     fig4d = figure('Position', [50 50 500 400], 'Color', 'w');
+    ax4d = axes;
     itpc_topo_diff = ga_itpc_topo_L_start - ga_itpc_topo_R_start;
     freq_itpc_diff = make_ft_freq_local(chanLabels, stft_foi, stft_toi, itpc_topo_diff);
     cfg = [];
+    cfg.figure = ax4d;
     cfg.layout = layANThead; cfg.xlim = itpc_topoWin; cfg.ylim = itpc_freqWin;
     cfg.zlim = 'maxabs'; cfg.colorbar = 'yes'; cfg.comment = 'no';
     cfg.style = 'straight'; cfg.shading = 'interp'; cfg.marker = 'off';

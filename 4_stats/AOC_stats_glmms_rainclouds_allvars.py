@@ -74,6 +74,10 @@ variables = [
     "AlphaPower_FOOOF_bl",
     "AlphaPower_FOOOF_bl_early",
     "AlphaPower_FOOOF_bl_late",
+    # --- Baselined raw alpha ---
+    "AlphaPower_bl",
+    "AlphaPower_bl_early",
+    "AlphaPower_bl_late",
     # --- Baselined gaze ---
     "GazeDeviationFullBL", "GazeDeviationEarlyBL", "GazeDeviationLateBL",
     "ScanPathLengthFullBL", "ScanPathLengthEarlyBL", "ScanPathLengthLateBL",
@@ -97,6 +101,9 @@ _unit_map = {
     "AlphaPower_FOOOF_bl": "[FOOOF log, BL]",
     "AlphaPower_FOOOF_bl_early": "[FOOOF log, BL early]",
     "AlphaPower_FOOOF_bl_late": "[FOOOF log, BL late]",
+    "AlphaPower_bl": "[dB]",
+    "AlphaPower_bl_early": "[dB, early]",
+    "AlphaPower_bl_late": "[dB, late]",
     "GazeDeviationFullBL": "[dB]", "GazeDeviationEarlyBL": "[dB]", "GazeDeviationLateBL": "[dB]",
     "ScanPathLengthFullBL": "[dB]", "ScanPathLengthEarlyBL": "[dB]", "ScanPathLengthLateBL": "[dB]",
     "PupilSizeFullBL": "[%\u0394]", "PupilSizeEarlyBL": "[%\u0394]", "PupilSizeLateBL": "[%\u0394]",

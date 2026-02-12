@@ -8,19 +8,7 @@
 
 disp(upper('=== AOC MULTIVERSE PREP START ==='))
 
-%% Paths (Science Cloud vs Mac)
-if ispc
-    base_data = 'W:\Students\Arne\AOC';
-    base_features = fullfile(base_data, 'data', 'features');
-else
-    base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC';
-    base_features = fullfile(base_data, 'data', 'features');
-end
-out_dir = fileparts(mfilename('fullpath'));
-if isempty(out_dir), out_dir = pwd; end
-disp(upper(['Paths: base_data = ' base_data ', base_features = ' base_features ', out_dir = ' out_dir]))
-
-%% Setup: get subjects and preprocessed data path
+%% Setup: run startup and setup FIRST (startup may clear the workspace)
 path_preproc = [];
 subjects = {};
 try
@@ -35,6 +23,19 @@ try
 catch ME
     disp(upper(['Setup failed: ' ME.message ' — using base_features for subject list.']))
 end
+
+%% Paths (Science Cloud vs Mac) — defined AFTER startup/setup so clear all cannot wipe them
+if ispc
+    base_data = 'W:\Students\Arne\AOC';
+    base_features = fullfile(base_data, 'data', 'features');
+else
+    base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC';
+    base_features = fullfile(base_data, 'data', 'features');
+end
+out_dir = fileparts(mfilename('fullpath'));
+if isempty(out_dir), out_dir = pwd; end
+disp(upper(['Paths: base_data = ' base_data ', base_features = ' base_features ', out_dir = ' out_dir]))
+
 if isempty(subjects)
     dirs = dir(base_features);
     dirs = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));

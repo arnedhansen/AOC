@@ -17,7 +17,8 @@ folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 gaze_data_sternberg = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, ...
     'GazeStdX', {}, 'GazeStdY', {}, 'PupilSize', {}, 'MSRate', {}, ...
-    'Blinks', {}, 'Fixations', {}, 'Saccades', {}, 'ScanPathLength', {});
+    'Blinks', {}, 'Fixations', {}, 'Saccades', {}, 'ScanPathLength', {}, ...
+    'ConvexHullArea', {});
 
 %% Load all eye movements
 for subj = 1:length(subjects)
@@ -35,6 +36,7 @@ for subj = 1:length(subjects)
     pupilSize = [];
     microsaccadeRate = [];
     scanPathLength = [];
+    convexHullArea = [];
 
     %% Get trial-by-trial gaze data
     for trl = 1:length(dataet.trialinfo)
@@ -90,6 +92,20 @@ for subj = 1:length(subjects)
         dyf_s = diff(y_coords);
         spl = sum(sqrt(dxf_s.^2 + dyf_s.^2), 'omitnan');
 
+        %% Compute Convex Hull Area
+        valid_ch = isfinite(x_coords) & isfinite(y_coords);
+        x_v = x_coords(valid_ch); y_v = y_coords(valid_ch);
+        upts = unique([x_v(:), y_v(:)], 'rows');
+        if size(upts, 1) >= 3
+            try
+                [~, cha] = convhull(x_v(:), y_v(:));
+            catch
+                cha = NaN;
+            end
+        else
+            cha = NaN;
+        end
+
         %% Append data for this trial
         subject_id = [subject_id; str2num(subjects{subj})];
         trial_num = [trial_num; trl];
@@ -100,6 +116,7 @@ for subj = 1:length(subjects)
         pupilSize = [pupilSize; pups];
         microsaccadeRate = [microsaccadeRate; microsaccade_rate];
         scanPathLength = [scanPathLength; spl];
+        convexHullArea = [convexHullArea; cha];
 
     end
 
@@ -139,7 +156,8 @@ for subj = 1:length(subjects)
         'GazeStdY', num2cell(gazeSDy), ...
         'PupilSize', num2cell(pupilSize), ...
         'MSRate', num2cell(microsaccadeRate), ...
-        'ScanPathLength', num2cell(scanPathLength));
+        'ScanPathLength', num2cell(scanPathLength), ...
+        'ConvexHullArea', num2cell(convexHullArea));
 
     %% Calculate subject-specific data by condition (GazeDev, PupilSize, MSRate)
     l2 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 2);
@@ -149,6 +167,7 @@ for subj = 1:length(subjects)
     l2pups = mean([l2.PupilSize], 'omitnan');
     l2msrate = mean([l2.MSRate], 'omitnan');
     l2spl = mean([l2.ScanPathLength], 'omitnan');
+    l2cha = mean([l2.ConvexHullArea], 'omitnan');
 
     l4 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 4);
     l4gdev = mean([l4.GazeDeviation], 'omitnan');
@@ -157,6 +176,7 @@ for subj = 1:length(subjects)
     l4pups = mean([l4.PupilSize], 'omitnan');
     l4msrate = mean([l4.MSRate], 'omitnan');
     l4spl = mean([l4.ScanPathLength], 'omitnan');
+    l4cha = mean([l4.ConvexHullArea], 'omitnan');
 
     l6 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 6);
     l6gdev = mean([l6.GazeDeviation], 'omitnan');
@@ -165,6 +185,7 @@ for subj = 1:length(subjects)
     l6pups = mean([l6.PupilSize], 'omitnan');
     l6msrate = mean([l6.MSRate], 'omitnan');
     l6spl = mean([l6.ScanPathLength], 'omitnan');
+    l6cha = mean([l6.ConvexHullArea], 'omitnan');
 
     %% Load gaze metrics (extracted in GCP_preprocessing.m)
     load([datapath, filesep, 'gaze_metrics_sternberg'])
@@ -180,7 +201,8 @@ for subj = 1:length(subjects)
         'Blinks', num2cell([blinks_l2; blinks_l4; blinks_l6]), ...
         'Fixations', num2cell([fixations_l2; fixations_l4; fixations_l6]), ...
         'Saccades', num2cell([saccades_l2; saccades_l4; saccades_l6]), ...
-        'ScanPathLength', num2cell([l2spl; l4spl; l6spl]));
+        'ScanPathLength', num2cell([l2spl; l4spl; l6spl]), ...
+        'ConvexHullArea', num2cell([l2cha; l4cha; l6cha]));
 
     %% Save data
     savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');

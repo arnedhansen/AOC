@@ -26,7 +26,10 @@ gaze_data_sternberg_trials = struct('Trial', {}, 'ID', {}, 'Condition', {}, ...
     'PupilSizeFull', {}, 'PupilSizeFullBL', {}, ...
     'MSRateEarly', {}, 'MSRateEarlyBL', {}, ...
     'MSRateLate', {}, 'MSRateLateBL', {}, ...
-    'MSRateFull', {}, 'MSRateFullBL', {});
+    'MSRateFull', {}, 'MSRateFullBL', {}, ...
+    'ConvexHullAreaEarly', {}, 'ConvexHullAreaEarlyBL', {}, ...
+    'ConvexHullAreaLate', {}, 'ConvexHullAreaLateBL', {}, ...
+    'ConvexHullAreaFull', {}, 'ConvexHullAreaFullBL', {});
 
 %% Parameters
 fsample = 500; % Hz
@@ -82,6 +85,13 @@ for subj = 1:length(subjects)
     MSRateFull            = nan(nTrials,1);   % events/s
     MSRateFullBL          = nan(nTrials,1);   % dB
     MSSeries              = nan(nTrials,50);   % events/s/bin
+
+    ConvexHullAreaEarly   = nan(nTrials,1);   % px²
+    ConvexHullAreaEarlyBL = nan(nTrials,1);   % dB
+    ConvexHullAreaLate    = nan(nTrials,1);   % px²
+    ConvexHullAreaLateBL  = nan(nTrials,1);   % dB
+    ConvexHullAreaFull    = nan(nTrials,1);   % px²
+    ConvexHullAreaFullBL  = nan(nTrials,1);   % dB
 
     ScanPathSeriesT       = cell(nTrials,1);
     ScanPathSeries        = cell(nTrials,1);
@@ -174,6 +184,24 @@ for subj = 1:length(subjects)
             ms_rate_base = NaN;
         end
 
+        % Convex hull area baseline (px²)
+        if ok_base
+            valid_b = isfinite(dat_base(1,:)) & isfinite(dat_base(2,:));
+            xb_v = dat_base(1,valid_b); yb_v = dat_base(2,valid_b);
+            upts_b = unique([xb_v(:), yb_v(:)], 'rows');
+            if size(upts_b, 1) >= 3
+                try
+                    [~, cha_base] = convhull(xb_v(:), yb_v(:));
+                catch
+                    cha_base = NaN;
+                end
+            else
+                cha_base = NaN;
+            end
+        else
+            cha_base = NaN;
+        end
+
         %% Early window
         if ok_early
             xe = dat_early(1,:); ye = dat_early(2,:);
@@ -194,11 +222,25 @@ for subj = 1:length(subjects)
             else
                 ms_early= NaN;
             end
+
+            % Convex hull area (px²)
+            valid_e = isfinite(xe) & isfinite(ye);
+            xe_v = xe(valid_e); ye_v = ye(valid_e);
+            upts_e = unique([xe_v(:), ye_v(:)], 'rows');
+            if size(upts_e, 1) >= 3
+                try
+                    [~, cha_early] = convhull(xe_v(:), ye_v(:));
+                catch
+                    cha_early = NaN;
+                end
+            else
+                cha_early = NaN;
+            end
         else
-            gd_early= NaN; spl_early= NaN; pup_early= NaN; ms_early= NaN;
+            gd_early= NaN; spl_early= NaN; pup_early= NaN; ms_early= NaN; cha_early= NaN;
         end
 
-        % Baseline-correct early (dB for GD/SPL/MS; % for pupil)
+        % Baseline-correct early (dB for GD/SPL/MS/CHA; % for pupil)
         if isfinite(gd_early) && isfinite(gaze_dev_base) && gaze_dev_base > 0
             gd_early_bl = 10*log10(gd_early/ gaze_dev_base);
         else
@@ -223,6 +265,12 @@ for subj = 1:length(subjects)
             pup_early_bl = NaN;
         end
 
+        if isfinite(cha_early) && isfinite(cha_base) && cha_base > 0
+            cha_early_bl = 10*log10(cha_early / cha_base);
+        else
+            cha_early_bl = NaN;
+        end
+
         %% Late window
         if ok_late
             xl = dat_late(1,:); yl = dat_late(2,:);
@@ -243,11 +291,25 @@ for subj = 1:length(subjects)
             else
                 ms_late = NaN;
             end
+
+            % Convex hull area (px²)
+            valid_l = isfinite(xl) & isfinite(yl);
+            xl_v = xl(valid_l); yl_v = yl(valid_l);
+            upts_l = unique([xl_v(:), yl_v(:)], 'rows');
+            if size(upts_l, 1) >= 3
+                try
+                    [~, cha_late] = convhull(xl_v(:), yl_v(:));
+                catch
+                    cha_late = NaN;
+                end
+            else
+                cha_late = NaN;
+            end
         else
-            gd_late = NaN; spl_late = NaN; pup_late = NaN; ms_late = NaN;
+            gd_late = NaN; spl_late = NaN; pup_late = NaN; ms_late = NaN; cha_late = NaN;
         end
 
-        % Baseline-correct late (dB for GD/SPL/MS; % for pupil)
+        % Baseline-correct late (dB for GD/SPL/MS/CHA; % for pupil)
         if isfinite(gd_late) && isfinite(gaze_dev_base) && gaze_dev_base > 0
             gd_late_bl = 10*log10(gd_late/ gaze_dev_base);
         else
@@ -272,6 +334,12 @@ for subj = 1:length(subjects)
             pup_late_bl = NaN;
         end
 
+        if isfinite(cha_late) && isfinite(cha_base) && cha_base > 0
+            cha_late_bl = 10*log10(cha_late / cha_base);
+        else
+            cha_late_bl = NaN;
+        end
+
         %% Full window
         if ok_full
             xf = dat_full(1,:); yf = dat_full(2,:);
@@ -292,11 +360,25 @@ for subj = 1:length(subjects)
             else
                 ms_full = NaN;
             end
+
+            % Convex hull area (px²)
+            valid_f = isfinite(xf) & isfinite(yf);
+            xf_v = xf(valid_f); yf_v = yf(valid_f);
+            upts_f = unique([xf_v(:), yf_v(:)], 'rows');
+            if size(upts_f, 1) >= 3
+                try
+                    [~, cha_full] = convhull(xf_v(:), yf_v(:));
+                catch
+                    cha_full = NaN;
+                end
+            else
+                cha_full = NaN;
+            end
         else
-            gd_full = NaN; spl_full = NaN; pup_full = NaN; ms_full = NaN;
+            gd_full = NaN; spl_full = NaN; pup_full = NaN; ms_full = NaN; cha_full = NaN;
         end
 
-        % Baseline-correct full (dB for GD/SPL/MS; % for pupil)
+        % Baseline-correct full (dB for GD/SPL/MS/CHA; % for pupil)
         if isfinite(gd_full) && isfinite(gaze_dev_base) && gaze_dev_base > 0
             gd_full_bl = 10*log10(gd_full/ gaze_dev_base);
         else
@@ -319,6 +401,12 @@ for subj = 1:length(subjects)
             pup_full_bl = 100 * (pup_full- pupil_base) / pupil_base;
         else
             pup_full_bl = NaN;
+        end
+
+        if isfinite(cha_full) && isfinite(cha_base) && cha_base > 0
+            cha_full_bl = 10*log10(cha_full / cha_base);
+        else
+            cha_full_bl = NaN;
         end
 
         %% Scan-path time series [-0.5, 2]
@@ -449,6 +537,13 @@ for subj = 1:length(subjects)
         MSRateFull(trl)            = ms_full;       % events/s
         MSRateFullBL(trl)          = ms_full_bl;    % dB
 
+        ConvexHullAreaEarly(trl)   = cha_early;     % px²
+        ConvexHullAreaEarlyBL(trl) = cha_early_bl;  % dB
+        ConvexHullAreaLate(trl)    = cha_late;      % px²
+        ConvexHullAreaLateBL(trl)  = cha_late_bl;   % dB
+        ConvexHullAreaFull(trl)    = cha_full;      % px²
+        ConvexHullAreaFullBL(trl)  = cha_full_bl;   % dB
+
         % Also store cleaned gaze x/y for the series window
         gaze_x{trl} = xs;
         gaze_y{trl} = ys;
@@ -482,7 +577,13 @@ for subj = 1:length(subjects)
         'MSRateLate', num2cell(MSRateLate), ...
         'MSRateLateBL', num2cell(MSRateLateBL), ...
         'MSRateFull', num2cell(MSRateFull), ...
-        'MSRateFullBL', num2cell(MSRateFullBL));
+        'MSRateFullBL', num2cell(MSRateFullBL), ...
+        'ConvexHullAreaEarly', num2cell(ConvexHullAreaEarly), ...
+        'ConvexHullAreaEarlyBL', num2cell(ConvexHullAreaEarlyBL), ...
+        'ConvexHullAreaLate', num2cell(ConvexHullAreaLate), ...
+        'ConvexHullAreaLateBL', num2cell(ConvexHullAreaLateBL), ...
+        'ConvexHullAreaFull', num2cell(ConvexHullAreaFull), ...
+        'ConvexHullAreaFullBL', num2cell(ConvexHullAreaFullBL));
 
     %% Save data
     savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');

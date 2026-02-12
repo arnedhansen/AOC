@@ -195,7 +195,8 @@ ridgeFrac = 0.01; % ridge as fraction of typical (R+L)
 
 eeg_data_sternberg_trials = struct('Trial', {}, 'ID', {}, 'Condition', {}, ...
     'AlphaPowerEarly', {}, 'AlphaPowerEarlyBL', {}, 'AlphaPowerLate', {}, ...
-    'AlphaPowerLateBL', {}, 'IAF', {}, 'Lateralization', {});
+    'AlphaPowerLateBL', {}, 'AlphaPowerFull', {}, 'AlphaPowerFullBL', {}, ...
+    'IAF', {}, 'Lateralization', {});
 
 for subj = 1:length(subjects)
     clc

@@ -110,16 +110,26 @@ disp(upper('=== AOC MULTIVERSE PREP DONE ==='))
 %% ========== LOCAL FUNCTIONS ==========
 
 function [idx_all, idx_post, idx_pari, idx_occ] = get_channel_indices(labels)
+  % Occipital:  contains O or I  (O1, O2, Oz, PO3, PO4, PO7, PO8, POz, I1, I2, Iz)
+  % Parietal:   contains P but NOT F (P1-P8, Pz, PO3, PO4, CP1, CP2, TP7, TP8 etc. — excludes FP1, FP2, FPz)
+  % Posterior:  union of occipital and parietal (PO, O, I, P channels)
   n = length(labels);
-  idx_occ = []; idx_pari = []; idx_post = [];
+  idx_occ = []; idx_pari = [];
   for i = 1:n
     lb = labels{i};
-    if contains(lb, 'O') || contains(lb, 'I'), idx_occ(end+1) = i; end
-    if contains(lb, 'P'), idx_pari(end+1) = i; end
-    if contains(lb, 'PO') || contains(lb, 'O') || contains(lb, 'I'), idx_post(end+1) = i; end
+    if contains(lb, 'O') || contains(lb, 'I')
+      idx_occ(end+1) = i;
+    end
+    if contains(lb, 'P') && ~contains(lb, 'F')
+      idx_pari(end+1) = i;
+    end
   end
+  idx_post = unique([idx_occ, idx_pari]);  % posterior = union of occipital + parietal
   idx_all = 1:n;
   if isempty(idx_post), idx_post = idx_occ; end
+  disp(['    Occipital (' num2str(length(idx_occ)) '): ' strjoin(labels(idx_occ), ', ')])
+  disp(['    Parietal  (' num2str(length(idx_pari)) '): ' strjoin(labels(idx_pari), ', ')])
+  disp(['    Posterior (' num2str(length(idx_post)) '): ' strjoin(labels(idx_post), ', ')])
 end
 
 function a = bandpower_trials(pow, chIdx, band)
@@ -141,12 +151,13 @@ function IAF_band = get_IAF_band(pow_full, chIdx, alphaRange)
   if isempty(chIdx), IAF_band = alphaRange; return, end
   spec = squeeze(mean(mean(pow_full.powspctrm(:, chIdx, :), 1), 2));
   f = pow_full.freq(:);
-  aIdx = f >= alphaRange(1) & f <= alphaRange(2);
+  aIdx = find(f >= alphaRange(1) & f <= alphaRange(2));  % numeric indices
+  alphaF = f(aIdx);
   alphaP = spec(aIdx);
-  [pks, locs] = findpeaks(alphaP);
+  [pks, locs] = findpeaks(double(alphaP));
   if isempty(pks), IAF_band = alphaRange; return, end
   [~, im] = max(pks);
-  IAF = f(aIdx(locs(im)));
+  IAF = alphaF(locs(im));  % scalar: frequency of highest peak
   if IAF <= alphaRange(1) || IAF >= alphaRange(2), IAF_band = alphaRange; return, end
   IAF_band = [max(f(1), IAF-4), min(f(end), IAF+2)];
 end
@@ -217,7 +228,7 @@ function alpha_fooof = run_fooof_one_trial(pow_trial, chIdx, freq, band, cfg_foo
         for p = 1:size(pk,1)
           g = g + pk(p,2) .* exp(-(out.freq(:) - pk(p,1)).^2 ./ (2*pk(p,3)^2));
         end
-        f_osc = ap_fit + g - ap_fit;
+        f_osc = g;  % oscillatory power = FOOOF model minus aperiodic = just Gaussian peaks
       else
         return
       end
@@ -371,6 +382,15 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
 
       n_trials_cond = length(trl_idx);
       trials_list = trial_num(trl_idx);
+
+      % Check EEG-ET trial count alignment
+      n_eeg_trials = size(pe_100.powspctrm, 1);
+      if n_trials_cond ~= n_eeg_trials
+        disp(upper(['  WARNING: ET has ' num2str(n_trials_cond) ' trials but EEG has ' num2str(n_eeg_trials) ' for condition ' num2str(cval) '. Using min of both.']))
+        n_trials_cond = min(n_trials_cond, n_eeg_trials);
+        trl_idx = trl_idx(1:n_trials_cond);
+        trials_list = trial_num(trl_idx);
+      end
       disp(upper(['  Condition ' num2str(cval) ': ' num2str(n_trials_cond) ' trials. Computing alpha (raw + FOOOF) per trial per electrode set.']))
 
       %% Alpha: raw and FOOOF per trial, per electrode set, per latency, per alpha type
@@ -424,7 +444,8 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
           if iw == 1, tw = t_050; dur = dur_050; elseif iw == 2, tw = t_100; dur = dur_100; else, tw = t_200; dur = dur_200; end
           idx = t >= tw(1) & t <= tw(2);
           xw = x(idx); yw = y(idx);
-          xw = xw(isfinite(xw) & isfinite(yw)); yw = yw(isfinite(xw) & isfinite(yw));
+          validxy = isfinite(xw) & isfinite(yw);
+          xw = xw(validxy); yw = yw(validxy);
           if length(xw) < 50
             if iw == 1, fix_050(tr)=0; spl_050(tr)=NaN; vel_050(tr)=NaN; ms_050(tr)=NaN; end
             if iw == 2, fix_100(tr)=0; spl_100(tr)=NaN; vel_100(tr)=NaN; ms_100(tr)=NaN; end
@@ -445,9 +466,9 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
           catch
             ms_cnt = NaN;
           end
-          if iw == 1, fix_050(tr)=nfix; spl_050(tr)=spl/dur; vel_050(tr)=vel; ms_050(tr)=ms_cnt/dur; end
-          if iw == 2, fix_100(tr)=nfix; spl_100(tr)=spl/dur; vel_100(tr)=vel; ms_100(tr)=ms_cnt/dur; end
-          if iw == 3, fix_200(tr)=nfix; spl_200(tr)=spl/dur; vel_200(tr)=vel; ms_200(tr)=ms_cnt/dur; end
+          if iw == 1, fix_050(tr)=nfix; spl_050(tr)=spl; vel_050(tr)=vel; ms_050(tr)=ms_cnt; end
+          if iw == 2, fix_100(tr)=nfix; spl_100(tr)=spl; vel_100(tr)=vel; ms_100(tr)=ms_cnt; end
+          if iw == 3, fix_200(tr)=nfix; spl_200(tr)=spl; vel_200(tr)=vel; ms_200(tr)=ms_cnt; end
         end
       end
 

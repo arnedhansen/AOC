@@ -8,6 +8,7 @@ library(broom.mixed)
 library(tidyverse)
 library(patchwork)
 library(ggplot2)
+library(cowplot)   # for get_legend()
 
 # Paths: CSV from MATLAB; figures path configurable via AOC_MULTIVERSE_FIGURES
 script_dir <- Sys.getenv("AOC_MULTIVERSE_DIR", unset = "")
@@ -34,7 +35,8 @@ dat <- read.csv(csv_path, stringsAsFactors = FALSE, na.strings = c("NA", "NaN", 
 dat$subjectID <- as.factor(dat$subjectID)
 dat$Condition <- as.factor(dat$Condition)
 
-# Fit LMM per universe; keep terms: gaze_value, Condition, interaction
+# Fit LMM per universe; z-score gaze_value and alpha within universe so estimates
+# are comparable across gaze measures (fixations ~0-20, SPL ~0-5000, etc.)
 universes <- unique(dat$universe_id)
 M_list <- list()
 for (i in seq_along(universes)) {
@@ -42,6 +44,11 @@ for (i in seq_along(universes)) {
   du <- dat[dat$universe_id == u, ]
   du <- du[complete.cases(du[, c("alpha", "gaze_value", "Condition", "subjectID")]), ]
   if (nrow(du) < 10) next
+  # Z-score so estimates are in SD units (comparable across gaze measures)
+  du$gaze_value <- as.numeric(scale(du$gaze_value))
+  du$alpha      <- as.numeric(scale(du$alpha))
+  # Skip universes with zero variance (all identical values)
+  if (any(is.nan(du$gaze_value)) || any(is.nan(du$alpha))) next
   fit <- tryCatch(
     lmer(alpha ~ gaze_value * Condition + (1 | subjectID), data = du,
          control = lmerControl(optimizer = "bobyqa")),

@@ -70,20 +70,25 @@ for t = 1:numel(tasks)
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath);
 
-        % Load raw + FOOOF TFR data
+        % Load all TFR variables (raw + FOOOF)
         S = load(task.tfr_file);
 
         % First subject: initialise arrays
+        % Raw and FOOOF may have different frequency grids
         if ~init
-            ref   = S.(task.raw_vars{1});
-            freqs = ref.freq;
-            nFreq = numel(freqs);
-            chIdx = find(ismember(ref.label, channels));
+            refRaw = S.(task.raw_vars{1});
+            refFF  = S.(task.fooof_vars{1});
 
-            bl_raw  = nan(nSubj, nConds, nFreq);
-            ret_raw = nan(nSubj, nConds, nFreq);
-            bl_ff   = nan(nSubj, nConds, nFreq);
-            ret_ff  = nan(nSubj, nConds, nFreq);
+            freqsRaw = refRaw.freq;
+            freqsFF  = refFF.freq;
+            nFreqRaw = numel(freqsRaw);
+            nFreqFF  = numel(freqsFF);
+            chIdx    = find(ismember(refRaw.label, channels));
+
+            bl_raw  = nan(nSubj, nConds, nFreqRaw);
+            ret_raw = nan(nSubj, nConds, nFreqRaw);
+            bl_ff   = nan(nSubj, nConds, nFreqFF);
+            ret_ff  = nan(nSubj, nConds, nFreqFF);
             init    = true;
         end
 
@@ -97,11 +102,12 @@ for t = 1:numel(tasks)
             bl_raw(subj, c, :)  = mean(mean(raw.powspctrm(chIdx, :, tBL_r),  3, 'omitnan'), 1, 'omitnan');
             ret_raw(subj, c, :) = mean(mean(raw.powspctrm(chIdx, :, tRet_r), 3, 'omitnan'), 1, 'omitnan');
 
-            % --- FOOOF: same ---
-            tBL_f  = ff.time >= blWin(1)  & ff.time <= blWin(2);
-            tRet_f = ff.time >= retWin(1) & ff.time <= retWin(2);
-            bl_ff(subj, c, :)  = mean(mean(ff.powspctrm(chIdx, :, tBL_f),  3, 'omitnan'), 1, 'omitnan');
-            ret_ff(subj, c, :) = mean(mean(ff.powspctrm(chIdx, :, tRet_f), 3, 'omitnan'), 1, 'omitnan');
+            % --- FOOOF: same (may have different freq grid) ---
+            chIdxFF = find(ismember(ff.label, channels));
+            tBL_f   = ff.time >= blWin(1)  & ff.time <= blWin(2);
+            tRet_f  = ff.time >= retWin(1) & ff.time <= retWin(2);
+            bl_ff(subj, c, :)  = mean(mean(ff.powspctrm(chIdxFF, :, tBL_f),  3, 'omitnan'), 1, 'omitnan');
+            ret_ff(subj, c, :) = mean(mean(ff.powspctrm(chIdxFF, :, tRet_f), 3, 'omitnan'), 1, 'omitnan');
         end
     end
 
@@ -110,10 +116,10 @@ for t = 1:numel(tasks)
     % ================================================================
     nValid = sum(~isnan(bl_raw(:, 1, 1)));
 
-    bl_raw_m  = nan(nConds, nFreq);  bl_raw_s  = nan(nConds, nFreq);
-    ret_raw_m = nan(nConds, nFreq);  ret_raw_s = nan(nConds, nFreq);
-    bl_ff_m   = nan(nConds, nFreq);  bl_ff_s   = nan(nConds, nFreq);
-    ret_ff_m  = nan(nConds, nFreq);  ret_ff_s  = nan(nConds, nFreq);
+    bl_raw_m  = nan(nConds, nFreqRaw);  bl_raw_s  = nan(nConds, nFreqRaw);
+    ret_raw_m = nan(nConds, nFreqRaw);  ret_raw_s = nan(nConds, nFreqRaw);
+    bl_ff_m   = nan(nConds, nFreqFF);   bl_ff_s   = nan(nConds, nFreqFF);
+    ret_ff_m  = nan(nConds, nFreqFF);   ret_ff_s  = nan(nConds, nFreqFF);
     for c = 1:nConds
         bl_raw_m(c, :)  = mean(squeeze(bl_raw(:, c, :)),  1, 'omitnan');
         bl_raw_s(c, :)  = std(squeeze(bl_raw(:, c, :)),   0, 1, 'omitnan') / sqrt(nValid);
@@ -135,7 +141,7 @@ for t = 1:numel(tasks)
     subplot(1, 2, 1); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
-        eb = shadedErrorBar(freqs, bl_raw_m(c, :), bl_raw_s(c, :), ...
+        eb = shadedErrorBar(freqsRaw, bl_raw_m(c, :), bl_raw_s(c, :), ...
             'lineProps', {'-', 'Color', colors(c, :), 'LineWidth', 2});
         set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
         set(eb.edge(1), 'Color', colors(c, :));
@@ -154,7 +160,7 @@ for t = 1:numel(tasks)
     subplot(1, 2, 2); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
-        eb = shadedErrorBar(freqs, ret_raw_m(c, :), ret_raw_s(c, :), ...
+        eb = shadedErrorBar(freqsRaw, ret_raw_m(c, :), ret_raw_s(c, :), ...
             'lineProps', {'-', 'Color', colors(c, :), 'LineWidth', 2});
         set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
         set(eb.edge(1), 'Color', colors(c, :));
@@ -185,7 +191,7 @@ for t = 1:numel(tasks)
     subplot(1, 2, 1); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
-        eb = shadedErrorBar(freqs, bl_ff_m(c, :), bl_ff_s(c, :), ...
+        eb = shadedErrorBar(freqsFF, bl_ff_m(c, :), bl_ff_s(c, :), ...
             'lineProps', {'-', 'Color', colors(c, :), 'LineWidth', 2});
         set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
         set(eb.edge(1), 'Color', colors(c, :));
@@ -204,7 +210,7 @@ for t = 1:numel(tasks)
     subplot(1, 2, 2); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
-        eb = shadedErrorBar(freqs, ret_ff_m(c, :), ret_ff_s(c, :), ...
+        eb = shadedErrorBar(freqsFF, ret_ff_m(c, :), ret_ff_s(c, :), ...
             'lineProps', {'-', 'Color', colors(c, :), 'LineWidth', 2});
         set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
         set(eb.edge(1), 'Color', colors(c, :));

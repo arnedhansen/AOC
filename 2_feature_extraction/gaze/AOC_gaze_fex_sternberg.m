@@ -18,7 +18,7 @@ subjects = {folders.name};
 gaze_data_sternberg = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, ...
     'GazeStdX', {}, 'GazeStdY', {}, 'PupilSize', {}, 'MSRate', {}, ...
     'Blinks', {}, 'Fixations', {}, 'Saccades', {}, 'ScanPathLength', {}, ...
-    'ConvexHullArea', {});
+    'BCEA', {}, 'BCEALateralization', {});
 
 %% Load all eye movements
 for subj = 1:length(subjects)
@@ -36,7 +36,8 @@ for subj = 1:length(subjects)
     pupilSize = [];
     microsaccadeRate = [];
     scanPathLength = [];
-    convexHullArea = [];
+    bcea95Area = [];
+    bceaLateralization = [];
 
     %% Get trial-by-trial gaze data
     for trl = 1:length(dataet.trialinfo)
@@ -92,18 +93,17 @@ for subj = 1:length(subjects)
         dyf_s = diff(y_coords);
         spl = sum(sqrt(dxf_s.^2 + dyf_s.^2), 'omitnan');
 
-        %% Compute Convex Hull Area
-        valid_ch = isfinite(x_coords) & isfinite(y_coords);
-        x_v = x_coords(valid_ch); y_v = y_coords(valid_ch);
-        upts = unique([x_v(:), y_v(:)], 'rows');
-        if size(upts, 1) >= 3
-            try
-                [~, cha] = convhull(x_v(:), y_v(:));
-            catch
-                cha = NaN;
-            end
+        %% Compute BCEA (95%) and Lateralization
+        valid_bcea = isfinite(x_coords) & isfinite(y_coords);
+        x_bv = double(x_coords(valid_bcea)); y_bv = double(y_coords(valid_bcea));
+        if numel(x_bv) >= 10
+            sx_b = std(x_bv); sy_b = std(y_bv);
+            rho_b = corr(x_bv(:), y_bv(:));
+            k95 = -log(1 - 0.95);
+            bcea = 2 * k95 * pi * sx_b * sy_b * sqrt(1 - rho_b^2);
+            bcea_lat = (mean(x_bv) - 400) / 400; % -1=left, 0=centre, +1=right
         else
-            cha = NaN;
+            bcea = NaN; bcea_lat = NaN;
         end
 
         %% Append data for this trial
@@ -116,7 +116,8 @@ for subj = 1:length(subjects)
         pupilSize = [pupilSize; pups];
         microsaccadeRate = [microsaccadeRate; microsaccade_rate];
         scanPathLength = [scanPathLength; spl];
-        convexHullArea = [convexHullArea; cha];
+        bcea95Area = [bcea95Area; bcea];
+        bceaLateralization = [bceaLateralization; bcea_lat];
 
     end
 
@@ -157,7 +158,8 @@ for subj = 1:length(subjects)
         'PupilSize', num2cell(pupilSize), ...
         'MSRate', num2cell(microsaccadeRate), ...
         'ScanPathLength', num2cell(scanPathLength), ...
-        'ConvexHullArea', num2cell(convexHullArea));
+        'BCEA', num2cell(bcea95Area), ...
+        'BCEALateralization', num2cell(bceaLateralization));
 
     %% Calculate subject-specific data by condition (GazeDev, PupilSize, MSRate)
     l2 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 2);
@@ -167,7 +169,8 @@ for subj = 1:length(subjects)
     l2pups = mean([l2.PupilSize], 'omitnan');
     l2msrate = mean([l2.MSRate], 'omitnan');
     l2spl = mean([l2.ScanPathLength], 'omitnan');
-    l2cha = mean([l2.ConvexHullArea], 'omitnan');
+    l2bcea = mean([l2.BCEA], 'omitnan');
+    l2blat = mean([l2.BCEALateralization], 'omitnan');
 
     l4 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 4);
     l4gdev = mean([l4.GazeDeviation], 'omitnan');
@@ -176,7 +179,8 @@ for subj = 1:length(subjects)
     l4pups = mean([l4.PupilSize], 'omitnan');
     l4msrate = mean([l4.MSRate], 'omitnan');
     l4spl = mean([l4.ScanPathLength], 'omitnan');
-    l4cha = mean([l4.ConvexHullArea], 'omitnan');
+    l4bcea = mean([l4.BCEA], 'omitnan');
+    l4blat = mean([l4.BCEALateralization], 'omitnan');
 
     l6 = subj_data_gaze_trial([subj_data_gaze_trial.Condition] == 6);
     l6gdev = mean([l6.GazeDeviation], 'omitnan');
@@ -185,7 +189,8 @@ for subj = 1:length(subjects)
     l6pups = mean([l6.PupilSize], 'omitnan');
     l6msrate = mean([l6.MSRate], 'omitnan');
     l6spl = mean([l6.ScanPathLength], 'omitnan');
-    l6cha = mean([l6.ConvexHullArea], 'omitnan');
+    l6bcea = mean([l6.BCEA], 'omitnan');
+    l6blat = mean([l6.BCEALateralization], 'omitnan');
 
     %% Load gaze metrics (extracted in GCP_preprocessing.m)
     load([datapath, filesep, 'gaze_metrics_sternberg'])
@@ -202,7 +207,8 @@ for subj = 1:length(subjects)
         'Fixations', num2cell([fixations_l2; fixations_l4; fixations_l6]), ...
         'Saccades', num2cell([saccades_l2; saccades_l4; saccades_l6]), ...
         'ScanPathLength', num2cell([l2spl; l4spl; l6spl]), ...
-        'ConvexHullArea', num2cell([l2cha; l4cha; l6cha]));
+        'BCEA', num2cell([l2bcea; l4bcea; l6bcea]), ...
+        'BCEALateralization', num2cell([l2blat; l4blat; l6blat]));
 
     %% Save data
     savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');

@@ -1,5 +1,5 @@
 # %% AOC Stats Rainclouds LONG — All Variables (Sternberg + N-Back)
-# Loads merged_data_*_LONG.csv for both tasks, runs rm-ANOVAs and pairwise
+# Loads merged_data_*.csv for both tasks, runs rm-ANOVAs and pairwise
 # mixed-model contrasts, generates raincloud plots for every numeric DV.
 # Saves figures to figures/stats/rainclouds/allvars.
 #
@@ -68,6 +68,7 @@ variables = [
     "Accuracy", "ReactionTime",
     "GazeDeviation", "GazeStdX", "GazeStdY",
     "PupilSize", "MSRate", "Blinks", "Fixations", "Saccades", "ScanPathLength",
+    "BCEA", "BCEALateralization",
     "AlphaPower", "IAF", "Lateralization",
     # --- FOOOF alpha ---
     "AlphaPower_FOOOF",
@@ -83,6 +84,9 @@ variables = [
     "ScanPathLengthFullBL", "ScanPathLengthEarlyBL", "ScanPathLengthLateBL",
     "PupilSizeFullBL", "PupilSizeEarlyBL", "PupilSizeLateBL",
     "MSRateFullBL", "MSRateEarlyBL", "MSRateLateBL",
+    # --- Baselined BCEA ---
+    "BCEAFullBL", "BCEAEarlyBL", "BCEALateBL",
+    "BCEALatFullBL", "BCEALatEarlyBL", "BCEALatLateBL",
 ]
 
 # Pretty labels (auto-generated; override specific ones below)
@@ -94,6 +98,8 @@ _unit_map = {
     "MSRate": "[MS/s]",
     "Blinks": "", "Fixations": "", "Saccades": "",
     "ScanPathLength": "[px]",
+    "BCEA": "[px²]",
+    "BCEALateralization": "[L−R]",
     "AlphaPower": "[\u03BCV\u00B2/Hz]",
     "IAF": "[Hz]",
     "Lateralization": "[R\u2212L / R+L]",
@@ -108,6 +114,10 @@ _unit_map = {
     "ScanPathLengthFullBL": "[dB]", "ScanPathLengthEarlyBL": "[dB]", "ScanPathLengthLateBL": "[dB]",
     "PupilSizeFullBL": "[%\u0394]", "PupilSizeEarlyBL": "[%\u0394]", "PupilSizeLateBL": "[%\u0394]",
     "MSRateFullBL": "[dB]", "MSRateEarlyBL": "[dB]", "MSRateLateBL": "[dB]",
+    "BCEA": "[px\u00B2]",
+    "BCEALateralization": "[L\u2212R]",
+    "BCEAFullBL": "[dB]", "BCEAEarlyBL": "[dB]", "BCEALateBL": "[dB]",
+    "BCEALatFullBL": "[\u0394]", "BCEALatEarlyBL": "[\u0394]", "BCEALatLateBL": "[\u0394]",
 }
 
 def _pretty_label(var):
@@ -125,7 +135,7 @@ def _save_name(var):
 tasks = [
     {
         "name"       : "sternberg",
-        "input_csv"  : f"{base_dir}/data/features/merged_data_sternberg_LONG.csv",
+        "input_csv"  : f"{base_dir}/data/features/merged_data_sternberg.csv",
         "cond_to_label_numeric": [
             {1: "WM load 2", 2: "WM load 4", 3: "WM load 6"},
             {2: "WM load 2", 4: "WM load 4", 6: "WM load 6"},
@@ -138,7 +148,7 @@ tasks = [
     },
     {
         "name"       : "nback",
-        "input_csv"  : f"{base_dir}/data/features/merged_data_nback_LONG.csv",
+        "input_csv"  : f"{base_dir}/data/features/merged_data_nback.csv",
         "cond_to_label_numeric": [{1: "1-back", 2: "2-back", 3: "3-back"}],
         "categories" : ["1-back", "2-back", "3-back"],
         "comparisons": [("1-back", "2-back"),
@@ -299,6 +309,8 @@ for task in tasks:
                     etap = (F * df1) / (F * df1 + df2) if np.isfinite(F) else np.nan
                     all_anova_rows.append([task["name"], var, r["Effect"],
                                            df1, df2, F, p, etap])
+                    print(f"  rm-ANOVA: {var} [{task['name']}]  "
+                          f"F({df1:.0f},{df2:.0f}) = {F:.3f}, p = {p:.4f}, η²p = {etap:.3f}")
             except Exception:
                 all_anova_rows.append([task["name"], var, "Condition",
                                        np.nan, np.nan, np.nan, np.nan, np.nan])
@@ -315,6 +327,12 @@ for task in tasks:
             )
         except Exception:
             pw = pd.DataFrame(columns=["group1", "group2", "p_adj"])
+
+        # Print pairwise to console
+        if not pw.empty:
+            for _, r in pw.iterrows():
+                sig = p_to_signif(float(r['p_adj'])) if 'p_adj' in r else ''
+                print(f"    {r['group1']} vs {r['group2']}: p_adj = {float(r['p_adj']):.4f} {sig}")
 
         # ------ Pairwise Cohen's dz ------
         wide = dvar.pivot(index="ID", columns="Condition", values=var)
@@ -427,7 +445,7 @@ anova_df = pd.DataFrame(
     columns=["Task", "Variable", "Effect", "DF_num", "DF_den",
              "F", "p", "eta_p2"],
 )
-anova_csv = os.path.join(output_dir, "AOC_anova_LONG.csv")
+anova_csv = os.path.join(output_dir, "AOC_anova_allvars.csv")
 anova_df.to_csv(anova_csv, index=False)
 print(f"\nSaved ANOVA table → {anova_csv}")
 
@@ -436,7 +454,7 @@ effsize_df = pd.DataFrame(
     columns=["Task", "Variable", "Group1", "Group2", "N",
              "MeanDiff", "Cohens_dz", "CI95_low", "CI95_high", "p_adj"],
 )
-effsize_csv = os.path.join(output_dir, "AOC_pairwise_effectsizes_LONG.csv")
+effsize_csv = os.path.join(output_dir, "AOC_pairwise_effectsizes_allvars.csv")
 effsize_df.to_csv(effsize_csv, index=False)
 print(f"Saved pairwise effect sizes → {effsize_csv}")
 

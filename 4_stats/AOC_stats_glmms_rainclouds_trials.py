@@ -66,10 +66,10 @@ anova_dir = f"{base_dir}/data/stats/anova"
 
 # %% Variables and labelling
 
-variables  = ["Accuracy", "ReactionTime", "GazeDeviation", "MSRate", "Fixations", "Saccades", "PupilSize", "ScanPathLength", "ConvexHullArea", "AlphaPower", "IAF"]
-titles     = ["Accuracy", "Reaction Time", "Gaze Deviation", "Microsaccade Rate", "Fixations", "Saccades", "Pupil Size", "Scan Path Length", "Convex Hull Area", "Alpha Power", "IAF"]
-y_labels   = ["Accuracy [%]", "Reaction Time [s]", "Gaze Deviation [px]", "Microsaccade Rate [MS/s]", "Fixations", "Saccades", "Pupil Size [a.u.]", "Scan Path Length [px]", "Convex Hull Area [px\u00B2]", "Alpha Power [\u03BCV²/Hz]", "IAF [Hz]"]
-save_names = ["acc", "rt", "gazedev", "ms", "fix", "sacc", "pupil", "spl", "cha", "pow", "iaf"]
+variables  = ["Accuracy", "ReactionTime", "GazeDeviation", "MSRate", "Fixations", "Saccades", "PupilSize", "ScanPathLength", "BCEA", "BCEALateralization", "AlphaPower", "IAF"]
+titles     = ["Accuracy", "Reaction Time", "Gaze Deviation", "Microsaccade Rate", "Fixations", "Saccades", "Pupil Size", "Scan Path Length", "BCEA (95%)", "BCEA Lateralization", "Alpha Power", "IAF"]
+y_labels   = ["Accuracy [%]", "Reaction Time [s]", "Gaze Deviation [px]", "Microsaccade Rate [MS/s]", "Fixations", "Saccades", "Pupil Size [a.u.]", "Scan Path Length [px]", "BCEA [px\u00B2]", "BCEA Lateralization [L\u2212R]", "Alpha Power [\u03BCV²/Hz]", "IAF [Hz]"]
+save_names = ["acc", "rt", "gazedev", "ms", "fix", "sacc", "pupil", "spl", "bcea", "bcea_lat", "pow", "iaf"]
 
 # Manual y ticks and ylims per variable
 yticks_map = {
@@ -81,7 +81,6 @@ yticks_map = {
     "Saccades"      : np.arange(0, 4.25, 1),
     "PupilSize"     : np.arange(0, 5.5, 1),
     "ScanPathLength"  : np.arange(0, 410, 50),
-    "ConvexHullArea"  : np.arange(0, 3100, 500),
     "AlphaPower"      : np.arange(0, 1.52, 0.25),
     "IAF"             : np.arange(8, 14, 1),
 }
@@ -94,7 +93,6 @@ ylims_map = {
     "Saccades"      : (0, 4.25),
     "PupilSize"     : (0, 5.5),
     "ScanPathLength"  : (0, 410),
-    "ConvexHullArea"  : (0, 3100),
     "AlphaPower"      : (0, 1.6),
     "IAF"             : (8, 14.1),
 }
@@ -276,6 +274,9 @@ for task in tasks:
                 p   = float(r['Pr > F'])
                 etap = (F * df1) / (F * df1 + df2) if np.isfinite(F) else np.nan
                 anova_rows.append([task['name'], var, r['Effect'], df1, df2, F, p, etap])
+            # Print ANOVA to console
+            print(f"\n  rm-ANOVA: {var} [{task['name']}]")
+            print(f"    F({df1:.0f},{df2:.0f}) = {F:.3f}, p = {p:.4f}, η²p = {etap:.3f}")
         else:
             anova_rows.append([task['name'], var, 'Condition', np.nan, np.nan, np.nan, np.nan, np.nan])
 
@@ -355,7 +356,16 @@ for task in tasks:
         doc_path = os.path.join(output_dir_stats, doc_name)
         export_model_table(model_result, doc_path)
         print(f"Saved model table    → {doc_name}")
-        
+
+        # Print GLMM summary to console
+        print(f"\n{'─'*60}")
+        print(f"  GLMM: {var} ~ Condition + (1|ID)  [{task['name']}]")
+        print(f"{'─'*60}")
+        try:
+            print(model_result.summary())
+        except Exception:
+            print(model_result.summary2())
+
         # Also save fixed effects (β, SE, z/t, p, CI) to CSV and outputs
         from functions.mixedlm_helpers import mixedlm_fixed_effects_to_df
 
@@ -498,7 +508,11 @@ for task in tasks:
             y_positions.append(start + i * step)
 
         # y-label at data midpoint
-        ymin_cur, ymax_cur = ylims_map[var]
+        if var in ylims_map:
+            ymin_cur, ymax_cur = ylims_map[var]
+        else:
+            ymin_cur = float(dvar[var].min()) if np.isfinite(dvar[var].min()) else 0.0
+            ymax_cur = float(dvar[var].max()) if np.isfinite(dvar[var].max()) else 1.0
         ymid = 0.5 * (ymin_cur + ymax_cur)
         ax.set_ylabel("")
         ax.yaxis.get_label().set_visible(False)
@@ -764,6 +778,17 @@ for task in tasks:
         doc_path = os.path.join(output_dir_stats, doc_name)
         export_model_table(final_res, doc_path)
         print(f"Saved model table → {doc_name}")
+
+        # Print Alpha ~ Gaze model to console
+        print(f"\n{'─'*60}")
+        print(f"  Alpha ~ {gaze_var} * Condition  [{task['name']}]")
+        print(f"  Final formula: {final_formula}")
+        print(f"  Interaction kept: {interaction_kept}")
+        print(f"{'─'*60}")
+        try:
+            print(final_res.summary())
+        except Exception:
+            pass
 
         # Also save fixed effects for the alpha ~ gaze * Condition model
         fe_alpha_df = mixedlm_fixed_effects_to_df(

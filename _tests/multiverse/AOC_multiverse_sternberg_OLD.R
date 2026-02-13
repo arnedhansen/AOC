@@ -1,5 +1,6 @@
-# AOC Multiverse — N-Back: alpha ~ gaze * condition + (1|subjectID)
-# Reads multiverse_nback.csv, fits LMM per universe, plots specification curve + panel.
+# AOC Multiverse — Sternberg (OLD 5-dimension grid, 192 universes)
+# Reads multiverse_sternberg.csv from the original AOC_multiverse_prep.m (no baseline/freq_method columns).
+# Fits LMM per universe, plots specification curve + panel (DALAS-style).
 # Figure output: '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/tests/multiverse'
 
 library(lme4)
@@ -12,11 +13,12 @@ library(cowplot)   # for get_legend()
 
 # Paths: CSVs live on the server features directory; figures path configurable
 csv_dir <- Sys.getenv("AOC_MULTIVERSE_DIR", unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features")
-csv_path <- file.path(csv_dir, "multiverse_nback.csv")
+csv_path <- file.path(csv_dir, "multiverse_sternberg.csv")
 if (!file.exists(csv_path)) stop("CSV not found: ", csv_path, ". Run AOC_multiverse_prep.m or set AOC_MULTIVERSE_DIR.")
 storage_plot <- Sys.getenv("AOC_MULTIVERSE_FIGURES", unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/tests/multiverse")
 if (!dir.exists(storage_plot)) dir.create(storage_plot, recursive = TRUE)
 
+# Theme (DALAS-style)
 v_common_theme <- theme(
   plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
   axis.text.x = element_text(angle = 0, hjust = 0.5, size = 14),
@@ -28,13 +30,13 @@ v_common_theme <- theme(
   plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
 )
 
-# Treat MATLAB NaN as missing so complete.cases and LMM work correctly
+# Load long data (treat MATLAB NaN as missing so complete.cases and LMM work correctly)
 dat <- read.csv(csv_path, stringsAsFactors = FALSE, na.strings = c("NA", "NaN", ""))
 dat$subjectID <- as.factor(dat$subjectID)
 dat$Condition <- as.factor(dat$Condition)
 
-# Z-score gaze_value and alpha within each universe so estimates are in SD units
-# (comparable across gaze measures: fixations ~0-20, SPL ~0-5000, etc.)
+# Fit LMM per universe; z-score gaze_value and alpha within universe so estimates
+# are comparable across gaze measures (fixations ~0-20, SPL ~0-5000, etc.)
 universes <- unique(dat$universe_id)
 M_list <- list()
 for (i in seq_along(universes)) {
@@ -42,8 +44,10 @@ for (i in seq_along(universes)) {
   du <- dat[dat$universe_id == u, ]
   du <- du[complete.cases(du[, c("alpha", "gaze_value", "Condition", "subjectID")]), ]
   if (nrow(du) < 10) next
+  # Z-score so estimates are in SD units (comparable across gaze measures)
   du$gaze_value <- as.numeric(scale(du$gaze_value))
   du$alpha      <- as.numeric(scale(du$alpha))
+  # Skip universes with zero variance (all identical values)
   if (any(is.nan(du$gaze_value)) || any(is.nan(du$alpha))) next
   fit <- tryCatch(
     lmer(alpha ~ gaze_value * Condition + (1 | subjectID), data = du,
@@ -59,9 +63,6 @@ for (i in seq_along(universes)) {
   tid$latency_ms <- r1$latency_ms
   tid$alpha_type <- r1$alpha_type
   tid$gaze_measure <- r1$gaze_measure
-  tid$baseline_eeg <- r1$baseline_eeg
-  tid$baseline_gaze <- r1$baseline_gaze
-  tid$freq_method <- r1$freq_method
   M_list[[length(M_list) + 1L]] <- tid
 }
 M_results <- bind_rows(M_list)
@@ -72,6 +73,7 @@ terms_keep <- c("gaze_value", grep("gaze_value:Condition", M_results$term, value
 terms_keep <- unique(terms_keep)
 M_results <- M_results %>% filter(term %in% terms_keep)
 
+# Order universes by estimate of gaze_value (primary term)
 term_primary <- "gaze_value"
 if (term_primary %in% M_results$term) {
   ord <- M_results %>% filter(term == term_primary) %>% arrange(estimate) %>% pull(universe_id)
@@ -81,6 +83,7 @@ if (term_primary %in% M_results$term) {
 ord_df <- data.frame(universe_id = ord, ordered_universe = seq_along(ord))
 M_results <- M_results %>% left_join(ord_df, by = "universe_id")
 
+# Significance and color
 M_results <- M_results %>%
   mutate(
     condition = case_when(
@@ -98,7 +101,9 @@ M_results <- M_results %>%
 M_results$condition <- factor(M_results$condition,
   levels = c("Significant Positive", "Significant Negative", "Non-significant"))
 
+# Specification curve: one plot per term
 terms_plot <- unique(M_results$term)
+max_u <- max(M_results$ordered_universe, na.rm = TRUE)
 ylim_est <- c(min(M_results$estimate, na.rm = TRUE) - 0.1, max(M_results$estimate, na.rm = TRUE) + 0.1)
 
 plist <- lapply(terms_plot, function(tr) {
@@ -118,15 +123,17 @@ legend_spec <- get_legend(
 )
 p_curve <- wrap_plots(plist, ncol = 2) + plot_layout(guides = "collect")
 
+# Specification panel: tiles (5 dimensions) + N per universe
 df_specs <- M_results %>% filter(term == term_primary) %>%
-  select(ordered_universe, universe_id, electrodes, fooof, latency_ms, alpha_type, gaze_measure, baseline_eeg, baseline_gaze, freq_method, condition, color)
+  select(ordered_universe, universe_id, electrodes, fooof, latency_ms, alpha_type, gaze_measure, condition, color)
+# N (number of trials) per universe from original data
 N_per_u <- dat %>% group_by(universe_id) %>% summarise(N = n(), .groups = "drop")
 df_specs <- df_specs %>% left_join(N_per_u, by = "universe_id")
 df_long <- df_specs %>%
-  pivot_longer(cols = c(electrodes, fooof, latency_ms, alpha_type, gaze_measure, baseline_eeg, baseline_gaze, freq_method),
+  pivot_longer(cols = c(electrodes, fooof, latency_ms, alpha_type, gaze_measure),
                names_to = "Variable", values_to = "value")
-df_long$Variable <- factor(df_long$Variable,
-  levels = c("electrodes", "fooof", "latency_ms", "alpha_type", "gaze_measure", "baseline_eeg", "baseline_gaze", "freq_method"))
+v_p2_group_order <- c("electrodes", "fooof", "latency_ms", "alpha_type", "gaze_measure")
+df_long$Variable <- factor(df_long$Variable, levels = v_p2_group_order)
 
 p_panel <- ggplot(df_long, aes(x = ordered_universe, y = value, fill = condition)) +
   geom_tile() +
@@ -138,6 +145,7 @@ p_panel <- ggplot(df_long, aes(x = ordered_universe, y = value, fill = condition
   theme(strip.text.y = element_text(angle = 0, size = 10), legend.position = "bottom") +
   labs(x = "Universe", y = "Option") + v_common_theme
 
+# N panel: show sample size per universe
 df_N <- df_specs %>% distinct(ordered_universe, N)
 p_N <- ggplot(df_N, aes(x = ordered_universe, y = "N (trials)")) +
   geom_tile(aes(fill = N), width = 1, height = 0.5) +
@@ -145,9 +153,11 @@ p_N <- ggplot(df_N, aes(x = ordered_universe, y = "N (trials)")) +
   theme_minimal() + theme(axis.title.y = element_blank(), axis.text.y = element_text(size = 10)) +
   labs(x = "Universe")
 
+# Combined figure (curve, legend, panel, N)
 p_combined <- p_curve / legend_spec / p_panel / p_N + plot_layout(heights = c(1.2, 0.15, 1.5, 0.3))
-ggsave(file.path(storage_plot, "AOC_multiverse_nback.svg"), plot = p_combined, width = 14, height = 12, dpi = 300)
-ggsave(file.path(storage_plot, "AOC_multiverse_nback.png"), plot = p_combined, width = 14, height = 12, dpi = 300)
-message("Saved AOC_multiverse_nback.svg and .png to ", storage_plot)
+ggsave(file.path(storage_plot, "AOC_multiverse_sternberg_OLD.svg"), plot = p_combined, width = 14, height = 12, dpi = 300)
+ggsave(file.path(storage_plot, "AOC_multiverse_sternberg_OLD.png"), plot = p_combined, width = 14, height = 12, dpi = 300)
+message("Saved AOC_multiverse_sternberg_OLD.svg and .png to ", storage_plot)
 
-write.csv(M_results, file.path(csv_dir, "multiverse_nback_results.csv"), row.names = FALSE)
+# Save model results CSV for inspection
+write.csv(M_results, file.path(csv_dir, "multiverse_sternberg_OLD_results.csv"), row.names = FALSE)

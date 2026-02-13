@@ -10,10 +10,9 @@ library(patchwork)
 library(ggplot2)
 library(cowplot)   # for get_legend()
 
-# Paths: CSV from MATLAB; figures path configurable via AOC_MULTIVERSE_FIGURES
-script_dir <- Sys.getenv("AOC_MULTIVERSE_DIR", unset = "")
-if (nchar(script_dir) == 0L) script_dir <- getwd()
-csv_path <- file.path(script_dir, "multiverse_sternberg.csv")
+# Paths: CSVs live on the server features directory; figures path configurable
+csv_dir <- Sys.getenv("AOC_MULTIVERSE_DIR", unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features")
+csv_path <- file.path(csv_dir, "multiverse_sternberg.csv")
 if (!file.exists(csv_path)) stop("CSV not found: ", csv_path, ". Run AOC_multiverse_prep.m or set AOC_MULTIVERSE_DIR.")
 storage_plot <- Sys.getenv("AOC_MULTIVERSE_FIGURES", unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/tests/multiverse")
 if (!dir.exists(storage_plot)) dir.create(storage_plot, recursive = TRUE)
@@ -163,4 +162,4 @@ ggsave(file.path(storage_plot, "AOC_multiverse_sternberg.png"), plot = p_combine
 message("Saved AOC_multiverse_sternberg.svg and .png to ", storage_plot)
 
 # Optional: save model results CSV for inspection
-write.csv(M_results, file.path(script_dir, "multiverse_sternberg_results.csv"), row.names = FALSE)
+write.csv(M_results, file.path(csv_dir, "multiverse_sternberg_results.csv"), row.names = FALSE)

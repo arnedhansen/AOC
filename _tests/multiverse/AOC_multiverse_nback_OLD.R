@@ -1,5 +1,6 @@
-# AOC Multiverse — N-Back: alpha ~ gaze * condition + (1|subjectID)
-# Reads multiverse_nback.csv, fits LMM per universe, plots specification curve + panel.
+# AOC Multiverse — N-Back (OLD 5-dimension grid, 192 universes)
+# Reads multiverse_nback.csv from the original AOC_multiverse_prep.m (no baseline/freq_method columns).
+# Fits LMM per universe, plots specification curve + panel (DALAS-style).
 # Figure output: '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/tests/multiverse'
 
 library(lme4)
@@ -34,7 +35,6 @@ dat$subjectID <- as.factor(dat$subjectID)
 dat$Condition <- as.factor(dat$Condition)
 
 # Z-score gaze_value and alpha within each universe so estimates are in SD units
-# (comparable across gaze measures: fixations ~0-20, SPL ~0-5000, etc.)
 universes <- unique(dat$universe_id)
 M_list <- list()
 for (i in seq_along(universes)) {
@@ -59,9 +59,6 @@ for (i in seq_along(universes)) {
   tid$latency_ms <- r1$latency_ms
   tid$alpha_type <- r1$alpha_type
   tid$gaze_measure <- r1$gaze_measure
-  tid$baseline_eeg <- r1$baseline_eeg
-  tid$baseline_gaze <- r1$baseline_gaze
-  tid$freq_method <- r1$freq_method
   M_list[[length(M_list) + 1L]] <- tid
 }
 M_results <- bind_rows(M_list)
@@ -119,14 +116,14 @@ legend_spec <- get_legend(
 p_curve <- wrap_plots(plist, ncol = 2) + plot_layout(guides = "collect")
 
 df_specs <- M_results %>% filter(term == term_primary) %>%
-  select(ordered_universe, universe_id, electrodes, fooof, latency_ms, alpha_type, gaze_measure, baseline_eeg, baseline_gaze, freq_method, condition, color)
+  select(ordered_universe, universe_id, electrodes, fooof, latency_ms, alpha_type, gaze_measure, condition, color)
 N_per_u <- dat %>% group_by(universe_id) %>% summarise(N = n(), .groups = "drop")
 df_specs <- df_specs %>% left_join(N_per_u, by = "universe_id")
 df_long <- df_specs %>%
-  pivot_longer(cols = c(electrodes, fooof, latency_ms, alpha_type, gaze_measure, baseline_eeg, baseline_gaze, freq_method),
+  pivot_longer(cols = c(electrodes, fooof, latency_ms, alpha_type, gaze_measure),
                names_to = "Variable", values_to = "value")
 df_long$Variable <- factor(df_long$Variable,
-  levels = c("electrodes", "fooof", "latency_ms", "alpha_type", "gaze_measure", "baseline_eeg", "baseline_gaze", "freq_method"))
+  levels = c("electrodes", "fooof", "latency_ms", "alpha_type", "gaze_measure"))
 
 p_panel <- ggplot(df_long, aes(x = ordered_universe, y = value, fill = condition)) +
   geom_tile() +
@@ -146,8 +143,8 @@ p_N <- ggplot(df_N, aes(x = ordered_universe, y = "N (trials)")) +
   labs(x = "Universe")
 
 p_combined <- p_curve / legend_spec / p_panel / p_N + plot_layout(heights = c(1.2, 0.15, 1.5, 0.3))
-ggsave(file.path(storage_plot, "AOC_multiverse_nback.svg"), plot = p_combined, width = 14, height = 12, dpi = 300)
-ggsave(file.path(storage_plot, "AOC_multiverse_nback.png"), plot = p_combined, width = 14, height = 12, dpi = 300)
-message("Saved AOC_multiverse_nback.svg and .png to ", storage_plot)
+ggsave(file.path(storage_plot, "AOC_multiverse_nback_OLD.svg"), plot = p_combined, width = 14, height = 12, dpi = 300)
+ggsave(file.path(storage_plot, "AOC_multiverse_nback_OLD.png"), plot = p_combined, width = 14, height = 12, dpi = 300)
+message("Saved AOC_multiverse_nback_OLD.svg and .png to ", storage_plot)
 
-write.csv(M_results, file.path(csv_dir, "multiverse_nback_results.csv"), row.names = FALSE)
+write.csv(M_results, file.path(csv_dir, "multiverse_nback_OLD_results.csv"), row.names = FALSE)

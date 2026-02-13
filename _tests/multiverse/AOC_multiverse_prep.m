@@ -41,9 +41,8 @@ else
     base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC';
     base_features = fullfile(base_data, 'data', 'features');
 end
-out_dir = fileparts(mfilename('fullpath'));
-if isempty(out_dir), out_dir = pwd; end
-disp(upper(['Paths: base_data = ' base_data ', base_features = ' base_features ', out_dir = ' out_dir]))
+out_dir = base_features;  % CSV output goes to the features directory, NOT the GitHub folder
+disp(upper(['Paths: base_data = ' base_data ', base_features = ' base_features ', out_dir (CSV) = ' out_dir]))
 
 if isempty(subjects)
     dirs = dir(base_features);

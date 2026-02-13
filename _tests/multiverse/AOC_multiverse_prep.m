@@ -91,13 +91,14 @@ if isempty(labels_master)
 end
 [idx_all, idx_post, idx_pari, idx_occ] = get_channel_indices(labels_master);
 ch_sets = {idx_all, idx_post, idx_pari, idx_occ};
+ch_label_sets = {labels_master(idx_all), labels_master(idx_post), labels_master(idx_pari), labels_master(idx_occ)};
 disp(upper(['Channels: all=' num2str(length(idx_all)) ' post=' num2str(length(idx_post)) ...
   ' pari=' num2str(length(idx_pari)) ' occ=' num2str(length(idx_occ))]))
 
 %% Build Sternberg multiverse table
 disp(upper('--- STERNBERG TASK ---'))
 tbl_s = build_task_multiverse('sternberg', subjects, path_preproc, base_features, ...
-    ch_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, ...
+    ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, ...
     baseline_eeg_opts, baseline_gaze_opts, freq_method_opts, ...
     n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_fm, n_universes, alphaRange);
 disp(upper(['Sternberg table rows: ' num2str(height(tbl_s))]))
@@ -110,7 +111,7 @@ disp(upper(['Written: ' fullfile(out_dir, 'multiverse_sternberg.csv')]))
 %% Build N-back multiverse table
 disp(upper('--- N-BACK TASK ---'))
 tbl_n = build_task_multiverse('nback', subjects, path_preproc, base_features, ...
-    ch_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, ...
+    ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, ...
     baseline_eeg_opts, baseline_gaze_opts, freq_method_opts, ...
     n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_fm, n_universes, alphaRange);
 disp(upper(['N-back table rows: ' num2str(height(tbl_n))]))
@@ -277,17 +278,25 @@ function pow_bl = compute_db_baseline_spectra(pow_task, pow_base)
   pow_bl.powspctrm = 10 * log10(bsxfun(@rdivide, pow_task.powspctrm, base_mean));
 end
 
-function [f_osc, f_axis] = run_fooof_one_trial_full(pow_trial, chIdx, freq, cfg_fooof)
-  % Run FOOOF on one trial's ROI-averaged spectrum; return full oscillatory spectrum
-  f_osc = []; f_axis = freq(:)';
-  if isempty(chIdx), return, end
+function [f_osc, f_axis] = run_fooof_from_raw(data_td, trial_idx, ch_labels, time_win, cfg_fooof)
+  % Run FOOOF from raw time-domain data: select trial, average ROI channels,
+  % select time window, then call ft_freqanalysis_Arne_FOOOF which does FFT + FOOOF internally.
+  f_osc = []; f_axis = [];
+  if isempty(data_td) || isempty(ch_labels), return, end
   try
-    spec = squeeze(mean(pow_trial.powspctrm(1, chIdx, :), 2));
-    if all(~isfinite(spec)) || numel(spec) < 10, return, end
-    fake = struct('powspctrm', reshape(spec, [1 1 numel(spec)]), 'freq', freq(:)', ...
-      'label', {{'ROI'}}, 'dimord', 'rpt_chan_freq');
+    % Select single trial
+    cfg_sel = []; cfg_sel.trials = trial_idx;
+    d = ft_selectdata(cfg_sel, data_td);
+    % Select time window
+    cfg_lat = []; cfg_lat.latency = time_win;
+    d = ft_selectdata(cfg_lat, d);
+    % Select and average channels in ROI → single "ROI" channel
+    cfg_ch = []; cfg_ch.channel = ch_labels; cfg_ch.avgoverchan = 'yes';
+    d = ft_selectdata(cfg_ch, d);
+    d.label = {'ROI'};
+    % Run FOOOF (expects raw time-domain data, does FFT + FOOOF internally)
     if ~exist('ft_freqanalysis_Arne_FOOOF', 'file'), return, end
-    out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, fake);
+    out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, d);
     f_axis = out.freq(:)';
     if iscell(out.fooofparams), rep = out.fooofparams{1}; else, rep = out.fooofparams; end
     if isfield(rep, 'fooofed_spectrum') && ~isempty(rep.fooofed_spectrum)
@@ -301,14 +310,14 @@ function [f_osc, f_axis] = run_fooof_one_trial_full(pow_trial, chIdx, freq, cfg_
       f_osc = g;
     end
   catch
-    f_osc = []; f_axis = freq(:)';
+    f_osc = []; f_axis = [];
   end
 end
 
 %% ========== MAIN BUILD FUNCTION ==========
 
 function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_features, ...
-    ch_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, ...
+    ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, ...
     baseline_eeg_opts, baseline_gaze_opts, freq_method_opts, ...
     n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_fm, n_universes, alphaRange)
 
@@ -433,7 +442,10 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
       end
     end
     if isempty(data_td) && isempty(tfr_loaded)
-      disp(upper('  WARNING: No TFR or time-domain EEG. Hanning 0-500ms/1-2s and all DPSS will be NaN.'))
+      disp(upper('  WARNING: No TFR or time-domain EEG. Hanning 0-500ms/1-2s, all DPSS, and all FOOOFed will be NaN.'))
+    end
+    if isempty(data_td)
+      disp(upper('  WARNING: No time-domain EEG loaded → all FOOOFed alpha universes will be NaN for this subject.'))
     end
 
     %% ====== Subject IAF (from Hanning full, occipital, raw) ======
@@ -509,6 +521,7 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
       end
 
       % --- Time-domain fill (all DPSS + remaining Hanning gaps) ---
+      cond_inds_td = [];  % initialize before block; needed for FOOOF later
       if ~isempty(data_td)
         cond_inds_td = find(data_td.trialinfo(:,1) == cond_codes(cond));
         for ifm = 1:2
@@ -540,11 +553,10 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
       disp(upper('  Computing alpha (raw + FOOOF × hanning/dpss × raw/dB) per trial.'))
       for il = 1:n_lat
         for ifm = 1:n_fm
+          % --- nonFOOOFed: bandpower from pre-computed / computed power structs ---
           for ibl = 1:n_bl_eeg
             if ibl == 1, p = pow_s{il, ifm}; else, p = pow_bl_s{il, ifm}; end
             if isempty(p) || ~isfield(p, 'powspctrm'), continue; end
-
-            % nonFOOOFed: vectorized bandpower
             for ie = 1:n_elec
               chIdx = ch_sets{ie};
               for ia = 1:n_alpha
@@ -553,25 +565,37 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
                 alpha{il, ifm, ibl, 2}(:, col) = bandpower_trials(p, chIdx, band);
               end
             end
+          end
 
-            % FOOOFed: run once per (trial, electrode_set), extract both alpha bands
+          % --- FOOOFed: from raw time-domain data ---
+          % ft_freqanalysis_Arne_FOOOF needs raw (time-domain) input, NOT a freq struct.
+          % It internally performs FFT + FOOOF. We pass single-trial, ROI-averaged data.
+          % FOOOF result is baseline-independent → same value for raw & dB baseline.
+          if ~isempty(data_td) && ~isempty(cond_inds_td)
             cfg_fo = cfg_fooof_all{ifm};
             for ie = 1:n_elec
-              chIdx = ch_sets{ie};
-              for tr = 1:min(n_trials_cond, size(p.powspctrm, 1))
-                pow_tr = ft_selectdata(struct('trials', tr), p);
-                [f_osc, f_axis] = run_fooof_one_trial_full(pow_tr, chIdx, p.freq, cfg_fo);
+              ch_lbl = ch_label_sets{ie};
+              n_td = min(n_trials_cond, length(cond_inds_td));
+              for tr = 1:n_td
+                td_idx = cond_inds_td(tr);
+                [f_osc, f_axis] = run_fooof_from_raw(data_td, td_idx, ch_lbl, lat_windows{il}, cfg_fo);
                 if isempty(f_osc), continue, end
                 for ia = 1:n_alpha
                   col = (ie-1)*n_alpha + ia;
                   if ia == 1, band = alphaRange; else, band = IAF_band; end
                   bandIdx = f_axis >= band(1) & f_axis <= band(2);
                   if sum(bandIdx) > 0
-                    alpha{il, ifm, ibl, 1}(tr, col) = mean(f_osc(bandIdx), 'omitnan');
+                    fooof_val = mean(f_osc(bandIdx), 'omitnan');
+                    % Write the same FOOOF value for both raw and dB baseline settings
+                    for ibl = 1:n_bl_eeg
+                      alpha{il, ifm, ibl, 1}(tr, col) = fooof_val;
+                    end
                   end
                 end
               end
             end
+          else
+            disp(upper('    WARNING: No time-domain EEG data → FOOOFed alpha will be NaN for this condition.'))
           end
         end
       end

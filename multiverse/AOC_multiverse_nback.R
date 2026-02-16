@@ -39,7 +39,7 @@ group_labels <- c(
 
 rename_opts <- function(x) {
   recode(x,
-    "posterior" = "Posterior", "parietal" = "Parietal", "occipital" = "Occipital",
+    "posterior" = "Posterior", "occipital" = "Occipital",
     "FOOOFed" = "FOOOF", "nonFOOOFed" = "No FOOOF",
     "0_500ms" = "0\u2013500 ms", "0_1000ms" = "0\u20131000 ms",
     "0_2000ms" = "0\u20132000 ms", "1000_2000ms" = "1000\u20132000 ms",
@@ -59,7 +59,7 @@ value_levels <- c(
   "IAF", "Canonical",
   "dB", "Raw",
   "No FOOOF", "FOOOF",
-  "Occipital", "Posterior", "Parietal",
+  "Occipital", "Posterior",
   "1000\u20132000 ms", "0\u20132000 ms", "0\u20131000 ms", "0\u2013500 ms"
 )
 
@@ -67,7 +67,7 @@ value_levels <- c(
 v_p2_group_order <- c("Latency", "Electrodes", "FOOOF",
                        "EEG Baseline", "Alpha", "Gaze Measure", "Gaze Baseline")
 
-elec_order <- c("parietal", "posterior", "occipital")
+elec_order <- c("posterior", "occipital")
 lat_order  <- c("0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
 
 # ========== LOAD & FILTER DATA ==========
@@ -81,7 +81,7 @@ message(sprintf("Loaded: %d rows, %d universes.", nrow(dat), n_distinct(dat$univ
 if ("gaze_measure" %in% names(dat)) {
   dat <- dat %>% filter(gaze_measure != "gaze_density" | is.na(gaze_measure))
 }
-dat <- dat %>% filter(electrodes != "all")
+dat <- dat %>% filter(!electrodes %in% c("all", "parietal"))
 message(sprintf("After filtering: %d rows, %d universes.", nrow(dat), n_distinct(dat$universe_id)))
 
 robust_z <- function(x, winsor = 3) {
@@ -300,7 +300,7 @@ make_eeg_panel_long <- function(df, x_col) {
 }
 
 dat_eeg <- dat %>%
-  filter(electrodes != "all") %>%
+  filter(!electrodes %in% c("all", "parietal")) %>%
   select(subjectID, Condition, alpha, electrodes, fooof, latency_ms, alpha_type, baseline_eeg) %>%
   distinct()
 dat_eeg$eeg_uid <- interaction(dat_eeg$electrodes, dat_eeg$fooof, dat_eeg$latency_ms,

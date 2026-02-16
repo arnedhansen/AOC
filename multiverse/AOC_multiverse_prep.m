@@ -4,7 +4,7 @@
 % Writes multiverse_sternberg.csv and multiverse_nback.csv.
 %
 % Decision grid (7 dimensions, 1536 universes per task):
-%   Electrodes:     posterior, parietal, occipital (3)
+%   Electrodes:     posterior, occipital (2)
 %   1/f:            FOOOFed, non-FOOOFed (2)
 %   Latency:        0-500, 0-1000, 0-2000, 1000-2000 ms (4)
 %   Alpha band:     canonical 8-14 Hz, IAF (2)
@@ -55,7 +55,7 @@ if isempty(path_preproc)
 end
 
 %% Decision options (7 dimensions)
-electrodes_opts    = {'posterior', 'parietal', 'occipital'};
+electrodes_opts    = {'posterior', 'occipital'};
 fooof_opts         = {'FOOOFed', 'nonFOOOFed'};
 latency_opts       = {'0_500ms', '0_1000ms', '0_2000ms', '1000_2000ms'};
 alpha_opts         = {'canonical', 'IAF'};
@@ -63,14 +63,14 @@ gaze_opts          = {'scan_path_length', 'gaze_velocity', 'microsaccades', 'BCE
 gaze_col_map       = [2, 3, 4, 5];  % column indices into [nfix, spl, vel, ms, bcea]
 baseline_eeg_opts  = {'raw', 'dB'};
 baseline_gaze_opts = {'raw', 'pct_change'};
-n_elec = 3; n_fooof = 2; n_lat = 4; n_alpha = 2; n_gaze = 4;
+n_elec = 2; n_fooof = 2; n_lat = 4; n_alpha = 2; n_gaze = 4;
 n_bl_eeg = 2; n_bl_gaze = 2;
 n_universes = n_elec * n_fooof * n_lat * n_alpha * n_gaze * n_bl_eeg * n_bl_gaze;
 alphaRange = [8 14];
 disp(upper(['Decision grid: ' num2str(n_universes) ' universes per task (7 dimensions).']))
 
 %% Get channel labels and indices (from first subject with power file)
-disp(upper('Resolving channel sets (posterior, parietal, occipital)...'))
+disp(upper('Resolving channel sets (posterior, occipital)...'))
 labels_master = [];
 for s = 1:length(subjects)
     sid = subjects{s};
@@ -88,11 +88,11 @@ end
 if isempty(labels_master)
     error('Could not load power_stern_early_trials from any subject.')
 end
-[idx_post, idx_pari, idx_occ] = get_channel_indices(labels_master);
-ch_sets = {idx_post, idx_pari, idx_occ};
-ch_label_sets = {labels_master(idx_post), labels_master(idx_pari), labels_master(idx_occ)};
+[idx_post, idx_occ] = get_channel_indices(labels_master);
+ch_sets = {idx_post, idx_occ};
+ch_label_sets = {labels_master(idx_post), labels_master(idx_occ)};
 disp(upper(['Channels: post=' num2str(length(idx_post)) ...
-  ' pari=' num2str(length(idx_pari)) ' occ=' num2str(length(idx_occ))]))
+  ' occ=' num2str(length(idx_occ))]))
 
 %% Build Sternberg multiverse table
 disp(upper('--- STERNBERG TASK ---'))
@@ -124,8 +124,8 @@ disp(upper('=== AOC MULTIVERSE PREP DONE ==='))
 
 %% ========== LOCAL FUNCTIONS ==========
 
-function [idx_post, idx_pari, idx_occ] = get_channel_indices(labels)
-  % Occipital: contains O or I; Parietal: contains P but NOT F; Posterior: union
+function [idx_post, idx_occ] = get_channel_indices(labels)
+  % Occipital: contains O or I; Parietal: contains P but NOT F; Posterior: union of occ + pari
   n = length(labels);
   idx_occ = []; idx_pari = [];
   for i = 1:n
@@ -136,7 +136,6 @@ function [idx_post, idx_pari, idx_occ] = get_channel_indices(labels)
   idx_post = unique([idx_occ, idx_pari]);
   if isempty(idx_post), idx_post = idx_occ; end
   disp(['    Posterior (' num2str(length(idx_post)) '): ' strjoin(labels(idx_post), ', ')])
-  disp(['    Parietal  (' num2str(length(idx_pari)) '): ' strjoin(labels(idx_pari), ', ')])
   disp(['    Occipital (' num2str(length(idx_occ)) '): ' strjoin(labels(idx_occ), ', ')])
 end
 
@@ -425,7 +424,7 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
 
     %% ====== Subject IAF (from Hanning full, occipital, raw) ======
     disp(upper('  Computing subject IAF from full-latency occipital power.'))
-    IAF_band = get_IAF_band(pow_full{1}, ch_sets{3}, alphaRange);
+    IAF_band = get_IAF_band(pow_full{1}, ch_sets{2}, alphaRange);
 
     %% ====== Load gaze ======
     disp(upper(['  Loading gaze: ' gaze_dir]))

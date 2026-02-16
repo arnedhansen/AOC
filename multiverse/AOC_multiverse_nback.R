@@ -54,10 +54,9 @@ rename_opts <- function(x) {
 # Ordered by processing stage: Latency → Electrodes → FOOOF →
 #   EEG Baseline → Alpha → Gaze Measure → Gaze Baseline
 value_levels <- c(
-  "% Change",
+  "% Change", "dB", "Raw",
   "BCEA", "Microsaccades", "Gaze Velocity", "Scan Path Length",
   "IAF", "Canonical",
-  "dB", "Raw",
   "No FOOOF", "FOOOF",
   "Occipital", "Posterior",
   "1000\u20132000 ms", "0\u20132000 ms", "0\u20131000 ms", "0\u2013500 ms"

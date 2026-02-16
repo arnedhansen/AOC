@@ -3,14 +3,14 @@
 % electrode/FOOOF/latency/alpha/gaze/baseline combinations.
 % Writes multiverse_sternberg.csv and multiverse_nback.csv.
 %
-% Decision grid (7 dimensions, 1536 universes per task):
+% Decision grid (7 dimensions, 1152 universes per task):
 %   Electrodes:     posterior, occipital (2)
 %   1/f:            FOOOFed, non-FOOOFed (2)
 %   Latency:        0-500, 0-1000, 0-2000, 1000-2000 ms (4)
 %   Alpha band:     canonical 8-14 Hz, IAF (2)
 %   Gaze measure:   SPL, velocity, microsaccades, BCEA (4)
-%   EEG baseline:   raw, dB [-0.5 -0.25] s (2)
-%   Gaze baseline:  raw, pct_change [-0.5 -0.25] s (2)
+%   EEG baseline:   raw, dB, pct_change [-0.5 -0.25] s (3)
+%   Gaze baseline:  raw, dB, pct_change [-0.5 -0.25] s (3)
 %
 % Model in R: alpha ~ gaze_value * Condition + (1|subjectID)
 
@@ -61,10 +61,10 @@ latency_opts       = {'0_500ms', '0_1000ms', '0_2000ms', '1000_2000ms'};
 alpha_opts         = {'canonical', 'IAF'};
 gaze_opts          = {'scan_path_length', 'gaze_velocity', 'microsaccades', 'BCEA'};
 gaze_col_map       = [2, 3, 4, 5];  % column indices into [nfix, spl, vel, ms, bcea]
-baseline_eeg_opts  = {'raw', 'dB'};
-baseline_gaze_opts = {'raw', 'pct_change'};
+baseline_eeg_opts  = {'raw', 'dB', 'pct_change'};
+baseline_gaze_opts = {'raw', 'dB', 'pct_change'};
 n_elec = 2; n_fooof = 2; n_lat = 4; n_alpha = 2; n_gaze = 4;
-n_bl_eeg = 2; n_bl_gaze = 2;
+n_bl_eeg = 3; n_bl_gaze = 3;
 n_universes = n_elec * n_fooof * n_lat * n_alpha * n_gaze * n_bl_eeg * n_bl_gaze;
 alphaRange = [8 14];
 disp(upper(['Decision grid: ' num2str(n_universes) ' universes per task (7 dimensions).']))
@@ -173,9 +173,9 @@ function bcea = compute_bcea(xw, yw)
   bcea = 2 * k95 * pi * sx * sy * sqrt(1 - rho^2);
 end
 
-function [gaze_raw, gaze_bl] = compute_gaze_one_window(x, y, t, tw, dur, fsample, t_base)
+function [gaze_raw, gaze_db, gaze_pct] = compute_gaze_one_window(x, y, t, tw, dur, fsample, t_base)
   % Returns [SPL, vel, ms_cnt, bcea] at indices [2,3,4,5]; index 1 unused (kept for column alignment)
-  gaze_raw = nan(1, 5); gaze_bl = nan(1, 5);
+  gaze_raw = nan(1, 5); gaze_db = nan(1, 5); gaze_pct = nan(1, 5);
   idx = t >= tw(1) & t <= tw(2);
   xw = x(idx); yw = y(idx);
   validxy = isfinite(xw) & isfinite(yw);
@@ -217,8 +217,9 @@ function [gaze_raw, gaze_bl] = compute_gaze_one_window(x, y, t, tw, dur, fsample
   bcea_b = compute_bcea(xb, yb);
   base_vals = [NaN, spl_b, vel_b, ms_cnt_b, bcea_b];
   for g = 2:5
-    if isfinite(base_vals(g)) && base_vals(g) ~= 0 && isfinite(gaze_raw(g))
-      gaze_bl(g) = (gaze_raw(g) - base_vals(g)) / abs(base_vals(g)) * 100;
+    if isfinite(base_vals(g)) && base_vals(g) > 0 && isfinite(gaze_raw(g))
+      gaze_db(g)  = 10 * log10(gaze_raw(g) / base_vals(g));
+      gaze_pct(g) = (gaze_raw(g) - base_vals(g)) / abs(base_vals(g)) * 100;
     end
   end
 end
@@ -251,11 +252,19 @@ end
 
 function pow_bl = compute_db_baseline_spectra(pow_task, pow_base)
   % Spectrum-level dB baseline: 10*log10(task / mean_baseline)
-  % Uses mean across trials for stable baseline estimate (short 250ms window)
   pow_bl = pow_task;
   base_mean = mean(pow_base.powspctrm, 1);  % 1 x chan x freq
   base_mean(base_mean <= 0) = NaN;
   pow_bl.powspctrm = 10 * log10(bsxfun(@rdivide, pow_task.powspctrm, base_mean));
+end
+
+function pow_bl = compute_pct_baseline_spectra(pow_task, pow_base)
+  % Spectrum-level percentage-change baseline: (task - base) / |base| * 100
+  pow_bl = pow_task;
+  base_mean = mean(pow_base.powspctrm, 1);  % 1 x chan x freq
+  base_mean(base_mean <= 0) = NaN;
+  pow_bl.powspctrm = bsxfun(@rdivide, ...
+      bsxfun(@minus, pow_task.powspctrm, base_mean), abs(base_mean)) * 100;
 end
 
 function [f_osc, f_axis] = run_fooof_from_raw(data_td, trial_idx, ch_labels, time_win, cfg_fooof)
@@ -360,29 +369,9 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
     if strcmp(task_name, 'sternberg')
       pow_early = {powload2_early, powload4_early, powload6_early};
       pow_full  = {powload2_full,  powload4_full,  powload6_full};
-      if exist('powload2_early_bl','var')
-        pow_early_bl = {powload2_early_bl, powload4_early_bl, powload6_early_bl};
-      else
-        disp(upper('  WARNING: _bl early not found.')); pow_early_bl = {[], [], []};
-      end
-      if exist('powload2_full_bl','var')
-        pow_full_bl = {powload2_full_bl, powload4_full_bl, powload6_full_bl};
-      else
-        disp(upper('  WARNING: _bl full not found.')); pow_full_bl = {[], [], []};
-      end
     else
       pow_early = {powload1_early, powload2_early, powload3_early};
       pow_full  = {powload1_full,  powload2_full,  powload3_full};
-      if exist('powload1_early_bl','var')
-        pow_early_bl = {powload1_early_bl, powload2_early_bl, powload3_early_bl};
-      else
-        pow_early_bl = {[], [], []};
-      end
-      if exist('powload1_full_bl','var')
-        pow_full_bl = {powload1_full_bl, powload2_full_bl, powload3_full_bl};
-      else
-        pow_full_bl = {[], [], []};
-      end
     end
 
     %% ====== Load TFR (Hanning, for arbitrary windows) ======
@@ -390,14 +379,12 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
     eeg_tfr_path = fullfile(eeg_dir, eeg_tfr_file);
     eeg_td_path = fullfile(eeg_dir, eeg_td_file);
 
-    tfr_loaded = []; tfr_bl_loaded = [];
+    tfr_loaded = [];
     if isfile(tfr_path)
       disp(upper('  Loading precomputed TFR (Hanning).'))
       load(tfr_path, 'tfr_all');
       tfr_loaded = tfr_all;
-      cfg_bl = []; cfg_bl.baseline = t_base; cfg_bl.baselinetype = 'db';
-      tfr_bl_loaded = ft_freqbaseline(cfg_bl, tfr_loaded);
-      disp(upper('  TFR loaded + dB-baselined copy created.'))
+      disp(upper('  TFR loaded.'))
     end
 
     %% ====== Load time-domain EEG (for Hanning fallback + FOOOF) ======
@@ -462,15 +449,14 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
       end
       disp(upper(['  Condition ' num2str(cval) ': ' num2str(n_trials_cond) ' trials.']))
 
-      %% ====== Build power struct grid: pow_s{lat}, pow_bl_s{lat} (Hanning only) ======
-      pow_s    = cell(4, 1);
-      pow_bl_s = cell(4, 1);
+      %% ====== Build power struct grid: pow_s{lat}, pow_db_s{lat}, pow_pct_s{lat} ======
+      pow_s     = cell(4, 1);  % raw
+      pow_db_s  = cell(4, 1);  % dB-baselined
+      pow_pct_s = cell(4, 1);  % pct-change-baselined
 
       % --- Pre-computed Hanning (0-1s, 0-2s) ---
       pow_s{2} = pow_early{cond};       % 0-1s, raw
       pow_s{3} = pow_full{cond};        % 0-2s, raw
-      if ~isempty(pow_early_bl{cond}), pow_bl_s{2} = pow_early_bl{cond}; end  % 0-1s, dB
-      if ~isempty(pow_full_bl{cond}),  pow_bl_s{3} = pow_full_bl{cond};  end  % 0-2s, dB
 
       % --- TFR-based Hanning (0-500ms, 1-2s) ---
       if ~isempty(tfr_loaded)
@@ -480,15 +466,6 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
         end
         if isempty(pow_s{4})
           pow_s{4} = get_power_from_TFR(tfr_loaded, cond_inds_tfr, lat_windows{4});
-        end
-        if ~isempty(tfr_bl_loaded)
-          cond_inds_bl = find(tfr_bl_loaded.trialinfo(:,1) == cond_codes(cond));
-          if isempty(pow_bl_s{1})
-            pow_bl_s{1} = get_power_from_TFR(tfr_bl_loaded, cond_inds_bl, lat_windows{1});
-          end
-          if isempty(pow_bl_s{4})
-            pow_bl_s{4} = get_power_from_TFR(tfr_bl_loaded, cond_inds_bl, lat_windows{4});
-          end
         end
       end
 
@@ -502,12 +479,20 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
             pow_s{il} = compute_pow_cond_window(data_td, cond_inds_td, lat_windows{il}, cfg_hann);
           end
         end
-        % Baseline spectrum for dB correction (mean across trials)
+      end
+
+      % --- Baseline spectrum for dB and percentage-change correction ---
+      pow_base = [];
+      if ~isempty(tfr_loaded)
+        pow_base = get_power_from_TFR(tfr_loaded, cond_inds_tfr, t_base);
+      end
+      if isempty(pow_base) && ~isempty(data_td) && ~isempty(cond_inds_td)
         pow_base = compute_pow_cond_window(data_td, cond_inds_td, t_base, cfg_hann);
-        for il = 1:4
-          if isempty(pow_bl_s{il}) && ~isempty(pow_s{il}) && ~isempty(pow_base)
-            pow_bl_s{il} = compute_db_baseline_spectra(pow_s{il}, pow_base);
-          end
+      end
+      for il = 1:4
+        if ~isempty(pow_s{il}) && ~isempty(pow_base)
+          pow_db_s{il}  = compute_db_baseline_spectra(pow_s{il}, pow_base);
+          pow_pct_s{il} = compute_pct_baseline_spectra(pow_s{il}, pow_base);
         end
       end
 
@@ -519,11 +504,11 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
         alpha{il, ibl, ifo} = nan(n_trials_cond, n_cols);
       end; end; end
 
-      disp(upper('  Computing alpha (raw + FOOOF × raw/dB) per trial.'))
+      disp(upper('  Computing alpha (raw + FOOOF × raw/dB/pct_change) per trial.'))
       for il = 1:n_lat
         % --- nonFOOOFed: bandpower from pre-computed / computed power structs ---
         for ibl = 1:n_bl_eeg
-          if ibl == 1, p = pow_s{il}; else, p = pow_bl_s{il}; end
+          if ibl == 1, p = pow_s{il}; elseif ibl == 2, p = pow_db_s{il}; else, p = pow_pct_s{il}; end
           if isempty(p) || ~isfield(p, 'powspctrm'), continue; end
           for ie = 1:n_elec
             chIdx = ch_sets{ie};
@@ -538,7 +523,7 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
         % --- FOOOFed: from raw time-domain data ---
         % ft_freqanalysis_Arne_FOOOF needs raw (time-domain) input, NOT a freq struct.
         % It internally performs FFT + FOOOF. We pass single-trial, ROI-averaged data.
-        % FOOOF result is baseline-independent → same value for raw & dB baseline.
+        % FOOOF result is baseline-independent → same value for raw, dB, and pct_change baseline.
         if ~isempty(data_td) && ~isempty(cond_inds_td)
           for ie = 1:n_elec
             ch_lbl = ch_label_sets{ie};
@@ -565,12 +550,13 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
         end
       end
 
-      %% ====== Gaze: 4 metrics × 4 windows × raw + pct_change ======
-      disp(upper('  Computing gaze (SPL, vel, MS, BCEA) x 4 windows x raw + pct_change.'))
-      gaze_raw_all = cell(n_lat, 1); gaze_bl_all = cell(n_lat, 1);
+      %% ====== Gaze: 4 metrics × 4 windows × raw + dB + pct_change ======
+      disp(upper('  Computing gaze (SPL, vel, MS, BCEA) x 4 windows x raw + dB + pct_change.'))
+      gaze_raw_all = cell(n_lat, 1); gaze_db_all = cell(n_lat, 1); gaze_pct_all = cell(n_lat, 1);
       for il = 1:n_lat
         gaze_raw_all{il} = nan(n_trials_cond, 5);
-        gaze_bl_all{il}  = nan(n_trials_cond, 5);
+        gaze_db_all{il}  = nan(n_trials_cond, 5);
+        gaze_pct_all{il} = nan(n_trials_cond, 5);
       end
       for tr = 1:n_trials_cond
         trl_glob = trl_idx(tr);
@@ -580,7 +566,7 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
         x = raw_et(1,:); y = raw_et(2,:);
         if length(t) ~= length(x), continue; end
         for il = 1:n_lat
-          [gaze_raw_all{il}(tr,:), gaze_bl_all{il}(tr,:)] = ...
+          [gaze_raw_all{il}(tr,:), gaze_db_all{il}(tr,:), gaze_pct_all{il}(tr,:)] = ...
             compute_gaze_one_window(x, y, t, lat_windows{il}, lat_durs(il), fsample, t_base);
         end
       end
@@ -613,8 +599,10 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
           gcol = gaze_col_map(ig);
           if ibg == 1
             gv = gaze_raw_all{il}(tr, gcol);
+          elseif ibg == 2
+            gv = gaze_db_all{il}(tr, gcol);
           else
-            gv = gaze_bl_all{il}(tr, gcol);
+            gv = gaze_pct_all{il}(tr, gcol);
           end
           gaze_val_cell(end+1, 1) = gv;
         end

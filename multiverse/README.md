@@ -15,31 +15,33 @@ MATLAB builds long-format trial-level CSVs; R fits LMMs per universe and produce
 - **AOC_multiverse_sternberg.R** — Reads Sternberg CSV, fits LMMs, produces 3 specification curve figures + result CSVs.
 - **AOC_multiverse_nback.R** — Same for N-back.
 
-## Decisions (specification space — 7 dimensions, 1536 universes per task)
+## Decisions (specification space — 7 dimensions, 1152 universes per task)
 
 Ordered by when the decision occurs in the processing pipeline:
 
 | Dimension      | Options |
 |----------------|---------|
 | Latency        | 0–500 ms, 0–1000 ms, 0–2000 ms, 1000–2000 ms (4) |
-| Electrodes     | posterior, parietal, occipital (3) — "all" is computed but excluded from plotting |
+| Electrodes     | posterior, occipital (2) |
 | FOOOF          | FOOOFed, non-FOOOFed (2) |
-| EEG baseline   | raw, dB-baselined `[-0.5, -0.25] s` (2) |
+| EEG baseline   | raw, dB, percentage change from `[-0.5, -0.25] s` (3) |
 | Alpha band     | canonical (8–14 Hz), IAF (2) |
 | Gaze measure   | scan path length, gaze velocity, microsaccades, BCEA (4) |
-| Gaze baseline  | raw, percentage change from `[-0.5, -0.25] s` (2) |
+| Gaze baseline  | raw, dB, percentage change from `[-0.5, -0.25] s` (3) |
 
-**Plotted universes:** 4 × 3 × 2 × 2 × 2 × 4 × 2 = **1536 per task** (2048 total in CSV, "all" electrodes filtered out in R).
+**Total:** 4 × 2 × 2 × 3 × 2 × 4 × 3 = **1152 universes per task**.
 
 ## Processing details
 
 - **Spectral method:** Hanning tapers throughout (via `ft_freqanalysis`, `method = 'mtmfft'`).
 - **Power sources (hierarchy):** Pre-computed Hanning files (0–1 s, 0–2 s) → precomputed TFRs (0–500 ms, 1–2 s) → time-domain EEG via `ft_freqanalysis` (fallback for any remaining gaps).
-- **FOOOF:** `ft_freqanalysis_Arne_FOOOF` on raw time-domain data per trial. FOOOF result is baseline-independent (same value written for both raw and dB baseline options).
+- **FOOOF:** `ft_freqanalysis_Arne_FOOOF` on raw time-domain data per trial. FOOOF result is baseline-independent (same value written for all three EEG baseline options).
 - **Late retention window:** 1000–2000 ms captures the late retention interval.
 - **BCEA:** Bivariate Contour Ellipse Area (95% confidence).
-- **Gaze baseline:** Percentage change: `(task - base) / |base| × 100` from `[-0.5, -0.25] s`.
-- **EEG dB baseline:** Pre-computed `_bl` files where available, or `10*log10(task / mean_baseline_spectrum)` from `[-0.5, -0.25] s`.
+- **Gaze baseline (dB):** `10 * log10(task / baseline)` from `[-0.5, -0.25] s`.
+- **Gaze baseline (% change):** `(task - base) / |base| × 100` from `[-0.5, -0.25] s`.
+- **EEG baseline (dB):** `10 * log10(task_spectrum / mean_baseline_spectrum)` from `[-0.5, -0.25] s`.
+- **EEG baseline (% change):** `(task_spectrum - mean_baseline_spectrum) / |mean_baseline_spectrum| × 100` from `[-0.5, -0.25] s`. Baseline mean uses all trials for a stable estimate.
 - **Robust z-scoring:** Median + MAD, winsorized at ±3, applied per universe before model fitting.
 - **Unstable universe filtering:** Universes with SE > 95th percentile are dropped.
 
@@ -51,12 +53,12 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
 |--------|----------------|-------------|
 | 1 | `_estimate` | `alpha ~ gaze` — Specification curve sorted by FOOOF then estimate (highest WM load), with analysis decision panel below |
 | 2 | `_grouped` | `alpha ~ gaze (grouped)` — Specification curve ordered by decision hierarchy (FOOOF → Latency → Electrodes → ...), with analysis decision panel below |
-| 3 | `_condition` | `alpha ~ condition` — Condition effect on alpha, using EEG-only universes, sorted purely by estimate (no FOOOF split) |
+| 3 | `_condition` | `alpha ~ condition` — Condition effect on alpha, using EEG-only universes, sorted by processing-stage hierarchy (no FOOOF split) |
 
 ### Figure details
 
 - **Figures 1 & 2** show the `gaze_value` slope at the **highest WM load** (Set size 6 for Sternberg, 3-back for N-back). The interaction model results are saved to CSV but not plotted. Universes are split by FOOOF (FOOOF left, No FOOOF right).
-- **Figure 3** tests whether alpha power changes with increasing WM load (linear trend). Only EEG dimensions are relevant (gaze dimensions don't affect alpha), so it uses deduplicated EEG-only universes sorted purely by estimate (no FOOOF-first split). Panel shows the 5 EEG dimensions ordered by processing stage.
+- **Figure 3** tests whether alpha power changes with increasing WM load (linear trend). Only EEG dimensions are relevant (gaze dimensions don't affect alpha), so it uses deduplicated EEG-only universes sorted by decision hierarchy. Panel shows the 5 EEG dimensions ordered by processing stage.
 - **Panel strip labels** are left-aligned and ordered by processing stage. Y-axis is labeled "Analysis Decision".
 
 ## Output CSVs (per task)
@@ -102,11 +104,8 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
 
 | Set | Channels |
 |-----|----------|
-| Parietal | Label contains P (excluding F) |
-| Posterior | Label contains PO, O, or I |
+| Posterior | Union of occipital + parietal (contains PO, O, I, or P-without-F) |
 | Occipital | Label contains O or I |
-
-Note: "All channels" is still computed in the MATLAB CSV but filtered out in R before plotting.
 
 ## Notes
 
@@ -115,3 +114,4 @@ Note: "All channels" is still computed in the MATLAB CSV but filtered out in R b
 - **Trial-level analysis:** Each row in the CSV is a single trial × universe combination.
 - **Error bars** in all plots are 95% confidence intervals from the LMM fits.
 - **Plot titles** use model notation (e.g., `alpha ~ gaze`, `alpha ~ condition`).
+- **Baseline options:** Both dB and percentage change are computed for EEG and gaze. dB compresses extreme ratios logarithmically; % change is linear and more interpretable. Extreme values from small baselines are handled by robust z-scoring (median + MAD, winsorize ±3) in R.

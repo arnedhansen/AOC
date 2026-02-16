@@ -103,27 +103,23 @@ M_results <- M_results %>%
 M_results$condition <- factor(M_results$condition,
   levels = c("Significant Positive", "Significant Negative", "Non-significant"))
 
-# Specification curve: one plot per term (gaze_value, Condition4, Condition6, interactions)
-terms_plot <- unique(M_results$term)
-max_u <- max(M_results$ordered_universe, na.rm = TRUE)
-ylim_est <- c(min(M_results$estimate, na.rm = TRUE) - 0.1, max(M_results$estimate, na.rm = TRUE) + 0.1)
+# Specification curve: single plot for gaze_value main effect only
+# (interaction terms are still available in the results CSV for inspection)
+df_curve <- M_results %>% filter(term == term_primary)
+ylim_est <- c(min(df_curve$estimate, na.rm = TRUE) - 0.1, max(df_curve$estimate, na.rm = TRUE) + 0.1)
 
-plist <- lapply(terms_plot, function(tr) {
-  df <- M_results %>% filter(term == tr)
-  ggplot(df, aes(x = ordered_universe, y = estimate, color = condition)) +
-    geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, alpha = 0.7) +
-    geom_point(aes(alpha = alpha_pt), size = 1.2) +
-    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
-    scale_color_manual(values = c("#33CC66", "#fe0000", "#d1d1d1"), name = "Significance") +
-    guides(alpha = "none") +
-    labs(title = tr, x = "Universe", y = "Estimate") +
-    theme_minimal() + theme(legend.position = "none") + v_common_theme +
-    coord_cartesian(ylim = ylim_est)
-})
+p_curve <- ggplot(df_curve, aes(x = ordered_universe, y = estimate, color = condition)) +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, alpha = 0.7) +
+  geom_point(aes(alpha = alpha_pt), size = 1.2) +
+  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
+  scale_color_manual(values = c("#33CC66", "#fe0000", "#d1d1d1"), name = "Significance") +
+  guides(alpha = "none") +
+  labs(title = "gaze_value (main effect)", x = "Universe", y = "Estimate") +
+  theme_minimal() + theme(legend.position = "none") + v_common_theme +
+  coord_cartesian(ylim = ylim_est)
 legend_spec <- get_legend(
-  plist[[1]] + theme(legend.position = "bottom") + guides(alpha = "none")
+  p_curve + theme(legend.position = "bottom") + guides(alpha = "none")
 )
-p_curve <- wrap_plots(plist, ncol = 2) + plot_layout(guides = "collect")
 
 # Specification panel: tiles (electrodes, fooof, latency_ms, alpha_type, gaze_measure) + N per universe
 df_specs <- M_results %>% filter(term == term_primary) %>%
@@ -156,7 +152,7 @@ p_N <- ggplot(df_N, aes(x = ordered_universe, y = "N (trials)")) +
   labs(x = "Universe")
 
 # Combined figure (curve, legend, panel, N)
-p_combined <- p_curve / legend_spec / p_panel / p_N + plot_layout(heights = c(1.2, 0.15, 1.5, 0.3))
+p_combined <- p_curve / legend_spec / p_panel / p_N + plot_layout(heights = c(0.8, 0.1, 1.5, 0.3))
 ggsave(file.path(storage_plot, "AOC_multiverse_sternberg.svg"), plot = p_combined, width = 14, height = 12, dpi = 300)
 ggsave(file.path(storage_plot, "AOC_multiverse_sternberg.png"), plot = p_combined, width = 14, height = 12, dpi = 300)
 message("Saved AOC_multiverse_sternberg.svg and .png to ", storage_plot)

@@ -218,8 +218,10 @@ function [gaze_raw, gaze_db, gaze_pct] = compute_gaze_one_window(x, y, t, tw, du
   base_vals = [NaN, spl_b, vel_b, ms_cnt_b, bcea_b];
   for g = 2:5
     if isfinite(base_vals(g)) && base_vals(g) > 0 && isfinite(gaze_raw(g))
-      gaze_db(g)  = 10 * log10(gaze_raw(g) / base_vals(g));
       gaze_pct(g) = (gaze_raw(g) - base_vals(g)) / abs(base_vals(g)) * 100;
+      if gaze_raw(g) > 0
+        gaze_db(g) = 10 * log10(gaze_raw(g) / base_vals(g));
+      end
     end
   end
 end
@@ -356,7 +358,7 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
     if ~isfolder(eeg_dir), eeg_dir = fullfile(base_features, sid, 'eeg'); end
     if ~isfolder(gaze_dir), gaze_dir = fullfile(path_preproc, sid, 'gaze'); end
 
-    %% ====== EEG: Load pre-computed power (Hanning, raw + _bl) ======
+    %% ====== EEG: Load pre-computed power (Hanning, raw) ======
     disp(upper(['  Loading EEG: ' eeg_dir]))
     early_path = fullfile(eeg_dir, early_file);
     full_path  = fullfile(eeg_dir, full_file);
@@ -484,7 +486,12 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
       % --- Baseline spectrum for dB and percentage-change correction ---
       pow_base = [];
       if ~isempty(tfr_loaded)
-        pow_base = get_power_from_TFR(tfr_loaded, cond_inds_tfr, t_base);
+        try
+          pow_base = get_power_from_TFR(tfr_loaded, cond_inds_tfr, t_base);
+        catch
+          disp(upper('    WARNING: TFR baseline extraction failed (baseline window outside TFR range). Trying time-domain.'))
+          pow_base = [];
+        end
       end
       if isempty(pow_base) && ~isempty(data_td) && ~isempty(cond_inds_td)
         pow_base = compute_pow_cond_window(data_td, cond_inds_td, t_base, cfg_hann);

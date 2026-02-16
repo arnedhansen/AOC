@@ -1,17 +1,16 @@
 %% AOC Multiverse — Trial-Level Data Preparation (Sternberg & N-Back)
 % One-shot build: loads/computes EEG and gaze per trial for all
-% electrode/FOOOF/latency/alpha/gaze/baseline/freq-method combinations.
+% electrode/FOOOF/latency/alpha/gaze/baseline combinations.
 % Writes multiverse_sternberg.csv and multiverse_nback.csv.
 %
-% Decision grid (9 dimensions, 4096 universes per task):
-%   Electrodes:     all, posterior, parietal, occipital (4)
+% Decision grid (7 dimensions, 1536 universes per task):
+%   Electrodes:     posterior, parietal, occipital (3)
 %   1/f:            FOOOFed, non-FOOOFed (2)
 %   Latency:        0-500, 0-1000, 0-2000, 1000-2000 ms (4)
 %   Alpha band:     canonical 8-14 Hz, IAF (2)
 %   Gaze measure:   SPL, velocity, microsaccades, BCEA (4)
 %   EEG baseline:   raw, dB [-0.5 -0.25] s (2)
 %   Gaze baseline:  raw, pct_change [-0.5 -0.25] s (2)
-%   Freq method:    hanning, dpss (2)
 %
 % Model in R: alpha ~ gaze_value * Condition + (1|subjectID)
 
@@ -55,8 +54,8 @@ if isempty(path_preproc)
     disp(upper('Using base_features as path_preproc (EEG and gaze under same root).'))
 end
 
-%% Decision options (9 dimensions)
-electrodes_opts    = {'all', 'posterior', 'parietal', 'occipital'};
+%% Decision options (7 dimensions)
+electrodes_opts    = {'posterior', 'parietal', 'occipital'};
 fooof_opts         = {'FOOOFed', 'nonFOOOFed'};
 latency_opts       = {'0_500ms', '0_1000ms', '0_2000ms', '1000_2000ms'};
 alpha_opts         = {'canonical', 'IAF'};
@@ -64,15 +63,14 @@ gaze_opts          = {'scan_path_length', 'gaze_velocity', 'microsaccades', 'BCE
 gaze_col_map       = [2, 3, 4, 5];  % column indices into [nfix, spl, vel, ms, bcea]
 baseline_eeg_opts  = {'raw', 'dB'};
 baseline_gaze_opts = {'raw', 'pct_change'};
-freq_method_opts   = {'hanning', 'dpss'};
-n_elec = 4; n_fooof = 2; n_lat = 4; n_alpha = 2; n_gaze = 4;
-n_bl_eeg = 2; n_bl_gaze = 2; n_fm = 2;
-n_universes = n_elec * n_fooof * n_lat * n_alpha * n_gaze * n_bl_eeg * n_bl_gaze * n_fm;
+n_elec = 3; n_fooof = 2; n_lat = 4; n_alpha = 2; n_gaze = 4;
+n_bl_eeg = 2; n_bl_gaze = 2;
+n_universes = n_elec * n_fooof * n_lat * n_alpha * n_gaze * n_bl_eeg * n_bl_gaze;
 alphaRange = [8 14];
-disp(upper(['Decision grid: ' num2str(n_universes) ' universes per task (9 dimensions).']))
+disp(upper(['Decision grid: ' num2str(n_universes) ' universes per task (7 dimensions).']))
 
 %% Get channel labels and indices (from first subject with power file)
-disp(upper('Resolving channel sets (occipital, parietal, posterior, all)...'))
+disp(upper('Resolving channel sets (posterior, parietal, occipital)...'))
 labels_master = [];
 for s = 1:length(subjects)
     sid = subjects{s};
@@ -90,18 +88,18 @@ end
 if isempty(labels_master)
     error('Could not load power_stern_early_trials from any subject.')
 end
-[idx_all, idx_post, idx_pari, idx_occ] = get_channel_indices(labels_master);
-ch_sets = {idx_all, idx_post, idx_pari, idx_occ};
-ch_label_sets = {labels_master(idx_all), labels_master(idx_post), labels_master(idx_pari), labels_master(idx_occ)};
-disp(upper(['Channels: all=' num2str(length(idx_all)) ' post=' num2str(length(idx_post)) ...
+[idx_post, idx_pari, idx_occ] = get_channel_indices(labels_master);
+ch_sets = {idx_post, idx_pari, idx_occ};
+ch_label_sets = {labels_master(idx_post), labels_master(idx_pari), labels_master(idx_occ)};
+disp(upper(['Channels: post=' num2str(length(idx_post)) ...
   ' pari=' num2str(length(idx_pari)) ' occ=' num2str(length(idx_occ))]))
 
 %% Build Sternberg multiverse table
 disp(upper('--- STERNBERG TASK ---'))
 tbl_s = build_task_multiverse('sternberg', subjects, path_preproc, base_features, ...
     ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, gaze_col_map, ...
-    baseline_eeg_opts, baseline_gaze_opts, freq_method_opts, ...
-    n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_fm, n_universes, alphaRange);
+    baseline_eeg_opts, baseline_gaze_opts, ...
+    n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_universes, alphaRange);
 disp(upper(['Sternberg table rows: ' num2str(height(tbl_s))]))
 if height(tbl_s) == 0
   error('AOC_multiverse_prep:NoData', 'Sternberg table is empty.')
@@ -113,8 +111,8 @@ disp(upper(['Written: ' fullfile(out_dir, 'multiverse_sternberg.csv')]))
 disp(upper('--- N-BACK TASK ---'))
 tbl_n = build_task_multiverse('nback', subjects, path_preproc, base_features, ...
     ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, gaze_col_map, ...
-    baseline_eeg_opts, baseline_gaze_opts, freq_method_opts, ...
-    n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_fm, n_universes, alphaRange);
+    baseline_eeg_opts, baseline_gaze_opts, ...
+    n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_universes, alphaRange);
 disp(upper(['N-back table rows: ' num2str(height(tbl_n))]))
 if height(tbl_n) == 0
   error('AOC_multiverse_prep:NoData', 'N-back table is empty.')
@@ -126,7 +124,7 @@ disp(upper('=== AOC MULTIVERSE PREP DONE ==='))
 
 %% ========== LOCAL FUNCTIONS ==========
 
-function [idx_all, idx_post, idx_pari, idx_occ] = get_channel_indices(labels)
+function [idx_post, idx_pari, idx_occ] = get_channel_indices(labels)
   % Occipital: contains O or I; Parietal: contains P but NOT F; Posterior: union
   n = length(labels);
   idx_occ = []; idx_pari = [];
@@ -136,11 +134,10 @@ function [idx_all, idx_post, idx_pari, idx_occ] = get_channel_indices(labels)
     if contains(lb, 'P') && ~contains(lb, 'F'), idx_pari(end+1) = i; end
   end
   idx_post = unique([idx_occ, idx_pari]);
-  idx_all = 1:n;
   if isempty(idx_post), idx_post = idx_occ; end
-  disp(['    Occipital (' num2str(length(idx_occ)) '): ' strjoin(labels(idx_occ), ', ')])
-  disp(['    Parietal  (' num2str(length(idx_pari)) '): ' strjoin(labels(idx_pari), ', ')])
   disp(['    Posterior (' num2str(length(idx_post)) '): ' strjoin(labels(idx_post), ', ')])
+  disp(['    Parietal  (' num2str(length(idx_pari)) '): ' strjoin(labels(idx_pari), ', ')])
+  disp(['    Occipital (' num2str(length(idx_occ)) '): ' strjoin(labels(idx_occ), ', ')])
 end
 
 function a = bandpower_trials(pow, chIdx, band)
@@ -302,8 +299,8 @@ end
 
 function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_features, ...
     ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, gaze_col_map, ...
-    baseline_eeg_opts, baseline_gaze_opts, freq_method_opts, ...
-    n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_fm, n_universes, alphaRange)
+    baseline_eeg_opts, baseline_gaze_opts, ...
+    n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_universes, alphaRange)
 
   disp(upper(['Building multiverse table for task: ' task_name ' (' num2str(n_universes) ' universes)']))
   if strcmp(task_name, 'sternberg')
@@ -320,19 +317,13 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
     et_file = 'dataET_nback.mat'; et_var = 'dataETlong';
   end
 
-  % Freq analysis configs: {hanning, dpss}
+  % Freq analysis config (Hanning)
   cfg_hann = []; cfg_hann.method = 'mtmfft'; cfg_hann.taper = 'hanning';
   cfg_hann.foilim = [2 40]; cfg_hann.pad = 5; cfg_hann.keeptrials = 'yes';
-  cfg_dpss = []; cfg_dpss.method = 'mtmfft'; cfg_dpss.taper = 'dpss'; cfg_dpss.tapsmofrq = 2;
-  cfg_dpss.foilim = [2 40]; cfg_dpss.pad = 5; cfg_dpss.keeptrials = 'yes';
-  cfg_freq_all = {cfg_hann, cfg_dpss};
 
-  % FOOOF configs per freq method
-  cfg_fooof_hann = []; cfg_fooof_hann.method = 'mtmfft'; cfg_fooof_hann.taper = 'hanning';
-  cfg_fooof_hann.foilim = [2 40]; cfg_fooof_hann.pad = 5; cfg_fooof_hann.output = 'fooof'; cfg_fooof_hann.keeptrials = 'no';
-  cfg_fooof_dpss = []; cfg_fooof_dpss.method = 'mtmfft'; cfg_fooof_dpss.taper = 'dpss'; cfg_fooof_dpss.tapsmofrq = 2;
-  cfg_fooof_dpss.foilim = [2 40]; cfg_fooof_dpss.pad = 5; cfg_fooof_dpss.output = 'fooof'; cfg_fooof_dpss.keeptrials = 'no';
-  cfg_fooof_all = {cfg_fooof_hann, cfg_fooof_dpss};
+  % FOOOF config (Hanning)
+  cfg_fooof = []; cfg_fooof.method = 'mtmfft'; cfg_fooof.taper = 'hanning';
+  cfg_fooof.foilim = [2 40]; cfg_fooof.pad = 5; cfg_fooof.output = 'fooof'; cfg_fooof.keeptrials = 'no';
 
   % Latency windows
   lat_windows = {[0 0.5], [0 1], [0 2], [1 2]};
@@ -342,7 +333,7 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
 
   % Preallocate output arrays
   task_cell = {}; u_id_cell = []; elec_cell = {}; fooof_cell = {}; lat_cell = {};
-  alpha_type_cell = {}; gaze_meas_cell = {}; bl_eeg_cell = {}; bl_gaze_cell = {}; fm_cell = {};
+  alpha_type_cell = {}; gaze_meas_cell = {}; bl_eeg_cell = {}; bl_gaze_cell = {};
   subjectID_cell = []; Trial_cell = []; Condition_cell = [];
   alpha_val_cell = []; gaze_val_cell = [];
 
@@ -410,7 +401,7 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
       disp(upper('  TFR loaded + dB-baselined copy created.'))
     end
 
-    %% ====== Load time-domain EEG (for DPSS + Hanning fallback) ======
+    %% ====== Load time-domain EEG (for Hanning fallback + FOOOF) ======
     data_td = [];
     if isfile(eeg_tfr_path)
       disp(upper('  Loading time-domain EEG (dataEEG_TFR).'))
@@ -426,7 +417,7 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
       end
     end
     if isempty(data_td) && isempty(tfr_loaded)
-      disp(upper('  WARNING: No TFR or time-domain EEG. Hanning 0-500ms/1-2s, all DPSS, and all FOOOFed will be NaN.'))
+      disp(upper('  WARNING: No TFR or time-domain EEG. Hanning 0-500ms/1-2s and all FOOOFed will be NaN.'))
     end
     if isempty(data_td)
       disp(upper('  WARNING: No time-domain EEG loaded → all FOOOFed alpha universes will be NaN for this subject.'))
@@ -434,7 +425,7 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
 
     %% ====== Subject IAF (from Hanning full, occipital, raw) ======
     disp(upper('  Computing subject IAF from full-latency occipital power.'))
-    IAF_band = get_IAF_band(pow_full{1}, ch_sets{4}, alphaRange);
+    IAF_band = get_IAF_band(pow_full{1}, ch_sets{3}, alphaRange);
 
     %% ====== Load gaze ======
     disp(upper(['  Loading gaze: ' gaze_dir]))
@@ -472,120 +463,111 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
       end
       disp(upper(['  Condition ' num2str(cval) ': ' num2str(n_trials_cond) ' trials.']))
 
-      %% ====== Build power struct grid: pow_s{lat, fm}, pow_bl_s{lat, fm} ======
-      % lat: 1=0-500ms, 2=0-1s, 3=0-2s, 4=1-2s
-      % fm:  1=hanning,  2=dpss
-      pow_s    = cell(4, 2);
-      pow_bl_s = cell(4, 2);
+      %% ====== Build power struct grid: pow_s{lat}, pow_bl_s{lat} (Hanning only) ======
+      pow_s    = cell(4, 1);
+      pow_bl_s = cell(4, 1);
 
       % --- Pre-computed Hanning (0-1s, 0-2s) ---
-      pow_s{2, 1} = pow_early{cond};       % Hanning, 0-1s, raw
-      pow_s{3, 1} = pow_full{cond};        % Hanning, 0-2s, raw
-      if ~isempty(pow_early_bl{cond}), pow_bl_s{2, 1} = pow_early_bl{cond}; end  % Hanning, 0-1s, dB
-      if ~isempty(pow_full_bl{cond}),  pow_bl_s{3, 1} = pow_full_bl{cond};  end  % Hanning, 0-2s, dB
+      pow_s{2} = pow_early{cond};       % 0-1s, raw
+      pow_s{3} = pow_full{cond};        % 0-2s, raw
+      if ~isempty(pow_early_bl{cond}), pow_bl_s{2} = pow_early_bl{cond}; end  % 0-1s, dB
+      if ~isempty(pow_full_bl{cond}),  pow_bl_s{3} = pow_full_bl{cond};  end  % 0-2s, dB
 
       % --- TFR-based Hanning (0-500ms, 1-2s) ---
       if ~isempty(tfr_loaded)
         cond_inds_tfr = find(tfr_loaded.trialinfo(:,1) == cond_codes(cond));
-        if isempty(pow_s{1, 1})
-          pow_s{1, 1} = get_power_from_TFR(tfr_loaded, cond_inds_tfr, lat_windows{1});
+        if isempty(pow_s{1})
+          pow_s{1} = get_power_from_TFR(tfr_loaded, cond_inds_tfr, lat_windows{1});
         end
-        if isempty(pow_s{4, 1})
-          pow_s{4, 1} = get_power_from_TFR(tfr_loaded, cond_inds_tfr, lat_windows{4});
+        if isempty(pow_s{4})
+          pow_s{4} = get_power_from_TFR(tfr_loaded, cond_inds_tfr, lat_windows{4});
         end
         if ~isempty(tfr_bl_loaded)
           cond_inds_bl = find(tfr_bl_loaded.trialinfo(:,1) == cond_codes(cond));
-          if isempty(pow_bl_s{1, 1})
-            pow_bl_s{1, 1} = get_power_from_TFR(tfr_bl_loaded, cond_inds_bl, lat_windows{1});
+          if isempty(pow_bl_s{1})
+            pow_bl_s{1} = get_power_from_TFR(tfr_bl_loaded, cond_inds_bl, lat_windows{1});
           end
-          if isempty(pow_bl_s{4, 1})
-            pow_bl_s{4, 1} = get_power_from_TFR(tfr_bl_loaded, cond_inds_bl, lat_windows{4});
+          if isempty(pow_bl_s{4})
+            pow_bl_s{4} = get_power_from_TFR(tfr_bl_loaded, cond_inds_bl, lat_windows{4});
           end
         end
       end
 
-      % --- Time-domain fill (all DPSS + remaining Hanning gaps) ---
+      % --- Time-domain fill (remaining Hanning gaps) ---
       cond_inds_td = [];  % initialize before block; needed for FOOOF later
       if ~isempty(data_td)
         cond_inds_td = find(data_td.trialinfo(:,1) == cond_codes(cond));
-        for ifm = 1:2
-          cfg_f = cfg_freq_all{ifm};
-          for il = 1:4
-            if isempty(pow_s{il, ifm})
-              disp(upper(['    Computing power from time-domain: lat=' num2str(il) ' fm=' num2str(ifm)]))
-              pow_s{il, ifm} = compute_pow_cond_window(data_td, cond_inds_td, lat_windows{il}, cfg_f);
-            end
+        for il = 1:4
+          if isempty(pow_s{il})
+            disp(upper(['    Computing power from time-domain: lat=' num2str(il)]))
+            pow_s{il} = compute_pow_cond_window(data_td, cond_inds_td, lat_windows{il}, cfg_hann);
           end
-          % Baseline spectrum for dB correction (mean across trials)
-          pow_base_fm = compute_pow_cond_window(data_td, cond_inds_td, t_base, cfg_f);
-          for il = 1:4
-            if isempty(pow_bl_s{il, ifm}) && ~isempty(pow_s{il, ifm}) && ~isempty(pow_base_fm)
-              pow_bl_s{il, ifm} = compute_db_baseline_spectra(pow_s{il, ifm}, pow_base_fm);
-            end
+        end
+        % Baseline spectrum for dB correction (mean across trials)
+        pow_base = compute_pow_cond_window(data_td, cond_inds_td, t_base, cfg_hann);
+        for il = 1:4
+          if isempty(pow_bl_s{il}) && ~isempty(pow_s{il}) && ~isempty(pow_base)
+            pow_bl_s{il} = compute_db_baseline_spectra(pow_s{il}, pow_base);
           end
         end
       end
 
-      %% ====== Alpha: cell array {lat, fm, bl, fo}(trial, elec_alpha_col) ======
+      %% ====== Alpha: cell array {lat, bl, fo}(trial, elec_alpha_col) ======
       % fo: 1=FOOOFed, 2=nonFOOOFed
       n_cols = n_elec * n_alpha;
-      alpha = cell(n_lat, n_fm, n_bl_eeg, n_fooof);
-      for il = 1:n_lat; for ifm = 1:n_fm; for ibl = 1:n_bl_eeg; for ifo = 1:n_fooof
-        alpha{il, ifm, ibl, ifo} = nan(n_trials_cond, n_cols);
-      end; end; end; end
+      alpha = cell(n_lat, n_bl_eeg, n_fooof);
+      for il = 1:n_lat; for ibl = 1:n_bl_eeg; for ifo = 1:n_fooof
+        alpha{il, ibl, ifo} = nan(n_trials_cond, n_cols);
+      end; end; end
 
-      disp(upper('  Computing alpha (raw + FOOOF × hanning/dpss × raw/dB) per trial.'))
+      disp(upper('  Computing alpha (raw + FOOOF × raw/dB) per trial.'))
       for il = 1:n_lat
-        for ifm = 1:n_fm
-          % --- nonFOOOFed: bandpower from pre-computed / computed power structs ---
-          for ibl = 1:n_bl_eeg
-            if ibl == 1, p = pow_s{il, ifm}; else, p = pow_bl_s{il, ifm}; end
-            if isempty(p) || ~isfield(p, 'powspctrm'), continue; end
-            for ie = 1:n_elec
-              chIdx = ch_sets{ie};
+        % --- nonFOOOFed: bandpower from pre-computed / computed power structs ---
+        for ibl = 1:n_bl_eeg
+          if ibl == 1, p = pow_s{il}; else, p = pow_bl_s{il}; end
+          if isempty(p) || ~isfield(p, 'powspctrm'), continue; end
+          for ie = 1:n_elec
+            chIdx = ch_sets{ie};
+            for ia = 1:n_alpha
+              col = (ie-1)*n_alpha + ia;
+              if ia == 1, band = alphaRange; else, band = IAF_band; end
+              alpha{il, ibl, 2}(:, col) = bandpower_trials(p, chIdx, band);
+            end
+          end
+        end
+
+        % --- FOOOFed: from raw time-domain data ---
+        % ft_freqanalysis_Arne_FOOOF needs raw (time-domain) input, NOT a freq struct.
+        % It internally performs FFT + FOOOF. We pass single-trial, ROI-averaged data.
+        % FOOOF result is baseline-independent → same value for raw & dB baseline.
+        if ~isempty(data_td) && ~isempty(cond_inds_td)
+          for ie = 1:n_elec
+            ch_lbl = ch_label_sets{ie};
+            n_td = min(n_trials_cond, length(cond_inds_td));
+            for tr = 1:n_td
+              td_idx = cond_inds_td(tr);
+              [f_osc, f_axis] = run_fooof_from_raw(data_td, td_idx, ch_lbl, lat_windows{il}, cfg_fooof);
+              if isempty(f_osc), continue, end
               for ia = 1:n_alpha
                 col = (ie-1)*n_alpha + ia;
                 if ia == 1, band = alphaRange; else, band = IAF_band; end
-                alpha{il, ifm, ibl, 2}(:, col) = bandpower_trials(p, chIdx, band);
-              end
-            end
-          end
-
-          % --- FOOOFed: from raw time-domain data ---
-          % ft_freqanalysis_Arne_FOOOF needs raw (time-domain) input, NOT a freq struct.
-          % It internally performs FFT + FOOOF. We pass single-trial, ROI-averaged data.
-          % FOOOF result is baseline-independent → same value for raw & dB baseline.
-          if ~isempty(data_td) && ~isempty(cond_inds_td)
-            cfg_fo = cfg_fooof_all{ifm};
-            for ie = 1:n_elec
-              ch_lbl = ch_label_sets{ie};
-              n_td = min(n_trials_cond, length(cond_inds_td));
-              for tr = 1:n_td
-                td_idx = cond_inds_td(tr);
-                [f_osc, f_axis] = run_fooof_from_raw(data_td, td_idx, ch_lbl, lat_windows{il}, cfg_fo);
-                if isempty(f_osc), continue, end
-                for ia = 1:n_alpha
-                  col = (ie-1)*n_alpha + ia;
-                  if ia == 1, band = alphaRange; else, band = IAF_band; end
-                  bandIdx = f_axis >= band(1) & f_axis <= band(2);
-                  if sum(bandIdx) > 0
-                    fooof_val = mean(f_osc(bandIdx), 'omitnan');
-                    % Write the same FOOOF value for both raw and dB baseline settings
-                    for ibl = 1:n_bl_eeg
-                      alpha{il, ifm, ibl, 1}(tr, col) = fooof_val;
-                    end
+                bandIdx = f_axis >= band(1) & f_axis <= band(2);
+                if sum(bandIdx) > 0
+                  fooof_val = mean(f_osc(bandIdx), 'omitnan');
+                  for ibl = 1:n_bl_eeg
+                    alpha{il, ibl, 1}(tr, col) = fooof_val;
                   end
                 end
               end
             end
-          else
-            disp(upper('    WARNING: No time-domain EEG data → FOOOFed alpha will be NaN for this condition.'))
           end
+        else
+          disp(upper('    WARNING: No time-domain EEG data → FOOOFed alpha will be NaN for this condition.'))
         end
       end
 
-      %% ====== Gaze: 5 metrics × 4 windows × raw + pct_change ======
-      disp(upper('  Computing gaze (fix, SPL, vel, MS, BCEA) × 4 windows × raw + pct_change.'))
+      %% ====== Gaze: 4 metrics × 4 windows × raw + pct_change ======
+      disp(upper('  Computing gaze (SPL, vel, MS, BCEA) x 4 windows x raw + pct_change.'))
       gaze_raw_all = cell(n_lat, 1); gaze_bl_all = cell(n_lat, 1);
       for il = 1:n_lat
         gaze_raw_all{il} = nan(n_trials_cond, 5);
@@ -608,8 +590,8 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
       disp(upper(['  Appending ' num2str(n_trials_cond * n_universes) ' rows for subject ' sid ' cond ' num2str(cval) '.']))
       for tr = 1:n_trials_cond
         for u = 1:n_universes
-          [ie, ifo, il, ia, ig, ibe, ibg, ifm] = ind2sub( ...
-            [n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_fm], u);
+          [ie, ifo, il, ia, ig, ibe, ibg] = ind2sub( ...
+            [n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze], u);
           task_cell{end+1, 1}       = task_name;
           u_id_cell(end+1, 1)       = u;
           elec_cell{end+1, 1}       = electrodes_opts{ie};
@@ -619,14 +601,13 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
           gaze_meas_cell{end+1, 1}  = gaze_opts{ig};
           bl_eeg_cell{end+1, 1}     = baseline_eeg_opts{ibe};
           bl_gaze_cell{end+1, 1}    = baseline_gaze_opts{ibg};
-          fm_cell{end+1, 1}         = freq_method_opts{ifm};
           subjectID_cell(end+1, 1)  = sid_num;
           Trial_cell(end+1, 1)      = trials_list(tr);
           Condition_cell(end+1, 1)  = cval;
 
           % Alpha lookup
           col_alpha = (ie-1)*n_alpha + ia;
-          av = alpha{il, ifm, ibe, ifo}(tr, col_alpha);
+          av = alpha{il, ibe, ifo}(tr, col_alpha);
           alpha_val_cell(end+1, 1) = av;
 
           % Gaze lookup (gaze_col_map maps gaze_opts index to column in 5-element gaze array)
@@ -643,7 +624,7 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
   end
 
   tbl = table(task_cell, u_id_cell, elec_cell, fooof_cell, lat_cell, alpha_type_cell, gaze_meas_cell, ...
-    bl_eeg_cell, bl_gaze_cell, fm_cell, subjectID_cell, Trial_cell, Condition_cell, alpha_val_cell, gaze_val_cell, ...
+    bl_eeg_cell, bl_gaze_cell, subjectID_cell, Trial_cell, Condition_cell, alpha_val_cell, gaze_val_cell, ...
     'VariableNames', {'task', 'universe_id', 'electrodes', 'fooof', 'latency_ms', 'alpha_type', 'gaze_measure', ...
-    'baseline_eeg', 'baseline_gaze', 'freq_method', 'subjectID', 'Trial', 'Condition', 'alpha', 'gaze_value'});
+    'baseline_eeg', 'baseline_gaze', 'subjectID', 'Trial', 'Condition', 'alpha', 'gaze_value'});
 end

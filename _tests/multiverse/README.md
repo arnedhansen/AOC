@@ -19,12 +19,12 @@ MATLAB builds long-format CSVs; R fits the LMM per universe and plots specificat
 | 1/f            | FOOOFed, non-FOOOFed (2) |
 | Latency        | 0–500 ms, 0–1000 ms, 0–2000 ms, **1000–2000 ms** (4) |
 | Alpha          | canonical (8–14 Hz), IAF (2) |
-| Gaze           | gaze_density, scan_path_length, gaze_velocity, microsaccades, BCEA (5) |
+| Gaze           | scan_path_length, gaze_velocity, microsaccades, BCEA (4) |
 | EEG baseline   | raw, dB-baselined `[-0.5, -0.25] s` (2) |
 | Gaze baseline  | raw, percentage change from `[-0.5, -0.25] s` (2) |
 | Freq method    | **Hanning, DPSS (multitaper, tapsmofrq = 2 Hz)** (2) |
 
-**Total:** 4 × 2 × 4 × 2 × 5 × 2 × 2 × 2 = **5120 universes per task**.
+**Total:** 4 × 2 × 4 × 2 × 4 × 2 × 2 × 2 = **4096 universes per task**.
 
 **Note:** The MATLAB script computes trial-level alpha and gaze for all combinations. Power is obtained from a hierarchy of sources: pre-computed Hanning files (0–1 s, 0–2 s), precomputed TFRs (any Hanning window), and time-domain EEG via `ft_freqanalysis` (DPSS windows and Hanning fallback). DPSS uses `tapsmofrq = 2` Hz spectral smoothing. The 1000–2000 ms window captures the **late retention** interval. BCEA is the Bivariate Contour Ellipse Area (95%); gaze baseline uses percentage change `(task - base) / |base| × 100` from `[-0.5, -0.25] s`. EEG dB baseline uses pre-computed `_bl` files where available, or `10*log10(task / mean_baseline_spectrum)` computed from the `[-0.5, -0.25] s` epoch.
 
@@ -77,8 +77,7 @@ MATLAB builds long-format CSVs; R fits the LMM per universe and plots specificat
 2. **1/f:** raw power vs fitted model minus aperiodic (FOOOF – aperiodic).
 3. **Latency:** aligned to stimulus; windows 0–500 ms, 0–1000 ms, 0–2000 ms after stimulus.
 4. **Alpha:** canonical = 8–14 Hz; IAF as in AOC_eeg_fex_sternberg.m (peak in 8–14, power in IAF−4/+2 Hz with guards).
-5. **Gaze density:** as in your pipeline (Fixations: count of L_fixation/R_fixation events per trial in analysis window).
-6. **Gaze velocity:** same epoch as alpha; same epoch for EEG and ET always.
+5. **Gaze velocity:** same epoch as alpha; same epoch for EEG and ET always.
 7. **Microsaccades:** per trial (rate or count per trial). In the **0–500 ms** window, microsaccades are often suppressed post-stimulus, so many trials may have NaN; the pipeline writes these as NaN, and R drops them via `complete.cases()` and skips universes with fewer than 10 valid rows—no error.
 8. **Scan path length:** normalized (e.g. by duration or screen).
 9. **Exclusion:** not necessary (preprocessed).

@@ -3,12 +3,12 @@
 % electrode/FOOOF/latency/alpha/gaze/baseline/freq-method combinations.
 % Writes multiverse_sternberg.csv and multiverse_nback.csv.
 %
-% Decision grid (9 dimensions, 5120 universes per task):
+% Decision grid (9 dimensions, 4096 universes per task):
 %   Electrodes:     all, posterior, parietal, occipital (4)
 %   1/f:            FOOOFed, non-FOOOFed (2)
 %   Latency:        0-500, 0-1000, 0-2000, 1000-2000 ms (4)
 %   Alpha band:     canonical 8-14 Hz, IAF (2)
-%   Gaze measure:   fixations, SPL, velocity, microsaccades, BCEA (5)
+%   Gaze measure:   SPL, velocity, microsaccades, BCEA (4)
 %   EEG baseline:   raw, dB [-0.5 -0.25] s (2)
 %   Gaze baseline:  raw, pct_change [-0.5 -0.25] s (2)
 %   Freq method:    hanning, dpss (2)
@@ -60,11 +60,12 @@ electrodes_opts    = {'all', 'posterior', 'parietal', 'occipital'};
 fooof_opts         = {'FOOOFed', 'nonFOOOFed'};
 latency_opts       = {'0_500ms', '0_1000ms', '0_2000ms', '1000_2000ms'};
 alpha_opts         = {'canonical', 'IAF'};
-gaze_opts          = {'gaze_density', 'scan_path_length', 'gaze_velocity', 'microsaccades', 'BCEA'};
+gaze_opts          = {'scan_path_length', 'gaze_velocity', 'microsaccades', 'BCEA'};
+gaze_col_map       = [2, 3, 4, 5];  % column indices into [nfix, spl, vel, ms, bcea]
 baseline_eeg_opts  = {'raw', 'dB'};
 baseline_gaze_opts = {'raw', 'pct_change'};
 freq_method_opts   = {'hanning', 'dpss'};
-n_elec = 4; n_fooof = 2; n_lat = 4; n_alpha = 2; n_gaze = 5;
+n_elec = 4; n_fooof = 2; n_lat = 4; n_alpha = 2; n_gaze = 4;
 n_bl_eeg = 2; n_bl_gaze = 2; n_fm = 2;
 n_universes = n_elec * n_fooof * n_lat * n_alpha * n_gaze * n_bl_eeg * n_bl_gaze * n_fm;
 alphaRange = [8 14];
@@ -98,7 +99,7 @@ disp(upper(['Channels: all=' num2str(length(idx_all)) ' post=' num2str(length(id
 %% Build Sternberg multiverse table
 disp(upper('--- STERNBERG TASK ---'))
 tbl_s = build_task_multiverse('sternberg', subjects, path_preproc, base_features, ...
-    ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, ...
+    ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, gaze_col_map, ...
     baseline_eeg_opts, baseline_gaze_opts, freq_method_opts, ...
     n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_fm, n_universes, alphaRange);
 disp(upper(['Sternberg table rows: ' num2str(height(tbl_s))]))
@@ -111,7 +112,7 @@ disp(upper(['Written: ' fullfile(out_dir, 'multiverse_sternberg.csv')]))
 %% Build N-back multiverse table
 disp(upper('--- N-BACK TASK ---'))
 tbl_n = build_task_multiverse('nback', subjects, path_preproc, base_features, ...
-    ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, ...
+    ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, gaze_col_map, ...
     baseline_eeg_opts, baseline_gaze_opts, freq_method_opts, ...
     n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_fm, n_universes, alphaRange);
 disp(upper(['N-back table rows: ' num2str(height(tbl_n))]))
@@ -166,22 +167,6 @@ function IAF_band = get_IAF_band(pow_full, chIdx, alphaRange)
   IAF_band = [max(f(1), IAF-4), min(f(end), IAF+2)];
 end
 
-function nfix = count_fixations_in_window(x, y, t, t_win, fsample, vel_thresh_px, min_dur_samp)
-  if nargin < 7, min_dur_samp = 25; end
-  if nargin < 6, vel_thresh_px = 30; end
-  idx = t >= t_win(1) & t <= t_win(2);
-  xw = x(idx); yw = y(idx); xw = xw(:)'; yw = yw(:)';
-  valid = isfinite(xw) & isfinite(yw);
-  if sum(valid) < min_dur_samp, nfix = 0; return, end
-  vel = sqrt(diff(xw).^2 + diff(yw).^2) * fsample;
-  low = [false, vel < vel_thresh_px];
-  low(~[valid(1:end-1); valid(2:end)]) = false;
-  runs = diff([0 low 0]);
-  onsets = find(runs == 1); offsets = find(runs == -1);
-  if length(onsets) ~= length(offsets), nfix = 0; return, end
-  nfix = sum(offsets - onsets >= min_dur_samp);
-end
-
 function bcea = compute_bcea(xw, yw)
   k95 = chi2inv(0.95, 2) / 2;
   xw = double(xw(:)); yw = double(yw(:));
@@ -193,13 +178,13 @@ function bcea = compute_bcea(xw, yw)
 end
 
 function [gaze_raw, gaze_bl] = compute_gaze_one_window(x, y, t, tw, dur, fsample, t_base)
+  % Returns [SPL, vel, ms_cnt, bcea] at indices [2,3,4,5]; index 1 unused (kept for column alignment)
   gaze_raw = nan(1, 5); gaze_bl = nan(1, 5);
   idx = t >= tw(1) & t <= tw(2);
   xw = x(idx); yw = y(idx);
   validxy = isfinite(xw) & isfinite(yw);
   xw = xw(validxy); yw = yw(validxy);
   if length(xw) < 50, return, end
-  nfix = count_fixations_in_window(x, y, t, tw, fsample);
   dx = diff(xw); dy = diff(yw);
   spl = sum(sqrt(dx.^2 + dy.^2), 'omitnan');
   vel = spl / dur;
@@ -213,7 +198,7 @@ function [gaze_raw, gaze_bl] = compute_gaze_one_window(x, y, t, tw, dur, fsample
   catch, ms_cnt = NaN;
   end
   bcea_val = compute_bcea(xw, yw);
-  gaze_raw = [nfix, spl, vel, ms_cnt, bcea_val];
+  gaze_raw = [NaN, spl, vel, ms_cnt, bcea_val];
   % Baseline
   idx_b = t >= t_base(1) & t <= t_base(2);
   xb = x(idx_b); yb = y(idx_b);
@@ -221,7 +206,6 @@ function [gaze_raw, gaze_bl] = compute_gaze_one_window(x, y, t, tw, dur, fsample
   xb = xb(validb); yb = yb(validb);
   dur_base = t_base(2) - t_base(1);
   if length(xb) < 20, return, end
-  nfix_b = count_fixations_in_window(x, y, t, t_base, fsample);
   dx_b = diff(xb); dy_b = diff(yb);
   spl_b = sum(sqrt(dx_b.^2 + dy_b.^2), 'omitnan');
   vel_b = spl_b / dur_base;
@@ -235,8 +219,8 @@ function [gaze_raw, gaze_bl] = compute_gaze_one_window(x, y, t, tw, dur, fsample
   catch, ms_cnt_b = NaN;
   end
   bcea_b = compute_bcea(xb, yb);
-  base_vals = [nfix_b, spl_b, vel_b, ms_cnt_b, bcea_b];
-  for g = 1:5
+  base_vals = [NaN, spl_b, vel_b, ms_cnt_b, bcea_b];
+  for g = 2:5
     if isfinite(base_vals(g)) && base_vals(g) ~= 0 && isfinite(gaze_raw(g))
       gaze_bl(g) = (gaze_raw(g) - base_vals(g)) / abs(base_vals(g)) * 100;
     end
@@ -317,7 +301,7 @@ end
 %% ========== MAIN BUILD FUNCTION ==========
 
 function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_features, ...
-    ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, ...
+    ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, gaze_col_map, ...
     baseline_eeg_opts, baseline_gaze_opts, freq_method_opts, ...
     n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_fm, n_universes, alphaRange)
 
@@ -645,11 +629,12 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
           av = alpha{il, ifm, ibe, ifo}(tr, col_alpha);
           alpha_val_cell(end+1, 1) = av;
 
-          % Gaze lookup
+          % Gaze lookup (gaze_col_map maps gaze_opts index to column in 5-element gaze array)
+          gcol = gaze_col_map(ig);
           if ibg == 1
-            gv = gaze_raw_all{il}(tr, ig);
+            gv = gaze_raw_all{il}(tr, gcol);
           else
-            gv = gaze_bl_all{il}(tr, ig);
+            gv = gaze_bl_all{il}(tr, gcol);
           end
           gaze_val_cell(end+1, 1) = gv;
         end

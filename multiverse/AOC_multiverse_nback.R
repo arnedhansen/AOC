@@ -1,6 +1,14 @@
-# AOC Multiverse — N-Back: alpha ~ gaze * condition + (1|subjectID)
-# Reads multiverse_nback.csv, fits LMM per universe, plots specification curve + panel.
-# Default figures show the slope at the HIGHEST WM load (3-back).
+# AOC Multiverse — N-Back: Specification Curve Analysis
+# Uses multiverse R package (Sarma et al., 2021) for systematic decision branching.
+# Reads multiverse_nback.csv, fits LMMs per universe, plots specification curves.
+#
+# Models:
+#   Figure 1 (_estimate):        alpha ~ gaze_value + (1|subjectID) [per condition, sorted by estimate]
+#   Figure 2 (_grouped):         alpha ~ gaze_value + (1|subjectID) [per condition, grouped by dimension]
+#   Figure 3 (_condition_alpha): alpha ~ Condition + (1|subjectID)  [EEG-only universes]
+#   Figure 4 (_interaction):     alpha ~ gaze_value * Condition + (1|subjectID) [interaction term]
+#   Figure 5 (_condition_gaze):  gaze_value ~ Condition + (1|subjectID) [gaze-only universes]
+#
 # Figure output: '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/multiverse'
 
 library(lme4)
@@ -10,6 +18,7 @@ library(tidyverse)
 library(patchwork)
 library(ggplot2)
 library(cowplot)
+library(multiverse)
 
 # Paths
 csv_dir <- Sys.getenv("AOC_MULTIVERSE_DIR", unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features")
@@ -50,9 +59,6 @@ rename_opts <- function(x) {
   )
 }
 
-# Factor levels for panel y-axis (bottom → top, so first level = bottom)
-# Ordered by processing stage: Latency → Electrodes → FOOOF →
-#   EEG Baseline → Alpha → Gaze Measure → Gaze Baseline
 value_levels <- c(
   "% Change", "Raw",
   "BCEA", "Microsaccades", "Gaze Velocity", "Scan Path Length",
@@ -62,7 +68,6 @@ value_levels <- c(
   "1000\u20132000 ms", "0\u20132000 ms", "0\u20131000 ms", "0\u2013500 ms"
 )
 
-# Dimension ordering for facet strips (top → bottom = processing order)
 v_p2_group_order <- c("Latency", "Electrodes", "FOOOF",
                        "EEG Baseline", "Alpha", "Gaze Measure", "Gaze Baseline")
 
@@ -76,15 +81,14 @@ dat$Condition <- as.factor(dat$Condition)
 
 message(sprintf("Loaded: %d rows, %d universes.", nrow(dat), n_distinct(dat$universe_id)))
 
-# Drop gaze_density if present (legacy CSVs) and exclude "all" electrodes
 if ("gaze_measure" %in% names(dat)) {
   dat <- dat %>% filter(gaze_measure != "gaze_density" | is.na(gaze_measure))
 }
 dat <- dat %>% filter(!electrodes %in% c("all", "parietal"))
-# Only show % Change baseline on plots (drop dB); raw + pct_change remain
 dat <- dat %>% filter(baseline_eeg != "dB", baseline_gaze != "dB")
 message(sprintf("After filtering: %d rows, %d universes.", nrow(dat), n_distinct(dat$universe_id)))
 
+# ========== HELPER FUNCTIONS ==========
 robust_z <- function(x, winsor = 3) {
   med <- median(x, na.rm = TRUE)
   ma  <- mad(x, na.rm = TRUE)
@@ -94,6 +98,19 @@ robust_z <- function(x, winsor = 3) {
   z[z < -winsor] <- -winsor
   z
 }
+
+add_sig <- function(df) {
+  df %>% mutate(
+    condition = factor(case_when(
+      p.value < 0.05 & estimate > 0 ~ "Positive",
+      p.value < 0.05 & estimate < 0 ~ "Negative",
+      TRUE ~ "Non-significant"
+    ), levels = c("Positive", "Negative", "Non-significant"))
+  )
+}
+
+sig_colors <- c("Positive" = "#33CC66", "Negative" = "#fe0000",
+                "Non-significant" = "#d1d1d1")
 
 make_panel_long <- function(df, x_col) {
   df %>%
@@ -108,97 +125,115 @@ make_panel_long <- function(df, x_col) {
     )
 }
 
-# ========== FIT MODELS ==========
+safe_extract <- function(results, var_name) {
+  r <- results[[var_name]]
+  if (is.null(r) || !is.data.frame(r) || nrow(r) == 0) return(NULL)
+  r
+}
+
+branch_cols <- c("electrodes", "fooof", "latency_ms", "alpha_type",
+                 "gaze_measure", "baseline_eeg", "baseline_gaze")
+
+# Condition setup
 cond_levels <- sort(unique(dat$Condition))
-cond_labels <- setNames(paste0(cond_levels, "-back"), cond_levels)
+cond_labels <- setNames(paste0(cond_levels, "-back"), as.character(cond_levels))
 highest_cond <- max(as.numeric(as.character(cond_levels)))
 highest_label <- cond_labels[as.character(highest_cond)]
 
-universes <- unique(dat$universe_id)
-M_int_list  <- list()
-M_cond_list <- list()
+# ========== MAIN MULTIVERSE (7 dimensions, 512 universes) ==========
+message("Setting up main multiverse (7 dimensions)...")
 
-for (i in seq_along(universes)) {
-  u <- universes[i]
-  du <- dat[dat$universe_id == u, ]
-  du <- du[complete.cases(du[, c("alpha", "gaze_value", "Condition", "subjectID")]), ]
-  if (nrow(du) < 10) next
-  du$gaze_value <- robust_z(du$gaze_value)
-  du$alpha      <- robust_z(du$alpha)
-  if (any(is.nan(du$gaze_value)) || any(is.nan(du$alpha))) next
-  r1 <- du[1, ]
+M <- multiverse()
 
-  fit_int <- tryCatch(
-    lmer(alpha ~ gaze_value * Condition + (1 | subjectID), data = du,
-         control = lmerControl(optimizer = "bobyqa")),
-    error = function(e) NULL
-  )
-  if (!is.null(fit_int)) {
-    tid <- broom.mixed::tidy(fit_int, conf.int = TRUE)
-    tid$universe_id <- u
-    tid$electrodes <- r1$electrodes; tid$fooof <- r1$fooof
-    tid$latency_ms <- r1$latency_ms; tid$alpha_type <- r1$alpha_type
-    tid$gaze_measure <- r1$gaze_measure; tid$baseline_eeg <- r1$baseline_eeg
-    tid$baseline_gaze <- r1$baseline_gaze
-    M_int_list[[length(M_int_list) + 1L]] <- tid
-  }
+inside(M, {
+  .elec   <- branch(electrodes,    "posterior", "occipital")
+  .fooof  <- branch(fooof,         "FOOOFed", "nonFOOOFed")
+  .lat    <- branch(latency_ms,    "0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
+  .alpha  <- branch(alpha_type,    "canonical", "IAF")
+  .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA")
+  .bleeg  <- branch(baseline_eeg,  "raw", "pct_change")
+  .blgaze <- branch(baseline_gaze, "raw", "pct_change")
 
-  for (cl in cond_levels) {
-    dc <- du[du$Condition == cl, ]
-    if (nrow(dc) < 5) next
-    fit_c <- tryCatch(
-      lmer(alpha ~ gaze_value + (1 | subjectID), data = dc,
+  df <- dat %>%
+    filter(electrodes == .elec, fooof == .fooof, latency_ms == .lat,
+           alpha_type == .alpha, gaze_measure == .gaze,
+           baseline_eeg == .bleeg, baseline_gaze == .blgaze) %>%
+    filter(complete.cases(alpha, gaze_value, Condition, subjectID))
+
+  df$gaze_value <- robust_z(df$gaze_value)
+  df$alpha      <- robust_z(df$alpha)
+  valid <- nrow(df) >= 10 && !any(is.nan(df$gaze_value)) && !any(is.nan(df$alpha))
+
+  # Interaction model: alpha ~ gaze_value * Condition + (1|subjectID)
+  tid_int <- if (valid) {
+    fit <- tryCatch(
+      lmer(alpha ~ gaze_value * Condition + (1 | subjectID), data = df,
            control = lmerControl(optimizer = "bobyqa")),
-      error = function(e) NULL
-    )
-    if (is.null(fit_c)) next
-    tid_c <- broom.mixed::tidy(fit_c, conf.int = TRUE) %>% filter(term == "gaze_value")
-    tid_c$universe_id <- u
-    tid_c$cond_label <- cond_labels[as.character(cl)]
-    tid_c$electrodes <- r1$electrodes; tid_c$fooof <- r1$fooof
-    tid_c$latency_ms <- r1$latency_ms; tid_c$alpha_type <- r1$alpha_type
-    tid_c$gaze_measure <- r1$gaze_measure; tid_c$baseline_eeg <- r1$baseline_eeg
-    tid_c$baseline_gaze <- r1$baseline_gaze
-    M_cond_list[[length(M_cond_list) + 1L]] <- tid_c
-  }
-}
+      error = function(e) NULL)
+    if (!is.null(fit)) broom.mixed::tidy(fit, conf.int = TRUE) else tibble()
+  } else tibble()
 
-M_int <- bind_rows(M_int_list)
-terms_keep <- c("gaze_value", grep("gaze_value:Condition", M_int$term, value = TRUE))
-M_int <- M_int %>% filter(term %in% unique(terms_keep))
+  # Per-condition models: alpha ~ gaze_value + (1|subjectID)
+  tid_cond <- if (valid) {
+    bind_rows(lapply(as.character(cond_levels), function(cl) {
+      dc <- df[df$Condition == cl, ]
+      if (nrow(dc) < 5) return(tibble())
+      fit_c <- tryCatch(
+        lmer(alpha ~ gaze_value + (1 | subjectID), data = dc,
+             control = lmerControl(optimizer = "bobyqa")),
+        error = function(e) NULL)
+      if (is.null(fit_c)) return(tibble())
+      tid_c <- broom.mixed::tidy(fit_c, conf.int = TRUE) %>% filter(term == "gaze_value")
+      tid_c$cond_label <- cond_labels[cl]
+      tid_c
+    }))
+  } else tibble()
+})
 
-M_cond <- bind_rows(M_cond_list)
+message("Executing main multiverse (512 universes)...")
+execute_multiverse(M)
+
+# ========== EXTRACT RESULTS ==========
+message("Extracting results from multiverse...")
+M_expanded <- expand(M)
+
+M_int <- M_expanded %>%
+  mutate(tid = map(.results, safe_extract, "tid_int")) %>%
+  filter(!map_lgl(tid, is.null)) %>%
+  select(.universe, all_of(branch_cols), tid) %>%
+  unnest(tid) %>%
+  filter(grepl("gaze_value", term))
+
+M_cond <- M_expanded %>%
+  mutate(tid = map(.results, safe_extract, "tid_cond")) %>%
+  filter(!map_lgl(tid, is.null)) %>%
+  select(.universe, all_of(branch_cols), tid) %>%
+  unnest(tid)
+
 if (nrow(M_cond) == 0L) stop("No successful LMM fits.")
 
+# Drop unstable universes (SE > 95th percentile)
 se_thresh <- quantile(M_cond$std.error, 0.95, na.rm = TRUE)
-bad_ids <- M_cond %>% filter(std.error > se_thresh) %>% pull(universe_id) %>% unique()
-M_cond <- M_cond %>% filter(!universe_id %in% bad_ids)
-M_int  <- M_int  %>% filter(!universe_id %in% bad_ids)
+bad_ids <- M_cond %>% filter(std.error > se_thresh) %>% pull(.universe) %>% unique()
+M_cond <- M_cond %>% filter(!.universe %in% bad_ids)
+M_int  <- M_int  %>% filter(!.universe %in% bad_ids)
 message(sprintf("Dropped %d unstable universes (SE > %.4f). %d remain.",
-                length(bad_ids), se_thresh, n_distinct(M_cond$universe_id)))
+                length(bad_ids), se_thresh, n_distinct(M_cond$.universe)))
 
-add_sig <- function(df) {
-  df %>% mutate(
-    condition = factor(case_when(
-      p.value < 0.05 & estimate > 0 ~ "Positive",
-      p.value < 0.05 & estimate < 0 ~ "Negative",
-      TRUE ~ "Non-significant"
-    ), levels = c("Positive", "Negative", "Non-significant"))
-  )
-}
 M_cond <- add_sig(M_cond)
 M_int  <- add_sig(M_int)
 
-sig_colors <- c("Positive" = "#33CC66", "Negative" = "#fe0000",
-                "Non-significant" = "#d1d1d1")
+# Save CSVs
+write.csv(M_int, file.path(csv_dir, "multiverse_nback_results.csv"), row.names = FALSE)
+write.csv(M_cond, file.path(csv_dir, "multiverse_nback_conditions_results.csv"), row.names = FALSE)
 
 # ========== HIGHEST-CONDITION DATA ==========
 M_high <- M_cond %>% filter(cond_label == highest_label)
-ord_high <- M_high %>% arrange(fooof, estimate) %>% pull(universe_id)
-ord_df <- data.frame(universe_id = ord_high, ordered_universe = seq_along(ord_high))
-M_high <- M_high %>% left_join(ord_df, by = "universe_id")
+ord_high <- M_high %>% arrange(fooof, estimate) %>% pull(.universe)
+ord_df <- data.frame(.universe = ord_high, ordered_universe = seq_along(ord_high))
+M_high <- M_high %>% left_join(ord_df, by = ".universe")
 
-# ========== FIGURE 1: SPECIFICATION CURVE (highest condition, sorted by estimate) ==========
+# ========== FIGURE 1: SPECIFICATION CURVE (sorted by estimate) ==========
 ymax_est <- max(abs(c(M_high$conf.low, M_high$conf.high)), na.rm = TRUE) * 1.05
 ylim_est <- c(-ymax_est, ymax_est)
 
@@ -208,13 +243,14 @@ p_curve <- ggplot(M_high, aes(x = ordered_universe, y = estimate, color = condit
   geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
   scale_color_manual(values = sig_colors, name = "Significance") +
   guides(alpha = "none") +
-  labs(title = expression(bold(alpha ~ "~" ~ gaze)), x = "Universe", y = expression(bold("Standardized " * beta))) +
+  labs(title = expression(bold(alpha ~ "~" ~ gaze)), x = "Universe",
+       y = expression(bold("Standardized " * beta))) +
   theme_minimal() + theme(legend.position = "none") + v_common_theme +
   coord_cartesian(ylim = ylim_est)
 legend_spec <- get_legend(p_curve + theme(legend.position = "bottom") + guides(alpha = "none"))
 
 df_specs <- M_high %>%
-  select(ordered_universe, universe_id, electrodes, fooof, latency_ms, alpha_type,
+  select(ordered_universe, .universe, electrodes, fooof, latency_ms, alpha_type,
          gaze_measure, baseline_eeg, baseline_gaze, condition)
 df_long <- make_panel_long(df_specs, "ordered_universe")
 
@@ -228,14 +264,11 @@ p_panel <- ggplot(df_long, aes(x = ordered_universe, y = value, fill = condition
   labs(x = "Universe", y = "Analysis Decision") + v_common_theme
 
 p_combined <- p_curve / legend_spec / p_panel + plot_layout(heights = c(0.8, 0.1, 1.5))
-ggsave(file.path(storage_plot, "AOC_multiverse_nback_estimate.png"), plot = p_combined, width = 14, height = 12, dpi = 600)
+ggsave(file.path(storage_plot, "AOC_multiverse_nback_estimate.png"),
+       plot = p_combined, width = 14, height = 12, dpi = 600)
 message("Saved AOC_multiverse_nback_estimate.png to ", storage_plot)
 
-write.csv(M_int, file.path(csv_dir, "multiverse_nback_results.csv"), row.names = FALSE)
-
-write.csv(M_cond, file.path(csv_dir, "multiverse_nback_conditions_results.csv"), row.names = FALSE)
-
-# ========== FIGURE 2: DIMENSION-GROUPED SPECIFICATION CURVE (highest condition) ==========
+# ========== FIGURE 2: DIMENSION-GROUPED SPECIFICATION CURVE ==========
 df_grouped <- M_high %>%
   mutate(
     .elec_ord = match(electrodes, elec_order),
@@ -278,10 +311,7 @@ ggsave(file.path(storage_plot, "AOC_multiverse_nback_grouped.png"),
 message("Saved AOC_multiverse_nback_grouped.png to ", storage_plot)
 
 # ========== FIGURE 3: CONDITION EFFECT ON ALPHA (EEG-only universes) ==========
-# Model: alpha ~ Condition + (1|subjectID)  [Condition as factor]
-# Extracts highest condition term (e.g. Condition3 vs reference Condition1).
-# Only EEG dimensions matter (gaze dimensions don't affect alpha), so we deduplicate.
-message("Fitting condition → alpha models for EEG-only universes...")
+message("Setting up EEG-only multiverse (5 dimensions)...")
 
 eeg_group_labels <- c(
   "electrodes" = "Electrodes", "fooof" = "FOOOF", "latency_ms" = "Latency",
@@ -305,40 +335,51 @@ dat_eeg <- dat %>%
   filter(!electrodes %in% c("all", "parietal"), baseline_eeg != "dB") %>%
   select(subjectID, Condition, alpha, electrodes, fooof, latency_ms, alpha_type, baseline_eeg) %>%
   distinct()
-dat_eeg$eeg_uid <- interaction(dat_eeg$electrodes, dat_eeg$fooof, dat_eeg$latency_ms,
-                                dat_eeg$alpha_type, dat_eeg$baseline_eeg, drop = TRUE)
 
-eeg_universes <- unique(dat_eeg$eeg_uid)
-M_cond_alpha_list <- list()
 highest_alpha_term <- paste0("Condition", highest_cond)
 
-for (i in seq_along(eeg_universes)) {
-  uid <- eeg_universes[i]
-  de <- dat_eeg[dat_eeg$eeg_uid == uid, ]
-  de <- de[complete.cases(de[, c("alpha", "Condition", "subjectID")]), ]
-  if (nrow(de) < 10) next
+M_eeg <- multiverse()
+
+inside(M_eeg, {
+  .elec  <- branch(electrodes,   "posterior", "occipital")
+  .fooof <- branch(fooof,        "FOOOFed", "nonFOOOFed")
+  .lat   <- branch(latency_ms,   "0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
+  .alpha <- branch(alpha_type,   "canonical", "IAF")
+  .bleeg <- branch(baseline_eeg, "raw", "pct_change")
+
+  de <- dat_eeg %>%
+    filter(electrodes == .elec, fooof == .fooof, latency_ms == .lat,
+           alpha_type == .alpha, baseline_eeg == .bleeg) %>%
+    filter(complete.cases(alpha, Condition, subjectID))
+
   de$alpha <- robust_z(de$alpha)
-  if (any(is.nan(de$alpha))) next
-  r1 <- de[1, ]
+  valid <- nrow(de) >= 10 && !any(is.nan(de$alpha))
 
-  fit_ca <- tryCatch(
-    lmer(alpha ~ Condition + (1 | subjectID), data = de,
-         control = lmerControl(optimizer = "bobyqa")),
-    error = function(e) NULL
-  )
-  if (is.null(fit_ca)) next
-  tid_ca <- broom.mixed::tidy(fit_ca, conf.int = TRUE) %>% filter(term == highest_alpha_term)
-  if (nrow(tid_ca) == 0) next
-  tid_ca$eeg_uid <- uid
-  tid_ca$electrodes <- r1$electrodes; tid_ca$fooof <- r1$fooof
-  tid_ca$latency_ms <- r1$latency_ms; tid_ca$alpha_type <- r1$alpha_type
-  tid_ca$baseline_eeg <- r1$baseline_eeg
-  M_cond_alpha_list[[length(M_cond_alpha_list) + 1L]] <- tid_ca
-}
+  tid_ca <- if (valid) {
+    fit <- tryCatch(
+      lmer(alpha ~ Condition + (1 | subjectID), data = de,
+           control = lmerControl(optimizer = "bobyqa")),
+      error = function(e) NULL)
+    if (!is.null(fit)) {
+      broom.mixed::tidy(fit, conf.int = TRUE) %>% filter(term == highest_alpha_term)
+    } else tibble()
+  } else tibble()
+})
 
-M_ca <- bind_rows(M_cond_alpha_list)
+message("Executing EEG-only multiverse...")
+execute_multiverse(M_eeg)
+
+eeg_branch_cols <- c("electrodes", "fooof", "latency_ms", "alpha_type", "baseline_eeg")
+M_eeg_expanded <- expand(M_eeg)
+
+M_ca <- M_eeg_expanded %>%
+  mutate(tid = map(.results, safe_extract, "tid_ca")) %>%
+  filter(!map_lgl(tid, is.null)) %>%
+  select(.universe, all_of(eeg_branch_cols), tid) %>%
+  unnest(tid)
+
 if (nrow(M_ca) == 0L) {
-  message("No successful condition → alpha fits.")
+  message("No successful condition \u2192 alpha fits.")
 } else {
   M_ca <- add_sig(M_ca)
   M_ca <- M_ca %>%
@@ -347,7 +388,7 @@ if (nrow(M_ca) == 0L) {
     arrange(.lat_ord, .elec_ord, fooof, baseline_eeg, alpha_type) %>%
     select(-.lat_ord, -.elec_ord) %>%
     mutate(ordered_universe = row_number())
-  message(sprintf("Condition → alpha: %d EEG universes fitted.", nrow(M_ca)))
+  message(sprintf("Condition \u2192 alpha: %d EEG universes fitted.", nrow(M_ca)))
 
   ymax_ca <- max(abs(c(M_ca$conf.low, M_ca$conf.high)), na.rm = TRUE) * 1.05
   ylim_ca <- c(-ymax_ca, ymax_ca)
@@ -386,9 +427,7 @@ if (nrow(M_ca) == 0L) {
   write.csv(M_ca, file.path(csv_dir, "multiverse_nback_condition_results.csv"), row.names = FALSE)
 }
 
-# ========== FIGURE 4: INTERACTION (gaze × condition → alpha) ==========
-# From the interaction model: alpha ~ gaze_value * Condition + (1|subjectID)
-# Plot the gaze_value:Condition<highest> interaction term (highest vs reference condition)
+# ========== FIGURE 4: INTERACTION (gaze x condition -> alpha) ==========
 message("Building interaction specification curve...")
 
 highest_int_term <- paste0("gaze_value:Condition", highest_cond)
@@ -396,9 +435,9 @@ M_interaction <- M_int %>% filter(term == highest_int_term)
 
 if (nrow(M_interaction) > 0) {
   M_interaction <- add_sig(M_interaction)
-  ord_int <- M_interaction %>% arrange(fooof, estimate) %>% pull(universe_id)
-  ord_int_df <- data.frame(universe_id = ord_int, ordered_universe = seq_along(ord_int))
-  M_interaction <- M_interaction %>% left_join(ord_int_df, by = "universe_id")
+  ord_int <- M_interaction %>% arrange(fooof, estimate) %>% pull(.universe)
+  ord_int_df <- data.frame(.universe = ord_int, ordered_universe = seq_along(ord_int))
+  M_interaction <- M_interaction %>% left_join(ord_int_df, by = ".universe")
 
   ymax_int <- max(abs(c(M_interaction$conf.low, M_interaction$conf.high)), na.rm = TRUE) * 1.05
   ylim_int <- c(-ymax_int, ymax_int)
@@ -416,7 +455,7 @@ if (nrow(M_interaction) > 0) {
   legend_int <- get_legend(p_int_curve + theme(legend.position = "bottom"))
 
   df_int_specs <- M_interaction %>%
-    select(ordered_universe, universe_id, electrodes, fooof, latency_ms, alpha_type,
+    select(ordered_universe, .universe, electrodes, fooof, latency_ms, alpha_type,
            gaze_measure, baseline_eeg, baseline_gaze, condition)
   df_int_long <- make_panel_long(df_int_specs, "ordered_universe")
 
@@ -441,9 +480,7 @@ if (nrow(M_interaction) > 0) {
 }
 
 # ========== FIGURE 5: CONDITION EFFECT ON GAZE (gaze-only universes) ==========
-# Model: gaze_value ~ Condition + (1|subjectID)
-# Only gaze dimensions matter (EEG dimensions don't affect gaze), so we deduplicate.
-message("Fitting condition \u2192 gaze models for gaze-only universes...")
+message("Setting up gaze-only multiverse (3 dimensions)...")
 
 gaze_group_labels <- c(
   "latency_ms" = "Latency", "gaze_measure" = "Gaze Measure",
@@ -466,38 +503,46 @@ make_gaze_panel_long <- function(df, x_col) {
 dat_gaze <- dat %>%
   select(subjectID, Condition, gaze_value, latency_ms, gaze_measure, baseline_gaze) %>%
   distinct()
-dat_gaze$gaze_uid <- interaction(dat_gaze$latency_ms, dat_gaze$gaze_measure,
-                                  dat_gaze$baseline_gaze, drop = TRUE)
 
-gaze_universes <- unique(dat_gaze$gaze_uid)
-M_cond_gaze_list <- list()
 highest_gaze_term <- paste0("Condition", highest_cond)
 
-for (i in seq_along(gaze_universes)) {
-  uid <- gaze_universes[i]
-  dg <- dat_gaze[dat_gaze$gaze_uid == uid, ]
-  dg <- dg[complete.cases(dg[, c("gaze_value", "Condition", "subjectID")]), ]
-  if (nrow(dg) < 10) next
+M_gaze <- multiverse()
+
+inside(M_gaze, {
+  .lat    <- branch(latency_ms,    "0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
+  .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA")
+  .blgaze <- branch(baseline_gaze, "raw", "pct_change")
+
+  dg <- dat_gaze %>%
+    filter(latency_ms == .lat, gaze_measure == .gaze, baseline_gaze == .blgaze) %>%
+    filter(complete.cases(gaze_value, Condition, subjectID))
+
   dg$gaze_value <- robust_z(dg$gaze_value)
-  if (any(is.nan(dg$gaze_value))) next
-  r1 <- dg[1, ]
+  valid <- nrow(dg) >= 10 && !any(is.nan(dg$gaze_value))
 
-  fit_cg <- tryCatch(
-    lmer(gaze_value ~ Condition + (1 | subjectID), data = dg,
-         control = lmerControl(optimizer = "bobyqa")),
-    error = function(e) NULL
-  )
-  if (is.null(fit_cg)) next
-  tid_cg <- broom.mixed::tidy(fit_cg, conf.int = TRUE) %>% filter(term == highest_gaze_term)
-  if (nrow(tid_cg) == 0) next
-  tid_cg$gaze_uid <- uid
-  tid_cg$latency_ms <- r1$latency_ms
-  tid_cg$gaze_measure <- r1$gaze_measure
-  tid_cg$baseline_gaze <- r1$baseline_gaze
-  M_cond_gaze_list[[length(M_cond_gaze_list) + 1L]] <- tid_cg
-}
+  tid_cg <- if (valid) {
+    fit <- tryCatch(
+      lmer(gaze_value ~ Condition + (1 | subjectID), data = dg,
+           control = lmerControl(optimizer = "bobyqa")),
+      error = function(e) NULL)
+    if (!is.null(fit)) {
+      broom.mixed::tidy(fit, conf.int = TRUE) %>% filter(term == highest_gaze_term)
+    } else tibble()
+  } else tibble()
+})
 
-M_cg <- bind_rows(M_cond_gaze_list)
+message("Executing gaze-only multiverse...")
+execute_multiverse(M_gaze)
+
+gaze_branch_cols <- c("latency_ms", "gaze_measure", "baseline_gaze")
+M_gaze_expanded <- expand(M_gaze)
+
+M_cg <- M_gaze_expanded %>%
+  mutate(tid = map(.results, safe_extract, "tid_cg")) %>%
+  filter(!map_lgl(tid, is.null)) %>%
+  select(.universe, all_of(gaze_branch_cols), tid) %>%
+  unnest(tid)
+
 if (nrow(M_cg) == 0L) {
   message("No successful condition \u2192 gaze fits.")
 } else {
@@ -545,3 +590,5 @@ if (nrow(M_cg) == 0L) {
 
   write.csv(M_cg, file.path(csv_dir, "multiverse_nback_condition_gaze_results.csv"), row.names = FALSE)
 }
+
+message("=== N-back multiverse analysis complete ===")

@@ -59,7 +59,7 @@ retWins    = {[1 2], [0 2]};   % Sternberg: late retention; N-back: full stimulu
 condLabels = {{'Load 2', 'Load 4', 'Load 6'}, {'1-back', '2-back', '3-back'}};
 
 % Output directory
-outdir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AlphaGating_ThetaSaccade';
+outdir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/_tests/AlphaGating_ThetaSaccade';
 if ~exist(outdir, 'dir'); mkdir(outdir); end
 
 %% Define ROI channels from first subject's channel layout

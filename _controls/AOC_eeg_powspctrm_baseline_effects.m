@@ -6,12 +6,15 @@
 % channels and time within each window, then grand-averages across subjects.
 %
 % Figure layout (two figures per task — raw and FOOOF):
-%   Left panel:  Baseline [-0.5 -0.25]s power spectra per condition
-%   Right panel: Retention [0 2]s power spectra per condition
+%   Left panel:   Raw baseline [-0.5 -0.25]s power spectra per condition
+%   Middle panel: Raw retention [0 2]s power spectra per condition
+%   Right panel:  Baselined retention [0 2]s power spectra per condition
 %
 % Data sources (per subject):
 %   Raw + FOOOF TFR  → tfr_nback.mat   (tfr1/2/3, tfr1/2/3_fooof)
 %                     → tfr_stern.mat   (tfr2/4/6, tfr2/4/6_fooof)
+%   Baselined TFR    → tfr_nback.mat   (tfr1/2/3_bl, tfr1/2/3_fooof_bl)
+%                     → tfr_stern.mat   (tfr2/4/6_bl, tfr2/4/6_fooof_bl)
 %
 % Key outputs:
 %   AOC_eeg_powspctrm_baseline_effects_nback_raw.png
@@ -43,6 +46,8 @@ tasks = struct( ...
     'tfr_file',    {'tfr_nback.mat',                          'tfr_stern.mat'}, ...
     'raw_vars',    {{'tfr1','tfr2','tfr3'},                   {'tfr2','tfr4','tfr6'}}, ...
     'fooof_vars',  {{'tfr1_fooof','tfr2_fooof','tfr3_fooof'}, {'tfr2_fooof','tfr4_fooof','tfr6_fooof'}}, ...
+    'raw_bl_vars', {{'tfr1_bl','tfr2_bl','tfr3_bl'},          {'tfr2_bl','tfr4_bl','tfr6_bl'}}, ...
+    'fooof_bl_vars', {{'tfr1_fooof_bl','tfr2_fooof_bl','tfr3_fooof_bl'}, {'tfr2_fooof_bl','tfr4_fooof_bl','tfr6_fooof_bl'}}, ...
     'cond_labels', {{'1-back','2-back','3-back'},             {'WM load 2','WM load 4','WM load 6'}}, ...
     'title',       {'N-Back',                                 'Sternberg'});
 
@@ -70,7 +75,7 @@ for t = 1:numel(tasks)
         datapath = strcat(path, subjects{subj}, filesep, 'eeg');
         cd(datapath);
 
-        % Load all TFR variables (raw + FOOOF)
+        % Load all TFR variables (raw + FOOOF + baselined)
         S = load(task.tfr_file);
 
         % First subject: initialise arrays
@@ -85,16 +90,26 @@ for t = 1:numel(tasks)
             nFreqFF  = numel(freqsFF);
             chIdx    = find(ismember(refRaw.label, channels));
 
-            bl_raw  = nan(nSubj, nConds, nFreqRaw);
-            ret_raw = nan(nSubj, nConds, nFreqRaw);
-            bl_ff   = nan(nSubj, nConds, nFreqFF);
-            ret_ff  = nan(nSubj, nConds, nFreqFF);
-            init    = true;
+            % Raw: baseline period + retention period (absolute)
+            bl_raw   = nan(nSubj, nConds, nFreqRaw);
+            ret_raw  = nan(nSubj, nConds, nFreqRaw);
+            % Raw: retention period (baselined, dB)
+            retbl_raw = nan(nSubj, nConds, nFreqRaw);
+
+            % FOOOF: baseline period + retention period (absolute)
+            bl_ff    = nan(nSubj, nConds, nFreqFF);
+            ret_ff   = nan(nSubj, nConds, nFreqFF);
+            % FOOOF: retention period (baselined, absolute)
+            retbl_ff = nan(nSubj, nConds, nFreqFF);
+
+            init = true;
         end
 
         for c = 1:nConds
-            raw = S.(task.raw_vars{c});
-            ff  = S.(task.fooof_vars{c});
+            raw   = S.(task.raw_vars{c});
+            ff    = S.(task.fooof_vars{c});
+            rawBL = S.(task.raw_bl_vars{c});
+            ffBL  = S.(task.fooof_bl_vars{c});
 
             % --- Raw: mean over occ channels × time window ---
             tBL_r  = raw.time >= blWin(1)  & raw.time <= blWin(2);
@@ -102,12 +117,21 @@ for t = 1:numel(tasks)
             bl_raw(subj, c, :)  = mean(mean(raw.powspctrm(chIdx, :, tBL_r),  3, 'omitnan'), 1, 'omitnan');
             ret_raw(subj, c, :) = mean(mean(raw.powspctrm(chIdx, :, tRet_r), 3, 'omitnan'), 1, 'omitnan');
 
+            % --- Raw baselined: retention only ---
+            tRetBL_r = rawBL.time >= retWin(1) & rawBL.time <= retWin(2);
+            retbl_raw(subj, c, :) = mean(mean(rawBL.powspctrm(chIdx, :, tRetBL_r), 3, 'omitnan'), 1, 'omitnan');
+
             % --- FOOOF: same (may have different freq grid) ---
             chIdxFF = find(ismember(ff.label, channels));
             tBL_f   = ff.time >= blWin(1)  & ff.time <= blWin(2);
             tRet_f  = ff.time >= retWin(1) & ff.time <= retWin(2);
             bl_ff(subj, c, :)  = mean(mean(ff.powspctrm(chIdxFF, :, tBL_f),  3, 'omitnan'), 1, 'omitnan');
             ret_ff(subj, c, :) = mean(mean(ff.powspctrm(chIdxFF, :, tRet_f), 3, 'omitnan'), 1, 'omitnan');
+
+            % --- FOOOF baselined: retention only ---
+            chIdxFFBL = find(ismember(ffBL.label, channels));
+            tRetBL_f  = ffBL.time >= retWin(1) & ffBL.time <= retWin(2);
+            retbl_ff(subj, c, :) = mean(mean(ffBL.powspctrm(chIdxFFBL, :, tRetBL_f), 3, 'omitnan'), 1, 'omitnan');
         end
     end
 
@@ -116,29 +140,35 @@ for t = 1:numel(tasks)
     % ================================================================
     nValid = sum(~isnan(bl_raw(:, 1, 1)));
 
-    bl_raw_m  = nan(nConds, nFreqRaw);  bl_raw_s  = nan(nConds, nFreqRaw);
-    ret_raw_m = nan(nConds, nFreqRaw);  ret_raw_s = nan(nConds, nFreqRaw);
-    bl_ff_m   = nan(nConds, nFreqFF);   bl_ff_s   = nan(nConds, nFreqFF);
-    ret_ff_m  = nan(nConds, nFreqFF);   ret_ff_s  = nan(nConds, nFreqFF);
+    bl_raw_m    = nan(nConds, nFreqRaw);  bl_raw_s    = nan(nConds, nFreqRaw);
+    ret_raw_m   = nan(nConds, nFreqRaw);  ret_raw_s   = nan(nConds, nFreqRaw);
+    retbl_raw_m = nan(nConds, nFreqRaw);  retbl_raw_s = nan(nConds, nFreqRaw);
+    bl_ff_m     = nan(nConds, nFreqFF);   bl_ff_s     = nan(nConds, nFreqFF);
+    ret_ff_m    = nan(nConds, nFreqFF);   ret_ff_s    = nan(nConds, nFreqFF);
+    retbl_ff_m  = nan(nConds, nFreqFF);   retbl_ff_s  = nan(nConds, nFreqFF);
     for c = 1:nConds
-        bl_raw_m(c, :)  = mean(squeeze(bl_raw(:, c, :)),  1, 'omitnan');
-        bl_raw_s(c, :)  = std(squeeze(bl_raw(:, c, :)),   0, 1, 'omitnan') / sqrt(nValid);
-        ret_raw_m(c, :) = mean(squeeze(ret_raw(:, c, :)), 1, 'omitnan');
-        ret_raw_s(c, :) = std(squeeze(ret_raw(:, c, :)),  0, 1, 'omitnan') / sqrt(nValid);
-        bl_ff_m(c, :)   = mean(squeeze(bl_ff(:, c, :)),   1, 'omitnan');
-        bl_ff_s(c, :)   = std(squeeze(bl_ff(:, c, :)),    0, 1, 'omitnan') / sqrt(nValid);
-        ret_ff_m(c, :)  = mean(squeeze(ret_ff(:, c, :)),  1, 'omitnan');
-        ret_ff_s(c, :)  = std(squeeze(ret_ff(:, c, :)),   0, 1, 'omitnan') / sqrt(nValid);
+        bl_raw_m(c, :)    = mean(squeeze(bl_raw(:, c, :)),    1, 'omitnan');
+        bl_raw_s(c, :)    = std(squeeze(bl_raw(:, c, :)),     0, 1, 'omitnan') / sqrt(nValid);
+        ret_raw_m(c, :)   = mean(squeeze(ret_raw(:, c, :)),   1, 'omitnan');
+        ret_raw_s(c, :)   = std(squeeze(ret_raw(:, c, :)),    0, 1, 'omitnan') / sqrt(nValid);
+        retbl_raw_m(c, :) = mean(squeeze(retbl_raw(:, c, :)), 1, 'omitnan');
+        retbl_raw_s(c, :) = std(squeeze(retbl_raw(:, c, :)),  0, 1, 'omitnan') / sqrt(nValid);
+        bl_ff_m(c, :)     = mean(squeeze(bl_ff(:, c, :)),     1, 'omitnan');
+        bl_ff_s(c, :)     = std(squeeze(bl_ff(:, c, :)),      0, 1, 'omitnan') / sqrt(nValid);
+        ret_ff_m(c, :)    = mean(squeeze(ret_ff(:, c, :)),    1, 'omitnan');
+        ret_ff_s(c, :)    = std(squeeze(ret_ff(:, c, :)),     0, 1, 'omitnan') / sqrt(nValid);
+        retbl_ff_m(c, :)  = mean(squeeze(retbl_ff(:, c, :)),  1, 'omitnan');
+        retbl_ff_s(c, :)  = std(squeeze(retbl_ff(:, c, :)),   0, 1, 'omitnan') / sqrt(nValid);
     end
 
     % ================================================================
-    %  FIGURE 1 — Raw Power Spectra
+    %  FIGURE 1 — Raw Power Spectra (3 subplots)
     % ================================================================
     close all
     figure('Position', [0, 0, 1512, 982], 'Color', 'w');
 
-    % ---- Left: Baseline [-0.5 -0.25]s ----
-    subplot(1, 2, 1); hold on;
+    % ---- Left: Raw Baseline [-0.5 -0.25]s ----
+    subplot(1, 3, 1); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
         eb = shadedErrorBar(freqsRaw, bl_raw_m(c, :), bl_raw_s(c, :), ...
@@ -156,8 +186,8 @@ for t = 1:numel(tasks)
     legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
     box on; hold off;
 
-    % ---- Right: Retention [0 2]s ----
-    subplot(1, 2, 2); hold on;
+    % ---- Middle: Raw Retention [0 2]s ----
+    subplot(1, 3, 2); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
         eb = shadedErrorBar(freqsRaw, ret_raw_m(c, :), ret_raw_s(c, :), ...
@@ -175,6 +205,25 @@ for t = 1:numel(tasks)
     legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
     box on; hold off;
 
+    % ---- Right: Baselined Retention [0 2]s (dB) ----
+    subplot(1, 3, 3); hold on;
+    hLines = gobjects(nConds, 1);
+    for c = 1:nConds
+        eb = shadedErrorBar(freqsRaw, retbl_raw_m(c, :), retbl_raw_s(c, :), ...
+            'lineProps', {'-', 'Color', colors(c, :), 'LineWidth', 2});
+        set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
+        set(eb.edge(1), 'Color', colors(c, :));
+        set(eb.edge(2), 'Color', colors(c, :));
+        hLines(c) = eb.mainLine;
+    end
+    set(gca, 'FontSize', 15);
+    xlim([3 30]);
+    xlabel('Frequency [Hz]');
+    ylabel('Power [dB]');
+    title('Retention [0 2]s (baselined)', 'FontSize', 20);
+    legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
+    box on; hold off;
+
     sgtitle(sprintf('%s — Raw Power Spectra (N = %d)', ...
         task.title, nValid), 'FontSize', 22, 'FontWeight', 'bold');
 
@@ -183,12 +232,12 @@ for t = 1:numel(tasks)
     fprintf('Saved: %s\n', fullfile(savePath, fname));
 
     % ================================================================
-    %  FIGURE 2 — FOOOF Power Spectra
+    %  FIGURE 2 — FOOOF Power Spectra (3 subplots)
     % ================================================================
     figure('Position', [0, 0, 1512, 982], 'Color', 'w');
 
-    % ---- Left: Baseline [-0.5 -0.25]s ----
-    subplot(1, 2, 1); hold on;
+    % ---- Left: FOOOF Baseline [-0.5 -0.25]s ----
+    subplot(1, 3, 1); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
         eb = shadedErrorBar(freqsFF, bl_ff_m(c, :), bl_ff_s(c, :), ...
@@ -206,8 +255,8 @@ for t = 1:numel(tasks)
     legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
     box on; hold off;
 
-    % ---- Right: Retention [0 2]s ----
-    subplot(1, 2, 2); hold on;
+    % ---- Middle: FOOOF Retention [0 2]s ----
+    subplot(1, 3, 2); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
         eb = shadedErrorBar(freqsFF, ret_ff_m(c, :), ret_ff_s(c, :), ...
@@ -222,6 +271,25 @@ for t = 1:numel(tasks)
     xlabel('Frequency [Hz]');
     ylabel('Power [FOOOF log]');
     title('Retention [0 2]s', 'FontSize', 20);
+    legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
+    box on; hold off;
+
+    % ---- Right: FOOOF Baselined Retention [0 2]s ----
+    subplot(1, 3, 3); hold on;
+    hLines = gobjects(nConds, 1);
+    for c = 1:nConds
+        eb = shadedErrorBar(freqsFF, retbl_ff_m(c, :), retbl_ff_s(c, :), ...
+            'lineProps', {'-', 'Color', colors(c, :), 'LineWidth', 2});
+        set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
+        set(eb.edge(1), 'Color', colors(c, :));
+        set(eb.edge(2), 'Color', colors(c, :));
+        hLines(c) = eb.mainLine;
+    end
+    set(gca, 'FontSize', 15);
+    xlim([3 30]);
+    xlabel('Frequency [Hz]');
+    ylabel('Power [FOOOF log, baselined]');
+    title('Retention [0 2]s (baselined)', 'FontSize', 20);
     legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
     box on; hold off;
 

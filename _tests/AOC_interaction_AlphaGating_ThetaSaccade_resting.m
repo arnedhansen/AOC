@@ -74,7 +74,7 @@ maxLagWin = round(maxLagSec / winStep);
 lagVec    = (-maxLagWin:maxLagWin) * winStep;  % in seconds
 
 % Output directory
-outdir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AlphaGating_ThetaSaccade_resting';
+outdir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/_tests/AlphaGating_ThetaSaccade_resting';
 if ~exist(outdir, 'dir'); mkdir(outdir); end
 
 %% Define ROI channels from first subject's channel layout

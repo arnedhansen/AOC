@@ -54,7 +54,7 @@ rename_opts <- function(x) {
 # Ordered by processing stage: Latency → Electrodes → FOOOF →
 #   EEG Baseline → Alpha → Gaze Measure → Gaze Baseline
 value_levels <- c(
-  "% Change", "dB", "Raw",
+  "% Change", "Raw",
   "BCEA", "Microsaccades", "Gaze Velocity", "Scan Path Length",
   "IAF", "Canonical",
   "No FOOOF", "FOOOF",
@@ -81,6 +81,8 @@ if ("gaze_measure" %in% names(dat)) {
   dat <- dat %>% filter(gaze_measure != "gaze_density" | is.na(gaze_measure))
 }
 dat <- dat %>% filter(!electrodes %in% c("all", "parietal"))
+# Only show % Change baseline on plots (drop dB); raw + pct_change remain
+dat <- dat %>% filter(baseline_eeg != "dB", baseline_gaze != "dB")
 message(sprintf("After filtering: %d rows, %d universes.", nrow(dat), n_distinct(dat$universe_id)))
 
 robust_z <- function(x, winsor = 3) {
@@ -299,7 +301,7 @@ make_eeg_panel_long <- function(df, x_col) {
 }
 
 dat_eeg <- dat %>%
-  filter(!electrodes %in% c("all", "parietal")) %>%
+  filter(!electrodes %in% c("all", "parietal"), baseline_eeg != "dB") %>%
   select(subjectID, Condition, alpha, electrodes, fooof, latency_ms, alpha_type, baseline_eeg) %>%
   distinct()
 dat_eeg$eeg_uid <- interaction(dat_eeg$electrodes, dat_eeg$fooof, dat_eeg$latency_ms,

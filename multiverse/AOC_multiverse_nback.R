@@ -208,7 +208,7 @@ p_curve <- ggplot(M_high, aes(x = ordered_universe, y = estimate, color = condit
   geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
   scale_color_manual(values = sig_colors, name = "Significance") +
   guides(alpha = "none") +
-  labs(title = expression(bold(alpha ~ "~" ~ gaze)), x = "Universe", y = "Estimate") +
+  labs(title = expression(bold(alpha ~ "~" ~ gaze)), x = "Universe", y = expression(bold("Standardized " * beta))) +
   theme_minimal() + theme(legend.position = "none") + v_common_theme +
   coord_cartesian(ylim = ylim_est)
 legend_spec <- get_legend(p_curve + theme(legend.position = "bottom") + guides(alpha = "none"))
@@ -255,7 +255,7 @@ p_grp_curve <- ggplot(df_grouped, aes(x = grouped_universe, y = estimate, color 
   scale_color_manual(values = sig_colors, name = "Significance") +
   guides(alpha = "none") +
   labs(title = expression(bold(alpha ~ "~" ~ gaze ~ "(grouped)")),
-       x = "Universe", y = "Estimate") +
+       x = "Universe", y = expression(bold("Standardized " * beta))) +
   theme_minimal() + theme(legend.position = "none") + v_common_theme +
   coord_cartesian(ylim = ylim_grp)
 legend_grp <- get_legend(p_grp_curve + theme(legend.position = "bottom"))
@@ -277,8 +277,9 @@ ggsave(file.path(storage_plot, "AOC_multiverse_nback_grouped.png"),
        plot = p_grp_combined, width = 14, height = 12, dpi = 600)
 message("Saved AOC_multiverse_nback_grouped.png to ", storage_plot)
 
-# ========== FIGURE 4: CONDITION EFFECT ON ALPHA (EEG-only universes) ==========
-# Model: alpha ~ Condition_numeric + (1|subjectID)
+# ========== FIGURE 3: CONDITION EFFECT ON ALPHA (EEG-only universes) ==========
+# Model: alpha ~ Condition + (1|subjectID)  [Condition as factor]
+# Extracts highest condition term (e.g. Condition3 vs reference Condition1).
 # Only EEG dimensions matter (gaze dimensions don't affect alpha), so we deduplicate.
 message("Fitting condition → alpha models for EEG-only universes...")
 
@@ -306,27 +307,28 @@ dat_eeg <- dat %>%
   distinct()
 dat_eeg$eeg_uid <- interaction(dat_eeg$electrodes, dat_eeg$fooof, dat_eeg$latency_ms,
                                 dat_eeg$alpha_type, dat_eeg$baseline_eeg, drop = TRUE)
-dat_eeg$Condition_num <- as.numeric(as.character(dat_eeg$Condition))
 
 eeg_universes <- unique(dat_eeg$eeg_uid)
 M_cond_alpha_list <- list()
+highest_alpha_term <- paste0("Condition", highest_cond)
 
 for (i in seq_along(eeg_universes)) {
   uid <- eeg_universes[i]
   de <- dat_eeg[dat_eeg$eeg_uid == uid, ]
-  de <- de[complete.cases(de[, c("alpha", "Condition_num", "subjectID")]), ]
+  de <- de[complete.cases(de[, c("alpha", "Condition", "subjectID")]), ]
   if (nrow(de) < 10) next
   de$alpha <- robust_z(de$alpha)
   if (any(is.nan(de$alpha))) next
   r1 <- de[1, ]
 
   fit_ca <- tryCatch(
-    lmer(alpha ~ Condition_num + (1 | subjectID), data = de,
+    lmer(alpha ~ Condition + (1 | subjectID), data = de,
          control = lmerControl(optimizer = "bobyqa")),
     error = function(e) NULL
   )
   if (is.null(fit_ca)) next
-  tid_ca <- broom.mixed::tidy(fit_ca, conf.int = TRUE) %>% filter(term == "Condition_num")
+  tid_ca <- broom.mixed::tidy(fit_ca, conf.int = TRUE) %>% filter(term == highest_alpha_term)
+  if (nrow(tid_ca) == 0) next
   tid_ca$eeg_uid <- uid
   tid_ca$electrodes <- r1$electrodes; tid_ca$fooof <- r1$fooof
   tid_ca$latency_ms <- r1$latency_ms; tid_ca$alpha_type <- r1$alpha_type
@@ -357,7 +359,7 @@ if (nrow(M_ca) == 0L) {
     scale_color_manual(values = sig_colors, name = "Significance") +
     guides(alpha = "none") +
     labs(title = expression(bold(alpha ~ "~" ~ condition)),
-         x = "Universe", y = "Estimate") +
+         x = "Universe", y = expression(bold("Standardized " * beta))) +
     theme_minimal() + theme(legend.position = "none") + v_common_theme +
     coord_cartesian(ylim = ylim_ca)
   legend_ca <- get_legend(p_ca_curve + theme(legend.position = "bottom"))
@@ -377,9 +379,169 @@ if (nrow(M_ca) == 0L) {
 
   p_ca_combined <- p_ca_curve / legend_ca / p_ca_panel +
     plot_layout(heights = c(0.8, 0.1, 1.2))
-  ggsave(file.path(storage_plot, "AOC_multiverse_nback_condition.png"),
+  ggsave(file.path(storage_plot, "AOC_multiverse_nback_condition_alpha.png"),
          plot = p_ca_combined, width = 14, height = 10, dpi = 600)
-  message("Saved AOC_multiverse_nback_condition.png to ", storage_plot)
+  message("Saved AOC_multiverse_nback_condition_alpha.png to ", storage_plot)
 
   write.csv(M_ca, file.path(csv_dir, "multiverse_nback_condition_results.csv"), row.names = FALSE)
+}
+
+# ========== FIGURE 4: INTERACTION (gaze × condition → alpha) ==========
+# From the interaction model: alpha ~ gaze_value * Condition + (1|subjectID)
+# Plot the gaze_value:Condition<highest> interaction term (highest vs reference condition)
+message("Building interaction specification curve...")
+
+highest_int_term <- paste0("gaze_value:Condition", highest_cond)
+M_interaction <- M_int %>% filter(term == highest_int_term)
+
+if (nrow(M_interaction) > 0) {
+  M_interaction <- add_sig(M_interaction)
+  ord_int <- M_interaction %>% arrange(fooof, estimate) %>% pull(universe_id)
+  ord_int_df <- data.frame(universe_id = ord_int, ordered_universe = seq_along(ord_int))
+  M_interaction <- M_interaction %>% left_join(ord_int_df, by = "universe_id")
+
+  ymax_int <- max(abs(c(M_interaction$conf.low, M_interaction$conf.high)), na.rm = TRUE) * 1.05
+  ylim_int <- c(-ymax_int, ymax_int)
+
+  p_int_curve <- ggplot(M_interaction, aes(x = ordered_universe, y = estimate, color = condition)) +
+    geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, alpha = 0.7) +
+    geom_point(size = 1.2, alpha = 0.8) +
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
+    scale_color_manual(values = sig_colors, name = "Significance") +
+    guides(alpha = "none") +
+    labs(title = expression(bold(alpha ~ "~" ~ gaze ~ "\u00D7" ~ condition)),
+         x = "Universe", y = expression(bold("Standardized " * beta))) +
+    theme_minimal() + theme(legend.position = "none") + v_common_theme +
+    coord_cartesian(ylim = ylim_int)
+  legend_int <- get_legend(p_int_curve + theme(legend.position = "bottom"))
+
+  df_int_specs <- M_interaction %>%
+    select(ordered_universe, universe_id, electrodes, fooof, latency_ms, alpha_type,
+           gaze_measure, baseline_eeg, baseline_gaze, condition)
+  df_int_long <- make_panel_long(df_int_specs, "ordered_universe")
+
+  p_int_panel <- ggplot(df_int_long, aes(x = ordered_universe, y = value, fill = condition)) +
+    geom_tile() +
+    scale_fill_manual(values = sig_colors, name = "Significance") +
+    facet_grid(Variable ~ ., scales = "free_y", space = "free") +
+    theme_minimal() +
+    theme(strip.text.y = element_text(angle = 0, size = 13, face = "bold", hjust = 0),
+          legend.position = "bottom") +
+    labs(x = "Universe", y = "Analysis Decision") + v_common_theme
+
+  p_int_combined <- p_int_curve / legend_int / p_int_panel +
+    plot_layout(heights = c(0.8, 0.1, 1.5))
+  ggsave(file.path(storage_plot, "AOC_multiverse_nback_interaction.png"),
+         plot = p_int_combined, width = 14, height = 12, dpi = 600)
+  message("Saved AOC_multiverse_nback_interaction.png to ", storage_plot)
+
+  write.csv(M_interaction, file.path(csv_dir, "multiverse_nback_interaction_results.csv"), row.names = FALSE)
+} else {
+  message("No interaction terms found for ", highest_int_term)
+}
+
+# ========== FIGURE 5: CONDITION EFFECT ON GAZE (gaze-only universes) ==========
+# Model: gaze_value ~ Condition + (1|subjectID)
+# Only gaze dimensions matter (EEG dimensions don't affect gaze), so we deduplicate.
+message("Fitting condition \u2192 gaze models for gaze-only universes...")
+
+gaze_group_labels <- c(
+  "latency_ms" = "Latency", "gaze_measure" = "Gaze Measure",
+  "baseline_gaze" = "Gaze Baseline"
+)
+gaze_group_order <- c("Latency", "Gaze Measure", "Gaze Baseline")
+
+make_gaze_panel_long <- function(df, x_col) {
+  df %>%
+    pivot_longer(cols = c(latency_ms, gaze_measure, baseline_gaze),
+                 names_to = "Variable", values_to = "value") %>%
+    mutate(
+      Variable = recode(Variable, !!!gaze_group_labels),
+      Variable = factor(Variable, levels = gaze_group_order),
+      value = rename_opts(value),
+      value = factor(value, levels = value_levels)
+    )
+}
+
+dat_gaze <- dat %>%
+  select(subjectID, Condition, gaze_value, latency_ms, gaze_measure, baseline_gaze) %>%
+  distinct()
+dat_gaze$gaze_uid <- interaction(dat_gaze$latency_ms, dat_gaze$gaze_measure,
+                                  dat_gaze$baseline_gaze, drop = TRUE)
+
+gaze_universes <- unique(dat_gaze$gaze_uid)
+M_cond_gaze_list <- list()
+highest_gaze_term <- paste0("Condition", highest_cond)
+
+for (i in seq_along(gaze_universes)) {
+  uid <- gaze_universes[i]
+  dg <- dat_gaze[dat_gaze$gaze_uid == uid, ]
+  dg <- dg[complete.cases(dg[, c("gaze_value", "Condition", "subjectID")]), ]
+  if (nrow(dg) < 10) next
+  dg$gaze_value <- robust_z(dg$gaze_value)
+  if (any(is.nan(dg$gaze_value))) next
+  r1 <- dg[1, ]
+
+  fit_cg <- tryCatch(
+    lmer(gaze_value ~ Condition + (1 | subjectID), data = dg,
+         control = lmerControl(optimizer = "bobyqa")),
+    error = function(e) NULL
+  )
+  if (is.null(fit_cg)) next
+  tid_cg <- broom.mixed::tidy(fit_cg, conf.int = TRUE) %>% filter(term == highest_gaze_term)
+  if (nrow(tid_cg) == 0) next
+  tid_cg$gaze_uid <- uid
+  tid_cg$latency_ms <- r1$latency_ms
+  tid_cg$gaze_measure <- r1$gaze_measure
+  tid_cg$baseline_gaze <- r1$baseline_gaze
+  M_cond_gaze_list[[length(M_cond_gaze_list) + 1L]] <- tid_cg
+}
+
+M_cg <- bind_rows(M_cond_gaze_list)
+if (nrow(M_cg) == 0L) {
+  message("No successful condition \u2192 gaze fits.")
+} else {
+  M_cg <- add_sig(M_cg)
+  M_cg <- M_cg %>%
+    mutate(.lat_ord = match(latency_ms, lat_order)) %>%
+    arrange(.lat_ord, gaze_measure, baseline_gaze) %>%
+    select(-.lat_ord) %>%
+    mutate(ordered_universe = row_number())
+  message(sprintf("Condition \u2192 gaze: %d gaze universes fitted.", nrow(M_cg)))
+
+  ymax_cg <- max(abs(c(M_cg$conf.low, M_cg$conf.high)), na.rm = TRUE) * 1.05
+  ylim_cg <- c(-ymax_cg, ymax_cg)
+
+  p_cg_curve <- ggplot(M_cg, aes(x = ordered_universe, y = estimate, color = condition)) +
+    geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, alpha = 0.7) +
+    geom_point(size = 1.5, alpha = 0.8) +
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
+    scale_color_manual(values = sig_colors, name = "Significance") +
+    guides(alpha = "none") +
+    labs(title = expression(bold(gaze ~ "~" ~ condition)),
+         x = "Universe", y = expression(bold("Standardized " * beta))) +
+    theme_minimal() + theme(legend.position = "none") + v_common_theme +
+    coord_cartesian(ylim = ylim_cg)
+  legend_cg <- get_legend(p_cg_curve + theme(legend.position = "bottom"))
+
+  df_cg_specs <- M_cg %>%
+    select(ordered_universe, latency_ms, gaze_measure, baseline_gaze, condition)
+  df_cg_long <- make_gaze_panel_long(df_cg_specs, "ordered_universe")
+
+  p_cg_panel <- ggplot(df_cg_long, aes(x = ordered_universe, y = value, fill = condition)) +
+    geom_tile() +
+    scale_fill_manual(values = sig_colors, name = "Significance") +
+    facet_grid(Variable ~ ., scales = "free_y", space = "free") +
+    theme_minimal() +
+    theme(strip.text.y = element_text(angle = 0, size = 13, face = "bold", hjust = 0),
+          legend.position = "bottom") +
+    labs(x = "Universe", y = "Analysis Decision") + v_common_theme
+
+  p_cg_combined <- p_cg_curve / legend_cg / p_cg_panel +
+    plot_layout(heights = c(0.8, 0.1, 0.8))
+  ggsave(file.path(storage_plot, "AOC_multiverse_nback_condition_gaze.png"),
+         plot = p_cg_combined, width = 14, height = 8, dpi = 600)
+  message("Saved AOC_multiverse_nback_condition_gaze.png to ", storage_plot)
+
+  write.csv(M_cg, file.path(csv_dir, "multiverse_nback_condition_gaze_results.csv"), row.names = FALSE)
 }

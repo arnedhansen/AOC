@@ -16,6 +16,10 @@ MATLAB builds long-format trial-level CSVs; R fits LMMs per universe and produce
 - **AOC_multiverse_sternberg_visualize.R** — Loads Sternberg result CSVs, produces 5 specification curve figures (600 dpi).
 - **AOC_multiverse_nback_analysis.R** — Same analysis pipeline for N-back.
 - **AOC_multiverse_nback_visualize.R** — Same visualization pipeline for N-back.
+- **AOC_multiverse_sternberg_analysis_subject.R** — Subject-level Sternberg analysis (aggregates trials to subject means first).
+- **AOC_multiverse_sternberg_visualize_subject.R** — Subject-level Sternberg visualization (figures with `_subject` suffix).
+- **AOC_multiverse_nback_analysis_subject.R** — Subject-level N-back analysis.
+- **AOC_multiverse_nback_visualize_subject.R** — Subject-level N-back visualization.
 
 ## Decisions (specification space — 7 dimensions, 1152 universes per task)
 
@@ -109,6 +113,15 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
 
    The visualization scripts can be re-run independently (e.g., to tweak aesthetics) without re-running the analysis.
 
+4. **R (subject-level — aggregates trials to subject means, then same pipeline):**
+   ```r
+   source("AOC_multiverse_sternberg_analysis_subject.R")
+   source("AOC_multiverse_sternberg_visualize_subject.R")
+   source("AOC_multiverse_nback_analysis_subject.R")
+   source("AOC_multiverse_nback_visualize_subject.R")
+   ```
+   Uses the same trial-level CSVs from MATLAB — no re-run needed. Aggregates to subject means before fitting. Robust z-scoring is applied to subject means (not individual trials). Output CSVs and figures use `_subject` suffix.
+
 ## Science Cloud checklist
 
 - **Drive:** `W:\Students\Arne\AOC` must exist with subject folders under `data/features/`.
@@ -129,6 +142,7 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
 - **Microsaccades** in the 0–500 ms window are often suppressed post-stimulus; many trials will have NaN. The pipeline writes NaN, R drops them via `complete.cases()` and skips universes with < 10 valid rows.
 - **Condition coding:** Sternberg: Set size 2/4/6; N-back: 1/2/3-back.
 - **Trial-level analysis:** Each row in the CSV is a single trial × universe combination.
+- **Subject-level analysis:** Aggregates trial-level data to subject means before model fitting. Robust z-scoring operates on ~300 subject-means (not ~25k trials), avoiding potential within-subject distributional distortions. Results are directly comparable to existing subject-level raincloud analyses.
 - **Error bars** in all plots are 95% confidence intervals from the LMM fits.
 - **Plot titles** use model notation (e.g., `alpha ~ gaze`, `alpha ~ condition`).
 - **Baseline options:** Both dB and percentage change are computed for EEG and gaze. dB compresses extreme ratios logarithmically; % change is linear and more interpretable. Extreme values from small baselines are handled by robust z-scoring (median + MAD, winsorize ±3) in R.

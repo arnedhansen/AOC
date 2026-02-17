@@ -108,6 +108,8 @@ for f = 1:freqs
     cb = colorbar(ax_cb, 'Location', 'eastoutside');
     colormap(ax_cb, cmap);
     clim(ax_cb, [-max_spctrm max_spctrm]);
+    cb.Ticks = [-max_spctrm, 0, max_spctrm];
+    cb.TickLabels = {sprintf('%.1f', -max_spctrm), '0', sprintf('%.1f', max_spctrm)};
     set(cb, 'FontSize', 15);
     ylabel(cb, 'Power [dB]', 'FontSize', 15);
 end

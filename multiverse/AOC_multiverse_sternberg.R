@@ -187,16 +187,16 @@ message(sprintf("Dropped %d unstable universes (SE > %.4f). %d remain.",
 add_sig <- function(df) {
   df %>% mutate(
     condition = factor(case_when(
-      p.value < 0.05 & estimate > 0 ~ "Significant Positive",
-      p.value < 0.05 & estimate < 0 ~ "Significant Negative",
+      p.value < 0.05 & estimate > 0 ~ "Positive",
+      p.value < 0.05 & estimate < 0 ~ "Negative",
       TRUE ~ "Non-significant"
-    ), levels = c("Significant Positive", "Significant Negative", "Non-significant"))
+    ), levels = c("Positive", "Negative", "Non-significant"))
   )
 }
 M_cond <- add_sig(M_cond)
 M_int  <- add_sig(M_int)
 
-sig_colors <- c("Significant Positive" = "#33CC66", "Significant Negative" = "#fe0000",
+sig_colors <- c("Positive" = "#33CC66", "Negative" = "#fe0000",
                 "Non-significant" = "#d1d1d1")
 
 # ========== HIGHEST-CONDITION DATA ==========

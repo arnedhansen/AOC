@@ -256,6 +256,14 @@ function pow_bl = compute_db_baseline_spectra(pow_task, pow_base)
   % Spectrum-level dB baseline: 10*log10(task / mean_baseline)
   pow_bl = pow_task;
   base_mean = mean(pow_base.powspctrm, 1);  % 1 x chan x freq
+  % Align frequency axes if baseline has different resolution than task
+  if length(pow_base.freq) ~= length(pow_task.freq) || max(abs(pow_base.freq - pow_task.freq)) > 1e-6
+    base_aligned = nan(1, size(base_mean, 2), length(pow_task.freq));
+    for ch = 1:size(base_mean, 2)
+      base_aligned(1, ch, :) = interp1(pow_base.freq, squeeze(base_mean(1, ch, :)), pow_task.freq, 'linear', NaN);
+    end
+    base_mean = base_aligned;
+  end
   base_mean(base_mean <= 0) = NaN;
   pow_bl.powspctrm = 10 * log10(bsxfun(@rdivide, pow_task.powspctrm, base_mean));
 end
@@ -264,6 +272,14 @@ function pow_bl = compute_pct_baseline_spectra(pow_task, pow_base)
   % Spectrum-level percentage-change baseline: (task - base) / |base| * 100
   pow_bl = pow_task;
   base_mean = mean(pow_base.powspctrm, 1);  % 1 x chan x freq
+  % Align frequency axes if baseline has different resolution than task
+  if length(pow_base.freq) ~= length(pow_task.freq) || max(abs(pow_base.freq - pow_task.freq)) > 1e-6
+    base_aligned = nan(1, size(base_mean, 2), length(pow_task.freq));
+    for ch = 1:size(base_mean, 2)
+      base_aligned(1, ch, :) = interp1(pow_base.freq, squeeze(base_mean(1, ch, :)), pow_task.freq, 'linear', NaN);
+    end
+    base_mean = base_aligned;
+  end
   base_mean(base_mean <= 0) = NaN;
   pow_bl.powspctrm = bsxfun(@rdivide, ...
       bsxfun(@minus, pow_task.powspctrm, base_mean), abs(base_mean)) * 100;
@@ -498,6 +514,11 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
       end
       for il = 1:4
         if ~isempty(pow_s{il}) && ~isempty(pow_base)
+          if length(pow_s{il}.freq) ~= length(pow_base.freq)
+            disp(upper(['    NOTE: Freq axis mismatch for lat=' num2str(il) ...
+              ' (task=' num2str(length(pow_s{il}.freq)) ' vs base=' num2str(length(pow_base.freq)) ...
+              ' bins). Interpolating baseline.']))
+          end
           pow_db_s{il}  = compute_db_baseline_spectra(pow_s{il}, pow_base);
           pow_pct_s{il} = compute_pct_baseline_spectra(pow_s{il}, pow_base);
         end

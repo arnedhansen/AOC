@@ -455,9 +455,16 @@ function tbl = build_task_multiverse_subject(task_name, subjects, path_preproc, 
       disp(upper('  WARNING: No TFR or time-domain EEG. Some latencies and all FOOOF will be NaN.'))
     end
 
-    %% ====== Subject IAF (from Hanning full, occipital, raw) ======
-    disp(upper('  Computing subject IAF from full-latency occipital power.'))
-    IAF_band = get_IAF_band(pow_full{1}, ch_sets{2}, alphaRange);
+    %% ====== Subject IAF (from Hanning full or early, occipital, raw) ======
+    iaf_pow = pow_full{1};
+    if isempty(iaf_pow), iaf_pow = pow_early{1}; end
+    if isempty(iaf_pow)
+      disp(upper('  WARNING: No valid power data for IAF. Using default alpha range.'))
+      IAF_band = alphaRange;
+    else
+      disp(upper('  Computing subject IAF from occipital power.'))
+      IAF_band = get_IAF_band(iaf_pow, ch_sets{2}, alphaRange);
+    end
 
     %% ====== Load gaze ======
     disp(upper(['  Loading gaze: ' gaze_dir]))

@@ -12,8 +12,10 @@ MATLAB builds long-format trial-level CSVs; R fits LMMs per universe and produce
 ## Files
 
 - **AOC_multiverse_prep.m** — Loads per-subject EEG and gaze data, computes all multiverse dimensions (Hanning tapers), writes `multiverse_sternberg.csv` and `multiverse_nback.csv`. Compatible with Science Cloud (`ispc`) and Mac paths.
-- **AOC_multiverse_sternberg.R** — Reads Sternberg CSV, fits LMMs, produces 3 specification curve figures + result CSVs.
-- **AOC_multiverse_nback.R** — Same for N-back.
+- **AOC_multiverse_sternberg_analysis.R** — Reads Sternberg CSV, fits LMMs via multiverse package (Sarma et al., 2021), saves 5 result CSVs.
+- **AOC_multiverse_sternberg_visualize.R** — Loads Sternberg result CSVs, produces 5 specification curve figures (600 dpi).
+- **AOC_multiverse_nback_analysis.R** — Same analysis pipeline for N-back.
+- **AOC_multiverse_nback_visualize.R** — Same visualization pipeline for N-back.
 
 ## Decisions (specification space — 7 dimensions, 1152 universes per task)
 
@@ -53,12 +55,16 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
 |--------|----------------|-------------|
 | 1 | `_estimate` | `alpha ~ gaze` — Specification curve sorted by FOOOF then estimate (highest WM load), with analysis decision panel below |
 | 2 | `_grouped` | `alpha ~ gaze (grouped)` — Specification curve ordered by decision hierarchy (FOOOF → Latency → Electrodes → ...), with analysis decision panel below |
-| 3 | `_condition` | `alpha ~ condition` — Condition effect on alpha, using EEG-only universes, sorted by processing-stage hierarchy (no FOOOF split) |
+| 3 | `_condition_alpha` | `alpha ~ condition` — Condition effect on alpha (highest vs. reference), EEG-only universes, sorted by processing-stage hierarchy |
+| 4 | `_interaction` | `alpha ~ gaze × condition` — Interaction term (gaze × highest condition), all 7 dimensions, sorted by processing-stage hierarchy |
+| 5 | `_condition_gaze` | `gaze ~ condition` — Condition effect on gaze (highest vs. reference), gaze-only universes |
 
 ### Figure details
 
-- **Figures 1 & 2** show the `gaze_value` slope at the **highest WM load** (Set size 6 for Sternberg, 3-back for N-back). The interaction model results are saved to CSV but not plotted. Universes are split by FOOOF (FOOOF left, No FOOOF right).
-- **Figure 3** tests whether alpha power changes with increasing WM load (linear trend). Only EEG dimensions are relevant (gaze dimensions don't affect alpha), so it uses deduplicated EEG-only universes sorted by decision hierarchy. Panel shows the 5 EEG dimensions ordered by processing stage.
+- **Figures 1 & 2** show the `gaze_value` slope at the **highest WM load** (Set size 6 for Sternberg, 3-back for N-back). Universes are split by FOOOF (FOOOF left, No FOOOF right).
+- **Figure 3** tests whether alpha power differs at the highest WM load vs. reference (Condition as factor). Only EEG dimensions are relevant, so it uses 5 EEG-only dimensions.
+- **Figure 4** shows the gaze × condition interaction term from the full model, using all 7 dimensions.
+- **Figure 5** tests whether gaze differs at the highest WM load vs. reference, using 3 gaze-only dimensions.
 - **Panel strip labels** are left-aligned and ordered by processing stage. Y-axis is labeled "Analysis Decision".
 
 ## Output CSVs (per task)
@@ -68,7 +74,9 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
 | `multiverse_{task}.csv` | Trial-level data (from MATLAB) |
 | `multiverse_{task}_results.csv` | Interaction model results (`gaze_value` and `gaze_value:Condition` terms) |
 | `multiverse_{task}_conditions_results.csv` | Per-condition simple model results (`gaze_value` slope per WM load) |
-| `multiverse_{task}_condition_results.csv` | Condition → alpha results (linear WM load slope per EEG universe) |
+| `multiverse_{task}_condition_results.csv` | Condition → alpha results (highest condition factor contrast, EEG-only) |
+| `multiverse_{task}_interaction_results.csv` | Gaze × condition interaction term (highest condition contrast) |
+| `multiverse_{task}_condition_gaze_results.csv` | Condition → gaze results (highest condition factor contrast, gaze-only) |
 
 ## Paths
 
@@ -83,14 +91,23 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
 1. **MATLAB (Science Cloud or Mac):**
    Run `AOC_multiverse_prep.m` once. Paths auto-detect via `ispc`: Windows uses `W:\Students\Arne\AOC`, Mac uses `/Volumes/g_psyplafor_methlab$/Students/Arne/AOC`. CSVs are written to `data/features/`.
 
-2. **R:**
+2. **R (analysis — fits models, saves result CSVs):**
    ```r
-   source("AOC_multiverse_sternberg.R")
-   source("AOC_multiverse_nback.R")
+   source("AOC_multiverse_sternberg_analysis.R")
+   source("AOC_multiverse_nback_analysis.R")
    ```
+
+3. **R (visualization — loads result CSVs, generates figures):**
+   ```r
+   source("AOC_multiverse_sternberg_visualize.R")
+   source("AOC_multiverse_nback_visualize.R")
+   ```
+
    Paths are configurable via environment variables:
    - `AOC_MULTIVERSE_DIR` — CSV directory (default: `.../data/features`)
    - `AOC_MULTIVERSE_FIGURES` — Figure output (default: `.../figures/multiverse`)
+
+   The visualization scripts can be re-run independently (e.g., to tweak aesthetics) without re-running the analysis.
 
 ## Science Cloud checklist
 

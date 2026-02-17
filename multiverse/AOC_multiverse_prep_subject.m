@@ -412,6 +412,18 @@ function tbl = build_task_multiverse_subject(task_name, subjects, path_preproc, 
       pow_full  = {powload1_full,  powload2_full,  powload3_full};
     end
 
+    % Validate pow_full: N-back TFR uses cfg.toi up to 2.25s, but the 1s
+    % convolution window causes edge NaN at t>=1.75s. mean() over time then
+    % propagates NaN to the entire trial-averaged spectrum. If all NaN,
+    % clear so the fallback (direct FFT on time-domain data) kicks in.
+    for c = 1:length(pow_full)
+      if ~isempty(pow_full{c}) && isfield(pow_full{c}, 'powspctrm') && ...
+          all(isnan(pow_full{c}.powspctrm(:)))
+        disp(upper(['  WARNING: pow_full{' num2str(c) '} is all NaN (TFR edge effect). Will recompute from time-domain.']))
+        pow_full{c} = [];
+      end
+    end
+
     %% ====== Load TFR ======
     tfr_path = fullfile(eeg_dir, tfr_file);
     eeg_tfr_path = fullfile(eeg_dir, eeg_tfr_file);

@@ -11,12 +11,13 @@ MATLAB builds long-format trial-level CSVs; R fits LMMs per universe and produce
 
 ## Files
 
-- **AOC_multiverse_prep.m** — Loads per-subject EEG and gaze data, computes all multiverse dimensions (Hanning tapers), writes `multiverse_sternberg.csv` and `multiverse_nback.csv`. Compatible with Science Cloud (`ispc`) and Mac paths.
+- **AOC_multiverse_prep.m** — Loads per-subject EEG and gaze data, computes all multiverse dimensions (Hanning tapers) at trial level, writes `multiverse_sternberg.csv` and `multiverse_nback.csv`. Compatible with Science Cloud (`ispc`) and Mac paths.
+- **AOC_multiverse_prep_subject.m** — Subject-level data preparation. Recomputes everything from scratch on trial-averaged data: power spectra are averaged across trials before alpha extraction, FOOOF is fitted to averaged spectra (not per-trial), gaze metrics are per-trial averaged to subject means. Writes `multiverse_sternberg_subject.csv` and `multiverse_nback_subject.csv`. Much faster than trial-level (~75× fewer FOOOF calls).
 - **AOC_multiverse_sternberg_analysis.R** — Reads Sternberg CSV, fits LMMs via multiverse package (Sarma et al., 2021), saves 5 result CSVs.
 - **AOC_multiverse_sternberg_visualize.R** — Loads Sternberg result CSVs, produces 5 specification curve figures (600 dpi).
 - **AOC_multiverse_nback_analysis.R** — Same analysis pipeline for N-back.
 - **AOC_multiverse_nback_visualize.R** — Same visualization pipeline for N-back.
-- **AOC_multiverse_sternberg_analysis_subject.R** — Subject-level Sternberg analysis (aggregates trials to subject means first).
+- **AOC_multiverse_sternberg_analysis_subject.R** — Subject-level Sternberg analysis (loads pre-aggregated subject-level CSV from `AOC_multiverse_prep_subject.m`).
 - **AOC_multiverse_sternberg_visualize_subject.R** — Subject-level Sternberg visualization (figures with `_subject` suffix).
 - **AOC_multiverse_nback_analysis_subject.R** — Subject-level N-back analysis.
 - **AOC_multiverse_nback_visualize_subject.R** — Subject-level N-back visualization.
@@ -41,7 +42,8 @@ Ordered by when the decision occurs in the processing pipeline:
 
 - **Spectral method:** Hanning tapers throughout (via `ft_freqanalysis`, `method = 'mtmfft'`).
 - **Power sources (hierarchy):** Pre-computed Hanning files (0–1 s, 0–2 s) → precomputed TFRs (0–500 ms, 1–2 s) → time-domain EEG via `ft_freqanalysis` (fallback for any remaining gaps).
-- **FOOOF:** `ft_freqanalysis_Arne_FOOOF` on raw time-domain data per trial. FOOOF result is baseline-independent (same value written for all three EEG baseline options).
+- **FOOOF (trial-level):** `ft_freqanalysis_Arne_FOOOF` on raw time-domain data per trial. FOOOF result is baseline-independent (same value written for all three EEG baseline options).
+- **FOOOF (subject-level):** `ft_freqanalysis_Arne_FOOOF` on all condition trials at once with `keeptrials = 'no'` — internally averages the spectrum across trials before FOOOF fitting. More comparable to standard subject-level pipelines.
 - **Late retention window:** 1000–2000 ms captures the late retention interval.
 - **BCEA:** Bivariate Contour Ellipse Area (95% confidence).
 - **Gaze baseline (dB):** `10 * log10(task / baseline)` from `[-0.5, -0.25] s`.
@@ -75,7 +77,8 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
 
 | File | Contents |
 |------|----------|
-| `multiverse_{task}.csv` | Trial-level data (from MATLAB) |
+| `multiverse_{task}.csv` | Trial-level data (from `AOC_multiverse_prep.m`) |
+| `multiverse_{task}_subject.csv` | Subject-level data (from `AOC_multiverse_prep_subject.m`) |
 | `multiverse_{task}_results.csv` | Interaction model results (`gaze_value` and `gaze_value:Condition` terms) |
 | `multiverse_{task}_conditions_results.csv` | Per-condition simple model results (`gaze_value` slope per WM load) |
 | `multiverse_{task}_condition_results.csv` | Condition → alpha results (highest condition factor contrast, EEG-only) |
@@ -92,8 +95,11 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
 
 ## Running
 
-1. **MATLAB (Science Cloud or Mac):**
+1. **MATLAB — trial-level (Science Cloud or Mac):**
    Run `AOC_multiverse_prep.m` once. Paths auto-detect via `ispc`: Windows uses `W:\Students\Arne\AOC`, Mac uses `/Volumes/g_psyplafor_methlab$/Students/Arne/AOC`. CSVs are written to `data/features/`.
+
+1b. **MATLAB — subject-level (Science Cloud or Mac):**
+   Run `AOC_multiverse_prep_subject.m`. Same path auto-detection. Computes everything from scratch on trial-averaged data (does NOT require the trial-level CSVs). Writes `multiverse_*_subject.csv` to `data/features/`.
 
 2. **R (analysis — fits models, saves result CSVs):**
    ```r
@@ -113,14 +119,14 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
 
    The visualization scripts can be re-run independently (e.g., to tweak aesthetics) without re-running the analysis.
 
-4. **R (subject-level — aggregates trials to subject means, then same pipeline):**
+4. **R (subject-level — loads pre-aggregated subject-level CSVs):**
    ```r
    source("AOC_multiverse_sternberg_analysis_subject.R")
    source("AOC_multiverse_sternberg_visualize_subject.R")
    source("AOC_multiverse_nback_analysis_subject.R")
    source("AOC_multiverse_nback_visualize_subject.R")
    ```
-   Uses the same trial-level CSVs from MATLAB — no re-run needed. Aggregates to subject means before fitting. Robust z-scoring is applied to subject means (not individual trials). Output CSVs and figures use `_subject` suffix.
+   Requires `multiverse_*_subject.csv` from `AOC_multiverse_prep_subject.m` (step 1b). Robust z-scoring is applied to subject means (not individual trials). Output CSVs and figures use `_subject` suffix.
 
 ## Science Cloud checklist
 
@@ -142,7 +148,7 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
 - **Microsaccades** in the 0–500 ms window are often suppressed post-stimulus; many trials will have NaN. The pipeline writes NaN, R drops them via `complete.cases()` and skips universes with < 10 valid rows.
 - **Condition coding:** Sternberg: Set size 2/4/6; N-back: 1/2/3-back.
 - **Trial-level analysis:** Each row in the CSV is a single trial × universe combination.
-- **Subject-level analysis:** Aggregates trial-level data to subject means before model fitting. Robust z-scoring operates on ~300 subject-means (not ~25k trials), avoiding potential within-subject distributional distortions. Results are directly comparable to existing subject-level raincloud analyses.
+- **Subject-level analysis:** Uses `AOC_multiverse_prep_subject.m` to compute features from scratch on trial-averaged data. EEG spectra are averaged across trials before alpha extraction (including FOOOF). Gaze metrics are computed per-trial and then averaged. This is fundamentally different from simply aggregating trial-level CSV results: FOOOF fitted to averaged spectra produces different (typically cleaner) results than averaging per-trial FOOOF values. Output CSVs have ~360k rows (vs ~31M trial-level). R scripts apply robust z-scoring to subject means (not individual trials).
 - **Error bars** in all plots are 95% confidence intervals from the LMM fits.
 - **Plot titles** use model notation (e.g., `alpha ~ gaze`, `alpha ~ condition`).
 - **Baseline options:** Both dB and percentage change are computed for EEG and gaze. dB compresses extreme ratios logarithmically; % change is linear and more interpretable. Extreme values from small baselines are handled by robust z-scoring (median + MAD, winsorize ±3) in R.

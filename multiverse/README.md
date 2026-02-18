@@ -35,10 +35,10 @@ Ordered by when the decision occurs in the processing pipeline:
 | FOOOF          | FOOOFed, non-FOOOFed (2) |
 | EEG baseline   | raw, dB, percentage change from `[-0.5, -0.25] s` (3) |
 | Alpha band     | canonical (8–14 Hz), IAF (2) |
-| Gaze measure   | scan path length, gaze velocity, gaze deviation (3) |
+| Gaze measure   | gaze deviation, gaze velocity (2) |
 | Gaze baseline  | raw, dB, percentage change from `[-0.5, -0.25] s` (3) |
 
-**Total:** 4 × 2 × 2 × 3 × 2 × 3 × 3 = **864 universes per task**.
+**Total:** 4 × 2 × 2 × 2 × 2 × 2 × 2 = **256 universes per task** (visualization: deviation and velocity only).
 
 ## Processing details
 

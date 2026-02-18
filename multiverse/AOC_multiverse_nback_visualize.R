@@ -63,7 +63,7 @@ rename_opts <- function(x) {
 
 value_levels <- c(
   "% Change", "Raw",
-  "Gaze Velocity", "Scan Path Length", "Gaze Deviation",
+  "Gaze Deviation", "Gaze Velocity",
   "IAF", "Canonical",
   "No SpecParam", "SpecParam",
   "Occipital", "Posterior",
@@ -133,7 +133,7 @@ cond_path <- file.path(csv_dir, "multiverse_nback_conditions_results.csv")
 if (!file.exists(cond_path)) stop("Conditions CSV not found: ", cond_path, "\nRun AOC_multiverse_nback_analysis.R first.")
 M_cond <- read.csv(cond_path, stringsAsFactors = FALSE)
 M_cond$condition <- factor(M_cond$condition, levels = sig_levels)
-M_cond <- M_cond %>% filter(!gaze_measure %in% c("BCEA", "microsaccades"))
+M_cond <- M_cond %>% filter(gaze_measure %in% c("gaze_deviation", "gaze_velocity"))
 
 # Determine highest condition from data
 cond_labels_in_data <- unique(M_cond$cond_label)
@@ -283,7 +283,7 @@ int_path <- file.path(csv_dir, "multiverse_nback_interaction_results.csv")
 if (file.exists(int_path)) {
   M_interaction <- read.csv(int_path, stringsAsFactors = FALSE)
   M_interaction$condition <- factor(M_interaction$condition, levels = sig_levels)
-  M_interaction <- M_interaction %>% filter(!gaze_measure %in% c("BCEA", "microsaccades"))
+  M_interaction <- M_interaction %>% filter(gaze_measure %in% c("gaze_deviation", "gaze_velocity"))
 
   M_interaction <- M_interaction %>%
     mutate(.lat_ord = match(latency_ms, lat_order),
@@ -336,7 +336,7 @@ cg_path <- file.path(csv_dir, "multiverse_nback_condition_gaze_results.csv")
 if (file.exists(cg_path)) {
   M_cg <- read.csv(cg_path, stringsAsFactors = FALSE)
   M_cg$condition <- factor(M_cg$condition, levels = sig_levels)
-  M_cg <- M_cg %>% filter(!gaze_measure %in% c("BCEA", "microsaccades"))
+  M_cg <- M_cg %>% filter(gaze_measure %in% c("gaze_deviation", "gaze_velocity"))
 
   M_cg <- M_cg %>%
     mutate(.lat_ord = match(latency_ms, lat_order)) %>%
@@ -402,11 +402,10 @@ if (has_ap_gaze || has_ap_cond) {
     M_ap_gaze$condition <- factor(M_ap_gaze$condition, levels = sig_levels)
 
     M_ap_gaze <- M_ap_gaze %>%
-      filter(!gaze_measure %in% c("BCEA", "microsaccades")) %>%
+      filter(gaze_measure %in% c("gaze_deviation", "gaze_velocity")) %>%
       mutate(
         gaze_label = rename_opts(gaze_measure),
-        gaze_label = factor(gaze_label, levels = c("Gaze Deviation", "Scan Path Length",
-                                                     "Gaze Velocity")),
+        gaze_label = factor(gaze_label, levels = c("Gaze Deviation", "Gaze Velocity")),
         aperiodic_measure = factor(aperiodic_measure, levels = c("Exponent", "Offset"))
       ) %>%
       group_by(aperiodic_measure, gaze_label) %>%

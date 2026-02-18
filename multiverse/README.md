@@ -93,14 +93,30 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
 | `multiverse_{task}_aperiodic_gaze_results.csv` | Aperiodic (exponent + offset) ~ gaze (4D: latency × electrodes × gaze × gaze baseline) |
 | `multiverse_{task}_aperiodic_condition_results.csv` | Aperiodic (exponent + offset) ~ condition (2D: latency × electrodes) |
 
+## Quality control
+
+All control scripts live in `_controls/multiverse/`. Output data and figures go to the shared server.
+
+| Script | What it checks | Figures | Data |
+|--------|---------------|---------|------|
+| `AOC_multiverse_control_fooof.m` | FOOOF R² goodness-of-fit (threshold 0.90). Scatterplots per subject/latency/electrode, R² vs aperiodic params, histogram. | `.../figures/controls/multiverse/FOOOF/` | `.../data/controls/multiverse/` |
+| `AOC_control_nan_rate.R` | NaN rate per dimension for alpha and gaze_value. Heatmap of gaze NaN by gaze_measure × latency, bar chart per dimension. | `.../figures/controls/multiverse/NaN_rate/` | `.../data/controls/multiverse/NaN_rate/` |
+| `AOC_control_trial_count.R` | Valid trial counts per subject × condition (in a reference universe). Bar charts overall and faceted by gaze measure. | `.../figures/controls/multiverse/trial_count/` | `.../data/controls/multiverse/trial_count/` |
+| `AOC_control_winsorization.R` | Robust z-score winsorization rate (% clipped at ±3 MADs per universe). Histogram of rates, breakdown by dimension, worst-case universes. | `.../figures/controls/multiverse/winsorization/` | `.../data/controls/multiverse/winsorization/` |
+| `AOC_control_baseline_sanity.R` | Baseline correction sanity: distribution of alpha/gaze by baseline type, extreme value rates for pct_change, Inf/NaN counts. | `.../figures/controls/multiverse/baseline_sanity/` | `.../data/controls/multiverse/baseline_sanity/` |
+| `AOC_control_concordance.R` | Trial-level vs subject-level concordance: correlates LMM estimates across matched universes. Scatterplots with r values. | `.../figures/controls/multiverse/concordance/` | `.../data/controls/multiverse/concordance/` |
+
 ## Paths
 
 | What | Path |
 |------|------|
 | Scripts | `/Users/Arne/Documents/GitHub/AOC/multiverse/` |
 | CSV data | `/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/` |
+| Control data | `/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/multiverse/` (subfolders per check) |
 | Figures (trial-level) | `/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/multiverse/` |
 | Figures (subject-level) | `/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/multiverse/subject-level/` |
+| Control figures | `/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/controls/multiverse/` (subfolders per check) |
+| Control scripts | `/Users/Arne/Documents/GitHub/AOC/_controls/multiverse/` |
 
 ## Running
 
@@ -136,6 +152,15 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
    source("AOC_multiverse_nback_visualize_subject.R")
    ```
    Requires `multiverse_*_subject.csv` from `AOC_multiverse_prep_subject.m` (step 1b). Robust z-scoring is applied to subject means (not individual trials). Output CSVs and figures use `_subject` suffix.
+
+5. **R (quality controls — requires trial-level CSVs and, for concordance, result CSVs):**
+   ```r
+   source("../_controls/multiverse/AOC_control_nan_rate.R")
+   source("../_controls/multiverse/AOC_control_trial_count.R")
+   source("../_controls/multiverse/AOC_control_winsorization.R")
+   source("../_controls/multiverse/AOC_control_baseline_sanity.R")
+   source("../_controls/multiverse/AOC_control_concordance.R")     # needs result CSVs from steps 2+4
+   ```
 
 ## Science Cloud checklist
 

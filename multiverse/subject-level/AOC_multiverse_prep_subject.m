@@ -103,9 +103,13 @@ ch_label_sets = {labels_master(idx_post), labels_master(idx_occ)};
 disp(upper(['Channels: post=' num2str(length(idx_post)) ...
   ' occ=' num2str(length(idx_occ))]))
 
+%% FOOOF R² output directory
+r2_dir = fullfile(base_data, 'data', 'controls', 'multiverse');
+if ~isfolder(r2_dir), mkdir(r2_dir); end
+
 %% Build Sternberg multiverse table
 disp(upper('--- STERNBERG TASK ---'))
-tbl_s = build_task_multiverse_subject('sternberg', subjects, path_preproc, base_features, ...
+[tbl_s, r2_s] = build_task_multiverse_subject('sternberg', subjects, path_preproc, base_features, ...
     ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, gaze_col_map, ...
     baseline_eeg_opts, baseline_gaze_opts, ...
     n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_universes, alphaRange);
@@ -115,10 +119,14 @@ if height(tbl_s) == 0
 end
 writetable(tbl_s, fullfile(out_dir, 'multiverse_sternberg_subject.csv'));
 disp(upper(['Written: ' fullfile(out_dir, 'multiverse_sternberg_subject.csv')]))
+if height(r2_s) > 0
+  writetable(r2_s, fullfile(r2_dir, 'fooof_r2_sternberg_subject.csv'));
+  disp(upper(['Written: ' fullfile(r2_dir, 'fooof_r2_sternberg_subject.csv') ' (' num2str(height(r2_s)) ' FOOOF fits)']))
+end
 
 %% Build N-back multiverse table
 disp(upper('--- N-BACK TASK ---'))
-tbl_n = build_task_multiverse_subject('nback', subjects, path_preproc, base_features, ...
+[tbl_n, r2_n] = build_task_multiverse_subject('nback', subjects, path_preproc, base_features, ...
     ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, gaze_col_map, ...
     baseline_eeg_opts, baseline_gaze_opts, ...
     n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_universes, alphaRange);
@@ -128,6 +136,10 @@ if height(tbl_n) == 0
 end
 writetable(tbl_n, fullfile(out_dir, 'multiverse_nback_subject.csv'));
 disp(upper(['Written: ' fullfile(out_dir, 'multiverse_nback_subject.csv')]))
+if height(r2_n) > 0
+  writetable(r2_n, fullfile(r2_dir, 'fooof_r2_nback_subject.csv'));
+  disp(upper(['Written: ' fullfile(r2_dir, 'fooof_r2_nback_subject.csv') ' (' num2str(height(r2_n)) ' FOOOF fits)']))
+end
 
 disp(upper('=== AOC MULTIVERSE SUBJECT-LEVEL PREP DONE ==='))
 
@@ -258,11 +270,11 @@ function pow = compute_pow_cond_window(data_td, cond_inds, time_win, cfg_freq)
   end
 end
 
-function [f_osc, f_axis, ap_offset, ap_exponent] = run_fooof_subject(data_td, cond_inds, ch_labels, time_win, cfg_fooof)
+function [f_osc, f_axis, ap_offset, ap_exponent, fooof_r2, fooof_err] = run_fooof_subject(data_td, cond_inds, ch_labels, time_win, cfg_fooof)
   % Run FOOOF on trial-averaged spectrum (all condition trials at once).
   % cfg_fooof.keeptrials = 'no' → ft_freqanalysis internally averages trials.
-  % Also returns aperiodic parameters (offset, exponent) from the FOOOF fit.
-  f_osc = []; f_axis = []; ap_offset = NaN; ap_exponent = NaN;
+  % Also returns aperiodic parameters (offset, exponent) and fit quality (R², error).
+  f_osc = []; f_axis = []; ap_offset = NaN; ap_exponent = NaN; fooof_r2 = NaN; fooof_err = NaN;
   if isempty(data_td) || isempty(ch_labels) || isempty(cond_inds), return, end
   try
     cfg_sel = []; cfg_sel.trials = cond_inds;
@@ -280,6 +292,8 @@ function [f_osc, f_axis, ap_offset, ap_exponent] = run_fooof_subject(data_td, co
       ap_offset = rep.aperiodic_params(1);
       ap_exponent = rep.aperiodic_params(2);
     end
+    if isfield(rep, 'r_squared'), fooof_r2 = rep.r_squared; end
+    if isfield(rep, 'error'), fooof_err = rep.error; end
     if isfield(rep, 'fooofed_spectrum') && ~isempty(rep.fooofed_spectrum)
       f_osc = rep.fooofed_spectrum(:)';
     elseif isfield(rep, 'peak_params') && ~isempty(rep.peak_params)
@@ -349,7 +363,7 @@ end
 
 %% ========== MAIN BUILD FUNCTION ==========
 
-function tbl = build_task_multiverse_subject(task_name, subjects, path_preproc, base_features, ...
+function [tbl, r2_tbl] = build_task_multiverse_subject(task_name, subjects, path_preproc, base_features, ...
     ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, gaze_col_map, ...
     baseline_eeg_opts, baseline_gaze_opts, ...
     n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_universes, alphaRange)
@@ -390,6 +404,10 @@ function tbl = build_task_multiverse_subject(task_name, subjects, path_preproc, 
   alpha_val_cell = nan(est_rows, 1); gaze_val_cell = nan(est_rows, 1);
   ap_off_val_cell = nan(est_rows, 1); ap_exp_val_cell = nan(est_rows, 1);
   row_idx = 0;
+
+  % FOOOF R² collection (compact: one row per FOOOF call)
+  r2_sid = []; r2_cond = []; r2_lat = {}; r2_elec = {};
+  r2_val = []; r2_err = []; r2_exp = []; r2_off = [];
 
   for s = 1:length(subjects)
     sid = subjects{s};
@@ -602,11 +620,19 @@ function tbl = build_task_multiverse_subject(task_name, subjects, path_preproc, 
         disp(upper('    Running FOOOF on trial-averaged spectra.'))
         for il = 1:n_lat
           for ie = 1:n_elec
-            [f_osc, f_axis, ap_off, ap_exp] = run_fooof_subject(data_td, cond_inds_td, ...
+            [f_osc, f_axis, ap_off, ap_exp, f_r2, f_err] = run_fooof_subject(data_td, cond_inds_td, ...
                 ch_label_sets{ie}, lat_windows{il}, cfg_fooof);
+            if isempty(f_osc)
+              ap_offset_subj{il}(ie) = ap_off;
+              ap_exp_subj{il}(ie) = ap_exp;
+              continue
+            end
             ap_offset_subj{il}(ie) = ap_off;
             ap_exp_subj{il}(ie) = ap_exp;
-            if isempty(f_osc), continue, end
+            r2_sid(end+1,1) = sid_num; r2_cond(end+1,1) = cval;
+            r2_lat{end+1,1} = latency_opts{il}; r2_elec{end+1,1} = electrodes_opts{ie};
+            r2_val(end+1,1) = f_r2; r2_err(end+1,1) = f_err;
+            r2_exp(end+1,1) = ap_exp; r2_off(end+1,1) = ap_off;
             for ia = 1:n_alpha
               col = (ie-1)*n_alpha + ia;
               if ia == 1, band = alphaRange; else, band = IAF_band; end
@@ -716,4 +742,13 @@ function tbl = build_task_multiverse_subject(task_name, subjects, path_preproc, 
     'VariableNames', {'task', 'universe_id', 'electrodes', 'fooof', 'latency_ms', 'alpha_type', 'gaze_measure', ...
     'baseline_eeg', 'baseline_gaze', 'subjectID', 'Condition', 'alpha', 'gaze_value', ...
     'aperiodic_offset', 'aperiodic_exponent'});
+
+  if isempty(r2_sid)
+    r2_tbl = table();
+  else
+    r2_tbl = table(r2_sid, r2_cond, r2_lat, r2_elec, ...
+      r2_val, r2_err, r2_exp, r2_off, ...
+      'VariableNames', {'subjectID', 'Condition', 'latency_ms', 'electrodes', ...
+      'r_squared', 'fooof_error', 'aperiodic_exponent', 'aperiodic_offset'});
+  end
 end

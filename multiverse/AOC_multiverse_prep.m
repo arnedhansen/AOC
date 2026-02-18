@@ -285,10 +285,11 @@ function pow_bl = compute_pct_baseline_spectra(pow_task, pow_base)
       bsxfun(@minus, pow_task.powspctrm, base_mean), abs(base_mean)) * 100;
 end
 
-function [f_osc, f_axis] = run_fooof_from_raw(data_td, trial_idx, ch_labels, time_win, cfg_fooof)
+function [f_osc, f_axis, ap_offset, ap_exponent] = run_fooof_from_raw(data_td, trial_idx, ch_labels, time_win, cfg_fooof)
   % Run FOOOF from raw time-domain data: select trial, average ROI channels,
   % select time window, then call ft_freqanalysis_Arne_FOOOF which does FFT + FOOOF internally.
-  f_osc = []; f_axis = [];
+  % Also returns aperiodic parameters (offset, exponent) from the FOOOF fit.
+  f_osc = []; f_axis = []; ap_offset = NaN; ap_exponent = NaN;
   if isempty(data_td) || isempty(ch_labels), return, end
   try
     % Select single trial
@@ -306,6 +307,10 @@ function [f_osc, f_axis] = run_fooof_from_raw(data_td, trial_idx, ch_labels, tim
     out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, d);
     f_axis = out.freq(:)';
     if iscell(out.fooofparams), rep = out.fooofparams{1}; else, rep = out.fooofparams; end
+    if isfield(rep, 'aperiodic_params') && numel(rep.aperiodic_params) >= 2
+      ap_offset = rep.aperiodic_params(1);
+      ap_exponent = rep.aperiodic_params(2);
+    end
     if isfield(rep, 'fooofed_spectrum') && ~isempty(rep.fooofed_spectrum)
       f_osc = rep.fooofed_spectrum(:)';
     elseif isfield(rep, 'peak_params') && ~isempty(rep.peak_params)
@@ -362,6 +367,7 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
   alpha_type_cell = {}; gaze_meas_cell = {}; bl_eeg_cell = {}; bl_gaze_cell = {};
   subjectID_cell = []; Trial_cell = []; Condition_cell = [];
   alpha_val_cell = []; gaze_val_cell = [];
+  ap_off_val_cell = []; ap_exp_val_cell = [];
 
   for s = 1:length(subjects)
     sid = subjects{s};
@@ -551,6 +557,14 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
         alpha{il, ibl, ifo} = nan(n_trials_cond, n_cols);
       end; end; end
 
+      % Aperiodic parameters from FOOOF: {lat}(trial, elec)
+      ap_offset_arr = cell(n_lat, 1);
+      ap_exp_arr = cell(n_lat, 1);
+      for il = 1:n_lat
+        ap_offset_arr{il} = nan(n_trials_cond, n_elec);
+        ap_exp_arr{il} = nan(n_trials_cond, n_elec);
+      end
+
       disp(upper('  Computing alpha (raw + FOOOF × raw/dB/pct_change) per trial.'))
       for il = 1:n_lat
         % --- nonFOOOFed: bandpower from pre-computed / computed power structs ---
@@ -577,8 +591,10 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
             n_td = min(n_trials_cond, length(cond_inds_td));
             for tr = 1:n_td
               td_idx = cond_inds_td(tr);
-              [f_osc, f_axis] = run_fooof_from_raw(data_td, td_idx, ch_lbl, lat_windows{il}, cfg_fooof);
+              [f_osc, f_axis, ap_off, ap_exp] = run_fooof_from_raw(data_td, td_idx, ch_lbl, lat_windows{il}, cfg_fooof);
               if isempty(f_osc), continue, end
+              ap_offset_arr{il}(tr, ie) = ap_off;
+              ap_exp_arr{il}(tr, ie) = ap_exp;
               for ia = 1:n_alpha
                 col = (ie-1)*n_alpha + ia;
                 if ia == 1, band = alphaRange; else, band = IAF_band; end
@@ -652,6 +668,15 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
             gv = gaze_pct_all{il}(tr, gcol);
           end
           gaze_val_cell(end+1, 1) = gv;
+
+          % Aperiodic lookup (only valid for FOOOFed universes)
+          if ifo == 1
+            ap_off_val_cell(end+1, 1) = ap_offset_arr{il}(tr, ie);
+            ap_exp_val_cell(end+1, 1) = ap_exp_arr{il}(tr, ie);
+          else
+            ap_off_val_cell(end+1, 1) = NaN;
+            ap_exp_val_cell(end+1, 1) = NaN;
+          end
         end
       end
     end
@@ -659,6 +684,8 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
 
   tbl = table(task_cell, u_id_cell, elec_cell, fooof_cell, lat_cell, alpha_type_cell, gaze_meas_cell, ...
     bl_eeg_cell, bl_gaze_cell, subjectID_cell, Trial_cell, Condition_cell, alpha_val_cell, gaze_val_cell, ...
+    ap_off_val_cell, ap_exp_val_cell, ...
     'VariableNames', {'task', 'universe_id', 'electrodes', 'fooof', 'latency_ms', 'alpha_type', 'gaze_measure', ...
-    'baseline_eeg', 'baseline_gaze', 'subjectID', 'Trial', 'Condition', 'alpha', 'gaze_value'});
+    'baseline_eeg', 'baseline_gaze', 'subjectID', 'Trial', 'Condition', 'alpha', 'gaze_value', ...
+    'aperiodic_offset', 'aperiodic_exponent'});
 end

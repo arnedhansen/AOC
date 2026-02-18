@@ -289,5 +289,157 @@ if (nrow(M_cg) > 0L) {
   message("WARNING: No successful condition \u2192 gaze fits.")
 }
 
+# ========== APERIODIC MULTIVERSE ==========
+if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) {
+  message("Setting up aperiodic multiverse (subject-level)...")
+
+  dat_ap <- dat %>%
+    filter(fooof == "FOOOFed") %>%
+    filter(complete.cases(aperiodic_offset, aperiodic_exponent))
+
+  dat_ap_gaze <- dat_ap %>%
+    select(subjectID, Condition, aperiodic_offset, aperiodic_exponent,
+           gaze_value, electrodes, latency_ms, gaze_measure, baseline_gaze) %>%
+    distinct()
+
+  M_ap_gaze <- multiverse()
+
+  inside(M_ap_gaze, {
+    .elec   <- branch(electrodes,    "posterior", "occipital")
+    .lat    <- branch(latency_ms,    "0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
+    .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA")
+    .blgaze <- branch(baseline_gaze, "raw", "pct_change")
+
+    dap <- dat_ap_gaze %>%
+      filter(electrodes == .elec, latency_ms == .lat,
+             gaze_measure == .gaze, baseline_gaze == .blgaze) %>%
+      filter(complete.cases(aperiodic_exponent, aperiodic_offset, gaze_value, Condition, subjectID))
+
+    dap$gaze_value <- robust_z(dap$gaze_value)
+    dap$aperiodic_exponent <- robust_z(dap$aperiodic_exponent)
+    dap$aperiodic_offset <- robust_z(dap$aperiodic_offset)
+    valid <- nrow(dap) >= 10 && !any(is.nan(dap$gaze_value)) &&
+             !any(is.nan(dap$aperiodic_exponent)) && !any(is.nan(dap$aperiodic_offset))
+
+    tid_exp_gaze <- if (valid) {
+      fit <- tryCatch(
+        lmer(aperiodic_exponent ~ gaze_value + (1 | subjectID), data = dap,
+             control = lmerControl(optimizer = "bobyqa")),
+        error = function(e) NULL)
+      if (!is.null(fit)) {
+        broom.mixed::tidy(fit, conf.int = TRUE) %>% filter(term == "gaze_value") %>%
+          mutate(aperiodic_measure = "Exponent")
+      } else tibble()
+    } else tibble()
+
+    tid_off_gaze <- if (valid) {
+      fit <- tryCatch(
+        lmer(aperiodic_offset ~ gaze_value + (1 | subjectID), data = dap,
+             control = lmerControl(optimizer = "bobyqa")),
+        error = function(e) NULL)
+      if (!is.null(fit)) {
+        broom.mixed::tidy(fit, conf.int = TRUE) %>% filter(term == "gaze_value") %>%
+          mutate(aperiodic_measure = "Offset")
+      } else tibble()
+    } else tibble()
+  })
+
+  message("Executing aperiodic ~ gaze multiverse...")
+  execute_multiverse(M_ap_gaze)
+
+  ap_gaze_branch_cols <- c("electrodes", "latency_ms", "gaze_measure", "baseline_gaze")
+  M_ap_gaze_exp <- expand(M_ap_gaze)
+
+  M_ap_gaze_results <- bind_rows(
+    M_ap_gaze_exp %>%
+      mutate(tid = map(.results, safe_extract, "tid_exp_gaze")) %>%
+      filter(!map_lgl(tid, is.null)) %>%
+      select(.universe, all_of(ap_gaze_branch_cols), tid) %>%
+      unnest(tid),
+    M_ap_gaze_exp %>%
+      mutate(tid = map(.results, safe_extract, "tid_off_gaze")) %>%
+      filter(!map_lgl(tid, is.null)) %>%
+      select(.universe, all_of(ap_gaze_branch_cols), tid) %>%
+      unnest(tid)
+  )
+
+  if (nrow(M_ap_gaze_results) > 0) {
+    M_ap_gaze_results <- add_sig(M_ap_gaze_results)
+    write.csv(M_ap_gaze_results, file.path(csv_dir, "multiverse_nback_subject_aperiodic_gaze_results.csv"), row.names = FALSE)
+    message(sprintf("Saved: aperiodic_gaze_results.csv (%d rows)", nrow(M_ap_gaze_results)))
+  }
+
+  dat_ap_eeg <- dat_ap %>%
+    select(subjectID, Condition, aperiodic_offset, aperiodic_exponent, electrodes, latency_ms) %>%
+    distinct()
+
+  M_ap_cond <- multiverse()
+
+  inside(M_ap_cond, {
+    .elec <- branch(electrodes, "posterior", "occipital")
+    .lat  <- branch(latency_ms, "0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
+
+    dap <- dat_ap_eeg %>%
+      filter(electrodes == .elec, latency_ms == .lat) %>%
+      filter(complete.cases(aperiodic_exponent, aperiodic_offset, Condition, subjectID))
+
+    dap$aperiodic_exponent <- robust_z(dap$aperiodic_exponent)
+    dap$aperiodic_offset <- robust_z(dap$aperiodic_offset)
+    valid <- nrow(dap) >= 10 && !any(is.nan(dap$aperiodic_exponent)) && !any(is.nan(dap$aperiodic_offset))
+
+    tid_exp_cond <- if (valid) {
+      fit <- tryCatch(
+        lmer(aperiodic_exponent ~ Condition + (1 | subjectID), data = dap,
+             control = lmerControl(optimizer = "bobyqa")),
+        error = function(e) NULL)
+      if (!is.null(fit)) {
+        broom.mixed::tidy(fit, conf.int = TRUE) %>%
+          filter(term == highest_alpha_term) %>%
+          mutate(aperiodic_measure = "Exponent")
+      } else tibble()
+    } else tibble()
+
+    tid_off_cond <- if (valid) {
+      fit <- tryCatch(
+        lmer(aperiodic_offset ~ Condition + (1 | subjectID), data = dap,
+             control = lmerControl(optimizer = "bobyqa")),
+        error = function(e) NULL)
+      if (!is.null(fit)) {
+        broom.mixed::tidy(fit, conf.int = TRUE) %>%
+          filter(term == highest_alpha_term) %>%
+          mutate(aperiodic_measure = "Offset")
+      } else tibble()
+    } else tibble()
+  })
+
+  message("Executing aperiodic ~ condition multiverse...")
+  execute_multiverse(M_ap_cond)
+
+  ap_cond_branch_cols <- c("electrodes", "latency_ms")
+  M_ap_cond_exp <- expand(M_ap_cond)
+
+  M_ap_cond_results <- bind_rows(
+    M_ap_cond_exp %>%
+      mutate(tid = map(.results, safe_extract, "tid_exp_cond")) %>%
+      filter(!map_lgl(tid, is.null)) %>%
+      select(.universe, all_of(ap_cond_branch_cols), tid) %>%
+      unnest(tid),
+    M_ap_cond_exp %>%
+      mutate(tid = map(.results, safe_extract, "tid_off_cond")) %>%
+      filter(!map_lgl(tid, is.null)) %>%
+      select(.universe, all_of(ap_cond_branch_cols), tid) %>%
+      unnest(tid)
+  )
+
+  if (nrow(M_ap_cond_results) > 0) {
+    M_ap_cond_results <- add_sig(M_ap_cond_results)
+    write.csv(M_ap_cond_results, file.path(csv_dir, "multiverse_nback_subject_aperiodic_condition_results.csv"), row.names = FALSE)
+    message(sprintf("Saved: aperiodic_condition_results.csv (%d rows)", nrow(M_ap_cond_results)))
+  }
+
+} else {
+  message("Skipping aperiodic multiverse: columns not found in CSV.")
+}
+
 message("=== N-back SUBJECT-LEVEL multiverse ANALYSIS complete ===")
 message("Result CSVs saved to: ", csv_dir)

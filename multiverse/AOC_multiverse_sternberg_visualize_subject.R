@@ -40,7 +40,7 @@ sig_levels <- c("Positive", "Negative", "Non-significant")
 
 # ========== LABEL MAPPINGS ==========
 group_labels <- c(
-  "electrodes" = "Electrodes", "fooof" = "FOOOF", "latency_ms" = "Latency",
+  "electrodes" = "Electrodes", "fooof" = "Spectral\nParameterization", "latency_ms" = "Latency",
   "alpha_type" = "Alpha", "gaze_measure" = "Gaze Measure",
   "baseline_eeg" = "EEG Baseline", "baseline_gaze" = "Gaze Baseline"
 )
@@ -48,7 +48,7 @@ group_labels <- c(
 rename_opts <- function(x) {
   recode(x,
     "posterior" = "Posterior", "occipital" = "Occipital",
-    "FOOOFed" = "FOOOF", "nonFOOOFed" = "No FOOOF",
+    "FOOOFed" = "SpecParam", "nonFOOOFed" = "No SpecParam",
     "0_500ms" = "0\u2013500 ms", "0_1000ms" = "0\u20131000 ms",
     "0_2000ms" = "0\u20132000 ms", "1000_2000ms" = "1000\u20132000 ms",
     "canonical" = "Canonical", "IAF" = "IAF",
@@ -62,12 +62,12 @@ value_levels <- c(
   "% Change", "Raw",
   "BCEA", "Microsaccades", "Gaze Velocity", "Scan Path Length",
   "IAF", "Canonical",
-  "No FOOOF", "FOOOF",
+  "No SpecParam", "SpecParam",
   "Occipital", "Posterior",
   "1000\u20132000 ms", "0\u20132000 ms", "0\u20131000 ms", "0\u2013500 ms"
 )
 
-v_p2_group_order <- c("Latency", "Electrodes", "FOOOF",
+v_p2_group_order <- c("Latency", "Electrodes", "Spectral\nParameterization",
                        "EEG Baseline", "Alpha", "Gaze Measure", "Gaze Baseline")
 
 elec_order <- c("posterior", "occipital")
@@ -88,10 +88,10 @@ make_panel_long <- function(df, x_col) {
 }
 
 eeg_group_labels <- c(
-  "electrodes" = "Electrodes", "fooof" = "FOOOF", "latency_ms" = "Latency",
+  "electrodes" = "Electrodes", "fooof" = "Spectral\nParameterization", "latency_ms" = "Latency",
   "alpha_type" = "Alpha", "baseline_eeg" = "EEG Baseline"
 )
-eeg_group_order <- c("Latency", "Electrodes", "FOOOF", "EEG Baseline", "Alpha")
+eeg_group_order <- c("Latency", "Electrodes", "Spectral\nParameterization", "EEG Baseline", "Alpha")
 
 make_eeg_panel_long <- function(df, x_col) {
   df %>%
@@ -369,6 +369,157 @@ if (file.exists(cg_path)) {
   message("Saved: AOC_multiverse_sternberg_subject_condition_gaze.png")
 } else {
   message("Skipping Figure 5: subject_condition_gaze_results.csv not found.")
+}
+
+# ========== FIGURE 6: APERIODIC ~ GAZE ==========
+ap_gaze_path <- file.path(csv_dir, "multiverse_sternberg_subject_aperiodic_gaze_results.csv")
+if (file.exists(ap_gaze_path)) {
+  M_ap_gaze <- read.csv(ap_gaze_path, stringsAsFactors = FALSE)
+  M_ap_gaze$condition <- factor(M_ap_gaze$condition, levels = sig_levels)
+
+  M_ap_gaze <- M_ap_gaze %>%
+    group_by(aperiodic_measure) %>%
+    mutate(.lat_ord = match(latency_ms, lat_order),
+           .elec_ord = match(electrodes, elec_order)) %>%
+    arrange(.lat_ord, .elec_ord, gaze_measure, baseline_gaze) %>%
+    mutate(ordered_universe = row_number()) %>%
+    ungroup() %>%
+    select(-.lat_ord, -.elec_ord)
+
+  ymax_ap <- max(abs(c(M_ap_gaze$conf.low, M_ap_gaze$conf.high)), na.rm = TRUE) * 1.05
+  ylim_ap <- c(-ymax_ap, ymax_ap)
+
+  M_exp <- M_ap_gaze %>% filter(aperiodic_measure == "Exponent")
+  p_exp_curve <- ggplot(M_exp, aes(x = ordered_universe, y = estimate, color = condition)) +
+    geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, alpha = 0.7) +
+    geom_point(size = 1.5, alpha = 0.8) +
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
+    scale_color_manual(values = sig_colors, name = "Significance") +
+    labs(title = expression(bold("Aperiodic Exponent ~ gaze (subject-level)")),
+         x = "", y = expression(bold("Standardized " * beta))) +
+    theme_minimal() + theme(legend.position = "none") + v_common_theme +
+    coord_cartesian(ylim = ylim_ap)
+
+  M_off <- M_ap_gaze %>% filter(aperiodic_measure == "Offset")
+  p_off_curve <- ggplot(M_off, aes(x = ordered_universe, y = estimate, color = condition)) +
+    geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, alpha = 0.7) +
+    geom_point(size = 1.5, alpha = 0.8) +
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
+    scale_color_manual(values = sig_colors, name = "Significance") +
+    labs(title = expression(bold("Aperiodic Offset ~ gaze (subject-level)")),
+         x = "", y = expression(bold("Standardized " * beta))) +
+    theme_minimal() + theme(legend.position = "none") + v_common_theme +
+    coord_cartesian(ylim = ylim_ap)
+
+  legend_ap <- get_legend(p_exp_curve + theme(legend.position = "bottom"))
+
+  ap_gaze_group_labels <- c(
+    "electrodes" = "Electrodes", "latency_ms" = "Latency",
+    "gaze_measure" = "Gaze Measure", "baseline_gaze" = "Gaze Baseline"
+  )
+  ap_gaze_group_order <- c("Latency", "Electrodes", "Gaze Measure", "Gaze Baseline")
+
+  df_ap_long <- M_exp %>%
+    select(ordered_universe, electrodes, latency_ms, gaze_measure, baseline_gaze, condition) %>%
+    pivot_longer(cols = c(electrodes, latency_ms, gaze_measure, baseline_gaze),
+                 names_to = "Variable", values_to = "value") %>%
+    mutate(
+      Variable = recode(Variable, !!!ap_gaze_group_labels),
+      Variable = factor(Variable, levels = ap_gaze_group_order),
+      value = rename_opts(value),
+      value = factor(value, levels = value_levels)
+    )
+
+  p_ap_panel <- ggplot(df_ap_long, aes(x = ordered_universe, y = value, fill = condition)) +
+    geom_tile() +
+    scale_fill_manual(values = sig_colors, name = "Significance") +
+    facet_grid(Variable ~ ., scales = "free_y", space = "free") +
+    theme_minimal() +
+    theme(strip.text.y = element_text(angle = 0, size = 13, face = "bold", hjust = 0),
+          legend.position = "bottom") +
+    labs(x = "Universe", y = "Analysis Decision") + v_common_theme
+
+  p_ap_combined <- p_exp_curve / p_off_curve / legend_ap / p_ap_panel +
+    plot_layout(heights = c(0.6, 0.6, 0.08, 1.0))
+  ggsave(file.path(storage_plot, "AOC_multiverse_sternberg_subject_aperiodic_gaze.png"),
+         plot = p_ap_combined, width = 14, height = 14, dpi = 600)
+  message("Saved: AOC_multiverse_sternberg_subject_aperiodic_gaze.png")
+} else {
+  message("Skipping Figure 6: subject_aperiodic_gaze_results.csv not found.")
+}
+
+# ========== FIGURE 7: APERIODIC ~ CONDITION ==========
+ap_cond_path <- file.path(csv_dir, "multiverse_sternberg_subject_aperiodic_condition_results.csv")
+if (file.exists(ap_cond_path)) {
+  M_ap_cond <- read.csv(ap_cond_path, stringsAsFactors = FALSE)
+  M_ap_cond$condition <- factor(M_ap_cond$condition, levels = sig_levels)
+
+  M_ap_cond <- M_ap_cond %>%
+    group_by(aperiodic_measure) %>%
+    mutate(.lat_ord = match(latency_ms, lat_order),
+           .elec_ord = match(electrodes, elec_order)) %>%
+    arrange(.lat_ord, .elec_ord) %>%
+    mutate(ordered_universe = row_number()) %>%
+    ungroup() %>%
+    select(-.lat_ord, -.elec_ord)
+
+  ymax_apc <- max(abs(c(M_ap_cond$conf.low, M_ap_cond$conf.high)), na.rm = TRUE) * 1.05
+  ylim_apc <- c(-ymax_apc, ymax_apc)
+
+  M_exp_c <- M_ap_cond %>% filter(aperiodic_measure == "Exponent")
+  p_exp_c <- ggplot(M_exp_c, aes(x = ordered_universe, y = estimate, color = condition)) +
+    geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, alpha = 0.7) +
+    geom_point(size = 2, alpha = 0.8) +
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
+    scale_color_manual(values = sig_colors, name = "Significance") +
+    labs(title = expression(bold("Aperiodic Exponent ~ condition (subject-level)")),
+         x = "", y = expression(bold("Standardized " * beta))) +
+    theme_minimal() + theme(legend.position = "none") + v_common_theme +
+    coord_cartesian(ylim = ylim_apc)
+
+  M_off_c <- M_ap_cond %>% filter(aperiodic_measure == "Offset")
+  p_off_c <- ggplot(M_off_c, aes(x = ordered_universe, y = estimate, color = condition)) +
+    geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, alpha = 0.7) +
+    geom_point(size = 2, alpha = 0.8) +
+    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
+    scale_color_manual(values = sig_colors, name = "Significance") +
+    labs(title = expression(bold("Aperiodic Offset ~ condition (subject-level)")),
+         x = "", y = expression(bold("Standardized " * beta))) +
+    theme_minimal() + theme(legend.position = "none") + v_common_theme +
+    coord_cartesian(ylim = ylim_apc)
+
+  legend_apc <- get_legend(p_exp_c + theme(legend.position = "bottom"))
+
+  ap_cond_group_labels <- c("electrodes" = "Electrodes", "latency_ms" = "Latency")
+  ap_cond_group_order <- c("Latency", "Electrodes")
+
+  df_apc_long <- M_exp_c %>%
+    select(ordered_universe, electrodes, latency_ms, condition) %>%
+    pivot_longer(cols = c(electrodes, latency_ms),
+                 names_to = "Variable", values_to = "value") %>%
+    mutate(
+      Variable = recode(Variable, !!!ap_cond_group_labels),
+      Variable = factor(Variable, levels = ap_cond_group_order),
+      value = rename_opts(value),
+      value = factor(value, levels = value_levels)
+    )
+
+  p_apc_panel <- ggplot(df_apc_long, aes(x = ordered_universe, y = value, fill = condition)) +
+    geom_tile() +
+    scale_fill_manual(values = sig_colors, name = "Significance") +
+    facet_grid(Variable ~ ., scales = "free_y", space = "free") +
+    theme_minimal() +
+    theme(strip.text.y = element_text(angle = 0, size = 13, face = "bold", hjust = 0),
+          legend.position = "bottom") +
+    labs(x = "Universe", y = "Analysis Decision") + v_common_theme
+
+  p_apc_combined <- p_exp_c / p_off_c / legend_apc / p_apc_panel +
+    plot_layout(heights = c(0.5, 0.5, 0.08, 0.5))
+  ggsave(file.path(storage_plot, "AOC_multiverse_sternberg_subject_aperiodic_condition.png"),
+         plot = p_apc_combined, width = 14, height = 10, dpi = 600)
+  message("Saved: AOC_multiverse_sternberg_subject_aperiodic_condition.png")
+} else {
+  message("Skipping Figure 7: subject_aperiodic_condition_results.csv not found.")
 }
 
 message("=== Sternberg SUBJECT-LEVEL multiverse VISUALIZATION complete ===")

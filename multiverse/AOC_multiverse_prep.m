@@ -3,12 +3,12 @@
 % electrode/FOOOF/latency/alpha/gaze/baseline combinations.
 % Writes multiverse_sternberg.csv and multiverse_nback.csv.
 %
-% Decision grid (7 dimensions, 1152 universes per task):
+% Decision grid (7 dimensions, 1440 universes per task):
 %   Electrodes:     posterior, occipital (2)
 %   1/f:            FOOOFed, non-FOOOFed (2)
 %   Latency:        0-500, 0-1000, 0-2000, 1000-2000 ms (4)
 %   Alpha band:     canonical 8-14 Hz, IAF (2)
-%   Gaze measure:   SPL, velocity, microsaccades, BCEA (4)
+%   Gaze measure:   SPL, velocity, microsaccades, BCEA, gaze deviation (5)
 %   EEG baseline:   raw, dB, pct_change [-0.5 -0.25] s (3)
 %   Gaze baseline:  raw, dB, pct_change [-0.5 -0.25] s (3)
 %
@@ -59,11 +59,11 @@ electrodes_opts    = {'posterior', 'occipital'};
 fooof_opts         = {'FOOOFed', 'nonFOOOFed'};
 latency_opts       = {'0_500ms', '0_1000ms', '0_2000ms', '1000_2000ms'};
 alpha_opts         = {'canonical', 'IAF'};
-gaze_opts          = {'scan_path_length', 'gaze_velocity', 'microsaccades', 'BCEA'};
-gaze_col_map       = [2, 3, 4, 5];  % column indices into [nfix, spl, vel, ms, bcea]
+gaze_opts          = {'scan_path_length', 'gaze_velocity', 'microsaccades', 'BCEA', 'gaze_deviation'};
+gaze_col_map       = [2, 3, 4, 5, 1];  % column indices into [gaze_dev, spl, vel, ms, bcea]
 baseline_eeg_opts  = {'raw', 'dB', 'pct_change'};
 baseline_gaze_opts = {'raw', 'dB', 'pct_change'};
-n_elec = 2; n_fooof = 2; n_lat = 4; n_alpha = 2; n_gaze = 4;
+n_elec = 2; n_fooof = 2; n_lat = 4; n_alpha = 2; n_gaze = 5;
 n_bl_eeg = 3; n_bl_gaze = 3;
 n_universes = n_elec * n_fooof * n_lat * n_alpha * n_gaze * n_bl_eeg * n_bl_gaze;
 alphaRange = [8 14];
@@ -174,13 +174,14 @@ function bcea = compute_bcea(xw, yw)
 end
 
 function [gaze_raw, gaze_db, gaze_pct] = compute_gaze_one_window(x, y, t, tw, dur, fsample, t_base)
-  % Returns [SPL, vel, ms_cnt, bcea] at indices [2,3,4,5]; index 1 unused (kept for column alignment)
+  % Returns [gaze_dev, spl, vel, ms_cnt, bcea] at indices [1,2,3,4,5]
   gaze_raw = nan(1, 5); gaze_db = nan(1, 5); gaze_pct = nan(1, 5);
   idx = t >= tw(1) & t <= tw(2);
   xw = x(idx); yw = y(idx);
   validxy = isfinite(xw) & isfinite(yw);
   xw = xw(validxy); yw = yw(validxy);
   if length(xw) < 50, return, end
+  gaze_dev = mean(sqrt((xw - 400).^2 + (yw - 300).^2), 'omitnan');
   dx = diff(xw); dy = diff(yw);
   spl = sum(sqrt(dx.^2 + dy.^2), 'omitnan');
   vel = spl / dur;
@@ -194,7 +195,7 @@ function [gaze_raw, gaze_db, gaze_pct] = compute_gaze_one_window(x, y, t, tw, du
   catch, ms_cnt = NaN;
   end
   bcea_val = compute_bcea(xw, yw);
-  gaze_raw = [NaN, spl, vel, ms_cnt, bcea_val];
+  gaze_raw = [gaze_dev, spl, vel, ms_cnt, bcea_val];
   % Baseline
   idx_b = t >= t_base(1) & t <= t_base(2);
   xb = x(idx_b); yb = y(idx_b);
@@ -202,6 +203,7 @@ function [gaze_raw, gaze_db, gaze_pct] = compute_gaze_one_window(x, y, t, tw, du
   xb = xb(validb); yb = yb(validb);
   dur_base = t_base(2) - t_base(1);
   if length(xb) < 20, return, end
+  gaze_dev_b = mean(sqrt((xb - 400).^2 + (yb - 300).^2), 'omitnan');
   dx_b = diff(xb); dy_b = diff(yb);
   spl_b = sum(sqrt(dx_b.^2 + dy_b.^2), 'omitnan');
   vel_b = spl_b / dur_base;
@@ -215,8 +217,8 @@ function [gaze_raw, gaze_db, gaze_pct] = compute_gaze_one_window(x, y, t, tw, du
   catch, ms_cnt_b = NaN;
   end
   bcea_b = compute_bcea(xb, yb);
-  base_vals = [NaN, spl_b, vel_b, ms_cnt_b, bcea_b];
-  for g = 2:5
+  base_vals = [gaze_dev_b, spl_b, vel_b, ms_cnt_b, bcea_b];
+  for g = 1:5
     if isfinite(base_vals(g)) && base_vals(g) > 0 && isfinite(gaze_raw(g))
       gaze_pct(g) = (gaze_raw(g) - base_vals(g)) / abs(base_vals(g)) * 100;
       if gaze_raw(g) > 0
@@ -614,7 +616,7 @@ function tbl = build_task_multiverse(task_name, subjects, path_preproc, base_fea
       end
 
       %% ====== Gaze: 4 metrics × 4 windows × raw + dB + pct_change ======
-      disp(upper('  Computing gaze (SPL, vel, MS, BCEA) x 4 windows x raw + dB + pct_change.'))
+      disp(upper('  Computing gaze (dev, SPL, vel, MS, BCEA) x 4 windows x raw + dB + pct_change.'))
       gaze_raw_all = cell(n_lat, 1); gaze_db_all = cell(n_lat, 1); gaze_pct_all = cell(n_lat, 1);
       for il = 1:n_lat
         gaze_raw_all{il} = nan(n_trials_cond, 5);

@@ -86,7 +86,7 @@ inside(M, {
   .fooof  <- branch(fooof,         "FOOOFed", "nonFOOOFed")
   .lat    <- branch(latency_ms,    "0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
   .alpha  <- branch(alpha_type,    "canonical", "IAF")
-  .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA")
+  .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA", "gaze_deviation")
   .bleeg  <- branch(baseline_eeg,  "raw", "pct_change")
   .blgaze <- branch(baseline_gaze, "raw", "pct_change")
 
@@ -242,7 +242,7 @@ M_gaze <- multiverse()
 
 inside(M_gaze, {
   .lat    <- branch(latency_ms,    "0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
-  .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA")
+  .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA", "gaze_deviation")
   .blgaze <- branch(baseline_gaze, "raw", "pct_change")
 
   dg <- dat_gaze %>%
@@ -304,7 +304,7 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
   inside(M_ap_gaze, {
     .elec   <- branch(electrodes,    "posterior", "occipital")
     .lat    <- branch(latency_ms,    "0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
-    .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA")
+    .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA", "gaze_deviation")
     .blgaze <- branch(baseline_gaze, "raw", "pct_change")
 
     dap <- dat_ap_gaze %>%

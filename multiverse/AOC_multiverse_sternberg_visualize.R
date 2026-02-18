@@ -33,7 +33,8 @@ v_common_theme <- theme(
   axis.title.y = element_text(size = 14, face = "bold"),
   legend.text = element_text(size = 12),
   legend.title = element_text(size = 12, face = "bold"),
-  plot.title = element_text(size = 14, face = "bold", hjust = 0.5)
+  plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+  plot.subtitle = element_text(size = 12, hjust = 0.5)
 )
 
 sig_colors <- c("Positive" = "#33CC66", "Negative" = "#fe0000",
@@ -62,7 +63,7 @@ rename_opts <- function(x) {
 
 value_levels <- c(
   "% Change", "Raw",
-  "BCEA", "Microsaccades", "Gaze Velocity", "Scan Path Length", "Gaze Deviation",
+  "Gaze Velocity", "Scan Path Length", "Gaze Deviation",
   "IAF", "Canonical",
   "No SpecParam", "SpecParam",
   "Occipital", "Posterior",
@@ -132,6 +133,7 @@ cond_path <- file.path(csv_dir, "multiverse_sternberg_conditions_results.csv")
 if (!file.exists(cond_path)) stop("Conditions CSV not found: ", cond_path, "\nRun AOC_multiverse_sternberg_analysis.R first.")
 M_cond <- read.csv(cond_path, stringsAsFactors = FALSE)
 M_cond$condition <- factor(M_cond$condition, levels = sig_levels)
+M_cond <- M_cond %>% filter(!gaze_measure %in% c("BCEA", "microsaccades"))
 
 # Determine highest condition from data
 cond_labels_in_data <- unique(M_cond$cond_label)
@@ -156,8 +158,9 @@ p_curve <- ggplot(M_high_est, aes(x = ordered_universe, y = estimate, color = co
   geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
   scale_color_manual(values = sig_colors, name = "Significance") +
   guides(alpha = "none") +
-  labs(title = expression(bold(alpha ~ "~" ~ gaze)), x = "Universe",
-       y = expression(bold("Standardized " * beta))) +
+  labs(title = expression(bold(alpha ~ "~" ~ gaze)),
+       subtitle = "alpha ~ gaze_value * Condition + (1|subjectID)",
+       x = "Universe", y = expression(bold("Standardized " * beta))) +
   theme_minimal() + theme(legend.position = "none") + v_common_theme +
   coord_cartesian(ylim = ylim_est)
 legend_spec <- get_legend(p_curve + theme(legend.position = "bottom") + guides(alpha = "none"))
@@ -201,6 +204,7 @@ p_grp_curve <- ggplot(df_grouped, aes(x = grouped_universe, y = estimate, color 
   scale_color_manual(values = sig_colors, name = "Significance") +
   guides(alpha = "none") +
   labs(title = expression(bold(alpha ~ "~" ~ gaze ~ "(grouped)")),
+       subtitle = "alpha ~ gaze_value * Condition + (1|subjectID)",
        x = "Universe", y = expression(bold("Standardized " * beta))) +
   theme_minimal() + theme(legend.position = "none") + v_common_theme +
   coord_cartesian(ylim = ylim_grp)
@@ -246,6 +250,7 @@ if (file.exists(ca_path)) {
     scale_color_manual(values = sig_colors, name = "Significance") +
     guides(alpha = "none") +
     labs(title = expression(bold(alpha ~ "~" ~ condition)),
+         subtitle = "alpha ~ Condition + (1|subjectID)",
          x = "Universe", y = expression(bold("Standardized " * beta))) +
     theme_minimal() + theme(legend.position = "none") + v_common_theme +
     coord_cartesian(ylim = ylim_ca)
@@ -278,6 +283,7 @@ int_path <- file.path(csv_dir, "multiverse_sternberg_interaction_results.csv")
 if (file.exists(int_path)) {
   M_interaction <- read.csv(int_path, stringsAsFactors = FALSE)
   M_interaction$condition <- factor(M_interaction$condition, levels = sig_levels)
+  M_interaction <- M_interaction %>% filter(!gaze_measure %in% c("BCEA", "microsaccades"))
 
   M_interaction <- M_interaction %>%
     mutate(.lat_ord = match(latency_ms, lat_order),
@@ -296,6 +302,7 @@ if (file.exists(int_path)) {
     scale_color_manual(values = sig_colors, name = "Significance") +
     guides(alpha = "none") +
     labs(title = expression(bold(alpha ~ "~" ~ gaze ~ "\u00D7" ~ condition)),
+         subtitle = "alpha ~ gaze_value * Condition + (1|subjectID)",
          x = "Universe", y = expression(bold("Standardized " * beta))) +
     theme_minimal() + theme(legend.position = "none") + v_common_theme +
     coord_cartesian(ylim = ylim_int)
@@ -329,6 +336,7 @@ cg_path <- file.path(csv_dir, "multiverse_sternberg_condition_gaze_results.csv")
 if (file.exists(cg_path)) {
   M_cg <- read.csv(cg_path, stringsAsFactors = FALSE)
   M_cg$condition <- factor(M_cg$condition, levels = sig_levels)
+  M_cg <- M_cg %>% filter(!gaze_measure %in% c("BCEA", "microsaccades"))
 
   M_cg <- M_cg %>%
     mutate(.lat_ord = match(latency_ms, lat_order)) %>%
@@ -346,6 +354,7 @@ if (file.exists(cg_path)) {
     scale_color_manual(values = sig_colors, name = "Significance") +
     guides(alpha = "none") +
     labs(title = expression(bold(gaze ~ "~" ~ condition)),
+         subtitle = "gaze ~ Condition + (1|subjectID)",
          x = "Universe", y = expression(bold("Standardized " * beta))) +
     theme_minimal() + theme(legend.position = "none") + v_common_theme +
     coord_cartesian(ylim = ylim_cg)
@@ -393,10 +402,11 @@ if (has_ap_gaze || has_ap_cond) {
     M_ap_gaze$condition <- factor(M_ap_gaze$condition, levels = sig_levels)
 
     M_ap_gaze <- M_ap_gaze %>%
+      filter(!gaze_measure %in% c("BCEA", "microsaccades")) %>%
       mutate(
         gaze_label = rename_opts(gaze_measure),
-        gaze_label = factor(gaze_label, levels = c("Gaze Deviation", "BCEA", "Scan Path Length",
-                                                     "Gaze Velocity", "Microsaccades")),
+        gaze_label = factor(gaze_label, levels = c("Gaze Deviation", "Scan Path Length",
+                                                     "Gaze Velocity")),
         aperiodic_measure = factor(aperiodic_measure, levels = c("Exponent", "Offset"))
       ) %>%
       group_by(aperiodic_measure, gaze_label) %>%
@@ -410,6 +420,7 @@ if (has_ap_gaze || has_ap_cond) {
       scale_color_manual(values = sig_colors, name = "Significance") +
       facet_grid(gaze_label ~ aperiodic_measure) +
       labs(title = expression(bold("Aperiodic ~ gaze")),
+           subtitle = "aperiodic ~ gaze_value + (1|subjectID)",
            x = expression(bold("Standardized " * beta)), y = "") +
       theme_minimal() + v_common_theme +
       theme(
@@ -446,6 +457,7 @@ if (has_ap_gaze || has_ap_cond) {
       scale_color_manual(values = sig_colors, name = "Significance") +
       facet_wrap(~aperiodic_measure, nrow = 1) +
       labs(title = expression(bold("Aperiodic ~ condition")),
+           subtitle = "aperiodic ~ Condition + (1|subjectID)",
            x = expression(bold("Standardized " * beta)), y = "") +
       theme_minimal() + v_common_theme +
       theme(

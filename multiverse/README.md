@@ -35,10 +35,10 @@ Ordered by when the decision occurs in the processing pipeline:
 | FOOOF          | FOOOFed, non-FOOOFed (2) |
 | EEG baseline   | raw, dB, percentage change from `[-0.5, -0.25] s` (3) |
 | Alpha band     | canonical (8–14 Hz), IAF (2) |
-| Gaze measure   | scan path length, gaze velocity, microsaccades, BCEA, gaze deviation (5) |
+| Gaze measure   | scan path length, gaze velocity, gaze deviation (3) |
 | Gaze baseline  | raw, dB, percentage change from `[-0.5, -0.25] s` (3) |
 
-**Total:** 4 × 2 × 2 × 3 × 2 × 5 × 3 = **1440 universes per task**.
+**Total:** 4 × 2 × 2 × 3 × 2 × 3 × 3 = **864 universes per task**.
 
 ## Processing details
 
@@ -48,7 +48,7 @@ Ordered by when the decision occurs in the processing pipeline:
 - **FOOOF (subject-level):** `ft_freqanalysis_Arne_FOOOF` on all condition trials at once with `keeptrials = 'no'` — internally averages the spectrum across trials before FOOOF fitting. More comparable to standard subject-level pipelines.
 - **Late retention window:** 1000–2000 ms captures the late retention interval.
 - **Gaze deviation:** Mean Euclidean distance from screen center (400, 300) px per time window. The main registered gaze metric.
-- **BCEA:** Bivariate Contour Ellipse Area (95% confidence).
+- **BCEA:** Bivariate Contour Ellipse Area (95% confidence). Excluded from multiverse plots (redundant with gaze deviation).
 - **Gaze baseline (dB):** `10 * log10(task / baseline)` from `[-0.5, -0.25] s`.
 - **Gaze baseline (% change):** `(task - base) / |base| × 100` from `[-0.5, -0.25] s`.
 - **EEG baseline (dB):** `10 * log10(task_spectrum / mean_baseline_spectrum)` from `[-0.5, -0.25] s`.

@@ -35,10 +35,10 @@ Ordered by when the decision occurs in the processing pipeline:
 | FOOOF          | FOOOFed, non-FOOOFed (2) |
 | EEG baseline   | raw, dB, percentage change from `[-0.5, -0.25] s` (3) |
 | Alpha band     | canonical (8–14 Hz), IAF (2) |
-| Gaze measure   | gaze deviation, gaze velocity (2) |
+| Gaze measure   | gaze deviation, gaze velocity, scan path length, BCEA (4) |
 | Gaze baseline  | raw, dB, percentage change from `[-0.5, -0.25] s` (3) |
 
-**Total:** 4 × 2 × 2 × 2 × 2 × 2 × 2 = **256 universes per task** (visualization: deviation and velocity only).
+**Total:** 4 × 2 × 2 × 2 × 2 × 4 × 2 = **512 universes per task**.
 
 ## Processing details
 
@@ -48,7 +48,7 @@ Ordered by when the decision occurs in the processing pipeline:
 - **FOOOF (subject-level):** `ft_freqanalysis_Arne_FOOOF` on all condition trials at once with `keeptrials = 'no'` — internally averages the spectrum across trials before FOOOF fitting. More comparable to standard subject-level pipelines.
 - **Late retention window:** 1000–2000 ms captures the late retention interval.
 - **Gaze deviation:** Mean Euclidean distance from screen center (400, 300) px per time window. The main registered gaze metric.
-- **BCEA:** Bivariate Contour Ellipse Area (95% confidence). Excluded from multiverse plots (redundant with gaze deviation).
+- **BCEA:** Bivariate Contour Ellipse Area (95% confidence).
 - **Gaze baseline (dB):** `10 * log10(task / baseline)` from `[-0.5, -0.25] s`.
 - **Gaze baseline (% change):** `(task - base) / |base| × 100` from `[-0.5, -0.25] s`.
 - **EEG baseline (dB):** `10 * log10(task_spectrum / mean_baseline_spectrum)` from `[-0.5, -0.25] s`.
@@ -68,7 +68,7 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
 | 3 | `_condition_alpha` | `alpha ~ condition` — Condition effect on alpha (highest vs. reference), EEG-only universes, sorted by processing-stage hierarchy |
 | 4 | `_interaction` | `alpha ~ gaze × condition` — Interaction term (gaze × highest condition), all 7 dimensions, sorted by processing-stage hierarchy |
 | 5 | `_condition_gaze` | `gaze ~ condition` — Condition effect on gaze (highest vs. reference), gaze-only universes |
-| 6 | `_aperiodic` | Aperiodic component — combined forest plot. Top: exponent + offset ~ gaze (grouped by gaze measure, 5 × 16 universes). Bottom: exponent + offset ~ condition (8 labeled universes). |
+| 6 | `_aperiodic` | Aperiodic component — combined forest plot. Top: exponent + offset ~ gaze (grouped by gaze measure, 4 × 16 universes). Bottom: exponent + offset ~ condition (8 labeled universes). |
 
 ### Figure details
 
@@ -76,7 +76,7 @@ All figures are 600 dpi PNG. Y-axis limits are symmetric and derived from the fu
 - **Figure 3** tests whether alpha power differs at the highest WM load vs. reference (Condition as factor). Only EEG dimensions are relevant, so it uses 5 EEG-only dimensions.
 - **Figure 4** shows the gaze × condition interaction term from the full model, using all 7 dimensions.
 - **Figure 5** tests whether gaze differs at the highest WM load vs. reference, using 3 gaze-only dimensions.
-- **Figure 6** is a combined forest plot for the aperiodic component. Top section: aperiodic exponent and offset ~ gaze, grouped by gaze measure (Gaze Deviation, BCEA, Scan Path Length, Gaze Velocity, Microsaccades) with 16 universes per group. Bottom section: aperiodic ~ condition with 8 labeled universes (latency × electrodes). Motivated by Tröndle & Langer (2026): ocular contamination increases aperiodic offset and steepens the slope, justifying why spectral parameterization matters for the main multiverse results.
+- **Figure 6** is a combined forest plot for the aperiodic component. Top section: aperiodic exponent and offset ~ gaze, grouped by gaze measure (Gaze Deviation, Gaze Velocity, Scan Path Length, BCEA) with 16 universes per group. Bottom section: aperiodic ~ condition with 8 labeled universes (latency × electrodes). Motivated by Tröndle & Langer (2026): ocular contamination increases aperiodic offset and steepens the slope, justifying why spectral parameterization matters for the main multiverse results.
 - **Panel strip labels** are left-aligned and ordered by processing stage. Y-axis is labeled "Analysis Decision".
 
 ## Output CSVs (per task)

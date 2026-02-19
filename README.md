@@ -2,7 +2,7 @@
 
 Sternberg and N-back tasks. Combined EEG and Eye-Tracking (ET) analysis of neural signatures of oculomotor control in the alpha band. Published in Psychophysiology as a Registered Report. https://doi.org/10.22541/au.172466871.17083913/v1
 
-The following are short descriptions of what the files in the respective folders in this repository do. The titles below correspond to the folder names. Apart from the Python scripts in ’4_stats’, all files are MATLAB scripts.
+The titles below correspond to the folder names. Apart from the Python and R scripts in ’4_stats’, all files are MATLAB scripts.
 
 ## paradigms
 
@@ -48,6 +48,17 @@ The EEG files that were preprocessed by Automagic are subsequently merged with t
 
 ### Rainclouds (Python)
 `AOC_stats_glmms_rainclouds.py` produces raincloud plots, repeated-measures ANOVA, and mixed models for all variables; input: `merged_data_*_nback.csv` and `merged_data_*_sternberg.csv`. Python helpers (`stats_helpers`, `rainclouds_plotting_helpers`, `mixedlm_helpers`, `export_model_table`) come from [github.com/arnedhansen/functions](https://github.com/arnedhansen/functions). Adapt `base_dir` and input paths in the script to your setup.
+
+## Additional Files
+
+### AOC_MASTER_ANALYSIS.m
+Runs the full MATLAB pipeline (merge → 4_preprocessing → _controls → feature extraction → visualization → omnibus_prep → omnibus) with try/catch and a log. Set `basePath` to your repo root. It does *not* run: 1_cut, 2_automagic, or the Python stats.
+
+### _controls
+Optional checks: ET calibration/validation, baseline effects, trial exclusions, missing data, paradigm durations, recording order. Run after 4_preprocessing; see `AOC_MASTER_ANALYSIS.m` for placement.
+
+### Dependencies
+`startup` and `setup('AOC')` (paths, subject list; `setup` is project-specific). For plots: `cbrewer` (colormaps), `layANThead` (ANT Neuro cap layout), `shadedErrorBar` (power spectra). Many scripts hardcode data roots (e.g. `/Volumes/...` or `W:\...`); change these to your `data/` location. 
 
 ## multiverse
 
@@ -199,14 +210,6 @@ All control scripts live in `_controls/multiverse/`. Output data and figures go 
    source("../_controls/multiverse/AOC_control_concordance.R")     # needs result CSVs from steps 2+4
    ```
 
-### Science Cloud checklist
-
-- **Drive:** `W:\Students\Arne\AOC` must exist with subject folders under `data/features/`.
-- **Per subject, per task:** Required files in `eeg/`: `power_*_early_trials.mat`, `power_*_full_trials.mat`. Required in `gaze/`: `dataET_sternberg.mat` or `dataET_nback.mat`. Subject is skipped if any are missing.
-- **0–500 ms and 1–2 s alpha:** From `tfr_*_trials.mat` if present, otherwise from time-domain EEG (`dataEEG_TFR_*.mat` or `dataEEG_*.mat`).
-- **Channel labels:** From first subject's power file.
-- **On path:** FieldTrip, `ft_freqanalysis_Arne_FOOOF` (for FOOOF), `detect_microsaccades` (for microsaccades; NaN on failure).
-
 ### Electrode sets
 
 | Set | Channels |
@@ -224,14 +227,3 @@ All control scripts live in `_controls/multiverse/`. Output data and figures go 
 - **Error bars** in all plots are 95% confidence intervals from the LMM fits.
 - **Plot titles** use model notation (e.g., `alpha ~ gaze`, `alpha ~ condition`).
 - **Baseline options:** Both dB and percentage change are computed for EEG and gaze. dB compresses extreme ratios logarithmically; % change is linear and more interpretable. Extreme values from small baselines are handled by robust z-scoring (median + MAD, winsorize ±3) in R.
-
-## Additional Files
-
-### AOC_MASTER_ANALYSIS.m
-Runs the full MATLAB pipeline (merge → 4_preprocessing → _controls → feature extraction → visualization → omnibus_prep → omnibus) with try/catch and a log. Set `basePath` to your repo root. It does *not* run: 1_cut, 2_automagic, or the Python stats.
-
-### _controls
-Optional checks: ET calibration/validation, baseline effects, trial exclusions, missing data, paradigm durations, recording order. Run after 4_preprocessing; see `AOC_MASTER_ANALYSIS.m` for placement.
-
-### Dependencies
-`startup` and `setup('AOC')` (paths, subject list; `setup` is project-specific). For plots: `cbrewer` (colormaps), `layANThead` (ANT Neuro cap layout), `shadedErrorBar` (power spectra). Many scripts hardcode data roots (e.g. `/Volumes/...` or `W:\...`); change these to your `data/` location. 

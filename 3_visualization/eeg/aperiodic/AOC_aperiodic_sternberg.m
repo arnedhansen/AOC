@@ -21,7 +21,7 @@ if ~isfolder(fig_dir), mkdir(fig_dir); end
 toi      = -0.5:0.05:2;
 win_half = 0.25;
 n_toi    = length(toi);
-cond_codes = [52 54 56];
+cond_codes = [22 24 26];
 cond_vals  = [2 4 6];
 n_cond   = length(cond_codes);
 
@@ -36,11 +36,11 @@ cfg_fooof.keeptrials = 'no';
 %% Resolve occipital channels from first available subject
 occ_channels = {};
 for s = 1:length(subjects)
-    eeg_file = fullfile(path, subjects{s}, 'eeg', 'dataEEG_sternberg.mat');
+    eeg_file = fullfile(path, subjects{s}, 'eeg', 'dataEEG_TFR_sternberg.mat');
     if isfile(eeg_file)
-        tmp = load(eeg_file);
-        for i = 1:length(tmp.dataEEG.label)
-            lb = tmp.dataEEG.label{i};
+        tmp = load(eeg_file, 'dataTFR');
+        for i = 1:length(tmp.dataTFR.label)
+            lb = tmp.dataTFR.label{i};
             if contains(lb, 'O') || contains(lb, 'I')
                 occ_channels{end+1} = lb;
             end
@@ -57,27 +57,23 @@ off_all = nan(length(subjects), n_cond, n_toi);
 
 for s = 1:length(subjects)
     sid = subjects{s};
-    eeg_file = fullfile(path, sid, 'eeg', 'dataEEG_sternberg.mat');
+    eeg_file = fullfile(path, sid, 'eeg', 'dataEEG_TFR_sternberg.mat');
     if ~isfile(eeg_file)
-        fprintf('  Skipping %s — no EEG file\n', sid);
+        fprintf('  Skipping %s — no TFR file\n', sid);
         continue
     end
     fprintf('Subject %s (%d/%d)\n', sid, s, length(subjects));
-    load(eeg_file, 'dataEEG');
-    data = dataEEG;
+    load(eeg_file, 'dataTFR');
+    data = dataTFR;
 
     for c = 1:n_cond
-        trial_idx = find(data.trialinfo == cond_codes(c));
+        trial_idx = find(data.trialinfo(:,1) == cond_codes(c));
         if isempty(trial_idx), continue; end
 
         cfg_sel = [];
         cfg_sel.trials = trial_idx;
         cfg_sel.channel = occ_channels;
         d_cond = ft_selectdata(cfg_sel, data);
-
-        cfg_avg = [];
-        cfg_avg.keeptrials = 'no';
-        d_cond = ft_timelockanalysis(cfg_avg, d_cond);
 
         cfg_ch = [];
         cfg_ch.avgoverchan = 'yes';
@@ -87,7 +83,7 @@ for s = 1:length(subjects)
         for t = 1:n_toi
             t_start = toi(t) - win_half;
             t_end   = toi(t) + win_half;
-            if t_start < d_cond.time(1) || t_end > d_cond.time(end)
+            if t_start < d_cond.time{1}(1) || t_end > d_cond.time{1}(end)
                 continue
             end
 
@@ -95,21 +91,16 @@ for s = 1:length(subjects)
             cfg_lat.latency = [t_start t_end];
             d_win = ft_selectdata(cfg_lat, d_cond);
 
-            d_raw = [];
-            d_raw.label   = d_win.label;
-            d_raw.fsample = 1 / mean(diff(d_win.time));
-            d_raw.trial   = {d_win.avg};
-            d_raw.time    = {d_win.time};
-
             try
-                out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, d_raw);
+                out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, d_win);
                 rep = out.fooofparams;
                 if iscell(rep), rep = rep{1}; end
                 if isfield(rep, 'aperiodic_params') && numel(rep.aperiodic_params) >= 2
                     exp_all(s, c, t) = rep.aperiodic_params(2);
                     off_all(s, c, t) = rep.aperiodic_params(1);
                 end
-            catch
+            catch ME
+                fprintf('  FOOOF failed at t=%.2f: %s\n', toi(t), ME.message);
             end
         end
     end
@@ -122,9 +113,7 @@ off_mean = squeeze(nanmean(off_all, 1));
 off_sem  = squeeze(nanstd(off_all, 0, 1)) ./ sqrt(sum(~isnan(off_all(:,1,1))));
 
 %% Colors
-colors = [0.2 0.6 1.0;   % WM load 2 — blue
-          0.5 0.5 0.5;   % WM load 4 — grey
-          0.9 0.2 0.2];  % WM load 6 — red
+colors = color_def('AOC');
 cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
 fontSize = 24;
 
@@ -137,14 +126,15 @@ for c = 1:n_cond
     fill([toi fliplr(toi)], [m+se fliplr(m-se)], colors(c,:), ...
         'FaceAlpha', 0.2, 'EdgeColor', 'none');
 end
+h = gobjects(1, n_cond);
 for c = 1:n_cond
-    plot(toi, squeeze(exp_mean(c,:)), 'Color', colors(c,:), 'LineWidth', 2.5);
+    h(c) = plot(toi, squeeze(exp_mean(c,:)), 'Color', colors(c,:), 'LineWidth', 2.5);
 end
 xline(0, '--k', 'LineWidth', 1);
 xlabel('Time [s]', 'FontSize', fontSize);
 ylabel('Aperiodic Exponent', 'FontSize', fontSize);
 title('Sternberg — Aperiodic Exponent', 'FontSize', fontSize);
-legend(cond_labels, 'FontSize', 16, 'Location', 'best');
+legend(h, cond_labels, 'FontSize', 16, 'Location', 'best');
 set(gca, 'FontSize', fontSize);
 xlim([toi(1) toi(end)]);
 hold off
@@ -160,14 +150,15 @@ for c = 1:n_cond
     fill([toi fliplr(toi)], [m+se fliplr(m-se)], colors(c,:), ...
         'FaceAlpha', 0.2, 'EdgeColor', 'none');
 end
+h = gobjects(1, n_cond);
 for c = 1:n_cond
-    plot(toi, squeeze(off_mean(c,:)), 'Color', colors(c,:), 'LineWidth', 2.5);
+    h(c) = plot(toi, squeeze(off_mean(c,:)), 'Color', colors(c,:), 'LineWidth', 2.5);
 end
 xline(0, '--k', 'LineWidth', 1);
 xlabel('Time [s]', 'FontSize', fontSize);
 ylabel('Aperiodic Offset', 'FontSize', fontSize);
 title('Sternberg — Aperiodic Offset', 'FontSize', fontSize);
-legend(cond_labels, 'FontSize', 16, 'Location', 'best');
+legend(h, cond_labels, 'FontSize', 16, 'Location', 'best');
 set(gca, 'FontSize', fontSize);
 xlim([toi(1) toi(end)]);
 hold off

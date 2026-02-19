@@ -45,8 +45,39 @@ for t = 1:length(tasks)
         T = readtable(csv_file);
         fprintf('Loaded %s %s-level: %d FOOOF fits.\n', task, level, height(T));
 
+        %% --- Exclude extreme aperiodic parameter values (IQR-based) ---
+        iqr_factor = 3;
+        n_before = height(T);
+
+        valid_off = isfinite(T.aperiodic_offset);
+        Q1_off = prctile(T.aperiodic_offset(valid_off), 25);
+        Q3_off = prctile(T.aperiodic_offset(valid_off), 75);
+        IQR_off = Q3_off - Q1_off;
+        extreme_off = valid_off & ...
+            (T.aperiodic_offset < Q1_off - iqr_factor * IQR_off | ...
+             T.aperiodic_offset > Q3_off + iqr_factor * IQR_off);
+
+        valid_exp = isfinite(T.aperiodic_exponent);
+        Q1_exp = prctile(T.aperiodic_exponent(valid_exp), 25);
+        Q3_exp = prctile(T.aperiodic_exponent(valid_exp), 75);
+        IQR_exp = Q3_exp - Q1_exp;
+        extreme_exp = valid_exp & ...
+            (T.aperiodic_exponent < Q1_exp - iqr_factor * IQR_exp | ...
+             T.aperiodic_exponent > Q3_exp + iqr_factor * IQR_exp);
+
+        extreme_mask = extreme_off | extreme_exp;
+        n_extreme = sum(extreme_mask);
+        fprintf('  Extreme aperiodic values (%.0f× IQR): %d / %d (%.1f%%)\n', ...
+            iqr_factor, n_extreme, n_before, 100 * n_extreme / max(n_before, 1));
+        fprintf('    Offset  bounds: [%.2f, %.2f]  (excluded %d)\n', ...
+            Q1_off - iqr_factor * IQR_off, Q3_off + iqr_factor * IQR_off, sum(extreme_off));
+        fprintf('    Exponent bounds: [%.2f, %.2f]  (excluded %d)\n', ...
+            Q1_exp - iqr_factor * IQR_exp, Q3_exp + iqr_factor * IQR_exp, sum(extreme_exp));
+        T(extreme_mask, :) = [];
+
         n_below = sum(T.r_squared < r2_thresh & isfinite(T.r_squared));
         n_valid = sum(isfinite(T.r_squared));
+        fprintf('  After exclusion: %d fits remaining.\n', height(T));
         fprintf('  R² < %.2f: %d / %d (%.1f%%)\n', r2_thresh, n_below, n_valid, ...
             100 * n_below / max(n_valid, 1));
 

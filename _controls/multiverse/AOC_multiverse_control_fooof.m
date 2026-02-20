@@ -180,6 +180,7 @@ for t = 1:length(tasks)
         valid_r2 = T.r_squared(isfinite(T.r_squared));
         histogram(valid_r2, 50, 'FaceColor', [0.3 0.5 0.7], 'EdgeColor', 'none', ...
             'FaceAlpha', 0.8);
+        xline(0.60, '--', 'Color', [0.8 0.5 0], 'LineWidth', 1.5);
         xline(r2_thresh, '--r', 'LineWidth', 1.5);
         xlabel('FOOOF R^2', 'FontSize', 14, 'FontWeight', 'bold');
         ylabel('Count', 'FontSize', 14, 'FontWeight', 'bold');

@@ -7,6 +7,13 @@
 %% Setup
 startup
 [subjects, path, ~, ~] = setup('AOC');
+if ispc
+    load('W:\Students\Arne\MA\headmodel\layANThead.mat');
+    figpath = 'W:\Students\Arne\AOC\figures\eeg\tfr\';
+else
+    load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat');
+    figpath = [figpath '';
+end
 
 %% Compute grand average time and frequency data GATFR
 for subj= 1:length(subjects)
@@ -47,8 +54,7 @@ cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
 cfg.xlim = [-.5 2]; % Time axis limits in seconds
 cfg.ylim = [5 30];
-load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat');
-cfg.layout = layANThead; % your specific layout
+cfg.layout = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [1 0.96 0.94; 0.99 0.73 0.63; 0.98 0.42 0.29; 0.80 0.09 0.11; 0.40 0 0.05], linspace(0,1,64)); % 'RdBu' for blue to red diverging color map
 
 % Find maximum deviation across conditions
@@ -75,7 +81,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 title('1-back', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_1back.png');
+saveas(gcf, [figpath 'AOC_tfr_1back.png']);
 
 % 2-back
 figure;
@@ -91,7 +97,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 title('2-back', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_2back.png');
+saveas(gcf, [figpath 'AOC_tfr_2back.png']);
 
 % 3-back
 figure;
@@ -107,11 +113,10 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 title('3-back', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_3back.png');
+saveas(gcf, [figpath 'AOC_tfr_3back.png']);
 
 %% Compute the difference between condition 3 and condition 1
 close all
-load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat');
 
 % Plot the difference
 diff = gatfr3;
@@ -124,8 +129,7 @@ cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
 cfg.xlim = [-.5 2]; % Time axis limits in secon
 cfg.ylim = [7 20];
-load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
-cfg.layout = layANThead; % your specific layout
+cfg.layout = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64)); % 'RdBu' for blue to red diverging color map
 
 % Find maximum deviation
@@ -154,4 +158,4 @@ title('N-back TFR Difference (3-back minus 1-back)', 'FontName', 'Arial', 'FontS
 set(gca, 'FontSize', fontSize);
 
 % Save the figure
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/AOC_tfr_nback_diff.png');
+saveas(gcf, [figpath 'AOC_tfr_nback_diff.png']);

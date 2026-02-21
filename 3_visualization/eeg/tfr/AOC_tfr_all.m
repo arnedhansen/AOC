@@ -7,9 +7,12 @@
 
 %% Setup
 startup
-[subjects, path, ~, ~] = setup('AOC');
-load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat');
-figpath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/';
+[subjects, path, ~, headmodel] = setup('AOC');
+if ispc
+    figpath = 'W:\Students\Arne\AOC\figures\eeg\tfr\';
+else
+    figpath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/';
+end
 
 %% ========================================================================
 %  STERNBERG — Load data
@@ -59,7 +62,7 @@ cfg.colorbar  = 'yes';
 cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
 cfg.ylim      = [0 30];
-cfg.layout    = layANThead;
+cfg.layout    = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [1 0.96 0.94; 0.99 0.73 0.63; 0.98 0.42 0.29; 0.80 0.09 0.11; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(stern_ch, ga_s_raw2.label);
@@ -128,7 +131,7 @@ cfg.colorbar  = 'yes';
 cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
 cfg.ylim      = [0 30];
-cfg.layout    = layANThead;
+cfg.layout    = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(stern_ch, diff.label);
@@ -238,7 +241,7 @@ cfg.colorbar  = 'yes';
 cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
 cfg.ylim      = [0 30];
-cfg.layout    = layANThead;
+cfg.layout    = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(stern_ch, diff.label);
@@ -310,7 +313,7 @@ cfg.colorbar  = 'yes';
 cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
 cfg.ylim      = [0 30];
-cfg.layout    = layANThead;
+cfg.layout    = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [1 0.96 0.94; 0.99 0.73 0.63; 0.98 0.42 0.29; 0.80 0.09 0.11; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(nb_ch, ga_n_raw1.label);
@@ -379,7 +382,7 @@ cfg.colorbar  = 'yes';
 cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
 cfg.ylim      = [0 30];
-cfg.layout    = layANThead;
+cfg.layout    = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(nb_ch, diff.label);
@@ -489,7 +492,7 @@ cfg.colorbar  = 'yes';
 cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
 cfg.ylim      = [0 30];
-cfg.layout    = layANThead;
+cfg.layout    = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(nb_ch, diff.label);

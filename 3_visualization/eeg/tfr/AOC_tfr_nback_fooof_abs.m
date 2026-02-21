@@ -55,13 +55,19 @@ cfg.baselinetype  = 'absolute';   % options: 'absolute', 'relative', 'relchange'
 
 % Find maximum deviation across conditions
 [~, channel_idx] = ismember(channels, gatfr1.label);
-freq_idx = find(gatfr1.freq >= 8 & gatfr1.freq <= 14);
-time_idx = find(gatfr1.time >= 0 & gatfr1.time <= 2);
-max_spctrm = max([mean(gatfr1.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan'); ...
-                  mean(gatfr2.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan'); ...
-                  mean(gatfr3.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan')]);
-max_spctrm = max(max(abs(max_spctrm)));
-max_spctrm = 0.25
+freq_idx = gatfr1.freq >= 8 & gatfr1.freq <= 14;
+time_idx = gatfr1.time >= -0.5 & gatfr1.time <= 2;
+bl_idx   = gatfr1.time >= -0.5 & gatfr1.time <= -0.25;
+avg1 = squeeze(mean(gatfr1.powspctrm(channel_idx, :, :), 1));
+avg2 = squeeze(mean(gatfr2.powspctrm(channel_idx, :, :), 1));
+avg3 = squeeze(mean(gatfr3.powspctrm(channel_idx, :, :), 1));
+avg1_bl = avg1 - mean(avg1(:, bl_idx), 2);
+avg2_bl = avg2 - mean(avg2(:, bl_idx), 2);
+avg3_bl = avg3 - mean(avg3(:, bl_idx), 2);
+max_spctrm = max([ ...
+    max(abs(avg1_bl(freq_idx, time_idx)), [], 'all'), ...
+    max(abs(avg2_bl(freq_idx, time_idx)), [], 'all'), ...
+    max(abs(avg3_bl(freq_idx, time_idx)), [], 'all')]);
 clim = [-max_spctrm, max_spctrm];
 
 % 1-back
@@ -131,11 +137,10 @@ cfg.layout = layANThead; % your specific layout
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
 
 % Find maximum deviation
-[~, channel_idx] = ismember(channels, gatfr1.label);
-time_idx = find(diff.time >= -0.5 & diff.time <= 2);
-freq_idx = find(gatfr1.freq >= 8 & gatfr1.freq <= 14);
-max_spctrm = max(abs(diff.powspctrm(channel_idx, freq_idx, time_idx)), [], 'all');
-max_spctrm = .5
+[~, channel_idx] = ismember(channels, diff.label);
+freq_idx = diff.freq >= 8 & diff.freq <= 14;
+time_idx = diff.time >= -0.5 & diff.time <= 2;
+max_spctrm = max(abs(mean(diff.powspctrm(channel_idx, freq_idx, time_idx), 1)), [], 'all');
 clim = double([-max_spctrm max_spctrm]);
 
 % Plot: Difference Time-Frequency Response

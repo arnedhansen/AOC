@@ -53,11 +53,12 @@ color_map = cbrewer('seq', 'Reds', 64); % 'RdBu' for blue to red diverging color
 
 % Find maximum deviation across conditions
 [~, channel_idx] = ismember(channels, gatfr1.label);
-max_spctrm = max([
-    max(abs(gatfr1.powspctrm(channel_idx, :, :)), [], 'all'), ...
-    max(abs(gatfr2.powspctrm(channel_idx, :, :)), [], 'all'), ...
-    max(abs(gatfr3.powspctrm(channel_idx, :, :)), [], 'all')]);
-max_spctrm = 9.5
+freq_idx = gatfr1.freq >= 8 & gatfr1.freq <= 14;
+time_idx = gatfr1.time >= -0.5 & gatfr1.time <= 2;
+max_spctrm = max([ ...
+    max(mean(gatfr1.powspctrm(channel_idx, freq_idx, time_idx), 1), [], 'all'), ...
+    max(mean(gatfr2.powspctrm(channel_idx, freq_idx, time_idx), 1), [], 'all'), ...
+    max(mean(gatfr3.powspctrm(channel_idx, freq_idx, time_idx), 1), [], 'all')]);
 clim = [0 max_spctrm];
  
 % 1-back
@@ -128,9 +129,10 @@ cfg.layout = layANThead; % your specific layout
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
 
 % Find maximum deviation
-[~, channel_idx] = ismember(channels, gatfr1.label);
-max_spctrm = max(abs(diff.powspctrm(channel_idx, :, :)), [], 'all');
-max_spctrm = 2
+[~, channel_idx] = ismember(channels, diff.label);
+freq_idx = diff.freq >= 8 & diff.freq <= 14;
+time_idx = diff.time >= -0.5 & diff.time <= 2;
+max_spctrm = max(abs(mean(diff.powspctrm(channel_idx, freq_idx, time_idx), 1)), [], 'all');
 clim = double([-max_spctrm, max_spctrm]);
 
 % Plot: Difference (Condition 3 minus Condition 1) - Time-Frequency Response

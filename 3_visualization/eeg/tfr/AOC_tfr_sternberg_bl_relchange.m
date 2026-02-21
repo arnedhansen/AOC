@@ -58,13 +58,19 @@ cfg.baselinetype  = 'relchange';   % options: 'absolute', 'relative', 'relchange
 
 % Find maximum deviation across conditions
 [~, channel_idx] = ismember(channels, gatfr2.label);
-freq_idx = find(gatfr2.freq >= 8 & gatfr2.freq <= 14);
-time_idx = find(gatfr2.time >= -1 & gatfr2.time <= 2);
-max_spctrm = max([mean(gatfr2.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan'); ...
-                  mean(gatfr4.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan'); ...
-                  mean(gatfr6.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan')]);
-max_spctrm = max(max(abs(max_spctrm)));
-% max_spctrm = 0.75
+freq_idx = gatfr2.freq >= 8 & gatfr2.freq <= 14;
+time_idx = gatfr2.time >= -0.5 & gatfr2.time <= 2;
+bl_idx   = gatfr2.time >= -0.5 & gatfr2.time <= -0.25;
+avg2 = squeeze(mean(gatfr2.powspctrm(channel_idx, :, :), 1));
+avg4 = squeeze(mean(gatfr4.powspctrm(channel_idx, :, :), 1));
+avg6 = squeeze(mean(gatfr6.powspctrm(channel_idx, :, :), 1));
+avg2_bl = (avg2 - mean(avg2(:, bl_idx), 2)) ./ mean(avg2(:, bl_idx), 2);
+avg4_bl = (avg4 - mean(avg4(:, bl_idx), 2)) ./ mean(avg4(:, bl_idx), 2);
+avg6_bl = (avg6 - mean(avg6(:, bl_idx), 2)) ./ mean(avg6(:, bl_idx), 2);
+max_spctrm = max([ ...
+    max(abs(avg2_bl(freq_idx, time_idx)), [], 'all'), ...
+    max(abs(avg4_bl(freq_idx, time_idx)), [], 'all'), ...
+    max(abs(avg6_bl(freq_idx, time_idx)), [], 'all')]);
 clim = [-max_spctrm, max_spctrm];
 
 % WM load 2

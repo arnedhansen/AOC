@@ -63,12 +63,12 @@ cfg.layout    = layANThead;
 color_map = cbrewer('seq', 'Reds', 64);
 
 [~, channel_idx] = ismember(stern_ch, ga_s_raw2.label);
-freq_idx = find(ga_s_raw2.freq >= 8 & ga_s_raw2.freq <= 14);
-max_spctrm = max([mean(ga_s_raw2.powspctrm(channel_idx, freq_idx), 'omitnan'); ...
-                  mean(ga_s_raw4.powspctrm(channel_idx, freq_idx), 'omitnan'); ...
-                  mean(ga_s_raw6.powspctrm(channel_idx, freq_idx), 'omitnan')]);
-max_spctrm = max(abs(max_spctrm));
-max_spctrm = 6.75;
+freq_idx = ga_s_raw2.freq >= 8 & ga_s_raw2.freq <= 14;
+time_idx = ga_s_raw2.time >= -0.5 & ga_s_raw2.time <= 2;
+max_spctrm = max([ ...
+    max(mean(ga_s_raw2.powspctrm(channel_idx, freq_idx, time_idx), 1), [], 'all'), ...
+    max(mean(ga_s_raw4.powspctrm(channel_idx, freq_idx, time_idx), 1), [], 'all'), ...
+    max(mean(ga_s_raw6.powspctrm(channel_idx, freq_idx, time_idx), 1), [], 'all')]);
 clim = [0 max_spctrm];
 
 % WM load 2
@@ -131,11 +131,10 @@ cfg.ylim      = [0 30];
 cfg.layout    = layANThead;
 color_map = flipud(cbrewer('div', 'RdBu', 64));
 
-[~, channel_idx] = ismember(stern_ch, ga_s_raw2.label);
-time_idx = find(diff.time >= -0.5 & diff.time <= 2);
-freq_idx = find(ga_s_raw2.freq >= 8 & ga_s_raw2.freq <= 14);
-max_spctrm = max(abs(diff.powspctrm(channel_idx, freq_idx, time_idx)), [], 'all');
-max_spctrm = .5;
+[~, channel_idx] = ismember(stern_ch, diff.label);
+freq_idx = diff.freq >= 8 & diff.freq <= 14;
+time_idx = diff.time >= -0.5 & diff.time <= 2;
+max_spctrm = max(abs(mean(diff.powspctrm(channel_idx, freq_idx, time_idx), 1)), [], 'all');
 clim = double([-max_spctrm max_spctrm]);
 
 figure('Position', [0 0 1512 982]);
@@ -170,13 +169,19 @@ cfg.baselinetype = 'absolute';
 color_map = flipud(cbrewer('div', 'RdBu', 64));
 
 [~, channel_idx] = ismember(stern_ch, ga_s_f2.label);
-freq_idx = find(ga_s_f2.freq >= 8 & ga_s_f2.freq <= 14);
-time_idx = find(ga_s_f2.time >= -1 & ga_s_f2.time <= 2);
-max_spctrm = max([mean(ga_s_f2.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan'); ...
-                  mean(ga_s_f4.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan'); ...
-                  mean(ga_s_f6.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan')]);
-max_spctrm = max(max(abs(max_spctrm)));
-max_spctrm = 0.25;
+freq_idx = ga_s_f2.freq >= 8 & ga_s_f2.freq <= 14;
+time_idx = ga_s_f2.time >= -0.5 & ga_s_f2.time <= 2;
+bl_idx   = ga_s_f2.time >= -0.5 & ga_s_f2.time <= -0.25;
+avg2 = squeeze(mean(ga_s_f2.powspctrm(channel_idx, :, :), 1));
+avg4 = squeeze(mean(ga_s_f4.powspctrm(channel_idx, :, :), 1));
+avg6 = squeeze(mean(ga_s_f6.powspctrm(channel_idx, :, :), 1));
+avg2_bl = avg2 - mean(avg2(:, bl_idx), 2);
+avg4_bl = avg4 - mean(avg4(:, bl_idx), 2);
+avg6_bl = avg6 - mean(avg6(:, bl_idx), 2);
+max_spctrm = max([ ...
+    max(abs(avg2_bl(freq_idx, time_idx)), [], 'all'), ...
+    max(abs(avg4_bl(freq_idx, time_idx)), [], 'all'), ...
+    max(abs(avg6_bl(freq_idx, time_idx)), [], 'all')]);
 clim = [-max_spctrm, max_spctrm];
 
 % WM load 2
@@ -236,11 +241,10 @@ cfg.ylim      = [0 30];
 cfg.layout    = layANThead;
 color_map = flipud(cbrewer('div', 'RdBu', 64));
 
-[~, channel_idx] = ismember(stern_ch, ga_s_f2.label);
-time_idx = find(diff.time >= -0.5 & diff.time <= 2);
-freq_idx = find(ga_s_f2.freq >= 8 & ga_s_f2.freq <= 14);
-max_spctrm = max(abs(diff.powspctrm(channel_idx, freq_idx, time_idx)), [], 'all');
-max_spctrm = .035;
+[~, channel_idx] = ismember(stern_ch, diff.label);
+freq_idx = diff.freq >= 8 & diff.freq <= 14;
+time_idx = diff.time >= -0.5 & diff.time <= 2;
+max_spctrm = max(abs(mean(diff.powspctrm(channel_idx, freq_idx, time_idx), 1)), [], 'all');
 clim = double([-max_spctrm max_spctrm]);
 
 figure('Position', [0 0 1512 982]);
@@ -310,11 +314,12 @@ cfg.layout    = layANThead;
 color_map = cbrewer('seq', 'Reds', 64);
 
 [~, channel_idx] = ismember(nb_ch, ga_n_raw1.label);
-max_spctrm = max([
-    max(abs(ga_n_raw1.powspctrm(channel_idx, :, :)), [], 'all'), ...
-    max(abs(ga_n_raw2.powspctrm(channel_idx, :, :)), [], 'all'), ...
-    max(abs(ga_n_raw3.powspctrm(channel_idx, :, :)), [], 'all')]);
-max_spctrm = 9.5;
+freq_idx = ga_n_raw1.freq >= 8 & ga_n_raw1.freq <= 14;
+time_idx = ga_n_raw1.time >= -0.5 & ga_n_raw1.time <= 2;
+max_spctrm = max([ ...
+    max(mean(ga_n_raw1.powspctrm(channel_idx, freq_idx, time_idx), 1), [], 'all'), ...
+    max(mean(ga_n_raw2.powspctrm(channel_idx, freq_idx, time_idx), 1), [], 'all'), ...
+    max(mean(ga_n_raw3.powspctrm(channel_idx, freq_idx, time_idx), 1), [], 'all')]);
 clim = [0 max_spctrm];
 
 % 1-back
@@ -377,9 +382,10 @@ cfg.ylim      = [0 30];
 cfg.layout    = layANThead;
 color_map = flipud(cbrewer('div', 'RdBu', 64));
 
-[~, channel_idx] = ismember(nb_ch, ga_n_raw1.label);
-max_spctrm = max(abs(diff.powspctrm(channel_idx, :, :)), [], 'all');
-max_spctrm = 2;
+[~, channel_idx] = ismember(nb_ch, diff.label);
+freq_idx = diff.freq >= 8 & diff.freq <= 14;
+time_idx = diff.time >= -0.5 & diff.time <= 2;
+max_spctrm = max(abs(mean(diff.powspctrm(channel_idx, freq_idx, time_idx), 1)), [], 'all');
 clim = double([-max_spctrm, max_spctrm]);
 
 figure('Position', [0 0 1512 982]);
@@ -414,13 +420,19 @@ cfg.baselinetype = 'absolute';
 color_map = flipud(cbrewer('div', 'RdBu', 64));
 
 [~, channel_idx] = ismember(nb_ch, ga_n_f1.label);
-freq_idx = find(ga_n_f1.freq >= 8 & ga_n_f1.freq <= 14);
-time_idx = find(ga_n_f1.time >= 0 & ga_n_f1.time <= 2);
-max_spctrm = max([mean(ga_n_f1.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan'); ...
-                  mean(ga_n_f2.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan'); ...
-                  mean(ga_n_f3.powspctrm(channel_idx, freq_idx, time_idx), 'omitnan')]);
-max_spctrm = max(max(abs(max_spctrm)));
-max_spctrm = 0.25;
+freq_idx = ga_n_f1.freq >= 8 & ga_n_f1.freq <= 14;
+time_idx = ga_n_f1.time >= -0.5 & ga_n_f1.time <= 2;
+bl_idx   = ga_n_f1.time >= -0.5 & ga_n_f1.time <= -0.25;
+avg1 = squeeze(mean(ga_n_f1.powspctrm(channel_idx, :, :), 1));
+avg2 = squeeze(mean(ga_n_f2.powspctrm(channel_idx, :, :), 1));
+avg3 = squeeze(mean(ga_n_f3.powspctrm(channel_idx, :, :), 1));
+avg1_bl = avg1 - mean(avg1(:, bl_idx), 2);
+avg2_bl = avg2 - mean(avg2(:, bl_idx), 2);
+avg3_bl = avg3 - mean(avg3(:, bl_idx), 2);
+max_spctrm = max([ ...
+    max(abs(avg1_bl(freq_idx, time_idx)), [], 'all'), ...
+    max(abs(avg2_bl(freq_idx, time_idx)), [], 'all'), ...
+    max(abs(avg3_bl(freq_idx, time_idx)), [], 'all')]);
 clim = [-max_spctrm, max_spctrm];
 
 % 1-back
@@ -480,11 +492,10 @@ cfg.ylim      = [0 30];
 cfg.layout    = layANThead;
 color_map = flipud(cbrewer('div', 'RdBu', 64));
 
-[~, channel_idx] = ismember(nb_ch, ga_n_f1.label);
-time_idx = find(diff.time >= -0.5 & diff.time <= 2);
-freq_idx = find(ga_n_f1.freq >= 8 & ga_n_f1.freq <= 14);
-max_spctrm = max(abs(diff.powspctrm(channel_idx, freq_idx, time_idx)), [], 'all');
-max_spctrm = .5;
+[~, channel_idx] = ismember(nb_ch, diff.label);
+freq_idx = diff.freq >= 8 & diff.freq <= 14;
+time_idx = diff.time >= -0.5 & diff.time <= 2;
+max_spctrm = max(abs(mean(diff.powspctrm(channel_idx, freq_idx, time_idx), 1)), [], 'all');
 clim = double([-max_spctrm max_spctrm]);
 
 figure('Position', [0 0 1512 982]);

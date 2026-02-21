@@ -53,12 +53,12 @@ color_map = cbrewer('seq', 'Reds', 64); % 'RdBu' for blue to red diverging color
 
 % Find maximum deviation across conditions
 [~, channel_idx] = ismember(channels, gatfr2.label);
-freq_idx = find(gatfr2.freq >= 8 & gatfr2.freq <= 14);
-max_spctrm = max([mean(gatfr2.powspctrm(channel_idx, freq_idx), 'omitnan'); ...
-                  mean(gatfr4.powspctrm(channel_idx, freq_idx), 'omitnan'); ...
-                  mean(gatfr6.powspctrm(channel_idx, freq_idx), 'omitnan')]);
-max_spctrm = max(abs(max_spctrm));
-max_spctrm = 6.75
+freq_idx = gatfr2.freq >= 8 & gatfr2.freq <= 14;
+time_idx = gatfr2.time >= -0.5 & gatfr2.time <= 2;
+max_spctrm = max([ ...
+    max(mean(gatfr2.powspctrm(channel_idx, freq_idx, time_idx), 1), [], 'all'), ...
+    max(mean(gatfr4.powspctrm(channel_idx, freq_idx, time_idx), 1), [], 'all'), ...
+    max(mean(gatfr6.powspctrm(channel_idx, freq_idx, time_idx), 1), [], 'all')]);
 clim = [0 max_spctrm];
 
 % WM load 2
@@ -128,11 +128,10 @@ cfg.layout = layANThead; % your specific layout
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
 
 % Find maximum deviation
-[~, channel_idx] = ismember(channels, gatfr2.label);
-time_idx = find(diff.time >= -0.5 & diff.time <= 2);
-freq_idx = find(gatfr2.freq >= 8 & gatfr2.freq <= 14);
-max_spctrm = max(abs(diff.powspctrm(channel_idx, freq_idx, time_idx)), [], 'all');
-max_spctrm = .5
+[~, channel_idx] = ismember(channels, diff.label);
+freq_idx = diff.freq >= 8 & diff.freq <= 14;
+time_idx = diff.time >= -0.5 & diff.time <= 2;
+max_spctrm = max(abs(mean(diff.powspctrm(channel_idx, freq_idx, time_idx), 1)), [], 'all');
 clim = double([-max_spctrm max_spctrm]);
 
 % Plot: Difference Time-Frequency Response

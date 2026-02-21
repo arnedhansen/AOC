@@ -125,7 +125,7 @@ cfg.channel = channels; % specify the channels to include
 cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
 cfg.xlim = [-.5 2]; % Time axis limits in secon
-cfg.ylim = [4 20];
+cfg.ylim = [4 30];
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
 cfg.layout = layANThead; % your specific layout
 color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map

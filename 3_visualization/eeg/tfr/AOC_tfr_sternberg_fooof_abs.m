@@ -6,13 +6,11 @@
 
 %% Setup
 startup
-[subjects, path, ~, ~] = setup('AOC');
+[subjects, path, ~, headmodel] = setup('AOC');
 if ispc
-    load('W:\Students\Arne\MA\headmodel\layANThead.mat');
     figpath = 'W:\Students\Arne\AOC\figures\eeg\tfr\';
 else
-    load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat');
-    figpath = [figpath '';
+    figpath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/';
 end
 
 %% Compute grand average time and frequency data GATFR

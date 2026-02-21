@@ -7,7 +7,7 @@
 
 %% Setup
 startup
-[subjects, path, ~, ~] = setup('AOC');
+[subjects, path, ~, headmodel] = setup('AOC');
 figpath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/';
 
 %% ========================================================================

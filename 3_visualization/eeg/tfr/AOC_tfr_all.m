@@ -61,12 +61,12 @@ cfg.channel   = stern_ch;
 cfg.colorbar  = 'yes';
 cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
-cfg.ylim      = [0 30];
+cfg.ylim      = [5 30];
 cfg.layout    = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [1 0.96 0.94; 0.99 0.73 0.63; 0.98 0.42 0.29; 0.80 0.09 0.11; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(stern_ch, ga_s_raw2.label);
-freq_idx = ga_s_raw2.freq >= 8 & ga_s_raw2.freq <= 14;
+freq_idx = ga_s_raw2.freq >= 5 & ga_s_raw2.freq <= 30;
 time_idx = ga_s_raw2.time >= -0.5 & ga_s_raw2.time <= 2;
 max_spctrm = max([ ...
     max(mean(ga_s_raw2.powspctrm(channel_idx, freq_idx, time_idx), 1), [], 'all'), ...
@@ -130,12 +130,12 @@ cfg.channel   = stern_ch;
 cfg.colorbar  = 'yes';
 cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
-cfg.ylim      = [0 30];
+cfg.ylim      = [5 30];
 cfg.layout    = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(stern_ch, diff.label);
-freq_idx = diff.freq >= 8 & diff.freq <= 14;
+freq_idx = diff.freq >= 5 & diff.freq <= 30;
 time_idx = diff.time >= -0.5 & diff.time <= 2;
 max_spctrm = max(abs(mean(diff.powspctrm(channel_idx, freq_idx, time_idx), 1)), [], 'all');
 clim = double([-max_spctrm max_spctrm]);
@@ -165,14 +165,14 @@ cfg.channel      = stern_ch;
 cfg.colorbar     = 'yes';
 cfg.zlim         = 'maxabs';
 cfg.xlim         = [-.5 2];
-cfg.ylim         = [0 30];
+cfg.ylim         = [5 30];
 cfg.layout       = headmodel.layANThead;
 cfg.baseline     = [-.5 -0.25];
 cfg.baselinetype = 'absolute';
 color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(stern_ch, ga_s_f2.label);
-freq_idx = ga_s_f2.freq >= 8 & ga_s_f2.freq <= 14;
+freq_idx = ga_s_f2.freq >= 5 & ga_s_f2.freq <= 30;
 time_idx = ga_s_f2.time >= -0.5 & ga_s_f2.time <= 2;
 bl_idx   = ga_s_f2.time >= -0.5 & ga_s_f2.time <= -0.25;
 avg2 = squeeze(mean(ga_s_f2.powspctrm(channel_idx, :, :), 1));
@@ -240,12 +240,12 @@ cfg.channel   = stern_ch;
 cfg.colorbar  = 'yes';
 cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
-cfg.ylim      = [0 30];
+cfg.ylim      = [5 30];
 cfg.layout    = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(stern_ch, diff.label);
-freq_idx = diff.freq >= 8 & diff.freq <= 14;
+freq_idx = diff.freq >= 5 & diff.freq <= 30;
 time_idx = diff.time >= -0.5 & diff.time <= 2;
 max_spctrm = max(abs(mean(diff.powspctrm(channel_idx, freq_idx, time_idx), 1)), [], 'all');
 clim = double([-max_spctrm max_spctrm]);
@@ -312,12 +312,12 @@ cfg.channel   = nb_ch;
 cfg.colorbar  = 'yes';
 cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
-cfg.ylim      = [0 30];
+cfg.ylim      = [5 30];
 cfg.layout    = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [1 0.96 0.94; 0.99 0.73 0.63; 0.98 0.42 0.29; 0.80 0.09 0.11; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(nb_ch, ga_n_raw1.label);
-freq_idx = ga_n_raw1.freq >= 8 & ga_n_raw1.freq <= 14;
+freq_idx = ga_n_raw1.freq >= 5 & ga_n_raw1.freq <= 30;
 time_idx = ga_n_raw1.time >= -0.5 & ga_n_raw1.time <= 2;
 max_spctrm = max([ ...
     max(mean(ga_n_raw1.powspctrm(channel_idx, freq_idx, time_idx), 1), [], 'all'), ...
@@ -381,12 +381,12 @@ cfg.channel   = nb_ch;
 cfg.colorbar  = 'yes';
 cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
-cfg.ylim      = [0 30];
+cfg.ylim      = [5 30];
 cfg.layout    = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(nb_ch, diff.label);
-freq_idx = diff.freq >= 8 & diff.freq <= 14;
+freq_idx = diff.freq >= 5 & diff.freq <= 30;
 time_idx = diff.time >= -0.5 & diff.time <= 2;
 max_spctrm = max(abs(mean(diff.powspctrm(channel_idx, freq_idx, time_idx), 1)), [], 'all');
 clim = double([-max_spctrm, max_spctrm]);
@@ -416,14 +416,14 @@ cfg.channel      = nb_ch;
 cfg.colorbar     = 'yes';
 cfg.zlim         = 'maxabs';
 cfg.xlim         = [-.5 2];
-cfg.ylim         = [0 30];
+cfg.ylim         = [5 30];
 cfg.layout       = headmodel.layANThead;
 cfg.baseline     = [-.5 -0.25];
 cfg.baselinetype = 'absolute';
 color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(nb_ch, ga_n_f1.label);
-freq_idx = ga_n_f1.freq >= 8 & ga_n_f1.freq <= 14;
+freq_idx = ga_n_f1.freq >= 5 & ga_n_f1.freq <= 30;
 time_idx = ga_n_f1.time >= -0.5 & ga_n_f1.time <= 2;
 bl_idx   = ga_n_f1.time >= -0.5 & ga_n_f1.time <= -0.25;
 avg1 = squeeze(mean(ga_n_f1.powspctrm(channel_idx, :, :), 1));
@@ -491,12 +491,12 @@ cfg.channel   = nb_ch;
 cfg.colorbar  = 'yes';
 cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
-cfg.ylim      = [0 30];
+cfg.ylim      = [5 30];
 cfg.layout    = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(nb_ch, diff.label);
-freq_idx = diff.freq >= 8 & diff.freq <= 14;
+freq_idx = diff.freq >= 5 & diff.freq <= 30;
 time_idx = diff.time >= -0.5 & diff.time <= 2;
 max_spctrm = max(abs(mean(diff.powspctrm(channel_idx, freq_idx, time_idx), 1)), [], 'all');
 clim = double([-max_spctrm max_spctrm]);

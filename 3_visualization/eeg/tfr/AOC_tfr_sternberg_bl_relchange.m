@@ -52,7 +52,7 @@ cfg.channel = channels; % specify the channels to include
 cfg.colorbar = 'yes'; % include color bar
 cfg.zlim = 'maxabs'; % color limits
 cfg.xlim = [-.5 2];
-cfg.ylim = [7 20];
+cfg.ylim = [5 30];
 cfg.layout = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64)); % Red diverging color map
 
@@ -62,7 +62,7 @@ cfg.baselinetype  = 'relchange';   % options: 'absolute', 'relative', 'relchange
 
 % Find maximum deviation across conditions
 [~, channel_idx] = ismember(channels, gatfr2.label);
-freq_idx = gatfr2.freq >= 8 & gatfr2.freq <= 14;
+freq_idx = gatfr2.freq >= 5 & gatfr2.freq <= 30;
 time_idx = gatfr2.time >= -0.5 & gatfr2.time <= 2;
 bl_idx   = gatfr2.time >= -0.5 & gatfr2.time <= -0.25;
 avg2 = squeeze(mean(gatfr2.powspctrm(channel_idx, :, :), 1));
@@ -144,7 +144,7 @@ saveas(gcf, [figpath 'AOC_tfr_sternberg_6_fooof_bl_relchange.png']);
 % cfg.colorbar = 'yes'; % include color bar
 % cfg.zlim = 'maxabs'; % color limits
 % cfg.xlim = [-.5 2]; % Time axis limits in secon
-% cfg.ylim = [7 20];
+% cfg.ylim = [5 30];
 % load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
 % cfg.layout = headmodel.layANThead; % your specific layout
 % color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64)); % 'RdBu' for blue to red diverging color map

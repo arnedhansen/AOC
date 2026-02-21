@@ -47,7 +47,7 @@ cfg.xlim = [-.5 2];
 cfg.ylim = [4 30];
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
 cfg.layout = layANThead;
-color_map = flipud(cbrewer('div', 'RdBu', 64)); % Red diverging color map
+color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64)); % Red diverging color map
 
 % Baseline
 cfg.baseline      = [-.5 -0.25];   % example baseline window
@@ -134,7 +134,7 @@ cfg.xlim = [-.5 2]; % Time axis limits in secon
 cfg.ylim = [4 30];
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
 cfg.layout = layANThead; % your specific layout
-color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
+color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64)); % 'RdBu' for blue to red diverging color map
 
 % Find maximum deviation
 [~, channel_idx] = ismember(channels, diff.label);

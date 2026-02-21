@@ -49,7 +49,7 @@ cfg.xlim = [-.5 2]; % Time axis limits in seconds
 cfg.ylim = [5 30];
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat');
 cfg.layout = layANThead; % your specific layout
-color_map = cbrewer('seq', 'Reds', 64); % 'RdBu' for blue to red diverging color map
+color_map = interp1(linspace(0,1,5), [1 0.96 0.94; 0.99 0.73 0.63; 0.98 0.42 0.29; 0.80 0.09 0.11; 0.40 0 0.05], linspace(0,1,64)); % 'RdBu' for blue to red diverging color map
 
 % Find maximum deviation across conditions
 [~, channel_idx] = ismember(channels, gatfr1.label);
@@ -126,7 +126,7 @@ cfg.xlim = [-.5 2]; % Time axis limits in secon
 cfg.ylim = [7 20];
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat'); % Load layout
 cfg.layout = layANThead; % your specific layout
-color_map = flipud(cbrewer('div', 'RdBu', 64)); % 'RdBu' for blue to red diverging color map
+color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64)); % 'RdBu' for blue to red diverging color map
 
 % Find maximum deviation
 [~, channel_idx] = ismember(channels, diff.label);

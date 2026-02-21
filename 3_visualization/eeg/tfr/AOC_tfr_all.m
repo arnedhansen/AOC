@@ -60,7 +60,7 @@ cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
 cfg.ylim      = [0 30];
 cfg.layout    = layANThead;
-color_map = cbrewer('seq', 'Reds', 64);
+color_map = interp1(linspace(0,1,5), [1 0.96 0.94; 0.99 0.73 0.63; 0.98 0.42 0.29; 0.80 0.09 0.11; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(stern_ch, ga_s_raw2.label);
 freq_idx = ga_s_raw2.freq >= 8 & ga_s_raw2.freq <= 14;
@@ -129,7 +129,7 @@ cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
 cfg.ylim      = [0 30];
 cfg.layout    = layANThead;
-color_map = flipud(cbrewer('div', 'RdBu', 64));
+color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(stern_ch, diff.label);
 freq_idx = diff.freq >= 8 & diff.freq <= 14;
@@ -166,7 +166,7 @@ cfg.ylim         = [0 30];
 cfg.layout       = layANThead;
 cfg.baseline     = [-.5 -0.25];
 cfg.baselinetype = 'absolute';
-color_map = flipud(cbrewer('div', 'RdBu', 64));
+color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(stern_ch, ga_s_f2.label);
 freq_idx = ga_s_f2.freq >= 8 & ga_s_f2.freq <= 14;
@@ -239,7 +239,7 @@ cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
 cfg.ylim      = [0 30];
 cfg.layout    = layANThead;
-color_map = flipud(cbrewer('div', 'RdBu', 64));
+color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(stern_ch, diff.label);
 freq_idx = diff.freq >= 8 & diff.freq <= 14;
@@ -311,7 +311,7 @@ cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
 cfg.ylim      = [0 30];
 cfg.layout    = layANThead;
-color_map = cbrewer('seq', 'Reds', 64);
+color_map = interp1(linspace(0,1,5), [1 0.96 0.94; 0.99 0.73 0.63; 0.98 0.42 0.29; 0.80 0.09 0.11; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(nb_ch, ga_n_raw1.label);
 freq_idx = ga_n_raw1.freq >= 8 & ga_n_raw1.freq <= 14;
@@ -380,7 +380,7 @@ cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
 cfg.ylim      = [0 30];
 cfg.layout    = layANThead;
-color_map = flipud(cbrewer('div', 'RdBu', 64));
+color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(nb_ch, diff.label);
 freq_idx = diff.freq >= 8 & diff.freq <= 14;
@@ -417,7 +417,7 @@ cfg.ylim         = [0 30];
 cfg.layout       = layANThead;
 cfg.baseline     = [-.5 -0.25];
 cfg.baselinetype = 'absolute';
-color_map = flipud(cbrewer('div', 'RdBu', 64));
+color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(nb_ch, ga_n_f1.label);
 freq_idx = ga_n_f1.freq >= 8 & ga_n_f1.freq <= 14;
@@ -490,7 +490,7 @@ cfg.zlim      = 'maxabs';
 cfg.xlim      = [-.5 2];
 cfg.ylim      = [0 30];
 cfg.layout    = layANThead;
-color_map = flipud(cbrewer('div', 'RdBu', 64));
+color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 [~, channel_idx] = ismember(nb_ch, diff.label);
 freq_idx = diff.freq >= 8 & diff.freq <= 14;

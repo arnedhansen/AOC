@@ -8,7 +8,11 @@
 %% Setup
 startup
 [subjects, path, ~, headmodel] = setup('AOC');
-figpath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/';
+if ispc
+    figpath = 'W:\Students\Arne\AOC\figures\eeg\tfr\';
+else
+    figpath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/';
+end
 
 %% ========================================================================
 %  STERNBERG — Load data

@@ -76,6 +76,7 @@ for t = 1:length(tasks)
         T(extreme_mask, :) = [];
 
         n_below = sum(T.r_squared < r2_thresh & isfinite(T.r_squared));
+        n_below_filter = sum(T.r_squared < 0.60 & isfinite(T.r_squared));
         n_valid = sum(isfinite(T.r_squared));
         fprintf('  After exclusion: %d fits remaining.\n', height(T));
         fprintf('  R² < %.2f: %d / %d (%.1f%%)\n', r2_thresh, n_below, n_valid, ...
@@ -184,8 +185,8 @@ for t = 1:length(tasks)
         xline(r2_thresh, '--r', 'LineWidth', 1.5);
         xlabel('FOOOF R^2', 'FontSize', 14, 'FontWeight', 'bold');
         ylabel('Count', 'FontSize', 14, 'FontWeight', 'bold');
-        title(sprintf('FOOOF R^2 Distribution — %s (%s-level)  [%d / %d below %.2f (%.1f%%)]', ...
-            task_title, level, n_below, n_valid, r2_thresh, 100*n_below/max(n_valid,1)), ...
+        title(sprintf('FOOOF R^2 Distribution — %s (%s-level)  [%d / %d below 0.60 (%.1f%%)]', ...
+            task_title, level, n_below_filter, n_valid, 100*n_below_filter/max(n_valid,1)), ...
             'FontSize', 14, 'FontWeight', 'bold');
         set(gca, 'FontSize', 12);
         fname = fullfile(fig_dir, sprintf('AOC_fooof_r2_distribution_%s%s.png', task, suffix));

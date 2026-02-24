@@ -2,11 +2,11 @@
 # Fits LMMs for all multiverse universes and saves result CSVs.
 # Uses multiverse R package (Sarma et al., 2021).
 #
-# Models:
-#   M (main, 7D):      alpha ~ gaze_value * Condition + (1|subjectID)
+# Models (primary, trial-level):
+#   M (main, 7D):      alpha ~ gaze_value * Condition + (1 + Condition || subjectID) [fallback: (1|subjectID)]
 #                       alpha ~ gaze_value + (1|subjectID) [per condition]
-#   M_eeg (EEG, 5D):   alpha ~ Condition + (1|subjectID)
-#   M_gaze (gaze, 3D): gaze_value ~ Condition + (1|subjectID)
+#   M_eeg (EEG, 5D):   alpha ~ Condition + (1 + Condition || subjectID) [fallback: (1|subjectID)]
+#   M_gaze (gaze, 3D): gaze_value ~ Condition + (1 + Condition || subjectID) [fallback: (1|subjectID)]
 #
 # Output CSVs (saved to csv_dir):
 #   multiverse_nback_results.csv              — full interaction model terms
@@ -68,6 +68,23 @@ safe_extract <- function(results, var_name) {
   r
 }
 
+fit_with_condition_slope <- function(formula_slope, formula_intercept, data) {
+  fit_slope <- tryCatch(
+    lmer(formula_slope, data = data, control = lmerControl(optimizer = "bobyqa")),
+    error = function(e) NULL
+  )
+  if (!is.null(fit_slope) && !isSingular(fit_slope, tol = 1e-4)) {
+    return(list(fit = fit_slope, re_spec = "subject_intercept_condition_slope"))
+  }
+
+  fit_intercept <- tryCatch(
+    lmer(formula_intercept, data = data, control = lmerControl(optimizer = "bobyqa")),
+    error = function(e) NULL
+  )
+  if (is.null(fit_intercept)) return(NULL)
+  list(fit = fit_intercept, re_spec = "subject_intercept_only")
+}
+
 branch_cols <- c("electrodes", "fooof", "latency_ms", "alpha_type",
                  "gaze_measure", "baseline_eeg", "baseline_gaze")
 
@@ -101,11 +118,15 @@ inside(M, {
   valid <- nrow(df) >= 10 && !any(is.nan(df$gaze_value)) && !any(is.nan(df$alpha))
 
   tid_int <- if (valid) {
-    fit <- tryCatch(
-      lmer(alpha ~ gaze_value * Condition + (1 | subjectID), data = df,
-           control = lmerControl(optimizer = "bobyqa")),
-      error = function(e) NULL)
-    if (!is.null(fit)) broom.mixed::tidy(fit, conf.int = TRUE) else tibble()
+    fit_obj <- fit_with_condition_slope(
+      alpha ~ gaze_value * Condition + (1 + Condition || subjectID),
+      alpha ~ gaze_value * Condition + (1 | subjectID),
+      df
+    )
+    if (!is.null(fit_obj)) {
+      broom.mixed::tidy(fit_obj$fit, conf.int = TRUE) %>%
+        mutate(random_effects = fit_obj$re_spec)
+    } else tibble()
   } else tibble()
 
   tid_cond <- if (valid) {
@@ -199,12 +220,15 @@ inside(M_eeg, {
   valid <- nrow(de) >= 10 && !any(is.nan(de$alpha))
 
   tid_ca <- if (valid) {
-    fit <- tryCatch(
-      lmer(alpha ~ Condition + (1 | subjectID), data = de,
-           control = lmerControl(optimizer = "bobyqa")),
-      error = function(e) NULL)
-    if (!is.null(fit)) {
-      broom.mixed::tidy(fit, conf.int = TRUE) %>% filter(term == highest_alpha_term)
+    fit_obj <- fit_with_condition_slope(
+      alpha ~ Condition + (1 + Condition || subjectID),
+      alpha ~ Condition + (1 | subjectID),
+      de
+    )
+    if (!is.null(fit_obj)) {
+      broom.mixed::tidy(fit_obj$fit, conf.int = TRUE) %>%
+        filter(term == highest_alpha_term) %>%
+        mutate(random_effects = fit_obj$re_spec)
     } else tibble()
   } else tibble()
 })
@@ -253,12 +277,15 @@ inside(M_gaze, {
   valid <- nrow(dg) >= 10 && !any(is.nan(dg$gaze_value))
 
   tid_cg <- if (valid) {
-    fit <- tryCatch(
-      lmer(gaze_value ~ Condition + (1 | subjectID), data = dg,
-           control = lmerControl(optimizer = "bobyqa")),
-      error = function(e) NULL)
-    if (!is.null(fit)) {
-      broom.mixed::tidy(fit, conf.int = TRUE) %>% filter(term == highest_gaze_term)
+    fit_obj <- fit_with_condition_slope(
+      gaze_value ~ Condition + (1 + Condition || subjectID),
+      gaze_value ~ Condition + (1 | subjectID),
+      dg
+    )
+    if (!is.null(fit_obj)) {
+      broom.mixed::tidy(fit_obj$fit, conf.int = TRUE) %>%
+        filter(term == highest_gaze_term) %>%
+        mutate(random_effects = fit_obj$re_spec)
     } else tibble()
   } else tibble()
 })
@@ -382,26 +409,34 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
     valid <- nrow(dap) >= 10 && !any(is.nan(dap$aperiodic_exponent)) && !any(is.nan(dap$aperiodic_offset))
 
     tid_exp_cond <- if (valid) {
-      fit <- tryCatch(
-        lmer(aperiodic_exponent ~ Condition + (1 | subjectID), data = dap,
-             control = lmerControl(optimizer = "bobyqa")),
-        error = function(e) NULL)
-      if (!is.null(fit)) {
-        broom.mixed::tidy(fit, conf.int = TRUE) %>%
+      fit_obj <- fit_with_condition_slope(
+        aperiodic_exponent ~ Condition + (1 + Condition || subjectID),
+        aperiodic_exponent ~ Condition + (1 | subjectID),
+        dap
+      )
+      if (!is.null(fit_obj)) {
+        broom.mixed::tidy(fit_obj$fit, conf.int = TRUE) %>%
           filter(term == highest_alpha_term) %>%
-          mutate(aperiodic_measure = "Exponent")
+          mutate(
+            aperiodic_measure = "Exponent",
+            random_effects = fit_obj$re_spec
+          )
       } else tibble()
     } else tibble()
 
     tid_off_cond <- if (valid) {
-      fit <- tryCatch(
-        lmer(aperiodic_offset ~ Condition + (1 | subjectID), data = dap,
-             control = lmerControl(optimizer = "bobyqa")),
-        error = function(e) NULL)
-      if (!is.null(fit)) {
-        broom.mixed::tidy(fit, conf.int = TRUE) %>%
+      fit_obj <- fit_with_condition_slope(
+        aperiodic_offset ~ Condition + (1 + Condition || subjectID),
+        aperiodic_offset ~ Condition + (1 | subjectID),
+        dap
+      )
+      if (!is.null(fit_obj)) {
+        broom.mixed::tidy(fit_obj$fit, conf.int = TRUE) %>%
           filter(term == highest_alpha_term) %>%
-          mutate(aperiodic_measure = "Offset")
+          mutate(
+            aperiodic_measure = "Offset",
+            random_effects = fit_obj$re_spec
+          )
       } else tibble()
     } else tibble()
   })

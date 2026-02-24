@@ -35,7 +35,17 @@ r2_dir       <- Sys.getenv("AOC_R2_DIR",
 storage_plot <- "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/controls/multiverse/FOOOF"
 if (!dir.exists(storage_plot)) dir.create(storage_plot, recursive = TRUE)
 
-R2_THRESHOLD <- 0.6
+parse_threshold_grid <- function(x) {
+  vals <- suppressWarnings(as.numeric(trimws(unlist(strsplit(x, ",")))))
+  vals <- vals[is.finite(vals) & vals >= 0 & vals <= 1]
+  vals <- sort(unique(vals))
+  if (length(vals) == 0) vals <- c(0.5, 0.6, 0.7, 0.8, 0.9)
+  vals
+}
+
+R2_THRESHOLD <- suppressWarnings(as.numeric(Sys.getenv("AOC_R2_THRESHOLD", unset = "0.6")))
+if (!is.finite(R2_THRESHOLD)) R2_THRESHOLD <- 0.6
+R2_THRESHOLD_GRID <- parse_threshold_grid(Sys.getenv("AOC_R2_THRESHOLD_GRID", unset = "0.5,0.6,0.7,0.8,0.9"))
 
 # ========== THEME & AESTHETICS ==========
 v_common_theme <- theme(
@@ -223,17 +233,41 @@ for (task in c("sternberg", "nback")) {
   r2_slim$subjectID_num <- as.numeric(r2_slim$subjectID)
   r2_slim$Condition <- as.factor(r2_slim$Condition)
 
-  n_before <- nrow(dat)
-
-  dat <- dat %>%
+  dat_qc <- dat %>%
     left_join(r2_slim %>% select(subjectID_num, Condition, Trial, latency_ms, electrodes, r_squared),
               by = c("subjectID_num", "Condition", "Trial", "latency_ms", "electrodes"))
 
-  n_fooof_total    <- sum(dat$fooof == "FOOOFed", na.rm = TRUE)
-  n_fooof_low_r2   <- sum(dat$fooof == "FOOOFed" & !is.na(dat$r_squared) & dat$r_squared < R2_THRESHOLD, na.rm = TRUE)
-  n_fooof_no_r2    <- sum(dat$fooof == "FOOOFed" & is.na(dat$r_squared), na.rm = TRUE)
+  # Threshold sensitivity summary (retention profile across R² cutoffs).
+  threshold_summary <- bind_rows(lapply(R2_THRESHOLD_GRID, function(thr) {
+    removed_mask <- dat_qc$fooof == "FOOOFed" & !is.na(dat_qc$r_squared) & dat_qc$r_squared < thr
+    kept <- dat_qc[!removed_mask, ]
+    trial_key <- paste(kept$subjectID, kept$Condition, kept$Trial, sep = "_")
+    tibble(
+      task = task,
+      r2_threshold = thr,
+      rows_total = nrow(dat_qc),
+      rows_retained = nrow(kept),
+      rows_removed = nrow(dat_qc) - nrow(kept),
+      rows_removed_pct = 100 * (nrow(dat_qc) - nrow(kept)) / max(nrow(dat_qc), 1),
+      fooof_rows_total = sum(dat_qc$fooof == "FOOOFed", na.rm = TRUE),
+      fooof_rows_removed = sum(removed_mask, na.rm = TRUE),
+      fooof_rows_removed_pct = 100 * sum(removed_mask, na.rm = TRUE) / max(sum(dat_qc$fooof == "FOOOFed", na.rm = TRUE), 1),
+      subjects_retained = n_distinct(kept$subjectID),
+      trials_retained = n_distinct(trial_key),
+      universes_retained = n_distinct(kept$universe_id)
+    )
+  }))
 
-  dat <- dat %>%
+  summary_path <- file.path(csv_dir, paste0("multiverse_", task, "_fooof_r2_threshold_sensitivity.csv"))
+  write.csv(threshold_summary, summary_path, row.names = FALSE)
+  message("Saved threshold sensitivity summary: ", summary_path)
+
+  n_before <- nrow(dat_qc)
+  n_fooof_total <- sum(dat_qc$fooof == "FOOOFed", na.rm = TRUE)
+  n_fooof_low_r2 <- sum(dat_qc$fooof == "FOOOFed" & !is.na(dat_qc$r_squared) & dat_qc$r_squared < R2_THRESHOLD, na.rm = TRUE)
+  n_fooof_no_r2 <- sum(dat_qc$fooof == "FOOOFed" & is.na(dat_qc$r_squared), na.rm = TRUE)
+
+  dat <- dat_qc %>%
     filter(!(fooof == "FOOOFed" & !is.na(r_squared) & r_squared < R2_THRESHOLD))
 
   n_after <- nrow(dat)

@@ -1,6 +1,6 @@
-# AOC Multiverse — N-Back: Subject-Level Analysis
+# AOC Multiverse — N-Back: Subject-Level Analysis (robustness)
 # Loads pre-aggregated subject-level CSV (from AOC_multiverse_prep_subject.m),
-# fits LMMs per universe. Directly comparable to existing raincloud analyses.
+# fits models per universe as an aggregation sensitivity analysis.
 # Uses multiverse R package (Sarma et al., 2021).
 #
 # Models:
@@ -15,6 +15,11 @@
 #   multiverse_nback_subject_condition_results.csv
 #   multiverse_nback_subject_interaction_results.csv
 #   multiverse_nback_subject_condition_gaze_results.csv
+#
+# Note:
+#   This script is intended as a robustness analysis complementing the
+#   primary trial-level models. Trial-level variance is already aggregated,
+#   so adding "trial" random effects here is not appropriate.
 
 library(lme4)
 library(lmerTest)
@@ -78,6 +83,7 @@ branch_cols <- c("electrodes", "fooof", "latency_ms", "alpha_type",
 cond_levels  <- sort(unique(dat$Condition))
 cond_labels  <- setNames(paste0(cond_levels, "-back"), as.character(cond_levels))
 highest_cond <- max(as.numeric(as.character(cond_levels)))
+analysis_role <- "subject_level_robustness"
 
 # ========== MAIN MULTIVERSE (7 dimensions) ==========
 message("Setting up main multiverse (7 dimensions)...")
@@ -138,13 +144,15 @@ M_int <- M_expanded %>%
   filter(!map_lgl(tid, is.null)) %>%
   select(.universe, all_of(branch_cols), tid) %>%
   unnest(tid) %>%
-  filter(grepl("gaze_value", term))
+  filter(grepl("gaze_value", term)) %>%
+  mutate(analysis_role = analysis_role)
 
 M_cond <- M_expanded %>%
   mutate(tid = map(.results, safe_extract, "tid_cond")) %>%
   filter(!map_lgl(tid, is.null)) %>%
   select(.universe, all_of(branch_cols), tid) %>%
-  unnest(tid)
+  unnest(tid) %>%
+  mutate(analysis_role = analysis_role)
 
 if (nrow(M_cond) == 0L) stop("No successful LMM fits.")
 
@@ -221,7 +229,8 @@ M_ca <- M_eeg_expanded %>%
   mutate(tid = map(.results, safe_extract, "tid_ca")) %>%
   filter(!map_lgl(tid, is.null)) %>%
   select(.universe, all_of(eeg_branch_cols), tid) %>%
-  unnest(tid)
+  unnest(tid) %>%
+  mutate(analysis_role = analysis_role)
 
 if (nrow(M_ca) > 0L) {
   M_ca <- add_sig(M_ca)
@@ -275,7 +284,8 @@ M_cg <- M_gaze_expanded %>%
   mutate(tid = map(.results, safe_extract, "tid_cg")) %>%
   filter(!map_lgl(tid, is.null)) %>%
   select(.universe, all_of(gaze_branch_cols), tid) %>%
-  unnest(tid)
+  unnest(tid) %>%
+  mutate(analysis_role = analysis_role)
 
 if (nrow(M_cg) > 0L) {
   M_cg <- add_sig(M_cg)
@@ -357,7 +367,8 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
       filter(!map_lgl(tid, is.null)) %>%
       select(.universe, all_of(ap_gaze_branch_cols), tid) %>%
       unnest(tid)
-  )
+  ) %>%
+    mutate(analysis_role = analysis_role)
 
   if (nrow(M_ap_gaze_results) > 0) {
     M_ap_gaze_results <- add_sig(M_ap_gaze_results)
@@ -425,7 +436,8 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
       filter(!map_lgl(tid, is.null)) %>%
       select(.universe, all_of(ap_cond_branch_cols), tid) %>%
       unnest(tid)
-  )
+  ) %>%
+    mutate(analysis_role = analysis_role)
 
   if (nrow(M_ap_cond_results) > 0) {
     M_ap_cond_results <- add_sig(M_ap_cond_results)

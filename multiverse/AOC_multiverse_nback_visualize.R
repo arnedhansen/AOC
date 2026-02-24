@@ -2,12 +2,11 @@
 # Loads result CSVs from the analysis script and generates specification curve figures.
 #
 # Figures:
-#   1 (_estimate):        alpha ~ gaze [sorted by estimate]
-#   2 (_grouped):         alpha ~ gaze [grouped by processing dimension]
-#   3 (_condition_alpha): alpha ~ condition [EEG-only]
-#   4 (_interaction):     alpha ~ gaze × condition [interaction term]
-#   5 (_condition_gaze):  gaze ~ condition [gaze-only]
-#   6 (_aperiodic):       aperiodic component [combined forest plot]
+#   1 (_grouped):         alpha ~ gaze [grouped by processing dimension]
+#   2 (_condition_alpha): alpha ~ condition [EEG-only]
+#   3 (_interaction):     alpha ~ gaze × condition [interaction term]
+#   4 (_condition_gaze):  gaze ~ condition [gaze-only]
+#   5 (_aperiodic):       aperiodic component [combined forest plot]
 #
 # Requires: AOC_multiverse_nback_analysis.R to have been run first.
 # Figure output: '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/multiverse'
@@ -40,6 +39,18 @@ v_common_theme <- theme(
 sig_colors <- c("Positive" = "#33CC66", "Negative" = "#fe0000",
                 "Non-significant" = "#d1d1d1")
 sig_levels <- c("Positive", "Negative", "Non-significant")
+
+# Suppress known cowplot legend warning about multiple guide-box components.
+safe_get_legend <- function(plot_obj) {
+  withCallingHandlers(
+    get_legend(plot_obj),
+    warning = function(w) {
+      if (grepl("Multiple components found; returning the first one", conditionMessage(w), fixed = TRUE)) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+}
 
 # ========== LABEL MAPPINGS ==========
 group_labels <- c(
@@ -142,50 +153,9 @@ cond_nums <- as.numeric(gsub("[^0-9]", "", cond_labels_in_data))
 highest_label <- cond_labels_in_data[which.max(cond_nums)]
 message(sprintf("Highest condition label: %s", highest_label))
 
-# ========== FIGURES 1 & 2: GAZE -> ALPHA (highest condition) ==========
+# ========== FIGURE 1: GAZE -> ALPHA (highest condition, grouped) ==========
 M_high <- M_cond %>% filter(cond_label == highest_label)
-
-# --- Figure 1: sorted by estimate ---
-ord_high <- M_high %>% arrange(fooof, estimate) %>% pull(.universe)
-ord_df   <- data.frame(.universe = ord_high, ordered_universe = seq_along(ord_high))
-M_high_est <- M_high %>% left_join(ord_df, by = ".universe")
-
-ymax_est <- max(abs(c(M_high_est$conf.low, M_high_est$conf.high)), na.rm = TRUE) * 1.05
-ylim_est <- c(-ymax_est, ymax_est)
-
-p_curve <- ggplot(M_high_est, aes(x = ordered_universe, y = estimate, color = condition)) +
-  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, alpha = 0.7) +
-  geom_point(size = 1.2, alpha = 0.8) +
-  geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
-  scale_color_manual(values = sig_colors, name = "Significance") +
-  guides(alpha = "none") +
-  labs(title = expression(bold(alpha ~ "~" ~ gaze)),
-       subtitle = "alpha ~ gaze_value * Condition + (1|subjectID)",
-       x = "Universe", y = expression(bold("Standardized " * beta))) +
-  theme_minimal() + theme(legend.position = "none") + v_common_theme +
-  coord_cartesian(ylim = ylim_est)
-legend_spec <- get_legend(p_curve + theme(legend.position = "bottom") + guides(alpha = "none"))
-
-df_specs <- M_high_est %>%
-  select(ordered_universe, .universe, electrodes, fooof, latency_ms, alpha_type,
-         gaze_measure, baseline_eeg, baseline_gaze, condition)
-df_long <- make_panel_long(df_specs, "ordered_universe")
-
-p_panel <- ggplot(df_long, aes(x = ordered_universe, y = value, fill = condition)) +
-  geom_tile() +
-  scale_fill_manual(values = sig_colors, name = "Significance") +
-  facet_grid(Variable ~ ., scales = "free_y", space = "free") +
-  theme_minimal() +
-  theme(strip.text.y = element_text(angle = 0, size = 13, face = "bold", hjust = 0),
-        legend.position = "bottom") +
-  labs(x = "Universe", y = "Analysis Decision") + v_common_theme
-
-p_combined <- p_curve / legend_spec / p_panel + plot_layout(heights = c(0.8, 0.1, 1.5))
-ggsave(file.path(storage_plot, "AOC_multiverse_nback_estimate.png"),
-       plot = p_combined, width = 14, height = 12, dpi = 600)
-message("Saved: AOC_multiverse_nback_estimate.png")
-
-# --- Figure 2: grouped by processing hierarchy ---
+# --- Figure 1: grouped by processing hierarchy ---
 df_grouped <- M_high %>%
   mutate(
     .elec_ord = match(electrodes, elec_order),
@@ -210,7 +180,7 @@ p_grp_curve <- ggplot(df_grouped, aes(x = grouped_universe, y = estimate, color 
        x = "Universe", y = expression(bold("Standardized " * beta))) +
   theme_minimal() + theme(legend.position = "none") + v_common_theme +
   coord_cartesian(ylim = ylim_grp)
-legend_grp <- get_legend(p_grp_curve + theme(legend.position = "bottom"))
+legend_grp <- safe_get_legend(p_grp_curve + theme(legend.position = "bottom"))
 
 df_grp_long <- make_panel_long(df_grouped, "grouped_universe")
 
@@ -229,7 +199,7 @@ ggsave(file.path(storage_plot, "AOC_multiverse_nback_grouped.png"),
        plot = p_grp_combined, width = 14, height = 12, dpi = 600)
 message("Saved: AOC_multiverse_nback_grouped.png")
 
-# ========== FIGURE 3: CONDITION -> ALPHA (EEG-only) ==========
+# ========== FIGURE 2: CONDITION -> ALPHA (EEG-only) ==========
 ca_path <- file.path(csv_dir, "multiverse_nback_condition_results.csv")
 if (file.exists(ca_path)) {
   M_ca <- read.csv(ca_path, stringsAsFactors = FALSE)
@@ -256,7 +226,7 @@ if (file.exists(ca_path)) {
          x = "Universe", y = expression(bold("Standardized " * beta))) +
     theme_minimal() + theme(legend.position = "none") + v_common_theme +
     coord_cartesian(ylim = ylim_ca)
-  legend_ca <- get_legend(p_ca_curve + theme(legend.position = "bottom"))
+  legend_ca <- safe_get_legend(p_ca_curve + theme(legend.position = "bottom"))
 
   df_ca_specs <- M_ca %>%
     select(ordered_universe, electrodes, fooof, latency_ms, alpha_type, baseline_eeg, condition)
@@ -277,10 +247,10 @@ if (file.exists(ca_path)) {
          plot = p_ca_combined, width = 14, height = 10, dpi = 600)
   message("Saved: AOC_multiverse_nback_condition_alpha.png")
 } else {
-  message("Skipping Figure 3: condition_results.csv not found.")
+  message("Skipping Figure 2: condition_results.csv not found.")
 }
 
-# ========== FIGURE 4: INTERACTION (gaze x condition -> alpha) ==========
+# ========== FIGURE 3: INTERACTION (gaze x condition -> alpha) ==========
 int_path <- file.path(csv_dir, "multiverse_nback_interaction_results.csv")
 if (file.exists(int_path)) {
   M_interaction <- read.csv(int_path, stringsAsFactors = FALSE)
@@ -304,12 +274,12 @@ if (file.exists(int_path)) {
     geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
     scale_color_manual(values = sig_colors, name = "Significance") +
     guides(alpha = "none") +
-    labs(title = expression(bold(alpha ~ "~" ~ gaze ~ "\u00D7" ~ condition)),
+    labs(title = expression(bold(alpha ~ "~" ~ gaze ~ "*" ~ condition)),
          subtitle = "alpha ~ gaze_value * Condition + (1|subjectID)",
          x = "Universe", y = expression(bold("Standardized " * beta))) +
     theme_minimal() + theme(legend.position = "none") + v_common_theme +
     coord_cartesian(ylim = ylim_int)
-  legend_int <- get_legend(p_int_curve + theme(legend.position = "bottom"))
+  legend_int <- safe_get_legend(p_int_curve + theme(legend.position = "bottom"))
 
   df_int_specs <- M_interaction %>%
     select(ordered_universe, .universe, electrodes, fooof, latency_ms, alpha_type,
@@ -331,10 +301,10 @@ if (file.exists(int_path)) {
          plot = p_int_combined, width = 14, height = 12, dpi = 600)
   message("Saved: AOC_multiverse_nback_interaction.png")
 } else {
-  message("Skipping Figure 4: interaction_results.csv not found.")
+  message("Skipping Figure 3: interaction_results.csv not found.")
 }
 
-# ========== FIGURE 5: CONDITION -> GAZE (gaze-only) ==========
+# ========== FIGURE 4: CONDITION -> GAZE (gaze-only) ==========
 cg_path <- file.path(csv_dir, "multiverse_nback_condition_gaze_results.csv")
 if (file.exists(cg_path)) {
   M_cg <- read.csv(cg_path, stringsAsFactors = FALSE)
@@ -362,7 +332,7 @@ if (file.exists(cg_path)) {
          x = "Universe", y = expression(bold("Standardized " * beta))) +
     theme_minimal() + theme(legend.position = "none") + v_common_theme +
     coord_cartesian(ylim = ylim_cg)
-  legend_cg <- get_legend(p_cg_curve + theme(legend.position = "bottom"))
+  legend_cg <- safe_get_legend(p_cg_curve + theme(legend.position = "bottom"))
 
   df_cg_specs <- M_cg %>%
     select(ordered_universe, latency_ms, gaze_measure, baseline_gaze, condition)
@@ -383,10 +353,10 @@ if (file.exists(cg_path)) {
          plot = p_cg_combined, width = 14, height = 8, dpi = 600)
   message("Saved: AOC_multiverse_nback_condition_gaze.png")
 } else {
-  message("Skipping Figure 5: condition_gaze_results.csv not found.")
+  message("Skipping Figure 4: condition_gaze_results.csv not found.")
 }
 
-# ========== FIGURE 6: APERIODIC ~ GAZE — SPECIFICATION CURVES ==========
+# ========== FIGURE 5: APERIODIC ~ GAZE — SPECIFICATION CURVES ==========
 
 ap_gaze_path <- file.path(csv_dir, "multiverse_nback_aperiodic_gaze_results.csv")
 has_ap_gaze  <- file.exists(ap_gaze_path)
@@ -448,7 +418,7 @@ if (has_ap_gaze) {
            x = "Universe", y = expression(bold("Standardized " * beta))) +
       theme_minimal() + theme(legend.position = "none") + v_common_theme +
       coord_cartesian(ylim = ylim_ap)
-    legend_ap_sc <- get_legend(p_ap_curve + theme(legend.position = "bottom"))
+    legend_ap_sc <- safe_get_legend(p_ap_curve + theme(legend.position = "bottom"))
 
     df_ap_specs <- M_ap %>%
       select(ordered_universe, latency_ms, electrodes, gaze_measure,
@@ -477,7 +447,7 @@ if (has_ap_gaze) {
   }
 
 } else {
-  message("Skipping Figure 6: aperiodic gaze CSV not found.")
+  message("Skipping Figure 5: aperiodic gaze CSV not found.")
 }
 
 message("=== N-back multiverse VISUALIZATION complete ===")

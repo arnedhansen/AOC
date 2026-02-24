@@ -82,15 +82,22 @@ for t = 1:length(tasks)
         fprintf('  R² < %.2f: %d / %d (%.1f%%)\n', r2_thresh, n_below, n_valid, ...
             100 * n_below / max(n_valid, 1));
 
+        target_electrode = 'occipital';
+        T = T(strcmp(T.electrodes, target_electrode), :);
+        if isempty(T)
+            fprintf('  No %s rows remaining after filtering; skipping plots.\n', target_electrode);
+            continue
+        end
+
         lat_labels = unique(T.latency_ms, 'stable');
         elec_labels = unique(T.electrodes, 'stable');
         subj_ids = unique(T.subjectID);
         n_subj = length(subj_ids);
         subj_map = containers.Map(subj_ids, 1:n_subj);
 
-        colors_elec = [0.2 0.4 0.8; 0.8 0.3 0.2];  % posterior = blue, occipital = red
+        colors_elec = [0.8 0.3 0.2];  % occipital = red
 
-        %% --- Figure 1: R² per subject (faceted by latency, colored by electrode) ---
+        %% --- Figure 1: R² per subject (faceted by latency; occipital only) ---
         fig1 = figure('Position', [0 0 1512 982], 'Color', 'w');
         task_title = task; task_title(1) = upper(task_title(1));
         sgtitle(sprintf('FOOOF R^2 per subject — %s (%s-level)', task_title, level), ...

@@ -10,7 +10,6 @@
 #   fooof_r2_{task}.csv            — per-trial FOOOF R² values
 #
 # Output figures (same as main multiverse, in FOOOF control directory):
-#   AOC_multiverse_{task}_estimate.png
 #   AOC_multiverse_{task}_grouped.png
 #   AOC_multiverse_{task}_condition_alpha.png
 #   AOC_multiverse_{task}_interaction.png
@@ -63,6 +62,18 @@ v_common_theme <- theme(
 sig_colors <- c("Positive" = "#33CC66", "Negative" = "#fe0000",
                 "Non-significant" = "#d1d1d1")
 sig_levels <- c("Positive", "Negative", "Non-significant")
+
+# Suppress known cowplot legend warning about multiple guide-box components.
+safe_get_legend <- function(plot_obj) {
+  withCallingHandlers(
+    get_legend(plot_obj),
+    warning = function(w) {
+      if (grepl("Multiple components found; returning the first one", conditionMessage(w), fixed = TRUE)) {
+        invokeRestart("muffleWarning")
+      }
+    }
+  )
+}
 
 # ========== LABEL MAPPINGS ==========
 group_labels <- c(
@@ -639,47 +650,7 @@ for (task in c("sternberg", "nback")) {
 
   M_high <- M_cond_viz %>% filter(cond_label == highest_label)
 
-  # ---------- FIGURE 1: alpha ~ gaze (sorted by estimate) ----------
-  ord_high <- M_high %>% arrange(fooof, estimate) %>% pull(.universe)
-  ord_df   <- data.frame(.universe = ord_high, ordered_universe = seq_along(ord_high))
-  M_high_est <- M_high %>% left_join(ord_df, by = ".universe")
-
-  ymax_est <- max(abs(c(M_high_est$conf.low, M_high_est$conf.high)), na.rm = TRUE) * 1.05
-  ylim_est <- c(-ymax_est, ymax_est)
-
-  p_curve <- ggplot(M_high_est, aes(x = ordered_universe, y = estimate, color = condition)) +
-    geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.3, alpha = 0.7) +
-    geom_point(size = 1.2, alpha = 0.8) +
-    geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
-    scale_color_manual(values = sig_colors, name = "Significance") +
-    guides(alpha = "none") +
-    labs(title = expression(bold(alpha ~ "~" ~ gaze)),
-         subtitle = "alpha ~ gaze_value * Condition + (1|subjectID)",
-         x = "Universe", y = expression(bold("Standardized " * beta))) +
-    theme_minimal() + theme(legend.position = "none") + v_common_theme +
-    coord_cartesian(ylim = ylim_est)
-  legend_spec <- get_legend(p_curve + theme(legend.position = "bottom") + guides(alpha = "none"))
-
-  df_specs <- M_high_est %>%
-    select(ordered_universe, .universe, electrodes, fooof, latency_ms, alpha_type,
-           gaze_measure, baseline_eeg, baseline_gaze, condition)
-  df_long <- make_panel_long(df_specs, "ordered_universe")
-
-  p_panel <- ggplot(df_long, aes(x = ordered_universe, y = value, fill = condition)) +
-    geom_tile() +
-    scale_fill_manual(values = sig_colors, name = "Significance") +
-    facet_grid(Variable ~ ., scales = "free_y", space = "free") +
-    theme_minimal() +
-    theme(strip.text.y = element_text(angle = 0, size = 13, face = "bold", hjust = 0),
-          legend.position = "bottom") +
-    labs(x = "Universe", y = "Analysis Decision") + v_common_theme
-
-  p_combined <- p_curve / legend_spec / p_panel + plot_layout(heights = c(0.8, 0.1, 1.5))
-  ggsave(file.path(storage_plot, paste0("AOC_multiverse_", task, "_estimate.png")),
-         plot = p_combined, width = 14, height = 12, dpi = 600, bg = "white")
-  message(sprintf("Saved: AOC_multiverse_%s_estimate.png", task))
-
-  # ---------- FIGURE 2: alpha ~ gaze (grouped by processing hierarchy) ----------
+  # ---------- FIGURE 1: alpha ~ gaze (grouped by processing hierarchy) ----------
   df_grouped <- M_high %>%
     mutate(
       .elec_ord = match(electrodes, elec_order),
@@ -704,7 +675,7 @@ for (task in c("sternberg", "nback")) {
          x = "Universe", y = expression(bold("Standardized " * beta))) +
     theme_minimal() + theme(legend.position = "none") + v_common_theme +
     coord_cartesian(ylim = ylim_grp)
-  legend_grp <- get_legend(p_grp_curve + theme(legend.position = "bottom"))
+  legend_grp <- safe_get_legend(p_grp_curve + theme(legend.position = "bottom"))
 
   df_grp_long <- make_panel_long(df_grouped, "grouped_universe")
 
@@ -723,7 +694,7 @@ for (task in c("sternberg", "nback")) {
          plot = p_grp_combined, width = 14, height = 12, dpi = 600, bg = "white")
   message(sprintf("Saved: AOC_multiverse_%s_grouped.png", task))
 
-  # ---------- FIGURE 3: alpha ~ condition (EEG-only) ----------
+  # ---------- FIGURE 2: alpha ~ condition (EEG-only) ----------
   if (nrow(M_ca) > 0L) {
     M_ca$condition <- factor(M_ca$condition, levels = sig_levels)
     M_ca_viz <- M_ca %>%
@@ -747,7 +718,7 @@ for (task in c("sternberg", "nback")) {
            x = "Universe", y = expression(bold("Standardized " * beta))) +
       theme_minimal() + theme(legend.position = "none") + v_common_theme +
       coord_cartesian(ylim = ylim_ca)
-    legend_ca <- get_legend(p_ca_curve + theme(legend.position = "bottom"))
+    legend_ca <- safe_get_legend(p_ca_curve + theme(legend.position = "bottom"))
 
     df_ca_specs <- M_ca_viz %>%
       select(ordered_universe, electrodes, fooof, latency_ms, alpha_type, baseline_eeg, condition)
@@ -768,10 +739,10 @@ for (task in c("sternberg", "nback")) {
            plot = p_ca_combined, width = 14, height = 10, dpi = 600, bg = "white")
     message(sprintf("Saved: AOC_multiverse_%s_condition_alpha.png", task))
   } else {
-    message("Skipping Figure 3: no condition -> alpha results.")
+    message("Skipping Figure 2: no condition -> alpha results.")
   }
 
-  # ---------- FIGURE 4: alpha ~ gaze x condition (interaction) ----------
+  # ---------- FIGURE 3: alpha ~ gaze x condition (interaction) ----------
   if (nrow(M_interaction) > 0) {
     M_interaction$condition <- factor(M_interaction$condition, levels = sig_levels)
     M_int_viz <- M_interaction %>% filter(gaze_measure %in% gaze_order)
@@ -793,12 +764,12 @@ for (task in c("sternberg", "nback")) {
       geom_hline(yintercept = 0, linetype = "dashed", linewidth = 0.3) +
       scale_color_manual(values = sig_colors, name = "Significance") +
       guides(alpha = "none") +
-      labs(title = expression(bold(alpha ~ "~" ~ gaze ~ "\u00D7" ~ condition)),
+      labs(title = expression(bold(alpha ~ "~" ~ gaze ~ "*" ~ condition)),
            subtitle = "alpha ~ gaze_value * Condition + (1|subjectID)",
            x = "Universe", y = expression(bold("Standardized " * beta))) +
       theme_minimal() + theme(legend.position = "none") + v_common_theme +
       coord_cartesian(ylim = ylim_int)
-    legend_int <- get_legend(p_int_curve + theme(legend.position = "bottom"))
+    legend_int <- safe_get_legend(p_int_curve + theme(legend.position = "bottom"))
 
     df_int_specs <- M_int_viz %>%
       select(ordered_universe, .universe, electrodes, fooof, latency_ms, alpha_type,
@@ -820,10 +791,10 @@ for (task in c("sternberg", "nback")) {
            plot = p_int_combined, width = 14, height = 12, dpi = 600, bg = "white")
     message(sprintf("Saved: AOC_multiverse_%s_interaction.png", task))
   } else {
-    message("Skipping Figure 4: no interaction results.")
+    message("Skipping Figure 3: no interaction results.")
   }
 
-  # ---------- FIGURE 5: gaze ~ condition (gaze-only) ----------
+  # ---------- FIGURE 4: gaze ~ condition (gaze-only) ----------
   if (nrow(M_cg) > 0L) {
     M_cg$condition <- factor(M_cg$condition, levels = sig_levels)
     M_cg_viz <- M_cg %>% filter(gaze_measure %in% gaze_order)
@@ -849,7 +820,7 @@ for (task in c("sternberg", "nback")) {
            x = "Universe", y = expression(bold("Standardized " * beta))) +
       theme_minimal() + theme(legend.position = "none") + v_common_theme +
       coord_cartesian(ylim = ylim_cg)
-    legend_cg <- get_legend(p_cg_curve + theme(legend.position = "bottom"))
+    legend_cg <- safe_get_legend(p_cg_curve + theme(legend.position = "bottom"))
 
     df_cg_specs <- M_cg_viz %>%
       select(ordered_universe, latency_ms, gaze_measure, baseline_gaze, condition)
@@ -870,10 +841,10 @@ for (task in c("sternberg", "nback")) {
            plot = p_cg_combined, width = 14, height = 8, dpi = 600, bg = "white")
     message(sprintf("Saved: AOC_multiverse_%s_condition_gaze.png", task))
   } else {
-    message("Skipping Figure 5: no gaze condition results.")
+    message("Skipping Figure 4: no gaze condition results.")
   }
 
-  # ---------- FIGURE 6: Aperiodic ~ gaze (specification curves) ----------
+  # ---------- FIGURE 5: Aperiodic ~ gaze (specification curves) ----------
   if (nrow(M_ap_gaze_results) > 0) {
     M_ap_spec <- M_ap_gaze_results
     M_ap_spec$condition <- factor(M_ap_spec$condition, levels = sig_levels)
@@ -913,7 +884,7 @@ for (task in c("sternberg", "nback")) {
              x = "Universe", y = expression(bold("Standardized " * beta))) +
         theme_minimal() + theme(legend.position = "none") + v_common_theme +
         coord_cartesian(ylim = ylim_ap)
-      legend_ap_sc <- get_legend(p_ap_curve + theme(legend.position = "bottom"))
+      legend_ap_sc <- safe_get_legend(p_ap_curve + theme(legend.position = "bottom"))
 
       df_ap_specs <- M_ap %>%
         select(ordered_universe, latency_ms, electrodes, gaze_measure,
@@ -941,7 +912,7 @@ for (task in c("sternberg", "nback")) {
       message(sprintf("Saved: %s", fname))
     }
   } else {
-    message("Skipping Figure 6: no aperiodic gaze results.")
+    message("Skipping Figure 5: no aperiodic gaze results.")
   }
 
   message(sprintf("=== %s VISUALIZATION complete ===\n", toupper(task)))

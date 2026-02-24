@@ -676,7 +676,7 @@ for (task in c("sternberg", "nback")) {
 
   p_combined <- p_curve / legend_spec / p_panel + plot_layout(heights = c(0.8, 0.1, 1.5))
   ggsave(file.path(storage_plot, paste0("AOC_multiverse_", task, "_estimate.png")),
-         plot = p_combined, width = 14, height = 12, dpi = 600)
+         plot = p_combined, width = 14, height = 12, dpi = 600, bg = "white")
   message(sprintf("Saved: AOC_multiverse_%s_estimate.png", task))
 
   # ---------- FIGURE 2: alpha ~ gaze (grouped by processing hierarchy) ----------
@@ -720,7 +720,7 @@ for (task in c("sternberg", "nback")) {
   p_grp_combined <- p_grp_curve / legend_grp / p_grp_panel +
     plot_layout(heights = c(0.8, 0.1, 1.5))
   ggsave(file.path(storage_plot, paste0("AOC_multiverse_", task, "_grouped.png")),
-         plot = p_grp_combined, width = 14, height = 12, dpi = 600)
+         plot = p_grp_combined, width = 14, height = 12, dpi = 600, bg = "white")
   message(sprintf("Saved: AOC_multiverse_%s_grouped.png", task))
 
   # ---------- FIGURE 3: alpha ~ condition (EEG-only) ----------
@@ -765,7 +765,7 @@ for (task in c("sternberg", "nback")) {
     p_ca_combined <- p_ca_curve / legend_ca / p_ca_panel +
       plot_layout(heights = c(0.8, 0.1, 1.2))
     ggsave(file.path(storage_plot, paste0("AOC_multiverse_", task, "_condition_alpha.png")),
-           plot = p_ca_combined, width = 14, height = 10, dpi = 600)
+           plot = p_ca_combined, width = 14, height = 10, dpi = 600, bg = "white")
     message(sprintf("Saved: AOC_multiverse_%s_condition_alpha.png", task))
   } else {
     message("Skipping Figure 3: no condition -> alpha results.")
@@ -817,7 +817,7 @@ for (task in c("sternberg", "nback")) {
     p_int_combined <- p_int_curve / legend_int / p_int_panel +
       plot_layout(heights = c(0.8, 0.1, 1.5))
     ggsave(file.path(storage_plot, paste0("AOC_multiverse_", task, "_interaction.png")),
-           plot = p_int_combined, width = 14, height = 12, dpi = 600)
+           plot = p_int_combined, width = 14, height = 12, dpi = 600, bg = "white")
     message(sprintf("Saved: AOC_multiverse_%s_interaction.png", task))
   } else {
     message("Skipping Figure 4: no interaction results.")
@@ -867,7 +867,7 @@ for (task in c("sternberg", "nback")) {
     p_cg_combined <- p_cg_curve / legend_cg / p_cg_panel +
       plot_layout(heights = c(0.8, 0.1, 0.8))
     ggsave(file.path(storage_plot, paste0("AOC_multiverse_", task, "_condition_gaze.png")),
-           plot = p_cg_combined, width = 14, height = 8, dpi = 600)
+           plot = p_cg_combined, width = 14, height = 8, dpi = 600, bg = "white")
     message(sprintf("Saved: AOC_multiverse_%s_condition_gaze.png", task))
   } else {
     message("Skipping Figure 5: no gaze condition results.")
@@ -937,7 +937,7 @@ for (task in c("sternberg", "nback")) {
       suffix <- tolower(ap_measure)
       fname <- paste0("AOC_multiverse_", task, "_aperiodic_", suffix, "_spec.png")
       ggsave(file.path(storage_plot, fname),
-             plot = p_ap_sc_combined, width = 14, height = 10, dpi = 600)
+             plot = p_ap_sc_combined, width = 14, height = 10, dpi = 600, bg = "white")
       message(sprintf("Saved: %s", fname))
     }
   } else {

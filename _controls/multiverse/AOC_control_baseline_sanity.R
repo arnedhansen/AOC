@@ -22,6 +22,20 @@ dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
 
 tasks <- c("sternberg", "nback")
 
+# For visualization only: clip extreme tails per baseline so
+# density shapes stay readable despite huge pct_change outliers.
+clip_for_plot <- function(df, baseline_col, value_col, lower_q = 0.005, upper_q = 0.995) {
+  df %>%
+    group_by(.data[[baseline_col]]) %>%
+    mutate(
+      .q_low = quantile(.data[[value_col]], probs = lower_q, na.rm = TRUE),
+      .q_high = quantile(.data[[value_col]], probs = upper_q, na.rm = TRUE)
+    ) %>%
+    filter(.data[[value_col]] >= .q_low, .data[[value_col]] <= .q_high) %>%
+    ungroup() %>%
+    select(-.q_low, -.q_high)
+}
+
 for (task in tasks) {
   csv_path <- file.path(csv_dir, paste0("multiverse_", task, ".csv"))
   if (!file.exists(csv_path)) { message("Skip: ", csv_path); next }
@@ -77,33 +91,37 @@ for (task in tasks) {
   alpha_for_plot <- dat %>%
     filter(!is.na(alpha), is.finite(alpha)) %>%
     select(baseline_eeg, alpha)
+  alpha_for_plot_vis <- clip_for_plot(alpha_for_plot, "baseline_eeg", "alpha")
 
-  p1 <- ggplot(alpha_for_plot, aes(x = alpha, fill = baseline_eeg)) +
+  p1 <- ggplot(alpha_for_plot_vis, aes(x = alpha, fill = baseline_eeg)) +
     geom_density(alpha = 0.5) +
-    facet_wrap(~baseline_eeg, scales = "free") +
+    facet_wrap(~baseline_eeg, scales = "free_x") +
     labs(title = paste0("Alpha distribution by EEG baseline — ", task),
+         subtitle = "Display clipped to within-baseline 0.5th-99.5th percentile range",
          x = "Alpha power", y = "Density") +
     theme_minimal(base_size = 13) +
     theme(plot.title = element_text(face = "bold"), legend.position = "none")
 
   ggsave(file.path(fig_dir, paste0("AOC_baseline_alpha_density_", task, ".png")),
-         plot = p1, width = 14, height = 5, dpi = 300)
+        plot = p1, width = 14, height = 5, dpi = 300, bg = "white")
 
   # --- Density plots: gaze distribution by gaze baseline ---
   gaze_for_plot <- dat %>%
     filter(!is.na(gaze_value), is.finite(gaze_value)) %>%
     select(baseline_gaze, gaze_value)
+  gaze_for_plot_vis <- clip_for_plot(gaze_for_plot, "baseline_gaze", "gaze_value")
 
-  p2 <- ggplot(gaze_for_plot, aes(x = gaze_value, fill = baseline_gaze)) +
+  p2 <- ggplot(gaze_for_plot_vis, aes(x = gaze_value, fill = baseline_gaze)) +
     geom_density(alpha = 0.5) +
-    facet_wrap(~baseline_gaze, scales = "free") +
+    facet_wrap(~baseline_gaze, scales = "free_x") +
     labs(title = paste0("Gaze distribution by gaze baseline — ", task),
+         subtitle = "Display clipped to within-baseline 0.5th-99.5th percentile range",
          x = "Gaze value", y = "Density") +
     theme_minimal(base_size = 13) +
     theme(plot.title = element_text(face = "bold"), legend.position = "none")
 
   ggsave(file.path(fig_dir, paste0("AOC_baseline_gaze_density_", task, ".png")),
-         plot = p2, width = 14, height = 5, dpi = 300)
+        plot = p2, width = 14, height = 5, dpi = 300, bg = "white")
 
   # --- Extreme value check for pct_change (the baseline actually used in analysis) ---
   pct_alpha <- dat %>%

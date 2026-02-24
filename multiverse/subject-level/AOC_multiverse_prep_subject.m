@@ -49,7 +49,8 @@ else
     base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC';
     base_features = fullfile(base_data, 'data', 'features');
 end
-out_dir = base_features;
+out_dir = fullfile(base_data, 'data', 'multiverse');
+if ~isfolder(out_dir), mkdir(out_dir); end
 disp(upper(['Paths: base_data = ' base_data ', out_dir (CSV) = ' out_dir]))
 
 if isempty(subjects)

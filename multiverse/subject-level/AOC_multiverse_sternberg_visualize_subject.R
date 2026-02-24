@@ -18,7 +18,7 @@ library(cowplot)
 
 # ========== PATHS ==========
 csv_dir      <- Sys.getenv("AOC_MULTIVERSE_DIR",
-                            unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features")
+                            unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/multiverse")
 storage_plot <- Sys.getenv("AOC_MULTIVERSE_FIGURES",
                             unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/multiverse/subject-level")
 if (!dir.exists(storage_plot)) dir.create(storage_plot, recursive = TRUE)

@@ -14,7 +14,7 @@ library(tidyverse)
 
 # ========== PATHS ==========
 base      <- "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC"
-csv_dir   <- file.path(base, "data", "features")
+csv_dir   <- file.path(base, "data", "multiverse")
 fig_dir   <- file.path(base, "figures", "controls", "multiverse", "baseline_sanity")
 data_dir  <- file.path(base, "data", "controls", "multiverse", "baseline_sanity")
 dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)

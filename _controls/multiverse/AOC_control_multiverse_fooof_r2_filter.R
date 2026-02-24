@@ -29,7 +29,7 @@ library(cowplot)
 
 # ========== PATHS ==========
 csv_dir      <- Sys.getenv("AOC_MULTIVERSE_DIR",
-                            unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features")
+                            unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/multiverse")
 r2_dir       <- Sys.getenv("AOC_R2_DIR",
                             unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/multiverse")
 storage_plot <- "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/controls/multiverse/FOOOF"

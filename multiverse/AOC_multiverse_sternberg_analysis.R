@@ -23,7 +23,7 @@ library(multiverse)
 
 # ========== PATHS ==========
 csv_dir  <- Sys.getenv("AOC_MULTIVERSE_DIR",
-                        unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features")
+                        unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/multiverse")
 csv_path <- file.path(csv_dir, "multiverse_sternberg.csv")
 if (!file.exists(csv_path)) stop("CSV not found: ", csv_path)
 

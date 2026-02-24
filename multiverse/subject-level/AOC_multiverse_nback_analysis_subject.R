@@ -24,7 +24,7 @@ library(multiverse)
 
 # ========== PATHS ==========
 csv_dir  <- Sys.getenv("AOC_MULTIVERSE_DIR",
-                        unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features")
+                        unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/multiverse")
 csv_path <- file.path(csv_dir, "multiverse_nback_subject.csv")
 if (!file.exists(csv_path)) stop("Subject-level CSV not found: ", csv_path,
                                   "\nRun AOC_multiverse_prep_subject.m first.")

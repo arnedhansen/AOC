@@ -27,6 +27,10 @@ library(broom.mixed)
 library(tidyverse)
 library(multiverse)
 
+# ========== LOGGING MODE ==========
+# Set AOC_VERBOSE_LOGGING=true to show full lmer warnings/messages.
+VERBOSE_LOGGING <- tolower(Sys.getenv("AOC_VERBOSE_LOGGING", unset = "false")) %in% c("1", "true", "yes", "y")
+
 # ========== PATHS ==========
 csv_dir  <- Sys.getenv("AOC_MULTIVERSE_DIR",
                         unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/multiverse")
@@ -76,6 +80,23 @@ safe_extract <- function(results, var_name) {
   r
 }
 
+run_lmer <- function(formula_obj, data_obj) {
+  if (VERBOSE_LOGGING) {
+    return(tryCatch(
+      lmer(formula_obj, data = data_obj, control = lmerControl(optimizer = "bobyqa")),
+      error = function(e) NULL
+    ))
+  }
+  tryCatch(
+    suppressWarnings(
+      suppressMessages(
+        lmer(formula_obj, data = data_obj, control = lmerControl(optimizer = "bobyqa"))
+      )
+    ),
+    error = function(e) NULL
+  )
+}
+
 branch_cols <- c("electrodes", "fooof", "latency_ms", "alpha_type",
                  "gaze_measure", "baseline_eeg", "baseline_gaze")
 
@@ -110,10 +131,7 @@ inside(M, {
   valid <- nrow(df) >= 10 && !any(is.nan(df$gaze_value)) && !any(is.nan(df$alpha))
 
   tid_int <- if (valid) {
-    fit <- tryCatch(
-      lmer(alpha ~ gaze_value * Condition + (1 | subjectID), data = df,
-           control = lmerControl(optimizer = "bobyqa")),
-      error = function(e) NULL)
+    fit <- run_lmer(alpha ~ gaze_value * Condition + (1 | subjectID), df)
     if (!is.null(fit)) broom.mixed::tidy(fit, conf.int = TRUE) else tibble()
   } else tibble()
 
@@ -209,10 +227,7 @@ inside(M_eeg, {
   valid <- nrow(de) >= 10 && !any(is.nan(de$alpha))
 
   tid_ca <- if (valid) {
-    fit <- tryCatch(
-      lmer(alpha ~ Condition + (1 | subjectID), data = de,
-           control = lmerControl(optimizer = "bobyqa")),
-      error = function(e) NULL)
+    fit <- run_lmer(alpha ~ Condition + (1 | subjectID), de)
     if (!is.null(fit)) {
       broom.mixed::tidy(fit, conf.int = TRUE) %>% filter(term == highest_alpha_term)
     } else tibble()
@@ -264,10 +279,7 @@ inside(M_gaze, {
   valid <- nrow(dg) >= 10 && !any(is.nan(dg$gaze_value))
 
   tid_cg <- if (valid) {
-    fit <- tryCatch(
-      lmer(gaze_value ~ Condition + (1 | subjectID), data = dg,
-           control = lmerControl(optimizer = "bobyqa")),
-      error = function(e) NULL)
+    fit <- run_lmer(gaze_value ~ Condition + (1 | subjectID), dg)
     if (!is.null(fit)) {
       broom.mixed::tidy(fit, conf.int = TRUE) %>% filter(term == highest_gaze_term)
     } else tibble()
@@ -328,10 +340,7 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
              !any(is.nan(dap$aperiodic_exponent)) && !any(is.nan(dap$aperiodic_offset))
 
     tid_exp_gaze <- if (valid) {
-      fit <- tryCatch(
-        lmer(aperiodic_exponent ~ gaze_value + (1 | subjectID), data = dap,
-             control = lmerControl(optimizer = "bobyqa")),
-        error = function(e) NULL)
+      fit <- run_lmer(aperiodic_exponent ~ gaze_value + (1 | subjectID), dap)
       if (!is.null(fit)) {
         broom.mixed::tidy(fit, conf.int = TRUE) %>% filter(term == "gaze_value") %>%
           mutate(aperiodic_measure = "Exponent")
@@ -339,10 +348,7 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
     } else tibble()
 
     tid_off_gaze <- if (valid) {
-      fit <- tryCatch(
-        lmer(aperiodic_offset ~ gaze_value + (1 | subjectID), data = dap,
-             control = lmerControl(optimizer = "bobyqa")),
-        error = function(e) NULL)
+      fit <- run_lmer(aperiodic_offset ~ gaze_value + (1 | subjectID), dap)
       if (!is.null(fit)) {
         broom.mixed::tidy(fit, conf.int = TRUE) %>% filter(term == "gaze_value") %>%
           mutate(aperiodic_measure = "Offset")
@@ -395,10 +401,7 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
     valid <- nrow(dap) >= 10 && !any(is.nan(dap$aperiodic_exponent)) && !any(is.nan(dap$aperiodic_offset))
 
     tid_exp_cond <- if (valid) {
-      fit <- tryCatch(
-        lmer(aperiodic_exponent ~ Condition + (1 | subjectID), data = dap,
-             control = lmerControl(optimizer = "bobyqa")),
-        error = function(e) NULL)
+      fit <- run_lmer(aperiodic_exponent ~ Condition + (1 | subjectID), dap)
       if (!is.null(fit)) {
         broom.mixed::tidy(fit, conf.int = TRUE) %>%
           filter(term == highest_alpha_term) %>%
@@ -407,10 +410,7 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
     } else tibble()
 
     tid_off_cond <- if (valid) {
-      fit <- tryCatch(
-        lmer(aperiodic_offset ~ Condition + (1 | subjectID), data = dap,
-             control = lmerControl(optimizer = "bobyqa")),
-        error = function(e) NULL)
+      fit <- run_lmer(aperiodic_offset ~ Condition + (1 | subjectID), dap)
       if (!is.null(fit)) {
         broom.mixed::tidy(fit, conf.int = TRUE) %>%
           filter(term == highest_alpha_term) %>%

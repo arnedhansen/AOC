@@ -21,6 +21,10 @@ library(broom.mixed)
 library(tidyverse)
 library(multiverse)
 
+# ========== LOGGING MODE ==========
+# Set AOC_VERBOSE_LOGGING=true to show full lmer warnings/messages.
+VERBOSE_LOGGING <- tolower(Sys.getenv("AOC_VERBOSE_LOGGING", unset = "false")) %in% c("1", "true", "yes", "y")
+
 # ========== PATHS ==========
 csv_dir  <- Sys.getenv("AOC_MULTIVERSE_DIR",
                         unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/multiverse")
@@ -68,19 +72,30 @@ safe_extract <- function(results, var_name) {
   r
 }
 
-fit_with_condition_slope <- function(formula_slope, formula_intercept, data) {
-  fit_slope <- tryCatch(
-    lmer(formula_slope, data = data, control = lmerControl(optimizer = "bobyqa")),
+run_lmer <- function(formula_obj, data_obj) {
+  if (VERBOSE_LOGGING) {
+    return(tryCatch(
+      lmer(formula_obj, data = data_obj, control = lmerControl(optimizer = "bobyqa")),
+      error = function(e) NULL
+    ))
+  }
+  tryCatch(
+    suppressWarnings(
+      suppressMessages(
+        lmer(formula_obj, data = data_obj, control = lmerControl(optimizer = "bobyqa"))
+      )
+    ),
     error = function(e) NULL
   )
+}
+
+fit_with_condition_slope <- function(formula_slope, formula_intercept, data) {
+  fit_slope <- run_lmer(formula_slope, data)
   if (!is.null(fit_slope) && !isSingular(fit_slope, tol = 1e-4)) {
     return(list(fit = fit_slope, re_spec = "subject_intercept_condition_slope"))
   }
 
-  fit_intercept <- tryCatch(
-    lmer(formula_intercept, data = data, control = lmerControl(optimizer = "bobyqa")),
-    error = function(e) NULL
-  )
+  fit_intercept <- run_lmer(formula_intercept, data)
   if (is.null(fit_intercept)) return(NULL)
   list(fit = fit_intercept, re_spec = "subject_intercept_only")
 }
@@ -133,10 +148,7 @@ inside(M, {
     bind_rows(lapply(as.character(cond_levels), function(cl) {
       dc <- df[df$Condition == cl, ]
       if (nrow(dc) < 5) return(tibble())
-      fit_c <- tryCatch(
-        lmer(alpha ~ gaze_value + (1 | subjectID), data = dc,
-             control = lmerControl(optimizer = "bobyqa")),
-        error = function(e) NULL)
+      fit_c <- run_lmer(alpha ~ gaze_value + (1 | subjectID), dc)
       if (is.null(fit_c)) return(tibble())
       tid_c <- broom.mixed::tidy(fit_c, conf.int = TRUE) %>% filter(term == "gaze_value")
       tid_c$cond_label <- cond_labels[cl]
@@ -343,10 +355,7 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
              !any(is.nan(dap$aperiodic_exponent)) && !any(is.nan(dap$aperiodic_offset))
 
     tid_exp_gaze <- if (valid) {
-      fit <- tryCatch(
-        lmer(aperiodic_exponent ~ gaze_value + (1 | subjectID), data = dap,
-             control = lmerControl(optimizer = "bobyqa")),
-        error = function(e) NULL)
+      fit <- run_lmer(aperiodic_exponent ~ gaze_value + (1 | subjectID), dap)
       if (!is.null(fit)) {
         broom.mixed::tidy(fit, conf.int = TRUE) %>% filter(term == "gaze_value") %>%
           mutate(aperiodic_measure = "Exponent")
@@ -354,10 +363,7 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
     } else tibble()
 
     tid_off_gaze <- if (valid) {
-      fit <- tryCatch(
-        lmer(aperiodic_offset ~ gaze_value + (1 | subjectID), data = dap,
-             control = lmerControl(optimizer = "bobyqa")),
-        error = function(e) NULL)
+      fit <- run_lmer(aperiodic_offset ~ gaze_value + (1 | subjectID), dap)
       if (!is.null(fit)) {
         broom.mixed::tidy(fit, conf.int = TRUE) %>% filter(term == "gaze_value") %>%
           mutate(aperiodic_measure = "Offset")

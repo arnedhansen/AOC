@@ -99,38 +99,95 @@ disp(upper(['Channels: post=' num2str(length(idx_post)) ...
 r2_dir = fullfile(base_data, 'data', 'controls', 'multiverse');
 if ~isfolder(r2_dir), mkdir(r2_dir); end
 
-%% Build Sternberg multiverse table
-disp(upper('--- STERNBERG TASK ---'))
-[tbl_s, r2_s] = build_task_multiverse('sternberg', subjects, path_preproc, base_features, ...
-    ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, gaze_col_map, ...
-    baseline_eeg_opts, baseline_gaze_opts, ...
-    n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_universes, alphaRange);
-disp(upper(['Sternberg table rows: ' num2str(height(tbl_s))]))
-if height(tbl_s) == 0
-  error('AOC_multiverse_prep:NoData', 'Sternberg table is empty.')
+%% Trial-level FOOOF estimator options
+% Toggle between historical single-FFT and Welch-style trial spectra.
+fooof_mode = 'welch500_50';   % 'singleFFT' | 'welch500_50'
+fooof_mode_env = getenv('AOC_FOOOF_MODE');
+if ~isempty(fooof_mode_env), fooof_mode = fooof_mode_env; end
+welch_seg_len_sec = 0.5;      % 500 ms subsegments
+welch_overlap = 0.5;          % 50% overlap
+valid_fooof_modes = {'singleFFT', 'welch500_50', 'BOTH'};
+if ~ismember(fooof_mode, valid_fooof_modes)
+  error('Invalid fooof_mode "%s". Valid options: %s', fooof_mode, strjoin(valid_fooof_modes, ', '));
 end
-writetable(tbl_s, fullfile(out_dir, 'multiverse_sternberg.csv'));
-disp(upper(['Written: ' fullfile(out_dir, 'multiverse_sternberg.csv')]))
-if height(r2_s) > 0
-  writetable(r2_s, fullfile(r2_dir, 'fooof_r2_sternberg.csv'));
-  disp(upper(['Written: ' fullfile(r2_dir, 'fooof_r2_sternberg.csv') ' (' num2str(height(r2_s)) ' FOOOF fits)']))
+% Parallel setup (Science Cloud safe): uses parfor when toolbox/pool is available.
+use_parfor = init_parallel_pool_science_cloud();
+if strcmpi(fooof_mode, 'BOTH')
+  fooof_modes_to_run = {'singleFFT', 'welch500_50'};
+else
+  fooof_modes_to_run = {fooof_mode};
+end
+write_untagged = numel(fooof_modes_to_run) == 1;
+disp(upper(sprintf('Trial-level FOOOF mode request: %s | running: %s (seg=%.3fs, overlap=%.0f%%)', ...
+  fooof_mode, strjoin(fooof_modes_to_run, ', '), welch_seg_len_sec, welch_overlap * 100)))
+if ~write_untagged
+  disp(upper('BOTH mode active: writing mode-tagged CSVs only (no untagged overwrite).'))
 end
 
-%% Build N-back multiverse table
-disp(upper('--- N-BACK TASK ---'))
-[tbl_n, r2_n] = build_task_multiverse('nback', subjects, path_preproc, base_features, ...
-    ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, gaze_col_map, ...
-    baseline_eeg_opts, baseline_gaze_opts, ...
-    n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_universes, alphaRange);
-disp(upper(['N-back table rows: ' num2str(height(tbl_n))]))
-if height(tbl_n) == 0
-  error('AOC_multiverse_prep:NoData', 'N-back table is empty.')
-end
-writetable(tbl_n, fullfile(out_dir, 'multiverse_nback.csv'));
-disp(upper(['Written: ' fullfile(out_dir, 'multiverse_nback.csv')]))
-if height(r2_n) > 0
-  writetable(r2_n, fullfile(r2_dir, 'fooof_r2_nback.csv'));
-  disp(upper(['Written: ' fullfile(r2_dir, 'fooof_r2_nback.csv') ' (' num2str(height(r2_n)) ' FOOOF fits)']))
+for im = 1:numel(fooof_modes_to_run)
+  run_mode = fooof_modes_to_run{im};
+  mode_tag = regexprep(run_mode, '[^A-Za-z0-9]+', '_');
+  disp(upper(['=== RUN FOOOF MODE: ' run_mode ' ===']))
+
+  %% Build Sternberg multiverse table
+  disp(upper('--- STERNBERG TASK ---'))
+  [tbl_s, r2_s] = build_task_multiverse('sternberg', subjects, path_preproc, base_features, ...
+      ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, gaze_col_map, ...
+      baseline_eeg_opts, baseline_gaze_opts, ...
+      n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_universes, alphaRange, ...
+      run_mode, welch_seg_len_sec, welch_overlap, use_parfor);
+  disp(upper(['Sternberg table rows: ' num2str(height(tbl_s))]))
+  if height(tbl_s) == 0
+    error('AOC_multiverse_prep:NoData', 'Sternberg table is empty.')
+  end
+  if write_untagged
+    out_s_main = fullfile(out_dir, 'multiverse_sternberg.csv');
+    writetable(tbl_s, out_s_main);
+    disp(upper(['Written: ' out_s_main]))
+  end
+  out_s_mode = fullfile(out_dir, ['multiverse_sternberg_' mode_tag '.csv']);
+  writetable(tbl_s, out_s_mode);
+  disp(upper(['Written: ' out_s_mode]))
+  if height(r2_s) > 0
+    out_r2_s_mode = fullfile(r2_dir, ['fooof_r2_sternberg_' mode_tag '.csv']);
+    if write_untagged
+      out_r2_s_main = fullfile(r2_dir, 'fooof_r2_sternberg.csv');
+      writetable(r2_s, out_r2_s_main);
+      disp(upper(['Written: ' out_r2_s_main ' (' num2str(height(r2_s)) ' FOOOF fits)']))
+    end
+    writetable(r2_s, out_r2_s_mode);
+    disp(upper(['Written: ' out_r2_s_mode]))
+  end
+
+  %% Build N-back multiverse table
+  disp(upper('--- N-BACK TASK ---'))
+  [tbl_n, r2_n] = build_task_multiverse('nback', subjects, path_preproc, base_features, ...
+      ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, gaze_col_map, ...
+      baseline_eeg_opts, baseline_gaze_opts, ...
+      n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_universes, alphaRange, ...
+      run_mode, welch_seg_len_sec, welch_overlap, use_parfor);
+  disp(upper(['N-back table rows: ' num2str(height(tbl_n))]))
+  if height(tbl_n) == 0
+    error('AOC_multiverse_prep:NoData', 'N-back table is empty.')
+  end
+  if write_untagged
+    out_n_main = fullfile(out_dir, 'multiverse_nback.csv');
+    writetable(tbl_n, out_n_main);
+    disp(upper(['Written: ' out_n_main]))
+  end
+  out_n_mode = fullfile(out_dir, ['multiverse_nback_' mode_tag '.csv']);
+  writetable(tbl_n, out_n_mode);
+  disp(upper(['Written: ' out_n_mode]))
+  if height(r2_n) > 0
+    out_r2_n_mode = fullfile(r2_dir, ['fooof_r2_nback_' mode_tag '.csv']);
+    if write_untagged
+      out_r2_n_main = fullfile(r2_dir, 'fooof_r2_nback.csv');
+      writetable(r2_n, out_r2_n_main);
+      disp(upper(['Written: ' out_r2_n_main ' (' num2str(height(r2_n)) ' FOOOF fits)']))
+    end
+    writetable(r2_n, out_r2_n_mode);
+    disp(upper(['Written: ' out_r2_n_mode]))
+  end
 end
 
 disp(upper('=== AOC MULTIVERSE PREP DONE ==='))
@@ -300,11 +357,15 @@ function pow_bl = compute_pct_baseline_spectra(pow_task, pow_base)
       bsxfun(@minus, pow_task.powspctrm, base_mean), abs(base_mean)) * 100;
 end
 
-function [f_osc, f_axis, ap_offset, ap_exponent, fooof_r2, fooof_err] = run_fooof_from_raw(data_td, trial_idx, ch_labels, time_win, cfg_fooof)
+function [f_osc, f_axis, ap_offset, ap_exponent, fooof_r2, fooof_err, fooof_n_segments] = ...
+    run_fooof_from_raw(data_td, trial_idx, ch_labels, time_win, cfg_fooof, fooof_mode, welch_seg_len_sec, welch_overlap)
   % Run FOOOF from raw time-domain data: select trial, average ROI channels,
-  % select time window, then call ft_freqanalysis_Arne_FOOOF which does FFT + FOOOF internally.
+  % select time window, then call ft_freqanalysis_Arne_FOOOF.
+  % Modes:
+  %   - singleFFT: one periodogram from the full selected window
+  %   - welch500_50: split into 500 ms segments with 50% overlap and average before FOOOF
   % Also returns aperiodic parameters (offset, exponent) and fit quality (R², error).
-  f_osc = []; f_axis = []; ap_offset = NaN; ap_exponent = NaN; fooof_r2 = NaN; fooof_err = NaN;
+  f_osc = []; f_axis = []; ap_offset = NaN; ap_exponent = NaN; fooof_r2 = NaN; fooof_err = NaN; fooof_n_segments = NaN;
   if isempty(data_td) || isempty(ch_labels), return, end
   try
     % Select single trial
@@ -317,9 +378,16 @@ function [f_osc, f_axis, ap_offset, ap_exponent, fooof_r2, fooof_err] = run_fooo
     cfg_ch = []; cfg_ch.channel = ch_labels; cfg_ch.avgoverchan = 'yes';
     d = ft_selectdata(cfg_ch, d);
     d.label = {'ROI'};
+    % Build FOOOF input according to selected trial-level estimator mode
+    if strcmp(fooof_mode, 'welch500_50')
+      [d_fooof, fooof_n_segments] = build_welch_segments_from_roi(d, welch_seg_len_sec, welch_overlap);
+    else
+      d_fooof = d;
+      fooof_n_segments = 1;
+    end
     % Run FOOOF (expects raw time-domain data, does FFT + FOOOF internally)
     if ~exist('ft_freqanalysis_Arne_FOOOF', 'file'), return, end
-    out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, d);
+    out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, d_fooof);
     f_axis = out.freq(:)';
     if iscell(out.fooofparams), rep = out.fooofparams{1}; else, rep = out.fooofparams; end
     if isfield(rep, 'aperiodic_params') && numel(rep.aperiodic_params) >= 2
@@ -343,12 +411,94 @@ function [f_osc, f_axis, ap_offset, ap_exponent, fooof_r2, fooof_err] = run_fooo
   end
 end
 
+function [d_seg, n_segments] = build_welch_segments_from_roi(d_roi, seg_len_sec, overlap_frac)
+  % Convert one ROI trial into overlapped pseudo-trials so keeptrials='no'
+  % yields a Welch-style averaged spectrum before FOOOF fitting.
+  d_seg = d_roi;
+  n_segments = 0;
+  if isempty(d_roi) || ~isfield(d_roi, 'trial') || isempty(d_roi.trial) || isempty(d_roi.trial{1})
+    return
+  end
+  x = double(d_roi.trial{1});
+  if size(x,1) > 1
+    x = mean(x, 1, 'omitnan');
+  end
+  if isfield(d_roi, 'fsample') && ~isempty(d_roi.fsample)
+    fs = double(d_roi.fsample);
+  else
+    if ~isfield(d_roi, 'time') || isempty(d_roi.time) || numel(d_roi.time{1}) < 2
+      return
+    end
+    fs = 1 / median(diff(double(d_roi.time{1})));
+  end
+  seg_n = max(2, round(seg_len_sec * fs));
+  hop_n = max(1, round(seg_n * (1 - overlap_frac)));
+  n = numel(x);
+  if n < seg_n
+    d_seg = d_roi;
+    n_segments = 1;
+    return
+  end
+  starts = 1:hop_n:(n - seg_n + 1);
+  n_segments = numel(starts);
+  d_seg.trial = cell(1, n_segments);
+  d_seg.time = cell(1, n_segments);
+  d_seg.sampleinfo = nan(n_segments, 2);
+  for k = 1:n_segments
+    idx = starts(k):(starts(k) + seg_n - 1);
+    d_seg.trial{k} = x(idx);
+    if isfield(d_roi, 'time') && ~isempty(d_roi.time) && ~isempty(d_roi.time{1})
+      t0 = d_roi.time{1}(idx(1));
+      d_seg.time{k} = t0 + (0:seg_n-1) ./ fs;
+    else
+      d_seg.time{k} = (0:seg_n-1) ./ fs;
+    end
+    d_seg.sampleinfo(k,:) = [1 seg_n];
+  end
+  d_seg.label = {'ROI'};
+  d_seg.fsample = fs;
+  if isfield(d_seg, 'trialinfo')
+    if isempty(d_seg.trialinfo)
+      d_seg = rmfield(d_seg, 'trialinfo');
+    else
+      d_seg.trialinfo = repmat(d_seg.trialinfo(1, :), n_segments, 1);
+    end
+  end
+end
+
+function use_parfor = init_parallel_pool_science_cloud()
+  use_parfor = false;
+  try
+    has_parallel = license('test', 'Distrib_Computing_Toolbox') && ~isempty(ver('parallel'));
+  catch
+    has_parallel = false;
+  end
+  if ~has_parallel
+    disp(upper('PARFOR DISABLED: PARALLEL TOOLBOX NOT AVAILABLE.'))
+    return
+  end
+  try
+    p = gcp('nocreate');
+    if isempty(p)
+      parpool('local');
+      disp(upper('PARFOR ENABLED: STARTED LOCAL PARPOOL.'))
+    else
+      disp(upper(['PARFOR ENABLED: USING EXISTING POOL (' num2str(p.NumWorkers) ' WORKERS).']))
+    end
+    use_parfor = true;
+  catch ME
+    disp(upper(['PARFOR DISABLED: ' ME.message]))
+    use_parfor = false;
+  end
+end
+
 %% ========== MAIN BUILD FUNCTION ==========
 
 function [tbl, r2_tbl] = build_task_multiverse(task_name, subjects, path_preproc, base_features, ...
     ch_sets, ch_label_sets, electrodes_opts, fooof_opts, latency_opts, alpha_opts, gaze_opts, gaze_col_map, ...
     baseline_eeg_opts, baseline_gaze_opts, ...
-    n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_universes, alphaRange)
+    n_elec, n_fooof, n_lat, n_alpha, n_gaze, n_bl_eeg, n_bl_gaze, n_universes, alphaRange, ...
+    fooof_mode, welch_seg_len_sec, welch_overlap, use_parfor)
 
   disp(upper(['Building multiverse table for task: ' task_name ' (' num2str(n_universes) ' universes)']))
   if strcmp(task_name, 'sternberg')
@@ -388,6 +538,7 @@ function [tbl, r2_tbl] = build_task_multiverse(task_name, subjects, path_preproc
 
   % FOOOF R² collection (compact: one row per FOOOF call)
   r2_sid = []; r2_cond = []; r2_trial = []; r2_lat = {}; r2_elec = {};
+  r2_mode = {}; r2_nseg = [];
   r2_val = []; r2_err = []; r2_exp = []; r2_off = [];
 
   for s = 1:length(subjects)
@@ -610,27 +761,60 @@ function [tbl, r2_tbl] = build_task_multiverse(task_name, subjects, path_preproc
           for ie = 1:n_elec
             ch_lbl = ch_label_sets{ie};
             n_td = min(n_trials_cond, length(cond_inds_td));
-            for tr = 1:n_td
-              td_idx = cond_inds_td(tr);
-              [f_osc, f_axis, ap_off, ap_exp, f_r2, f_err] = run_fooof_from_raw(data_td, td_idx, ch_lbl, lat_windows{il}, cfg_fooof);
-              if isempty(f_osc), continue, end
-              ap_offset_arr{il}(tr, ie) = ap_off;
-              ap_exp_arr{il}(tr, ie) = ap_exp;
-              r2_sid(end+1,1) = sid_num; r2_cond(end+1,1) = cval;
-              r2_trial(end+1,1) = trials_list(tr);
-              r2_lat{end+1,1} = latency_opts{il}; r2_elec{end+1,1} = electrodes_opts{ie};
-              r2_val(end+1,1) = f_r2; r2_err(end+1,1) = f_err;
-              r2_exp(end+1,1) = ap_exp; r2_off(end+1,1) = ap_off;
-              for ia = 1:n_alpha
-                col = (ie-1)*n_alpha + ia;
-                if ia == 1, band = alphaRange; else, band = IAF_band; end
-                bandIdx = f_axis >= band(1) & f_axis <= band(2);
-                if sum(bandIdx) > 0
-                  fooof_val = mean(f_osc(bandIdx), 'omitnan');
-                  for ibl = 1:n_bl_eeg
-                    alpha{il, ibl, 1}(tr, col) = fooof_val;
+            ap_off_vec = nan(n_td, 1); ap_exp_vec = nan(n_td, 1);
+            f_r2_vec = nan(n_td, 1); f_err_vec = nan(n_td, 1); f_nseg_vec = nan(n_td, 1);
+            fooof_alpha_vec = nan(n_td, n_alpha);
+            if use_parfor
+              parfor tr = 1:n_td
+                td_idx = cond_inds_td(tr);
+                [f_osc, f_axis, ap_off, ap_exp, f_r2, f_err, f_nseg] = run_fooof_from_raw( ...
+                  data_td, td_idx, ch_lbl, lat_windows{il}, cfg_fooof, fooof_mode, welch_seg_len_sec, welch_overlap);
+                ap_off_vec(tr) = ap_off; ap_exp_vec(tr) = ap_exp;
+                f_r2_vec(tr) = f_r2; f_err_vec(tr) = f_err; f_nseg_vec(tr) = f_nseg;
+                if isempty(f_osc), continue, end
+                for ia = 1:n_alpha
+                  if ia == 1, band = alphaRange; else, band = IAF_band; end
+                  bandIdx = f_axis >= band(1) & f_axis <= band(2);
+                  if any(bandIdx)
+                    fooof_alpha_vec(tr, ia) = mean(f_osc(bandIdx), 'omitnan');
                   end
                 end
+              end
+            else
+              for tr = 1:n_td
+                td_idx = cond_inds_td(tr);
+                [f_osc, f_axis, ap_off, ap_exp, f_r2, f_err, f_nseg] = run_fooof_from_raw( ...
+                  data_td, td_idx, ch_lbl, lat_windows{il}, cfg_fooof, fooof_mode, welch_seg_len_sec, welch_overlap);
+                ap_off_vec(tr) = ap_off; ap_exp_vec(tr) = ap_exp;
+                f_r2_vec(tr) = f_r2; f_err_vec(tr) = f_err; f_nseg_vec(tr) = f_nseg;
+                if isempty(f_osc), continue, end
+                for ia = 1:n_alpha
+                  if ia == 1, band = alphaRange; else, band = IAF_band; end
+                  bandIdx = f_axis >= band(1) & f_axis <= band(2);
+                  if any(bandIdx)
+                    fooof_alpha_vec(tr, ia) = mean(f_osc(bandIdx), 'omitnan');
+                  end
+                end
+              end
+            end
+            for tr = 1:n_td
+              ap_offset_arr{il}(tr, ie) = ap_off_vec(tr);
+              ap_exp_arr{il}(tr, ie) = ap_exp_vec(tr);
+              for ia = 1:n_alpha
+                col = (ie-1)*n_alpha + ia;
+                if isfinite(fooof_alpha_vec(tr, ia))
+                  for ibl = 1:n_bl_eeg
+                    alpha{il, ibl, 1}(tr, col) = fooof_alpha_vec(tr, ia);
+                  end
+                end
+              end
+              if isfinite(f_r2_vec(tr)) || isfinite(f_err_vec(tr)) || isfinite(ap_exp_vec(tr)) || isfinite(ap_off_vec(tr))
+                r2_sid(end+1,1) = sid_num; r2_cond(end+1,1) = cval;
+                r2_trial(end+1,1) = trials_list(tr);
+                r2_lat{end+1,1} = latency_opts{il}; r2_elec{end+1,1} = electrodes_opts{ie};
+                r2_mode{end+1,1} = fooof_mode; r2_nseg(end+1,1) = f_nseg_vec(tr);
+                r2_val(end+1,1) = f_r2_vec(tr); r2_err(end+1,1) = f_err_vec(tr);
+                r2_exp(end+1,1) = ap_exp_vec(tr); r2_off(end+1,1) = ap_off_vec(tr);
               end
             end
           end
@@ -718,9 +902,9 @@ function [tbl, r2_tbl] = build_task_multiverse(task_name, subjects, path_preproc
   if isempty(r2_sid)
     r2_tbl = table();
   else
-    r2_tbl = table(r2_sid, r2_cond, r2_trial, r2_lat, r2_elec, ...
+    r2_tbl = table(r2_sid, r2_cond, r2_trial, r2_lat, r2_elec, r2_mode, r2_nseg, ...
       r2_val, r2_err, r2_exp, r2_off, ...
       'VariableNames', {'subjectID', 'Condition', 'Trial', 'latency_ms', 'electrodes', ...
-      'r_squared', 'fooof_error', 'aperiodic_exponent', 'aperiodic_offset'});
+      'fooof_mode', 'welch_n_segments', 'r_squared', 'fooof_error', 'aperiodic_exponent', 'aperiodic_offset'});
   end
 end

@@ -24,11 +24,17 @@ library(multiverse)
 # ========== LOGGING MODE ==========
 # Set AOC_VERBOSE_LOGGING=true to show full lmer warnings/messages.
 VERBOSE_LOGGING <- tolower(Sys.getenv("AOC_VERBOSE_LOGGING", unset = "false")) %in% c("1", "true", "yes", "y")
+# Allowed: "singleFFT", "both", "welch500_50"
+FOOOF_METHOD <- "welch500_50"
+R2_THRESHOLD <- 0.90
+r2_dir <- Sys.getenv("AOC_R2_DIR",
+                     unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/multiverse")
 
 # ========== PATHS ==========
 csv_dir  <- Sys.getenv("AOC_MULTIVERSE_DIR",
                         unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/multiverse")
-csv_path <- file.path(csv_dir, "multiverse_sternberg.csv")
+csv_path_method <- file.path(csv_dir, paste0("multiverse_sternberg_", FOOOF_METHOD, ".csv"))
+csv_path <- if (file.exists(csv_path_method)) csv_path_method else file.path(csv_dir, "multiverse_sternberg.csv")
 if (!file.exists(csv_path)) stop("CSV not found: ", csv_path)
 
 # ========== LOAD & FILTER DATA ==========
@@ -37,6 +43,103 @@ dat$subjectID <- as.factor(dat$subjectID)
 dat$Condition <- as.factor(dat$Condition)
 
 message(sprintf("Loaded: %d rows, %d universes.", nrow(dat), n_distinct(dat$universe_id)))
+
+if (!("r_squared" %in% names(dat))) {
+  r2_path_method <- file.path(r2_dir, paste0("fooof_r2_sternberg_", FOOOF_METHOD, ".csv"))
+  r2_path <- if (file.exists(r2_path_method)) r2_path_method else file.path(r2_dir, "fooof_r2_sternberg.csv")
+
+  if (file.exists(r2_path)) {
+    r2 <- read.csv(r2_path, stringsAsFactors = FALSE, na.strings = c("NA", "NaN", ""))
+    join_cols <- c("subjectID", "Condition", "Trial", "latency_ms", "electrodes")
+
+    if (all(c(join_cols, "r_squared") %in% names(r2)) && all(join_cols %in% names(dat))) {
+      dat$subjectID_num <- suppressWarnings(as.numeric(as.character(dat$subjectID)))
+      r2$subjectID_num <- suppressWarnings(as.numeric(as.character(r2$subjectID)))
+      dat$Condition <- as.factor(dat$Condition)
+      r2$Condition <- as.factor(r2$Condition)
+
+      dat <- dat %>%
+        left_join(
+          r2 %>% select(subjectID_num, Condition, Trial, latency_ms, electrodes, r_squared),
+          by = c("subjectID_num", "Condition", "Trial", "latency_ms", "electrodes")
+        ) %>%
+        select(-subjectID_num)
+      message(sprintf("Joined trial-level FOOOF R2 from: %s", r2_path))
+    } else {
+      warning("Skipping FOOOF R2 join: required join columns missing in multiverse and/or R2 CSV.")
+    }
+  } else {
+    warning("FOOOF R2 CSV not found; no trial-level R2 filter will be applied.")
+  }
+}
+
+if (!("r_squared" %in% names(dat))) {
+  dat$r_squared <- NA_real_
+}
+
+n_rows_before_r2 <- nrow(dat)
+n_univ_before_r2 <- n_distinct(dat$universe_id)
+n_fooof_rows <- sum(dat$fooof == "FOOOFed", na.rm = TRUE)
+low_r2_mask <- dat$fooof == "FOOOFed" & is.finite(dat$r_squared) & dat$r_squared < R2_THRESHOLD
+n_low_r2_removed <- sum(low_r2_mask, na.rm = TRUE)
+n_fooof_no_r2 <- sum(dat$fooof == "FOOOFed" & !is.finite(dat$r_squared), na.rm = TRUE)
+
+latency_exclusion_summary <- dat %>%
+  mutate(low_r2_excluded = low_r2_mask) %>%
+  group_by(latency_ms) %>%
+  summarise(
+    fooof_rows_total = sum(fooof == "FOOOFed", na.rm = TRUE),
+    rows_removed_low_r2 = sum(low_r2_excluded, na.rm = TRUE),
+    fooof_rows_missing_r2 = sum(fooof == "FOOOFed" & !is.finite(r_squared), na.rm = TRUE),
+    pct_removed_low_r2 = 100 * rows_removed_low_r2 / pmax(fooof_rows_total, 1),
+    .groups = "drop"
+  ) %>%
+  arrange(latency_ms)
+
+dat <- dat %>% filter(!low_r2_mask)
+
+message(sprintf(
+  "FOOOF R2 filter (>= %.2f): removed %d/%d FOOOFed rows (%.2f%%). Rows missing R2 kept: %d.",
+  R2_THRESHOLD, n_low_r2_removed, n_fooof_rows,
+  100 * n_low_r2_removed / max(n_fooof_rows, 1), n_fooof_no_r2
+))
+message(sprintf(
+  "After FOOOF R2 filtering: %d rows (from %d), %d universes (from %d).",
+  nrow(dat), n_rows_before_r2, n_distinct(dat$universe_id), n_univ_before_r2
+))
+message("FOOOF R2 exclusions by latency_ms:")
+for (i in seq_len(nrow(latency_exclusion_summary))) {
+  row_i <- latency_exclusion_summary[i, ]
+  message(sprintf(
+    "  %s: removed %d/%d FOOOFed rows (%.2f%%), missing R2 kept: %d",
+    row_i$latency_ms, row_i$rows_removed_low_r2, row_i$fooof_rows_total,
+    row_i$pct_removed_low_r2, row_i$fooof_rows_missing_r2
+  ))
+}
+
+write.csv(
+  data.frame(
+    task = "sternberg",
+    fooof_method = FOOOF_METHOD,
+    r2_threshold = R2_THRESHOLD,
+    rows_before = n_rows_before_r2,
+    rows_after = nrow(dat),
+    rows_removed_low_r2 = n_low_r2_removed,
+    fooof_rows_total = n_fooof_rows,
+    fooof_rows_missing_r2 = n_fooof_no_r2,
+    universes_before = n_univ_before_r2,
+    universes_after = n_distinct(dat$universe_id)
+  ),
+  file.path(csv_dir, "multiverse_sternberg_fooof_trial_r2_filter_summary.csv"),
+  row.names = FALSE
+)
+
+write.csv(
+  latency_exclusion_summary %>%
+    mutate(task = "sternberg", fooof_method = FOOOF_METHOD, r2_threshold = R2_THRESHOLD, .before = 1),
+  file.path(csv_dir, "multiverse_sternberg_fooof_trial_r2_filter_summary_by_latency.csv"),
+  row.names = FALSE
+)
 
 if ("gaze_measure" %in% names(dat)) {
   dat <- dat %>% filter(gaze_measure != "gaze_density" | is.na(gaze_measure))
@@ -70,6 +173,22 @@ safe_extract <- function(results, var_name) {
   r <- results[[var_name]]
   if (is.null(r) || !is.data.frame(r) || nrow(r) == 0) return(NULL)
   r
+}
+
+save_with_method <- function(df, filename) {
+  out_path <- file.path(csv_dir, filename)
+  df_out <- df %>% mutate(fooof_method = FOOOF_METHOD, .before = 1)
+
+  if (file.exists(out_path)) {
+    old <- read.csv(out_path, stringsAsFactors = FALSE, na.strings = c("NA", "NaN", ""))
+    if (!("fooof_method" %in% names(old))) {
+      old <- old %>% mutate(fooof_method = Sys.getenv("AOC_LEGACY_FOOOF_METHOD", unset = "singleFFT"), .before = 1)
+    }
+    old <- old %>% filter(fooof_method != FOOOF_METHOD)
+    df_out <- bind_rows(old, df_out)
+  }
+
+  write.csv(df_out, out_path, row.names = FALSE)
 }
 
 run_lmer <- function(formula_obj, data_obj) {
@@ -190,15 +309,15 @@ message(sprintf("Dropped %d unstable universes (SE > %.4f). %d remain.",
 M_cond <- add_sig(M_cond)
 M_int  <- add_sig(M_int)
 
-write.csv(M_int,  file.path(csv_dir, "multiverse_sternberg_results.csv"), row.names = FALSE)
-write.csv(M_cond, file.path(csv_dir, "multiverse_sternberg_conditions_results.csv"), row.names = FALSE)
+save_with_method(M_int, "multiverse_sternberg_results.csv")
+save_with_method(M_cond, "multiverse_sternberg_conditions_results.csv")
 message("Saved: multiverse_sternberg_results.csv, multiverse_sternberg_conditions_results.csv")
 
 # Extract interaction term
 highest_int_term <- paste0("gaze_value:Condition", highest_cond)
 M_interaction    <- M_int %>% filter(term == highest_int_term)
 if (nrow(M_interaction) > 0) {
-  write.csv(M_interaction, file.path(csv_dir, "multiverse_sternberg_interaction_results.csv"), row.names = FALSE)
+  save_with_method(M_interaction, "multiverse_sternberg_interaction_results.csv")
   message(sprintf("Saved: multiverse_sternberg_interaction_results.csv (%d universes)", nrow(M_interaction)))
 } else {
   message("WARNING: No interaction terms found for ", highest_int_term)
@@ -259,7 +378,7 @@ M_ca <- M_eeg_expanded %>%
 
 if (nrow(M_ca) > 0L) {
   M_ca <- add_sig(M_ca)
-  write.csv(M_ca, file.path(csv_dir, "multiverse_sternberg_condition_results.csv"), row.names = FALSE)
+  save_with_method(M_ca, "multiverse_sternberg_condition_results.csv")
   message(sprintf("Saved: multiverse_sternberg_condition_results.csv (%d universes)", nrow(M_ca)))
 } else {
   message("WARNING: No successful condition \u2192 alpha fits.")
@@ -316,7 +435,7 @@ M_cg <- M_gaze_expanded %>%
 
 if (nrow(M_cg) > 0L) {
   M_cg <- add_sig(M_cg)
-  write.csv(M_cg, file.path(csv_dir, "multiverse_sternberg_condition_gaze_results.csv"), row.names = FALSE)
+  save_with_method(M_cg, "multiverse_sternberg_condition_gaze_results.csv")
   message(sprintf("Saved: multiverse_sternberg_condition_gaze_results.csv (%d universes)", nrow(M_cg)))
 } else {
   message("WARNING: No successful condition \u2192 gaze fits.")
@@ -395,7 +514,7 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
 
   if (nrow(M_ap_gaze_results) > 0) {
     M_ap_gaze_results <- add_sig(M_ap_gaze_results)
-    write.csv(M_ap_gaze_results, file.path(csv_dir, "multiverse_sternberg_aperiodic_gaze_results.csv"), row.names = FALSE)
+    save_with_method(M_ap_gaze_results, "multiverse_sternberg_aperiodic_gaze_results.csv")
     message(sprintf("Saved: multiverse_sternberg_aperiodic_gaze_results.csv (%d rows)", nrow(M_ap_gaze_results)))
   }
 
@@ -472,7 +591,7 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
 
   if (nrow(M_ap_cond_results) > 0) {
     M_ap_cond_results <- add_sig(M_ap_cond_results)
-    write.csv(M_ap_cond_results, file.path(csv_dir, "multiverse_sternberg_aperiodic_condition_results.csv"), row.names = FALSE)
+    save_with_method(M_ap_cond_results, "multiverse_sternberg_aperiodic_condition_results.csv")
     message(sprintf("Saved: multiverse_sternberg_aperiodic_condition_results.csv (%d rows)", nrow(M_ap_cond_results)))
   }
 

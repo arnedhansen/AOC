@@ -22,6 +22,8 @@ csv_dir      <- Sys.getenv("AOC_MULTIVERSE_DIR",
 storage_plot <- Sys.getenv("AOC_MULTIVERSE_FIGURES",
                             unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/multiverse")
 if (!dir.exists(storage_plot)) dir.create(storage_plot, recursive = TRUE)
+# Allowed: "singleFFT", "both", "welch500_50"
+FOOOF_METHOD <- "welch500_50"
 
 # ========== THEME & AESTHETICS ==========
 v_common_theme <- theme(
@@ -39,6 +41,16 @@ v_common_theme <- theme(
 sig_colors <- c("Positive" = "#33CC66", "Negative" = "#fe0000",
                 "Non-significant" = "#d1d1d1")
 sig_levels <- c("Positive", "Negative", "Non-significant")
+
+filter_method_and_latency <- function(df) {
+  if ("fooof_method" %in% names(df)) {
+    df <- df %>% filter(fooof_method == FOOOF_METHOD)
+  }
+  if ("latency_ms" %in% names(df)) {
+    df <- df %>% filter(latency_ms != "0_500ms")
+  }
+  df
+}
 
 # Suppress known cowplot legend warning about multiple guide-box components.
 safe_get_legend <- function(plot_obj) {
@@ -78,14 +90,14 @@ value_levels <- c(
   "IAF", "Canonical",
   "No SpecParam", "SpecParam",
   "Occipital", "Posterior",
-  "1000\u20132000 ms", "0\u20132000 ms", "0\u20131000 ms", "0\u2013500 ms"
+  "1000\u20132000 ms", "0\u20132000 ms", "0\u20131000 ms"
 )
 
 v_p2_group_order <- c("Latency", "Electrodes", "Spectral\nParameterization",
                        "EEG Baseline", "Alpha", "Gaze Measure", "Gaze Baseline")
 
 elec_order <- c("posterior", "occipital")
-lat_order  <- c("0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
+lat_order  <- c("0_1000ms", "0_2000ms", "1000_2000ms")
 gaze_order <- c("gaze_deviation", "gaze_velocity", "scan_path_length", "BCEA")
 
 # ========== PANEL HELPERS ==========
@@ -145,6 +157,7 @@ cond_path <- file.path(csv_dir, "multiverse_sternberg_conditions_results.csv")
 if (!file.exists(cond_path)) stop("Conditions CSV not found: ", cond_path, "\nRun AOC_multiverse_sternberg_analysis.R first.")
 M_cond <- read.csv(cond_path, stringsAsFactors = FALSE)
 M_cond$condition <- factor(M_cond$condition, levels = sig_levels)
+M_cond <- filter_method_and_latency(M_cond)
 M_cond <- M_cond %>% filter(gaze_measure %in% gaze_order)
 
 # Determine highest condition from data
@@ -204,6 +217,7 @@ ca_path <- file.path(csv_dir, "multiverse_sternberg_condition_results.csv")
 if (file.exists(ca_path)) {
   M_ca <- read.csv(ca_path, stringsAsFactors = FALSE)
   M_ca$condition <- factor(M_ca$condition, levels = sig_levels)
+  M_ca <- filter_method_and_latency(M_ca)
 
   M_ca <- M_ca %>%
     mutate(.lat_ord = match(latency_ms, lat_order),
@@ -255,6 +269,7 @@ int_path <- file.path(csv_dir, "multiverse_sternberg_interaction_results.csv")
 if (file.exists(int_path)) {
   M_interaction <- read.csv(int_path, stringsAsFactors = FALSE)
   M_interaction$condition <- factor(M_interaction$condition, levels = sig_levels)
+  M_interaction <- filter_method_and_latency(M_interaction)
   M_interaction <- M_interaction %>% filter(gaze_measure %in% gaze_order)
 
   M_interaction <- M_interaction %>%
@@ -309,6 +324,7 @@ cg_path <- file.path(csv_dir, "multiverse_sternberg_condition_gaze_results.csv")
 if (file.exists(cg_path)) {
   M_cg <- read.csv(cg_path, stringsAsFactors = FALSE)
   M_cg$condition <- factor(M_cg$condition, levels = sig_levels)
+  M_cg <- filter_method_and_latency(M_cg)
   M_cg <- M_cg %>% filter(gaze_measure %in% gaze_order)
 
   M_cg <- M_cg %>%
@@ -383,6 +399,7 @@ if (has_ap_gaze) {
 
   M_ap_spec <- read.csv(ap_gaze_path, stringsAsFactors = FALSE)
   M_ap_spec$condition <- factor(M_ap_spec$condition, levels = sig_levels)
+  M_ap_spec <- filter_method_and_latency(M_ap_spec)
   M_ap_spec <- M_ap_spec %>% filter(gaze_measure %in% gaze_order)
 
   for (ap_measure in c("Exponent", "Offset")) {

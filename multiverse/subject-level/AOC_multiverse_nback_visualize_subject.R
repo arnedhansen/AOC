@@ -195,7 +195,7 @@ p_grp_panel <- ggplot(df_grp_long, aes(x = grouped_universe, y = value, fill = c
 p_grp_combined <- p_grp_curve / legend_grp / p_grp_panel +
   plot_layout(heights = c(0.8, 0.1, 1.5))
 ggsave(file.path(storage_plot, "AOC_multiverse_nback_subject_grouped.png"),
-       plot = p_grp_combined, width = 14, height = 12, dpi = 600)
+       plot = p_grp_combined, width = 14, height = 12, dpi = 600, bg = "white")
 message("Saved: AOC_multiverse_nback_subject_grouped.png")
 
 # ========== FIGURE 2: CONDITION -> ALPHA (EEG-only) ==========
@@ -243,7 +243,7 @@ if (file.exists(ca_path)) {
   p_ca_combined <- p_ca_curve / legend_ca / p_ca_panel +
     plot_layout(heights = c(0.8, 0.1, 1.2))
   ggsave(file.path(storage_plot, "AOC_multiverse_nback_subject_condition_alpha.png"),
-         plot = p_ca_combined, width = 14, height = 10, dpi = 600)
+         plot = p_ca_combined, width = 14, height = 10, dpi = 600, bg = "white")
   message("Saved: AOC_multiverse_nback_subject_condition_alpha.png")
 } else {
   message("Skipping Figure 2: subject_condition_results.csv not found.")
@@ -297,7 +297,7 @@ if (file.exists(int_path)) {
   p_int_combined <- p_int_curve / legend_int / p_int_panel +
     plot_layout(heights = c(0.8, 0.1, 1.5))
   ggsave(file.path(storage_plot, "AOC_multiverse_nback_subject_interaction.png"),
-         plot = p_int_combined, width = 14, height = 12, dpi = 600)
+         plot = p_int_combined, width = 14, height = 12, dpi = 600, bg = "white")
   message("Saved: AOC_multiverse_nback_subject_interaction.png")
 } else {
   message("Skipping Figure 3: subject_interaction_results.csv not found.")
@@ -327,7 +327,7 @@ if (file.exists(cg_path)) {
     scale_color_manual(values = sig_colors, name = "Significance") +
     guides(alpha = "none") +
     labs(title = expression(bold(gaze ~ "~" ~ condition ~ "(subject-level)")),
-         subtitle = "gaze ~ Condition + (1|subjectID)",
+         subtitle = "gaze_value ~ Condition + (1|subjectID)",
          x = "Universe", y = expression(bold("Standardized " * beta))) +
     theme_minimal() + theme(legend.position = "none") + v_common_theme +
     coord_cartesian(ylim = ylim_cg)
@@ -349,7 +349,7 @@ if (file.exists(cg_path)) {
   p_cg_combined <- p_cg_curve / legend_cg / p_cg_panel +
     plot_layout(heights = c(0.8, 0.1, 0.8))
   ggsave(file.path(storage_plot, "AOC_multiverse_nback_subject_condition_gaze.png"),
-         plot = p_cg_combined, width = 14, height = 8, dpi = 600)
+         plot = p_cg_combined, width = 14, height = 8, dpi = 600, bg = "white")
   message("Saved: AOC_multiverse_nback_subject_condition_gaze.png")
 } else {
   message("Skipping Figure 4: subject_condition_gaze_results.csv not found.")
@@ -443,7 +443,7 @@ if (has_ap_gaze) {
     fname <- paste0("AOC_multiverse_nback_subject_aperiodic_",
                     suffix, "_spec.png")
     ggsave(file.path(storage_plot, fname),
-           plot = p_ap_sc_combined, width = 14, height = 10, dpi = 600)
+           plot = p_ap_sc_combined, width = 14, height = 10, dpi = 600, bg = "white")
     message(sprintf("Saved: %s", fname))
   }
 

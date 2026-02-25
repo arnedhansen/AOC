@@ -30,6 +30,7 @@ library(multiverse)
 # ========== LOGGING MODE ==========
 # Set AOC_VERBOSE_LOGGING=true to show full lmer warnings/messages.
 VERBOSE_LOGGING <- tolower(Sys.getenv("AOC_VERBOSE_LOGGING", unset = "false")) %in% c("1", "true", "yes", "y")
+MIN_N_PER_UNIVERSE <- 10
 
 # ========== PATHS ==========
 csv_dir  <- Sys.getenv("AOC_MULTIVERSE_DIR",
@@ -42,6 +43,11 @@ if (!file.exists(csv_path)) stop("Subject-level CSV not found: ", csv_path,
 dat <- read.csv(csv_path, stringsAsFactors = FALSE, na.strings = c("NA", "NaN", ""))
 dat$subjectID <- as.factor(dat$subjectID)
 dat$Condition <- as.factor(dat$Condition)
+if (!("n_trials_subject_condition" %in% names(dat))) {
+  dat$n_trials_subject_condition <- 1
+}
+dat$n_trials_subject_condition <- suppressWarnings(as.numeric(dat$n_trials_subject_condition))
+dat$n_trials_subject_condition[!is.finite(dat$n_trials_subject_condition) | dat$n_trials_subject_condition <= 0] <- 1
 
 message(sprintf("Loaded: %d subject-level rows, %d subjects.",
                 nrow(dat), n_distinct(dat$subjectID)))
@@ -80,23 +86,91 @@ safe_extract <- function(results, var_name) {
   r
 }
 
+run_lm <- function(formula_obj, data_obj) {
+  use_weights <- "model_weight" %in% names(data_obj) && any(is.finite(data_obj$model_weight))
+  lm_args <- list(formula = formula_obj, data = data_obj)
+  if (use_weights) lm_args$weights <- data_obj$model_weight
+  tryCatch(
+    suppressWarnings(suppressMessages(do.call(lm, lm_args))),
+    error = function(e) NULL
+  )
+}
+
 run_lmer <- function(formula_obj, data_obj) {
+  use_weights <- "model_weight" %in% names(data_obj) && any(is.finite(data_obj$model_weight))
+  lmer_args <- list(
+    formula = formula_obj,
+    data = data_obj,
+    control = lmerControl(optimizer = "bobyqa")
+  )
+  if (use_weights) lmer_args$weights <- data_obj$model_weight
+
   if (VERBOSE_LOGGING) {
     return(tryCatch(
-      lmer(formula_obj, data = data_obj, control = lmerControl(optimizer = "bobyqa")),
+      do.call(lmer, lmer_args),
       error = function(e) NULL
     ))
   }
   tryCatch(
     suppressWarnings(
       suppressMessages(
-        lmer(formula_obj, data = data_obj, control = lmerControl(optimizer = "bobyqa"))
+        do.call(lmer, lmer_args)
       )
     ),
     error = function(e) NULL
   )
 }
 
+prepare_model_data <- function(df, cols) {
+  out <- df %>% filter(complete.cases(across(all_of(cols))))
+  if (!("model_weight" %in% names(out))) out$model_weight <- 1
+  out$model_weight <- suppressWarnings(as.numeric(out$model_weight))
+  out$model_weight[!is.finite(out$model_weight) | out$model_weight <= 0] <- 1
+  out
+}
+
+safe_max <- function(x) {
+  x <- x[is.finite(x)]
+  if (length(x) == 0) return(NA_real_)
+  max(x)
+}
+
+safe_min <- function(x) {
+  x <- x[is.finite(x)]
+  if (length(x) == 0) return(NA_real_)
+  min(x)
+}
+
+summarize_robustness <- function(df, model_family) {
+  if (is.null(df) || nrow(df) == 0) return(tibble())
+  grouping_cols <- intersect(c("term", "cond_label", "aperiodic_measure"), names(df))
+  if (!(".universe" %in% names(df)) || !("estimate" %in% names(df))) return(tibble())
+
+  out <- df %>%
+    group_by(across(all_of(grouping_cols))) %>%
+    summarise(
+      n_rows = n(),
+      n_universes = n_distinct(.universe),
+      median_beta = median(estimate, na.rm = TRUE),
+      pct_beta_positive = 100 * mean(estimate > 0, na.rm = TRUE),
+      pct_beta_negative = 100 * mean(estimate < 0, na.rm = TRUE),
+      dominant_sign = case_when(
+        pct_beta_positive > pct_beta_negative ~ "Positive",
+        pct_beta_negative > pct_beta_positive ~ "Negative",
+        TRUE ~ "Mixed"
+      ),
+      common_overlap_low = safe_max(conf.low),
+      common_overlap_high = safe_min(conf.high),
+      has_common_overlap = common_overlap_high >= common_overlap_low,
+      pct_cis_crossing_zero = 100 * mean(conf.low <= 0 & conf.high >= 0, na.rm = TRUE),
+      .groups = "drop"
+    ) %>%
+    mutate(model_family = model_family, .before = 1)
+
+  out
+}
+
+# Weights: trial count per subject-condition (no trial-level variance merge)
 branch_cols <- c("electrodes", "fooof", "latency_ms", "alpha_type",
                  "gaze_measure", "baseline_eeg", "baseline_gaze")
 
@@ -126,9 +200,11 @@ inside(M, {
            baseline_eeg == .bleeg, baseline_gaze == .blgaze) %>%
     filter(complete.cases(alpha, gaze_value, Condition, subjectID))
 
-  df$gaze_value <- robust_z(df$gaze_value)
-  df$alpha      <- robust_z(df$alpha)
-  valid <- nrow(df) >= 10 && !any(is.nan(df$gaze_value)) && !any(is.nan(df$alpha))
+  df$model_weight <- df$n_trials_subject_condition
+  df$alpha        <- robust_z(df$alpha)
+  df$gaze_value   <- robust_z(df$gaze_value)
+  df <- prepare_model_data(df, c("alpha", "gaze_value", "Condition", "subjectID", "model_weight"))
+  valid <- nrow(df) >= MIN_N_PER_UNIVERSE && !any(is.nan(df$gaze_value)) && !any(is.nan(df$alpha))
 
   tid_int <- if (valid) {
     fit <- run_lmer(alpha ~ gaze_value * Condition + (1 | subjectID), df)
@@ -138,10 +214,9 @@ inside(M, {
   tid_cond <- if (valid) {
     bind_rows(lapply(as.character(cond_levels), function(cl) {
       dc <- df[df$Condition == cl, ]
-      if (nrow(dc) < 5) return(tibble())
-      fit_c <- tryCatch(
-        lm(alpha ~ gaze_value, data = dc),
-        error = function(e) NULL)
+      dc <- prepare_model_data(dc, c("alpha", "gaze_value", "subjectID", "model_weight"))
+      if (nrow(dc) < MIN_N_PER_UNIVERSE) return(tibble())
+      fit_c <- run_lm(alpha ~ gaze_value, dc)
       if (is.null(fit_c)) return(tibble())
       tid_c <- broom::tidy(fit_c, conf.int = TRUE) %>% filter(term == "gaze_value")
       tid_c$cond_label <- cond_labels[cl]
@@ -174,18 +249,10 @@ M_cond <- M_expanded %>%
 
 if (nrow(M_cond) == 0L) stop("No successful LMM fits.")
 
-# Drop unstable universes (SE > 95th percentile)
-se_thresh <- quantile(M_cond$std.error, 0.95, na.rm = TRUE)
-bad_ids   <- M_cond %>% filter(std.error > se_thresh) %>% pull(.universe) %>% unique()
-M_cond    <- M_cond %>% filter(!.universe %in% bad_ids)
-M_int     <- M_int  %>% filter(!.universe %in% bad_ids)
-message(sprintf("Dropped %d unstable universes (SE > %.4f). %d remain.",
-                length(bad_ids), se_thresh, n_distinct(M_cond$.universe)))
-
 M_cond <- add_sig(M_cond)
 M_int  <- add_sig(M_int)
 
-write.csv(M_int,  file.path(csv_dir, "multiverse_nback_subject_results.csv"), row.names = FALSE)
+write.csv(M_int, file.path(csv_dir, "multiverse_nback_subject_results.csv"), row.names = FALSE)
 write.csv(M_cond, file.path(csv_dir, "multiverse_nback_subject_conditions_results.csv"), row.names = FALSE)
 message("Saved: multiverse_nback_subject_results.csv, multiverse_nback_subject_conditions_results.csv")
 
@@ -204,7 +271,7 @@ message("Setting up EEG-only multiverse (5 dimensions)...")
 
 dat_eeg <- dat %>%
   filter(!electrodes %in% c("all", "parietal"), baseline_eeg != "dB") %>%
-  select(subjectID, Condition, alpha, electrodes, fooof, latency_ms, alpha_type, baseline_eeg) %>%
+  select(subjectID, Condition, alpha, n_trials_subject_condition, electrodes, fooof, latency_ms, alpha_type, baseline_eeg) %>%
   distinct()
 
 highest_alpha_term <- paste0("Condition", highest_cond)
@@ -223,8 +290,10 @@ inside(M_eeg, {
            alpha_type == .alpha, baseline_eeg == .bleeg) %>%
     filter(complete.cases(alpha, Condition, subjectID))
 
+  de$model_weight <- de$n_trials_subject_condition
   de$alpha <- robust_z(de$alpha)
-  valid <- nrow(de) >= 10 && !any(is.nan(de$alpha))
+  de <- prepare_model_data(de, c("alpha", "Condition", "subjectID", "model_weight"))
+  valid <- nrow(de) >= MIN_N_PER_UNIVERSE && !any(is.nan(de$alpha))
 
   tid_ca <- if (valid) {
     fit <- run_lmer(alpha ~ Condition + (1 | subjectID), de)
@@ -259,7 +328,7 @@ if (nrow(M_ca) > 0L) {
 message("Setting up gaze-only multiverse (3 dimensions)...")
 
 dat_gaze <- dat %>%
-  select(subjectID, Condition, gaze_value, latency_ms, gaze_measure, baseline_gaze) %>%
+  select(subjectID, Condition, gaze_value, n_trials_subject_condition, latency_ms, gaze_measure, baseline_gaze) %>%
   distinct()
 
 highest_gaze_term <- paste0("Condition", highest_cond)
@@ -275,8 +344,10 @@ inside(M_gaze, {
     filter(latency_ms == .lat, gaze_measure == .gaze, baseline_gaze == .blgaze) %>%
     filter(complete.cases(gaze_value, Condition, subjectID))
 
-  dg$gaze_value <- robust_z(dg$gaze_value)
-  valid <- nrow(dg) >= 10 && !any(is.nan(dg$gaze_value))
+  dg$model_weight <- dg$n_trials_subject_condition
+  dg$gaze_value   <- robust_z(dg$gaze_value)
+  dg <- prepare_model_data(dg, c("gaze_value", "Condition", "subjectID", "model_weight"))
+  valid <- nrow(dg) >= MIN_N_PER_UNIVERSE && !any(is.nan(dg$gaze_value))
 
   tid_cg <- if (valid) {
     fit <- run_lmer(gaze_value ~ Condition + (1 | subjectID), dg)
@@ -308,6 +379,8 @@ if (nrow(M_cg) > 0L) {
 }
 
 # ========== APERIODIC MULTIVERSE ==========
+M_ap_gaze_results <- tibble()
+M_ap_cond_results <- tibble()
 if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) {
   message("Setting up aperiodic multiverse (subject-level)...")
 
@@ -317,7 +390,8 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
 
   dat_ap_gaze <- dat_ap %>%
     select(subjectID, Condition, aperiodic_offset, aperiodic_exponent,
-           gaze_value, electrodes, latency_ms, gaze_measure, baseline_gaze) %>%
+           gaze_value, n_trials_subject_condition,
+           electrodes, latency_ms, gaze_measure, baseline_gaze) %>%
     distinct()
 
   M_ap_gaze <- multiverse()
@@ -333,10 +407,12 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
              gaze_measure == .gaze, baseline_gaze == .blgaze) %>%
       filter(complete.cases(aperiodic_exponent, aperiodic_offset, gaze_value, Condition, subjectID))
 
-    dap$gaze_value <- robust_z(dap$gaze_value)
     dap$aperiodic_exponent <- robust_z(dap$aperiodic_exponent)
     dap$aperiodic_offset <- robust_z(dap$aperiodic_offset)
-    valid <- nrow(dap) >= 10 && !any(is.nan(dap$gaze_value)) &&
+    dap$gaze_value   <- robust_z(dap$gaze_value)
+    dap$model_weight <- dap$n_trials_subject_condition
+    dap <- prepare_model_data(dap, c("aperiodic_exponent", "aperiodic_offset", "gaze_value", "Condition", "subjectID", "model_weight"))
+    valid <- nrow(dap) >= MIN_N_PER_UNIVERSE && !any(is.nan(dap$gaze_value)) &&
              !any(is.nan(dap$aperiodic_exponent)) && !any(is.nan(dap$aperiodic_offset))
 
     tid_exp_gaze <- if (valid) {
@@ -383,7 +459,7 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
   }
 
   dat_ap_eeg <- dat_ap %>%
-    select(subjectID, Condition, aperiodic_offset, aperiodic_exponent, electrodes, latency_ms) %>%
+    select(subjectID, Condition, aperiodic_offset, aperiodic_exponent, n_trials_subject_condition, electrodes, latency_ms) %>%
     distinct()
 
   M_ap_cond <- multiverse()
@@ -398,7 +474,9 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
 
     dap$aperiodic_exponent <- robust_z(dap$aperiodic_exponent)
     dap$aperiodic_offset <- robust_z(dap$aperiodic_offset)
-    valid <- nrow(dap) >= 10 && !any(is.nan(dap$aperiodic_exponent)) && !any(is.nan(dap$aperiodic_offset))
+    dap$model_weight <- dap$n_trials_subject_condition
+    dap <- prepare_model_data(dap, c("aperiodic_exponent", "aperiodic_offset", "Condition", "subjectID", "model_weight"))
+    valid <- nrow(dap) >= MIN_N_PER_UNIVERSE && !any(is.nan(dap$aperiodic_exponent)) && !any(is.nan(dap$aperiodic_offset))
 
     tid_exp_cond <- if (valid) {
       fit <- run_lmer(aperiodic_exponent ~ Condition + (1 | subjectID), dap)
@@ -447,6 +525,31 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
 
 } else {
   message("Skipping aperiodic multiverse: columns not found in CSV.")
+}
+
+# ========== ROBUSTNESS SUMMARY OUTPUTS (CSV ONLY) ==========
+robust_main <- summarize_robustness(M_int, "main_model_terms")
+robust_cond <- summarize_robustness(M_cond, "per_condition_gaze_slopes")
+robust_interaction <- summarize_robustness(M_interaction, "highest_condition_interaction")
+robust_ca <- summarize_robustness(M_ca, "condition_to_alpha")
+robust_cg <- summarize_robustness(M_cg, "condition_to_gaze")
+robust_ap_gaze <- summarize_robustness(M_ap_gaze_results, "aperiodic_to_gaze")
+robust_ap_cond <- summarize_robustness(M_ap_cond_results, "aperiodic_to_condition")
+
+if (nrow(robust_main) > 0) write.csv(robust_main, file.path(csv_dir, "multiverse_nback_subject_results_robustness_summary.csv"), row.names = FALSE)
+if (nrow(robust_cond) > 0) write.csv(robust_cond, file.path(csv_dir, "multiverse_nback_subject_conditions_results_robustness_summary.csv"), row.names = FALSE)
+if (nrow(robust_interaction) > 0) write.csv(robust_interaction, file.path(csv_dir, "multiverse_nback_subject_interaction_results_robustness_summary.csv"), row.names = FALSE)
+if (nrow(robust_ca) > 0) write.csv(robust_ca, file.path(csv_dir, "multiverse_nback_subject_condition_results_robustness_summary.csv"), row.names = FALSE)
+if (nrow(robust_cg) > 0) write.csv(robust_cg, file.path(csv_dir, "multiverse_nback_subject_condition_gaze_results_robustness_summary.csv"), row.names = FALSE)
+if (nrow(robust_ap_gaze) > 0) write.csv(robust_ap_gaze, file.path(csv_dir, "multiverse_nback_subject_aperiodic_gaze_results_robustness_summary.csv"), row.names = FALSE)
+if (nrow(robust_ap_cond) > 0) write.csv(robust_ap_cond, file.path(csv_dir, "multiverse_nback_subject_aperiodic_condition_results_robustness_summary.csv"), row.names = FALSE)
+
+robustness_summary <- bind_rows(
+  robust_main, robust_cond, robust_interaction, robust_ca, robust_cg, robust_ap_gaze, robust_ap_cond
+)
+if (nrow(robustness_summary) > 0) {
+  write.csv(robustness_summary, file.path(csv_dir, "multiverse_nback_subject_robustness_summary.csv"), row.names = FALSE)
+  message(sprintf("Saved robustness summaries (combined rows: %d)", nrow(robustness_summary)))
 }
 
 message("=== N-back SUBJECT-LEVEL multiverse ANALYSIS complete ===")

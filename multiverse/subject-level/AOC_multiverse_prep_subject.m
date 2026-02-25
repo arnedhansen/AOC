@@ -403,6 +403,7 @@ function [tbl, r2_tbl] = build_task_multiverse_subject(task_name, subjects, path
   bl_eeg_cell = cell(est_rows, 1); bl_gaze_cell = cell(est_rows, 1);
   subjectID_cell = nan(est_rows, 1); Condition_cell = nan(est_rows, 1);
   alpha_val_cell = nan(est_rows, 1); gaze_val_cell = nan(est_rows, 1);
+  n_trials_cell = nan(est_rows, 1);
   ap_off_val_cell = nan(est_rows, 1); ap_exp_val_cell = nan(est_rows, 1);
   row_idx = 0;
 
@@ -692,6 +693,7 @@ function [tbl, r2_tbl] = build_task_multiverse_subject(task_name, subjects, path
         bl_gaze_cell{row_idx}    = baseline_gaze_opts{ibg};
         subjectID_cell(row_idx)  = sid_num;
         Condition_cell(row_idx)  = cval;
+        n_trials_cell(row_idx)   = n_trials_cond;
 
         % Alpha: FOOOF is baseline-independent → same for all EEG baselines
         col_alpha = (ie-1)*n_alpha + ia;
@@ -734,14 +736,15 @@ function [tbl, r2_tbl] = build_task_multiverse_subject(task_name, subjects, path
   Condition_cell  = Condition_cell(1:row_idx);
   alpha_val_cell  = alpha_val_cell(1:row_idx);
   gaze_val_cell   = gaze_val_cell(1:row_idx);
+  n_trials_cell   = n_trials_cell(1:row_idx);
   ap_off_val_cell = ap_off_val_cell(1:row_idx);
   ap_exp_val_cell = ap_exp_val_cell(1:row_idx);
 
   tbl = table(task_cell, u_id_cell, elec_cell, fooof_cell, lat_cell, alpha_type_cell, gaze_meas_cell, ...
-    bl_eeg_cell, bl_gaze_cell, subjectID_cell, Condition_cell, alpha_val_cell, gaze_val_cell, ...
+    bl_eeg_cell, bl_gaze_cell, subjectID_cell, Condition_cell, n_trials_cell, alpha_val_cell, gaze_val_cell, ...
     ap_off_val_cell, ap_exp_val_cell, ...
     'VariableNames', {'task', 'universe_id', 'electrodes', 'fooof', 'latency_ms', 'alpha_type', 'gaze_measure', ...
-    'baseline_eeg', 'baseline_gaze', 'subjectID', 'Condition', 'alpha', 'gaze_value', ...
+    'baseline_eeg', 'baseline_gaze', 'subjectID', 'Condition', 'n_trials_subject_condition', 'alpha', 'gaze_value', ...
     'aperiodic_offset', 'aperiodic_exponent'});
 
   if isempty(r2_sid)

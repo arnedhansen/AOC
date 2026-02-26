@@ -481,18 +481,34 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
              !any(is.nan(dap$aperiodic_exponent)) && !any(is.nan(dap$aperiodic_offset))
 
     tid_exp_gaze <- if (valid) {
-      fit <- run_lmer(aperiodic_exponent ~ gaze_value + (1 | subjectID), dap)
-      if (!is.null(fit)) {
-        broom.mixed::tidy(fit, conf.int = TRUE) %>% filter(term == "gaze_value") %>%
-          mutate(aperiodic_measure = "Exponent")
+      fit_obj <- fit_with_condition_slope(
+        aperiodic_exponent ~ gaze_value + Condition + (1 + Condition || subjectID),
+        aperiodic_exponent ~ gaze_value + Condition + (1 | subjectID),
+        dap
+      )
+      if (!is.null(fit_obj)) {
+        broom.mixed::tidy(fit_obj$fit, conf.int = TRUE) %>%
+          filter(term == "gaze_value") %>%
+          mutate(
+            aperiodic_measure = "Exponent",
+            random_effects = fit_obj$re_spec
+          )
       } else tibble()
     } else tibble()
 
     tid_off_gaze <- if (valid) {
-      fit <- run_lmer(aperiodic_offset ~ gaze_value + (1 | subjectID), dap)
-      if (!is.null(fit)) {
-        broom.mixed::tidy(fit, conf.int = TRUE) %>% filter(term == "gaze_value") %>%
-          mutate(aperiodic_measure = "Offset")
+      fit_obj <- fit_with_condition_slope(
+        aperiodic_offset ~ gaze_value + Condition + (1 + Condition || subjectID),
+        aperiodic_offset ~ gaze_value + Condition + (1 | subjectID),
+        dap
+      )
+      if (!is.null(fit_obj)) {
+        broom.mixed::tidy(fit_obj$fit, conf.int = TRUE) %>%
+          filter(term == "gaze_value") %>%
+          mutate(
+            aperiodic_measure = "Offset",
+            random_effects = fit_obj$re_spec
+          )
       } else tibble()
     } else tibble()
   })

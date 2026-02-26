@@ -420,7 +420,7 @@ if (has_ap_gaze) {
 
     title_text <- paste0("Aperiodic ", tolower(ap_measure), " ~ gaze")
     subtitle_text <- paste0("aperiodic_", tolower(ap_measure),
-                            " ~ gaze_value + (1|subjectID)")
+                            " ~ gaze_value + Condition + (1|subjectID)")
 
     p_ap_curve <- ggplot(M_ap, aes(x = ordered_universe, y = estimate,
                                     color = condition)) +

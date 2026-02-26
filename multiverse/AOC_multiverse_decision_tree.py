@@ -1,17 +1,17 @@
 """
 AOC Multiverse — Traditional vs Multiverse Analysis Comparison
 Single presentation figure showing one arbitrary analysis path (traditional)
-alongside all 640 specifications (multiverse) using trunk-and-reconverge layout.
+alongside all specifications (multiverse) using trunk-and-reconverge layout.
 """
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 
-OUT_GH = ("/Users/Arne/Documents/GitHub/AOC/multiverse/"
+OUT_GH = ("/Users/Arne/Documents/GitHub/AOC/multiverse/decision_tree/"
           "AOC_multiverse_decision_tree_traditional_vs_multiverse.png")
 OUT_SC = ("/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/"
-          "figures/multiverse/"
+          "figures/multiverse/decision_tree/"
           "AOC_multiverse_decision_tree_traditional_vs_multiverse.png")
 
 # ── Palette (minimal, near-monochrome) ───────────────────────────────────
@@ -23,12 +23,12 @@ GUIDE     = "#E2E8F0"
 
 # ── 7 decisions (display order) ──────────────────────────────────────────
 decisions = [
-    {"label": "Latency\nWindow",     "trad": "1000–2000",   "multi": ["0–500", "0–1000", "0–2000", "1000–2000"]},
+    {"label": "Latency\nWindow",               "trad": "1000–2000 ms",   "multi": ["0–1000 ms", "1000–2000 ms", "0–2000 ms"]},
     {"label": "Electrodes",          "trad": "Occipital",   "multi": ["Posterior", "Occipital"]},
-    {"label": "Spectral\nParam.",    "trad": "Non-\nFOOOFed", "multi": ["FOOOFed", "Non-\nFOOOFed"]},
+    {"label": "Spectral\nParameterization",    "trad": "No SpecParam", "multi": ["SpecParam", "No SpecParam"]},
     {"label": "EEG\nBaseline",       "trad": "Raw",         "multi": ["Raw", "%"]},
     {"label": "Alpha\nBand",         "trad": "IAF",         "multi": ["Canonical", "IAF"]},
-    {"label": "Gaze\nMeasure",       "trad": "Gaze Dev.",   "multi": ["Gaze Dev.", "SPL", "Velocity", "MS", "BCEA"]},
+    {"label": "Gaze\nMeasure",       "trad": "Gaze Deviation",   "multi": ["Gaze Deviation", "SPL", "Velocity", "BCEA"]},
     {"label": "Gaze\nBaseline",      "trad": "Raw",         "multi": ["Raw", "%"]},
 ]
 N = len(decisions)
@@ -53,6 +53,7 @@ Y_BOT    = 0.155
 Y_LEAF   = 0.055
 NODE_H   = 0.048
 GAP      = 0.012
+BOX_PAD  = 0.004
 
 y_levels = np.linspace(Y_TOP, Y_BOT, N)
 
@@ -62,7 +63,7 @@ def rbox(cx, cy, w, h, fc, text, fs=10, tc="white", bold=False,
          ec=None, lw=2):
     ax.add_patch(mpatches.FancyBboxPatch(
         (cx - w / 2, cy - h / 2), w, h,
-        boxstyle=mpatches.BoxStyle.Round(pad=0.004),
+        boxstyle=mpatches.BoxStyle.Round(pad=BOX_PAD),
         facecolor=fc, edgecolor=ec or fc, linewidth=lw,
         zorder=3, transform=ax.transAxes, clip_on=False))
     if text:
@@ -80,23 +81,31 @@ def scurve(x1, y1, x2, y2, col=SLATE, lw=1.6, alpha=0.35):
             transform=ax.transAxes, zorder=1)
 
 
-def varrow(x, y1, y2, col=SLATE, lw=1.4):
-    ax.plot([x, x], [y1, y2], color=col, lw=lw,
-            transform=ax.transAxes, zorder=2, solid_capstyle="round")
-    hw, hh = 0.004, 0.007
-    from matplotlib.patches import Polygon
-    tri = Polygon([(x - hw, y2 + hh), (x + hw, y2 + hh), (x, y2)],
-                  closed=True, facecolor=col, edgecolor=col,
-                  transform=ax.transAxes, zorder=2, clip_on=False)
-    ax.add_patch(tri)
+def varrow(x, y1, y2, col=SLATE, lw=1.6):
+    ax.annotate(
+        "",
+        xy=(x, y2),
+        xytext=(x, y1),
+        xycoords=ax.transAxes,
+        textcoords=ax.transAxes,
+        arrowprops=dict(
+            arrowstyle="-|>",
+            color=col,
+            lw=lw,
+            shrinkA=0,
+            shrinkB=0,
+            mutation_scale=18,
+        ),
+        zorder=5,
+    )
 
 
 # ── Titles ───────────────────────────────────────────────────────────────
 ax.text(TRAD_CX, 0.98, "Traditional Analysis",
-        ha="center", va="center", fontsize=24, fontweight="bold",
+        ha="center", va="center", fontsize=30, fontweight="bold",
         color=CHARCOAL, fontfamily="sans-serif")
 ax.text(MULTI_TRUNK, 0.98, "Multiverse Analysis",
-        ha="center", va="center", fontsize=24, fontweight="bold",
+        ha="center", va="center", fontsize=30, fontweight="bold",
         color=CHARCOAL, fontfamily="sans-serif")
 
 # ── Divider ──────────────────────────────────────────────────────────────
@@ -127,7 +136,7 @@ for i, dec in enumerate(decisions):
 
     # ── Decision label (far left) ──
     ax.text(LABEL_CX, y, dec["label"], ha="center", va="center",
-            fontsize=12, color=CHARCOAL, fontweight="bold",
+            fontsize=18, color=CHARCOAL, fontweight="bold",
             fontfamily="sans-serif", transform=ax.transAxes,
             linespacing=1.1)
 
@@ -136,10 +145,11 @@ for i, dec in enumerate(decisions):
             color=GUIDE, lw=1, ls=":", transform=ax.transAxes, zorder=0)
 
     # ── TRADITIONAL: single box ──
-    prev_bot = (Y_ROOT - start_h / 2) if i == 0 else (y_levels[i - 1] - NODE_H / 2)
-    varrow(TRAD_CX, prev_bot, y + NODE_H / 2)
+    prev_bot = ((Y_ROOT - start_h / 2 - BOX_PAD)
+                if i == 0 else (y_levels[i - 1] - NODE_H / 2 - BOX_PAD))
     rbox(TRAD_CX, y, 0.085, NODE_H, LIGHT_BG, dec["trad"],
-         fs=10, tc=CHARCOAL, ec=BORDER, lw=1.8)
+         fs=13.5, tc=CHARCOAL, ec=BORDER, lw=1.8)
+    varrow(TRAD_CX, prev_bot, y + NODE_H / 2 + BOX_PAD)
 
     # ── MULTIVERSE: trunk → fan out → boxes → fan in ──
     span = MULTI_R - MULTI_L
@@ -176,7 +186,7 @@ for i, dec in enumerate(decisions):
         scurve(MULTI_TRUNK, split_y, ox, y + NODE_H / 2)
         scurve(ox, y - NODE_H / 2, MULTI_TRUNK, conv_y)
         rbox(ox, y, bw, NODE_H, LIGHT_BG, label,
-             fs=9.5 if n_opts <= 4 else 8.5, tc=CHARCOAL, ec=BORDER, lw=1.8)
+             fs=13 if n_opts <= 4 else 12, tc=CHARCOAL, ec=BORDER, lw=1.8)
 
     # Converge dot
     ax.plot(MULTI_TRUNK, conv_y, "o", color=CHARCOAL, markersize=5,
@@ -184,25 +194,25 @@ for i, dec in enumerate(decisions):
 
     # Universe count (right margin, outside plot area)
     ax.text(1.02, y + 0.007, f"×{n_opts}", ha="left", va="center",
-            fontsize=13, color=CHARCOAL, fontweight="bold",
+            fontsize=15, color=CHARCOAL, fontweight="bold",
             fontfamily="sans-serif", transform=ax.transAxes)
     ax.text(1.02, y - 0.017, f"= {running:,}", ha="left", va="center",
-            fontsize=11, color=SLATE,
+            fontsize=14, color=SLATE,
             fontfamily="sans-serif", transform=ax.transAxes)
 
 # ── Leaf level ───────────────────────────────────────────────────────────
 # Label
 ax.text(LABEL_CX, Y_LEAF, "Reported\nAnalysis", ha="center", va="center",
-        fontsize=12, color=CHARCOAL, fontweight="bold",
+        fontsize=15, color=CHARCOAL, fontweight="bold",
         fontfamily="sans-serif", transform=ax.transAxes, linespacing=1.1)
 ax.plot([LABEL_CX + 0.06, TRAD_CX - 0.05], [Y_LEAF, Y_LEAF],
         color=GUIDE, lw=1, ls=":", transform=ax.transAxes, zorder=0)
 
 # Traditional: arrow → one tiny box
-varrow(TRAD_CX, y_levels[-1] - NODE_H / 2, Y_LEAF + 0.012)
 rbox(TRAD_CX, Y_LEAF, 0.022, 0.016, LIGHT_BG, "", ec=BORDER, lw=1.2)
+varrow(TRAD_CX, y_levels[-1] - NODE_H / 2 - BOX_PAD, Y_LEAF + 0.008 + BOX_PAD)
 ax.text(TRAD_CX, Y_LEAF - 0.025, "1 analysis", ha="center", va="center",
-        fontsize=11, color=SLATE, fontweight="bold",
+        fontsize=14, color=SLATE, fontweight="bold",
         fontfamily="sans-serif", transform=ax.transAxes)
 
 # Multiverse: fan out to many tiny boxes
@@ -214,8 +224,8 @@ for tx in tiny_xs:
            col=SLATE, lw=0.7, alpha=0.18)
     rbox(tx, Y_LEAF, 0.016, 0.013, LIGHT_BG, "", ec=BORDER, lw=0.7)
 
-ax.text(MULTI_TRUNK, Y_LEAF - 0.025, "640 analyses per task",
-        ha="center", va="center", fontsize=13, color=CHARCOAL,
+ax.text(MULTI_TRUNK, Y_LEAF - 0.025, f"{running:,} analyses per task",
+        ha="center", va="center", fontsize=15, color=CHARCOAL,
         fontweight="bold", fontfamily="sans-serif", transform=ax.transAxes)
 
 # ── Save ─────────────────────────────────────────────────────────────────

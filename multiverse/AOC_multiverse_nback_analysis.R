@@ -43,6 +43,10 @@ dat$subjectID <- as.factor(dat$subjectID)
 dat$Condition <- as.factor(dat$Condition)
 
 message(sprintf("Loaded: %d rows, %d universes.", nrow(dat), n_distinct(dat$universe_id)))
+n_rows_0500 <- sum(dat$latency_ms == "0_500ms", na.rm = TRUE)
+dat <- dat %>% filter(latency_ms != "0_500ms")
+message(sprintf("Excluded 0_500ms rows: %d. Remaining: %d rows, %d universes.",
+                n_rows_0500, nrow(dat), n_distinct(dat$universe_id)))
 
 if (!("r_squared" %in% names(dat))) {
   r2_path_method <- file.path(r2_dir, paste0("fooof_r2_nback_", FOOOF_METHOD, ".csv"))
@@ -235,7 +239,7 @@ M <- multiverse()
 inside(M, {
   .elec   <- branch(electrodes,    "posterior", "occipital")
   .fooof  <- branch(fooof,         "FOOOFed", "nonFOOOFed")
-  .lat    <- branch(latency_ms,    "0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
+  .lat    <- branch(latency_ms,    "0_1000ms", "0_2000ms", "1000_2000ms")
   .alpha  <- branch(alpha_type,    "canonical", "IAF")
   .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA", "gaze_deviation")
   .bleeg  <- branch(baseline_eeg,  "raw", "pct_change")
@@ -338,7 +342,7 @@ M_eeg <- multiverse()
 inside(M_eeg, {
   .elec  <- branch(electrodes,   "posterior", "occipital")
   .fooof <- branch(fooof,        "FOOOFed", "nonFOOOFed")
-  .lat   <- branch(latency_ms,   "0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
+  .lat   <- branch(latency_ms,   "0_1000ms", "0_2000ms", "1000_2000ms")
   .alpha <- branch(alpha_type,   "canonical", "IAF")
   .bleeg <- branch(baseline_eeg, "raw", "pct_change")
 
@@ -396,7 +400,7 @@ highest_gaze_term <- paste0("Condition", highest_cond)
 M_gaze <- multiverse()
 
 inside(M_gaze, {
-  .lat    <- branch(latency_ms,    "0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
+  .lat    <- branch(latency_ms,    "0_1000ms", "0_2000ms", "1000_2000ms")
   .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA", "gaze_deviation")
   .blgaze <- branch(baseline_gaze, "raw", "pct_change")
 
@@ -458,7 +462,7 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
 
   inside(M_ap_gaze, {
     .elec   <- branch(electrodes,    "posterior", "occipital")
-    .lat    <- branch(latency_ms,    "0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
+    .lat    <- branch(latency_ms,    "0_1000ms", "0_2000ms", "1000_2000ms")
     .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA", "gaze_deviation")
     .blgaze <- branch(baseline_gaze, "raw", "pct_change")
 
@@ -523,7 +527,7 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
 
   inside(M_ap_cond, {
     .elec <- branch(electrodes, "posterior", "occipital")
-    .lat  <- branch(latency_ms, "0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
+    .lat  <- branch(latency_ms, "0_1000ms", "0_2000ms", "1000_2000ms")
 
     dap <- dat_ap_eeg %>%
       filter(electrodes == .elec, latency_ms == .lat) %>%

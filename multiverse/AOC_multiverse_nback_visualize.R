@@ -90,14 +90,14 @@ value_levels <- c(
   "IAF", "Canonical",
   "No SpecParam", "SpecParam",
   "Occipital", "Posterior",
-  "1000\u20132000 ms", "0\u20132000 ms", "0\u20131000 ms"
+  "0\u20132000 ms", "1000\u20132000 ms", "0\u20131000 ms"
 )
 
 v_p2_group_order <- c("Latency", "Electrodes", "Spectral\nParameterization",
                        "EEG Baseline", "Alpha", "Gaze Measure", "Gaze Baseline")
 
 elec_order <- c("posterior", "occipital")
-lat_order  <- c("0_1000ms", "0_2000ms", "1000_2000ms")
+lat_order  <- c("0_1000ms", "1000_2000ms", "0_2000ms")
 gaze_order <- c("gaze_deviation", "gaze_velocity", "scan_path_length", "BCEA")
 
 # ========== PANEL HELPERS ==========

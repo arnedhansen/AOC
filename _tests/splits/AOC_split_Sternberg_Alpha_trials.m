@@ -8,10 +8,6 @@
 %   .../figures/tests/splitAlpha/trials/
 
 %% Setup
-clear
-clc
-close all
-
 startup
 [subjects, pathAOC, colors, headmodel] = setup('AOC');
 
@@ -37,7 +33,7 @@ end
 fig_pos = [0 0 1512 982];
 fontSize = 20;
 rng(42);
-alpha_zero_margin = 0.05; % Exclude near-zero trial alpha from amp/red split
+alpha_zero_pct = 5; % Exclude near-zero trial alpha within this % of max |alpha|
 
 cond_vals = [2 4 6];
 cond_codes = [22 24 26];
@@ -54,15 +50,25 @@ if ~isfield(S, 'merged_data_sternberg_trials')
 end
 T = S.merged_data_sternberg_trials;
 
+% Percentage-based exclusion band around zero.
+valid_alpha = T.AlphaPowerFullBL(isfinite(T.AlphaPowerFullBL));
+if isempty(valid_alpha)
+    error('No finite trial-level alpha values found for split.');
+end
+alpha_abs_ref = max(abs(valid_alpha));
+alpha_zero_margin = (alpha_zero_pct / 100) * alpha_abs_ref;
+
 is_red_trial = isfinite(T.AlphaPowerFullBL) & T.AlphaPowerFullBL < -alpha_zero_margin;
 is_amp_trial = isfinite(T.AlphaPowerFullBL) & T.AlphaPowerFullBL > alpha_zero_margin;
 is_zero_trial = isfinite(T.AlphaPowerFullBL) & abs(T.AlphaPowerFullBL) <= alpha_zero_margin;
 
 fprintf('\n=== Trial Split Summary (AlphaPowerFullBL) ===\n');
 fprintf('Total rows: %d\n', height(T));
-fprintf('Reduction trials (< -%.3f): %d\n', alpha_zero_margin, nnz(is_red_trial));
-fprintf('Amplification trials (> %.3f): %d\n', alpha_zero_margin, nnz(is_amp_trial));
-fprintf('Excluded trials (|alpha| <= %.3f): %d\n', alpha_zero_margin, nnz(is_zero_trial));
+fprintf('Zero-band setting: %.2f%% of max |alpha| (max |alpha|=%.4f, cutoff=%.4f)\n', ...
+    alpha_zero_pct, alpha_abs_ref, alpha_zero_margin);
+fprintf('Reduction trials (< -%.4f): %d\n', alpha_zero_margin, nnz(is_red_trial));
+fprintf('Amplification trials (> %.4f): %d\n', alpha_zero_margin, nnz(is_amp_trial));
+fprintf('Excluded trials (|alpha| <= %.4f): %d\n', alpha_zero_margin, nnz(is_zero_trial));
 
 if nnz(is_red_trial) < 20 || nnz(is_amp_trial) < 20
     error('Insufficient trial counts in one or both trial groups.');
@@ -326,14 +332,14 @@ conds = [];
 if isempty(trialinfo), return; end
 if isvector(trialinfo)
     conds = trialinfo(:);
-elseif size(trialinfo,2) >= 1
-    if size(trialinfo,2) == 2
-        conds = trialinfo(:,1);
-    elseif size(trialinfo,1) == 2
-        conds = trialinfo(1,:)';
-    else
-        conds = trialinfo(:,1);
-    end
+elseif size(trialinfo,1) == 2
+    % 2 x N convention: row1=condition, row2=trial
+    conds = trialinfo(1,:)';
+elseif size(trialinfo,2) >= 2
+    % N x 2 convention: col1=condition, col2=trial
+    conds = trialinfo(:,1);
+else
+    conds = trialinfo(:,1);
 end
 end
 
@@ -342,10 +348,12 @@ trials = [];
 if isempty(trialinfo), return; end
 if isvector(trialinfo)
     return
-elseif size(trialinfo,2) >= 2
-    trials = trialinfo(:,2);
 elseif size(trialinfo,1) == 2
+    % 2 x N convention: row1=condition, row2=trial
     trials = trialinfo(2,:)';
+elseif size(trialinfo,2) >= 2
+    % N x 2 convention: col1=condition, col2=trial
+    trials = trialinfo(:,2);
 end
 end
 

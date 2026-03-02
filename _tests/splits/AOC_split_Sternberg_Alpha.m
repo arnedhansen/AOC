@@ -16,10 +16,6 @@
 % - Correlation panels within each group
 
 %% Setup
-clear
-clc
-close all
-
 startup
 [subjects, pathAOC, colors, headmodel] = setup('AOC');
 
@@ -52,7 +48,7 @@ cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
 
 fontSize = 20;
 rng(42);
-alpha_zero_margin = 0.05; % Exclude near-zero alpha from amp/red split
+alpha_zero_pct = 5; % Exclude near-zero alpha within this % of max |alpha|
 
 %% Load subject-level merged data and define alpha split
 merged_file = fullfile(feat_dir, 'merged_data_sternberg.mat');
@@ -75,15 +71,25 @@ for i = 1:nSubj
     alpha_mean(i) = mean(T.AlphaPower_FOOOF_bl(mask), 'omitnan');
 end
 
+% Percentage-based exclusion band around zero.
+valid_alpha_mean = alpha_mean(isfinite(alpha_mean));
+if isempty(valid_alpha_mean)
+    error('No finite subject-level alpha values found for split.');
+end
+alpha_abs_ref = max(abs(valid_alpha_mean));
+alpha_zero_margin = (alpha_zero_pct / 100) * alpha_abs_ref;
+
 reduction_ids = uIDs(alpha_mean < -alpha_zero_margin);
 amplification_ids = uIDs(alpha_mean > alpha_zero_margin);
 zero_ids = uIDs(abs(alpha_mean) <= alpha_zero_margin);
 
 fprintf('\n=== Split Summary (AlphaPower_FOOOF_bl, full window) ===\n');
 fprintf('Subjects total: %d\n', nSubj);
-fprintf('Reduction (< -%.3f): %d\n', alpha_zero_margin, numel(reduction_ids));
-fprintf('Amplification (> %.3f): %d\n', alpha_zero_margin, numel(amplification_ids));
-fprintf('Excluded (|alpha| <= %.3f): %d\n', alpha_zero_margin, numel(zero_ids));
+fprintf('Zero-band setting: %.2f%% of max |alpha| (max |alpha|=%.4f, cutoff=%.4f)\n', ...
+    alpha_zero_pct, alpha_abs_ref, alpha_zero_margin);
+fprintf('Reduction (< -%.4f): %d\n', alpha_zero_margin, numel(reduction_ids));
+fprintf('Amplification (> %.4f): %d\n', alpha_zero_margin, numel(amplification_ids));
+fprintf('Excluded (|alpha| <= %.4f): %d\n', alpha_zero_margin, numel(zero_ids));
 
 if numel(reduction_ids) < 2 || numel(amplification_ids) < 2
     error('Insufficient subjects per split group.');
@@ -375,6 +381,10 @@ for i = 1:numel(labels)
         ch{end+1} = lab; %#ok<AGROW>
     end
 end
+if isempty(ch)
+    ch = labels;
+end
+end
 
 function subj_folder = resolve_subject_folder(subjects, sid)
 subj_folder = '';
@@ -400,7 +410,6 @@ zvy = (vy - nanmean(vy)) ./ (nanstd(vy) + eps);
 bad = abs(zvx) > 4 | abs(zvy) > 4;
 vx(bad) = NaN;
 vy(bad) = NaN;
-end
 end
 
 function plot_group_power_spectrum(pow_cells, channels, colors, cond_labels, ttl, out_file, fig_pos, fsz)

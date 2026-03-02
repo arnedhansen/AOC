@@ -16,10 +16,6 @@
 % - Correlation panels within each group
 
 %% Setup
-clear
-clc
-close all
-
 startup
 [subjects, pathAOC, colors, headmodel] = setup('AOC');
 
@@ -286,6 +282,7 @@ if isempty(channels)
 end
 
 %% -------- Power spectra (both groups) --------
+addpath('W:\Students\Arne\toolboxes\shadedErrorBar');
 plot_group_power_spectrum(pow_red, channels, colors, cond_labels, ...
     'Reduction Group Power Spectrum', ...
     fullfile(fig_dir, 'AOC_splitAlpha_powspctrm_reduction.png'), fig_pos, fontSize);
@@ -305,7 +302,7 @@ plot_group_tfrs(tfr_amp, channels, cond_labels, headmodel, color_map_tfr, ...
     'Amplification', fig_dir, fig_pos, fontSize);
 
 %% -------- Topoplots per condition (both groups + differences) --------
-plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, fig_dir, fig_pos, fontSize);
+%plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, fig_dir, fig_pos, fontSize);
 
 %% -------- Boxplots --------
 plot_metric_boxplots(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_pos, fontSize);
@@ -597,7 +594,6 @@ for m = 1:size(metric_defs, 1)
     title('Reduction');
     ylabel(ylab);
     box off
-    ygrid on
 
     nexttile; hold on
     for c = 1:3
@@ -607,7 +603,6 @@ for m = 1:size(metric_defs, 1)
     title('Amplification');
     ylabel(ylab);
     box off
-    ygrid on
 
     sgtitle(sprintf('Raincloud: %s', key), 'FontSize', fsz+2);
     saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_raincloud_%s.png', lower(key))));

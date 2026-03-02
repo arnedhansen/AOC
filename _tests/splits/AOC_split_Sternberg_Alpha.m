@@ -25,9 +25,16 @@ startup
 
 if ispc
     base_data = 'W:\Students\Arne\AOC';
+    seb_path = 'W:\Students\Arne\toolboxes\shadedErrorBar';
 else
     base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC';
+    seb_path = '/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/shadedErrorBar';
 end
+
+if ~isfolder(seb_path)
+    error('shadedErrorBar path not found: %s', seb_path);
+end
+addpath(seb_path);
 
 feat_dir = fullfile(base_data, 'data', 'features');
 fig_dir = fullfile(base_data, 'figures', 'tests', 'splitAlpha');

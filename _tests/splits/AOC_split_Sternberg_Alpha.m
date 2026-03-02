@@ -16,6 +16,10 @@
 % - Correlation panels within each group
 
 %% Setup
+clear
+clc
+close all
+
 startup
 [subjects, pathAOC, colors, headmodel] = setup('AOC');
 
@@ -41,6 +45,7 @@ cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
 
 fontSize = 20;
 rng(42);
+alpha_zero_margin = 0.05; % Exclude near-zero alpha from amp/red split
 
 %% Load subject-level merged data and define alpha split
 merged_file = fullfile(feat_dir, 'merged_data_sternberg.mat');
@@ -63,15 +68,15 @@ for i = 1:nSubj
     alpha_mean(i) = mean(T.AlphaPower_FOOOF_bl(mask), 'omitnan');
 end
 
-reduction_ids = uIDs(alpha_mean < 0);
-amplification_ids = uIDs(alpha_mean > 0);
-zero_ids = uIDs(alpha_mean == 0);
+reduction_ids = uIDs(alpha_mean < -alpha_zero_margin);
+amplification_ids = uIDs(alpha_mean > alpha_zero_margin);
+zero_ids = uIDs(abs(alpha_mean) <= alpha_zero_margin);
 
 fprintf('\n=== Split Summary (AlphaPower_FOOOF_bl, full window) ===\n');
 fprintf('Subjects total: %d\n', nSubj);
-fprintf('Reduction (<0): %d\n', numel(reduction_ids));
-fprintf('Amplification (>0): %d\n', numel(amplification_ids));
-fprintf('Excluded (=0): %d\n', numel(zero_ids));
+fprintf('Reduction (< -%.3f): %d\n', alpha_zero_margin, numel(reduction_ids));
+fprintf('Amplification (> %.3f): %d\n', alpha_zero_margin, numel(amplification_ids));
+fprintf('Excluded (|alpha| <= %.3f): %d\n', alpha_zero_margin, numel(zero_ids));
 
 if numel(reduction_ids) < 2 || numel(amplification_ids) < 2
     error('Insufficient subjects per split group.');
@@ -120,6 +125,10 @@ missing_gaze = {};
 for s = 1:nSubj
     sid = uIDs(s);
     sid_str = num2str(sid);
+    subj_folder = resolve_subject_folder(subjects, sid);
+    if isempty(subj_folder)
+        subj_folder = sid_str;
+    end
     subj_rows = T(T.ID == sid, :);
 
     % Subject-level condition metrics from merged_data_sternberg
@@ -135,7 +144,7 @@ for s = 1:nSubj
     end
 
     % EEG power spectra and topography sources
-    eeg_dir = fullfile(pathAOC, sid_str, 'eeg');
+    eeg_dir = fullfile(pathAOC, subj_folder, 'eeg');
     try
         P = load(fullfile(eeg_dir, 'power_stern_raw.mat'), 'powload2', 'powload4', 'powload6');
         pow_conds = {P.powload2, P.powload4, P.powload6};
@@ -152,8 +161,9 @@ for s = 1:nSubj
 
     % EEG TFR sources
     try
-        R = load(fullfile(eeg_dir, 'tfr_stern.mat'), 'tfr2', 'tfr4', 'tfr6');
-        tfr_conds = {R.tfr2, R.tfr4, R.tfr6};
+        % Use FOOOFed + baselined TFR to avoid raw-power scale skew.
+        R = load(fullfile(eeg_dir, 'tfr_stern.mat'), 'tfr2_fooof_bl', 'tfr4_fooof_bl', 'tfr6_fooof_bl');
+        tfr_conds = {R.tfr2_fooof_bl, R.tfr4_fooof_bl, R.tfr6_fooof_bl};
         for c = 1:3
             if ismember(sid, reduction_ids)
                 tfr_red{c}{end+1} = tfr_conds{c}; %#ok<AGROW>
@@ -166,7 +176,7 @@ for s = 1:nSubj
     end
 
     % Gaze series for time courses and velocity summary
-    gaze_file = fullfile(feat_dir, sid_str, 'gaze', 'gaze_series_sternberg_trials.mat');
+    gaze_file = fullfile(feat_dir, subj_folder, 'gaze', 'gaze_series_sternberg_trials.mat');
     if ~isfile(gaze_file)
         missing_gaze{end+1} = sid_str; %#ok<AGROW>
         continue
@@ -235,6 +245,7 @@ for s = 1:nSubj
                 tt = linspace(-0.5, 2, numel(x));
                 dev = sqrt((x - 400).^2 + (y - 300).^2);
                 [vx, vy] = compute_velocity_sg(x, y, fs, 3);
+                [vx, vy] = clean_velocity_components(vx, vy);
                 vel = hypot(vx, vy);
 
                 try
@@ -282,7 +293,6 @@ if isempty(channels)
 end
 
 %% -------- Power spectra (both groups) --------
-addpath('W:\Students\Arne\toolboxes\shadedErrorBar');
 plot_group_power_spectrum(pow_red, channels, colors, cond_labels, ...
     'Reduction Group Power Spectrum', ...
     fullfile(fig_dir, 'AOC_splitAlpha_powspctrm_reduction.png'), fig_pos, fontSize);
@@ -302,7 +312,7 @@ plot_group_tfrs(tfr_amp, channels, cond_labels, headmodel, color_map_tfr, ...
     'Amplification', fig_dir, fig_pos, fontSize);
 
 %% -------- Topoplots per condition (both groups + differences) --------
-%plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, fig_dir, fig_pos, fontSize);
+plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, fig_dir, fig_pos, fontSize);
 
 %% -------- Boxplots --------
 plot_metric_boxplots(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_pos, fontSize);
@@ -357,6 +367,32 @@ for i = 1:numel(labels)
     if contains(lab, {'O'}) || contains(lab, {'I'}) || contains(lab, {'PO'})
         ch{end+1} = lab; %#ok<AGROW>
     end
+end
+
+function subj_folder = resolve_subject_folder(subjects, sid)
+subj_folder = '';
+for i = 1:numel(subjects)
+    sval = str2double(subjects{i});
+    if isfinite(sval) && sval == sid
+        subj_folder = subjects{i};
+        return
+    end
+end
+end
+
+function [vx, vy] = clean_velocity_components(vx, vy)
+halfwin = 11; % SG edge region for framelen=21
+if numel(vx) > 2*halfwin
+    vx(1:halfwin) = NaN;
+    vx(end-halfwin+1:end) = NaN;
+    vy(1:halfwin) = NaN;
+    vy(end-halfwin+1:end) = NaN;
+end
+zvx = (vx - nanmean(vx)) ./ (nanstd(vx) + eps);
+zvy = (vy - nanmean(vy)) ./ (nanstd(vy) + eps);
+bad = abs(zvx) > 4 | abs(zvy) > 4;
+vx(bad) = NaN;
+vy(bad) = NaN;
 end
 end
 
@@ -481,7 +517,27 @@ cfg.xlim = [8 14];
 
 cmap_abs = customcolormap([0 0.5 1], [0.8 0 0; 1 0.5 0; 1 1 1]);
 cfg.colormap = cmap_abs;
-cfg.zlim = 'maxabs';
+freq_idx = ga_red{1}.freq >= 8 & ga_red{1}.freq <= 14;
+all_alpha = [];
+all_diff = [];
+for c = 1:3
+    Ared = mean(ga_red{c}.powspctrm(:, freq_idx), 2, 'omitnan');
+    Aamp = mean(ga_amp{c}.powspctrm(:, freq_idx), 2, 'omitnan');
+    all_alpha = [all_alpha; Ared(:); Aamp(:)]; %#ok<AGROW>
+    all_diff = [all_diff; (Aamp(:) - Ared(:))]; %#ok<AGROW>
+end
+all_alpha = all_alpha(isfinite(all_alpha));
+if isempty(all_alpha)
+    cfg.zlim = 'maxabs';
+else
+    zlo = prctile(all_alpha, 1);
+    zhi = prctile(all_alpha, 99);
+    if zlo == zhi
+        zlo = min(all_alpha);
+        zhi = max(all_alpha);
+    end
+    cfg.zlim = [zlo zhi];
+end
 
 for c = 1:3
     figure('Position', fig_pos, 'Color', 'w');
@@ -508,7 +564,13 @@ cfgd = cfg;
 cmap_diff = cbrewer('div', 'RdBu', 100);
 cmap_diff = flipud(max(min(cmap_diff, 1), 0));
 cfgd.colormap = cmap_diff;
-cfgd.zlim = 'maxabs';
+all_diff = all_diff(isfinite(all_diff));
+if isempty(all_diff)
+    cfgd.zlim = 'maxabs';
+else
+    mx = prctile(abs(all_diff), 99);
+    cfgd.zlim = [-mx mx];
+end
 for c = 1:3
     gd = ga_amp{c};
     gd.powspctrm = ga_amp{c}.powspctrm - ga_red{c}.powspctrm;
@@ -590,19 +652,27 @@ for m = 1:size(metric_defs, 1)
     for c = 1:3
         draw_one_cloud(X(is_red, c), c, colors(c,:), 0.3, 24, 0.45);
     end
+    h1 = plot(nan, nan, '-', 'Color', colors(1,:), 'LineWidth', 2);
+    h2 = plot(nan, nan, '-', 'Color', colors(2,:), 'LineWidth', 2);
+    h3 = plot(nan, nan, '-', 'Color', colors(3,:), 'LineWidth', 2);
     set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
     title('Reduction');
     ylabel(ylab);
     box off
+    legend([h1 h2 h3], cond_labels, 'Location', 'best', 'FontSize', fsz-5);
 
     nexttile; hold on
     for c = 1:3
         draw_one_cloud(X(is_amp, c), c, colors(c,:), 0.3, 24, 0.45);
     end
+    h1 = plot(nan, nan, '-', 'Color', colors(1,:), 'LineWidth', 2);
+    h2 = plot(nan, nan, '-', 'Color', colors(2,:), 'LineWidth', 2);
+    h3 = plot(nan, nan, '-', 'Color', colors(3,:), 'LineWidth', 2);
     set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
     title('Amplification');
     ylabel(ylab);
     box off
+    legend([h1 h2 h3], cond_labels, 'Location', 'best', 'FontSize', fsz-5);
 
     sgtitle(sprintf('Raincloud: %s', key), 'FontSize', fsz+2);
     saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_raincloud_%s.png', lower(key))));
@@ -623,22 +693,26 @@ for m = 1:numel(metric_defs)
     for i = 1:size(XR,1)
         plot(1:3, XR(i,:), '-', 'Color', [0.75 0.75 0.75], 'LineWidth', 1);
     end
-    plot(1:3, mean(XR,1,'omitnan'), '-o', 'Color', colors(1,:), 'LineWidth', 3, 'MarkerFaceColor', colors(1,:));
+    hSub = plot(1:3, XR(1,:), '-', 'Color', [0.75 0.75 0.75], 'LineWidth', 1);
+    hMean = plot(1:3, mean(XR,1,'omitnan'), '-o', 'Color', colors(1,:), 'LineWidth', 3, 'MarkerFaceColor', colors(1,:));
     set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
     title('Reduction');
     ylabel(key);
     box on
+    legend([hSub hMean], {'Subjects', 'Group mean'}, 'Location', 'best', 'FontSize', fsz-6);
 
     nexttile; hold on
     XA = X(is_amp, :);
     for i = 1:size(XA,1)
         plot(1:3, XA(i,:), '-', 'Color', [0.75 0.75 0.75], 'LineWidth', 1);
     end
-    plot(1:3, mean(XA,1,'omitnan'), '-o', 'Color', colors(3,:), 'LineWidth', 3, 'MarkerFaceColor', colors(3,:));
+    hSub = plot(1:3, XA(1,:), '-', 'Color', [0.75 0.75 0.75], 'LineWidth', 1);
+    hMean = plot(1:3, mean(XA,1,'omitnan'), '-o', 'Color', colors(3,:), 'LineWidth', 3, 'MarkerFaceColor', colors(3,:));
     set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
     title('Amplification');
     ylabel(key);
     box on
+    legend([hSub hMean], {'Subjects', 'Group mean'}, 'Location', 'best', 'FontSize', fsz-6);
 
     sgtitle(sprintf('Within-Subject Trajectories: %s', key), 'FontSize', fsz+2);
     saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_trajectory_%s.png', lower(key))));
@@ -672,6 +746,7 @@ for c = 1:3
     xlim([-0.5 2]);
     box on
     set(gca, 'FontSize', fsz-4);
+    legend([e1.mainLine e2.mainLine], {'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fsz-7);
 end
 
 nexttile(4); hold on

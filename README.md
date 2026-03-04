@@ -116,7 +116,7 @@ Ordered by when the decision occurs in the processing pipeline:
 
 - **Spectral method:** Hanning tapers throughout (via `ft_freqanalysis`, `method = 'mtmfft'`).
 - **Power sources (hierarchy):** Pre-computed Hanning files (0–1 s, 0–2 s) → precomputed TFRs (0–500 ms, 1–2 s) → time-domain EEG via `ft_freqanalysis` (fallback for any remaining gaps).
-- **FOOOF (trial-level):** `ft_freqanalysis_Arne_FOOOF` on raw time-domain data per trial. In `AOC_multiverse_prep.m` this now has a mode toggle: `singleFFT` (legacy, one spectrum from the full window), `welch500_50` (500 ms segments with 50% overlap, averaged before FOOOF; default), or `BOTH` (runs both modes in one script execution and writes mode-tagged outputs). FOOOF result remains baseline-independent (same value written for all three EEG baseline options).
+- **FOOOF (trial-level):** `ft_freqanalysis_Arne_FOOOF` on raw time-domain data per trial. In `AOC_multiverse_prep.m` this now has a mode toggle: `singleFFT` (legacy, one spectrum from the full window), `welch` (500 ms segments with 50% overlap, averaged before FOOOF; default), or `BOTH` (runs both modes in one script execution and writes mode-tagged outputs). FOOOF result remains baseline-independent (same value written for all three EEG baseline options).
 - **FOOOF (subject-level):** `ft_freqanalysis_Arne_FOOOF` on all condition trials at once with `keeptrials = 'no'` — internally averages the spectrum across trials before FOOOF fitting. More comparable to standard subject-level pipelines.
 - **Late retention window:** 1000–2000 ms captures the late retention interval.
 - **Gaze deviation:** Mean Euclidean distance from screen center (400, 300) px per time window. The main registered gaze metric.

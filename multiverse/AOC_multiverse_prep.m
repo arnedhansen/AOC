@@ -101,19 +101,19 @@ if ~isfolder(r2_dir), mkdir(r2_dir); end
 
 %% Trial-level FOOOF estimator options
 % Toggle between historical single-FFT and Welch-style trial spectra.
-fooof_mode = 'welch500_50';   % 'singleFFT' | 'welch500_50'
+fooof_mode = 'welch';   % 'singleFFT' | 'welch'
 fooof_mode_env = getenv('AOC_FOOOF_MODE');
 if ~isempty(fooof_mode_env), fooof_mode = fooof_mode_env; end
 welch_seg_len_sec = 0.5;      % 500 ms subsegments
 welch_overlap = 0.5;          % 50% overlap
-valid_fooof_modes = {'singleFFT', 'welch500_50', 'BOTH'};
+valid_fooof_modes = {'singleFFT', 'welch', 'BOTH'};
 if ~ismember(fooof_mode, valid_fooof_modes)
   error('Invalid fooof_mode "%s". Valid options: %s', fooof_mode, strjoin(valid_fooof_modes, ', '));
 end
 % Parallel setup (Science Cloud safe): uses parfor when toolbox/pool is available.
 use_parfor = init_parallel_pool_science_cloud();
 if strcmpi(fooof_mode, 'BOTH')
-  fooof_modes_to_run = {'singleFFT', 'welch500_50'};
+  fooof_modes_to_run = {'singleFFT', 'welch'};
 else
   fooof_modes_to_run = {fooof_mode};
 end
@@ -363,7 +363,7 @@ function [f_osc, f_axis, ap_offset, ap_exponent, fooof_r2, fooof_err, fooof_n_se
   % select time window, then call ft_freqanalysis_Arne_FOOOF.
   % Modes:
   %   - singleFFT: one periodogram from the full selected window
-  %   - welch500_50: split into 500 ms segments with 50% overlap and average before FOOOF
+  %   - welch: split into 500 ms segments with 50% overlap and average before FOOOF
   % Also returns aperiodic parameters (offset, exponent) and fit quality (R², error).
   f_osc = []; f_axis = []; ap_offset = NaN; ap_exponent = NaN; fooof_r2 = NaN; fooof_err = NaN; fooof_n_segments = NaN;
   if isempty(data_td) || isempty(ch_labels), return, end
@@ -379,7 +379,7 @@ function [f_osc, f_axis, ap_offset, ap_exponent, fooof_r2, fooof_err, fooof_n_se
     d = ft_selectdata(cfg_ch, d);
     d.label = {'ROI'};
     % Build FOOOF input according to selected trial-level estimator mode
-    if strcmp(fooof_mode, 'welch500_50')
+    if strcmp(fooof_mode, 'welch')
       [d_fooof, fooof_n_segments] = build_welch_segments_from_roi(d, welch_seg_len_sec, welch_overlap);
     else
       d_fooof = d;

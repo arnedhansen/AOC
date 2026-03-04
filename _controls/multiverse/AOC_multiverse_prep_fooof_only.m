@@ -55,17 +55,17 @@ if isempty(path_preproc)
 end
 
 %% Config
-fooof_mode = 'welch500_50';   % 'singleFFT' | 'welch500_50' | 'BOTH'
+fooof_mode = 'welch';   % 'singleFFT' | 'welch' | 'BOTH'
 fooof_mode_env = getenv('AOC_FOOOF_MODE');
 if ~isempty(fooof_mode_env), fooof_mode = fooof_mode_env; end
 welch_seg_len_sec = 0.5;
 welch_overlap = 0.5;
-valid_fooof_modes = {'singleFFT', 'welch500_50', 'BOTH'};
+valid_fooof_modes = {'singleFFT', 'welch', 'BOTH'};
 if ~ismember(fooof_mode, valid_fooof_modes)
   error('Invalid fooof_mode "%s". Valid options: %s', fooof_mode, strjoin(valid_fooof_modes, ', '));
 end
 if strcmpi(fooof_mode, 'BOTH')
-  fooof_modes_to_run = {'singleFFT', 'welch500_50'};
+  fooof_modes_to_run = {'singleFFT', 'welch'};
 else
   fooof_modes_to_run = {fooof_mode};
 end
@@ -364,7 +364,7 @@ function [f_osc, f_axis, ap_offset, ap_exponent, fooof_r2, fooof_err, fooof_n_se
     cfg_ch = []; cfg_ch.channel = ch_labels; cfg_ch.avgoverchan = 'yes';
     d = ft_selectdata(cfg_ch, d);
     d.label = {'ROI'};
-    if strcmp(fooof_mode, 'welch500_50')
+    if strcmp(fooof_mode, 'welch')
       [d_fooof, fooof_n_segments] = build_welch_segments_from_roi(d, welch_seg_len_sec, welch_overlap);
     else
       d_fooof = d;

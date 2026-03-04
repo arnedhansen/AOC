@@ -24,8 +24,8 @@ library(multiverse)
 # ========== LOGGING MODE ==========
 # Set AOC_VERBOSE_LOGGING=true to show full lmer warnings/messages.
 VERBOSE_LOGGING <- tolower(Sys.getenv("AOC_VERBOSE_LOGGING", unset = "false")) %in% c("1", "true", "yes", "y")
-# Allowed: "singleFFT", "both", "welch500_50"
-FOOOF_METHOD <- "welch500_50"
+# Allowed: "singleFFT", "both", "welch"
+FOOOF_METHOD <- "welch"
 R2_THRESHOLD <- 0.90
 r2_dir <- Sys.getenv("AOC_R2_DIR",
                      unset = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/multiverse")
@@ -147,6 +147,7 @@ write.csv(
 
 if ("gaze_measure" %in% names(dat)) {
   dat <- dat %>% filter(gaze_measure != "gaze_density" | is.na(gaze_measure))
+  dat <- dat %>% filter(gaze_measure != "microsaccades")
 }
 dat <- dat %>% filter(!electrodes %in% c("all", "parietal"))
 dat <- dat %>% filter(baseline_eeg != "dB", baseline_gaze != "dB")
@@ -241,7 +242,7 @@ inside(M, {
   .fooof  <- branch(fooof,         "FOOOFed", "nonFOOOFed")
   .lat    <- branch(latency_ms,    "0_1000ms", "0_2000ms", "1000_2000ms")
   .alpha  <- branch(alpha_type,    "canonical", "IAF")
-  .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA", "gaze_deviation")
+  .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "BCEA", "gaze_deviation")
   .bleeg  <- branch(baseline_eeg,  "raw", "pct_change")
   .blgaze <- branch(baseline_gaze, "raw", "pct_change")
 
@@ -401,7 +402,7 @@ M_gaze <- multiverse()
 
 inside(M_gaze, {
   .lat    <- branch(latency_ms,    "0_1000ms", "0_2000ms", "1000_2000ms")
-  .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA", "gaze_deviation")
+  .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "BCEA", "gaze_deviation")
   .blgaze <- branch(baseline_gaze, "raw", "pct_change")
 
   dg <- dat_gaze %>%
@@ -463,7 +464,7 @@ if ("aperiodic_offset" %in% names(dat) && "aperiodic_exponent" %in% names(dat)) 
   inside(M_ap_gaze, {
     .elec   <- branch(electrodes,    "posterior", "occipital")
     .lat    <- branch(latency_ms,    "0_1000ms", "0_2000ms", "1000_2000ms")
-    .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "microsaccades", "BCEA", "gaze_deviation")
+    .gaze   <- branch(gaze_measure,  "scan_path_length", "gaze_velocity", "BCEA", "gaze_deviation")
     .blgaze <- branch(baseline_gaze, "raw", "pct_change")
 
     dap <- dat_ap_gaze %>%

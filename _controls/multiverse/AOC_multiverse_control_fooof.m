@@ -23,7 +23,7 @@ fig_dir_base = fullfile(base_data, 'figures', 'controls', 'multiverse', 'FOOOF')
 if ~isfolder(fig_dir_base), mkdir(fig_dir_base); end
 
 %% Select method
-method_selection = 'welch500_50'; % 'singleFFT' | 'welch500_50' | 'both'
+method_selection = 'welch'; % 'singleFFT' | 'welch' | 'both'
 
 %%
 r2_thresh = 0.90;
@@ -304,7 +304,7 @@ if isempty(tokens)
 end
 
 if any(ismember(lower(tokens), {'both', 'all'}))
-    methods = {'singleFFT', 'welch500_50'};
+    methods = {'singleFFT', 'welch'};
     return
 end
 

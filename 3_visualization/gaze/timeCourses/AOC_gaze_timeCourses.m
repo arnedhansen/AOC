@@ -1,5 +1,6 @@
 %% AOC Gaze Time Courses — Supplements
 % Time-course figures for gaze deviation, microsaccades, BCEA, gaze velocity, SPL.
+% Values are baselined (subtract mean of [-0.5 -0.25] s per trial).
 % X-axis: time; Y-axis: metric unit. Three lines with shaded error bars per condition.
 % Both Sternberg and N-back tasks.
 %
@@ -21,6 +22,11 @@ binDur = 0.05;
 t_series = -0.5:1/fs:2;
 n_bins = length(t_series(1):binDur:t_series(end)) - 1;
 t_plot = linspace(-0.5 + binDur/2, 2 - binDur/2, n_bins);
+% Baseline window [-0.5 -0.25] s (bins 1:5)
+baseline_bins = find(t_plot >= -0.5 & t_plot <= -0.25);
+if isempty(baseline_bins)
+    baseline_bins = 1:min(5, n_bins);
+end
 centreX = 400;
 centreY = 300;
 k95 = -log(1 - 0.95);
@@ -172,6 +178,10 @@ for itask = 1:2
             % Gaze velocity (Savitzky-Golay) -> bin by mean
             [vx, vy] = compute_velocity_sg(gx, gy, fs, 3);
             spd = hypot(vx, vy);
+            % Exclude SG edge-effect artifacts (first/last ~50 ms)
+            edgeSamp = min(25, floor(L/4));
+            spd(1:edgeSamp) = NaN;
+            spd(end-edgeSamp+1:end) = NaN;
             % Optional: attenuate saccade spikes (|z|>4) via interpolation
             velZthr = 4;
             zspd = (spd - nanmean(spd)) / max(nanstd(spd), eps);
@@ -199,6 +209,16 @@ for itask = 1:2
             end
         end
 
+        % Baseline correct: subtract mean of baseline period per trial
+        bb = baseline_bins(baseline_bins <= n_bins);
+        if ~isempty(bb)
+            dev_trials = dev_trials - nanmean(dev_trials(:, bb), 2);
+            ms_trials  = ms_trials  - nanmean(ms_trials(:, bb), 2);
+            bcea_trials = bcea_trials - nanmean(bcea_trials(:, bb), 2);
+            vel_trials  = vel_trials  - nanmean(vel_trials(:, bb), 2);
+            spl_trials  = spl_trials  - nanmean(spl_trials(:, bb), 2);
+        end
+
         % Subject mean per condition
         for c = 1:3
             idx = idxc{c};
@@ -214,15 +234,15 @@ for itask = 1:2
 
     %% Grand average and SEM per condition
     grand_dev  = squeeze(nanmean(dev_subj, 1));
-    sem_dev    = squeeze(nanstd(dev_subj, [], 1)) ./ sqrt(sum(isfinite(dev_subj), 1));
+    sem_dev    = squeeze(nanstd(dev_subj, [], 1)) ./ squeeze(sqrt(sum(isfinite(dev_subj), 1)));
     grand_ms   = squeeze(nanmean(ms_subj, 1));
-    sem_ms     = squeeze(nanstd(ms_subj, [], 1)) ./ sqrt(sum(isfinite(ms_subj), 1));
+    sem_ms     = squeeze(nanstd(ms_subj, [], 1)) ./ squeeze(sqrt(sum(isfinite(ms_subj), 1)));
     grand_bcea = squeeze(nanmean(bcea_subj, 1));
-    sem_bcea   = squeeze(nanstd(bcea_subj, [], 1)) ./ sqrt(sum(isfinite(bcea_subj), 1));
+    sem_bcea   = squeeze(nanstd(bcea_subj, [], 1)) ./ squeeze(sqrt(sum(isfinite(bcea_subj), 1)));
     grand_vel  = squeeze(nanmean(vel_subj, 1));
-    sem_vel    = squeeze(nanstd(vel_subj, [], 1)) ./ sqrt(sum(isfinite(vel_subj), 1));
+    sem_vel    = squeeze(nanstd(vel_subj, [], 1)) ./ squeeze(sqrt(sum(isfinite(vel_subj), 1)));
     grand_spl  = squeeze(nanmean(spl_subj, 1));
-    sem_spl    = squeeze(nanstd(spl_subj, [], 1)) ./ sqrt(sum(isfinite(spl_subj), 1));
+    sem_spl    = squeeze(nanstd(spl_subj, [], 1)) ./ squeeze(sqrt(sum(isfinite(spl_subj), 1)));
 
     %% Replace SEM NaN/Inf with 0 for plotting
     sem_dev(~isfinite(sem_dev)) = 0;
@@ -236,6 +256,14 @@ for itask = 1:2
     grand_all = {grand_dev, grand_ms, grand_bcea, grand_vel, grand_spl};
     sem_all  = {sem_dev, sem_ms, sem_bcea, sem_vel, sem_spl};
     ylabels = {'Gaze deviation [px]', 'Microsaccade rate [MS/s]', 'BCEA [px^2]', 'Gaze velocity [px/s]', 'Scan path length [px]'};
+    metric_titles = {'Deviation', 'Microsaccades', 'BCEA', 'Velocity', 'SPL'};
+    task_title = char(task);
+    task_title(1) = upper(task_title(1));
+    if strcmp(task, 'nback')
+        task_title = 'N-back';
+    elseif strcmp(task, 'sternberg')
+        task_title = 'Sternberg';
+    end
 
     for im = 1:5
         grand = grand_all{im};
@@ -249,7 +277,7 @@ for itask = 1:2
         xline(0, 'k--', 'LineWidth', 1);
         xlabel('Time [s]');
         ylabel(ylabels{im});
-        title([upper(task(1)) task(2:end) ' — ' strrep(metrics{im}, '_', ' ')]);
+        title([task_title ' ' metric_titles{im}]);
         xlim([t_series(1) t_series(end)]);
         box on
         set(gca, 'FontSize', 20);

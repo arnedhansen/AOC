@@ -126,8 +126,8 @@ end
 %% ===== (B) Baselined gaze metrics (trial → subject-level) =====
 % Average trial-level baselined values per subject x condition.
 % Baseline correction (already applied in trial-level extraction):
-%   GazeDeviation, ScanPathLength, MSRate: dB  = 10*log10(metric/baseline)
-%   PupilSize:                             %Δ  = 100*(metric-baseline)/baseline
+%   GazeDeviation, ScanPathLength, MSRate, BCEA: % change = 100*(metric-baseline)/baseline
+%   PupilSize:                                  % change = 100*(metric-baseline)/baseline
 % Baseline window: [-0.5 -0.25]s
 
 gazeFields_bl = { ...
@@ -275,7 +275,7 @@ fprintf('Original columns (23):  ID … Lateralization (incl. BCEA, BCEALaterali
 fprintf('FOOOF alpha     ( 4):  AlphaPower_FOOOF, _bl, _bl_early, _bl_late\n');
 fprintf('Raw alpha BL    ( 3):  AlphaPower_bl, _bl_early, _bl_late\n');
 fprintf('Baselined gaze  (18):  GD/SPL/Pupil/MSRate/BCEA/BCEALat × Full/Early/Late BL\n');
-fprintf('    GD/SPL/MS/BCEA baseline correction: dB = 10*log10(metric/baseline)\n');
-fprintf('    PupilSize baseline correction: %%change = 100*(metric-baseline)/baseline\n');
+fprintf('    GD/SPL/MS/BCEA baseline correction: %% change = 100*(metric-baseline)/baseline\n');
+fprintf('    PupilSize baseline correction: %% change = 100*(metric-baseline)/baseline\n');
 fprintf('    Baseline window: [-0.5 -0.25]s\n');
 fprintf('Total columns:  %d\n', nCols);

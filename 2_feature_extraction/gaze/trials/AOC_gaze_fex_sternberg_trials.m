@@ -82,19 +82,19 @@ for subj = 1:length(subjects)
     PupilSizeFullBL       = nan(nTrials,1);   % percent
 
     MSRateEarly           = nan(nTrials,1);   % events/s
-    MSRateEarlyBL         = nan(nTrials,1);   % dB
+    MSRateEarlyBL         = nan(nTrials,1);   % % change
     MSRateLate            = nan(nTrials,1);   % events/s
-    MSRateLateBL          = nan(nTrials,1);   % dB
+    MSRateLateBL          = nan(nTrials,1);   % % change
     MSRateFull            = nan(nTrials,1);   % events/s
-    MSRateFullBL          = nan(nTrials,1);   % dB
+    MSRateFullBL          = nan(nTrials,1);   % % change
     MSSeries              = nan(nTrials,50);   % events/s/bin
 
     BCEAEarly             = nan(nTrials,1);   % px²
-    BCEAEarlyBL           = nan(nTrials,1);   % dB
+    BCEAEarlyBL           = nan(nTrials,1);   % % change
     BCEALate              = nan(nTrials,1);   % px²
-    BCEALateBL            = nan(nTrials,1);   % dB
+    BCEALateBL            = nan(nTrials,1);   % % change
     BCEAFull              = nan(nTrials,1);   % px²
-    BCEAFullBL            = nan(nTrials,1);   % dB
+    BCEAFullBL            = nan(nTrials,1);   % % change
     BCEALatEarly          = nan(nTrials,1);   % lateralization index
     BCEALatEarlyBL        = nan(nTrials,1);   % difference
     BCEALatLate           = nan(nTrials,1);
@@ -234,21 +234,21 @@ for subj = 1:length(subjects)
             gd_early= NaN; spl_early= NaN; pup_early= NaN; ms_early= NaN;
         end
 
-        % Baseline-correct early (dB for GD/SPL/MS; % for pupil)
+        % Baseline-correct early (% change for GD/SPL/MS/pupil)
         if isfinite(gd_early) && isfinite(gaze_dev_base) && gaze_dev_base > 0
-            gd_early_bl = 10*log10(gd_early/ gaze_dev_base);
+            gd_early_bl = 100 * (gd_early - gaze_dev_base) / gaze_dev_base;
         else
             gd_early_bl = NaN;
         end
 
         if isfinite(spl_early) && isfinite(spl_base) && spl_base > 0
-            spl_early_bl = 10*log10(spl_early/ spl_base);
+            spl_early_bl = 100 * (spl_early - spl_base) / spl_base;
         else
             spl_early_bl = NaN;
         end
 
         if isfinite(ms_early) && isfinite(ms_rate_base) && ms_rate_base > 0
-            ms_early_bl = 10*log10(ms_early/ ms_rate_base);
+            ms_early_bl = 100 * (ms_early - ms_rate_base) / ms_rate_base;
         else
             ms_early_bl = NaN;
         end
@@ -270,7 +270,7 @@ for subj = 1:length(subjects)
             else; bcea_e = NaN; blat_e = NaN; end
         else; bcea_e = NaN; blat_e = NaN; end
         if isfinite(bcea_e) && isfinite(bcea_base) && bcea_base > 0
-            bcea_e_bl = 10*log10(bcea_e / bcea_base);
+            bcea_e_bl = 100 * (bcea_e - bcea_base) / bcea_base;
         else; bcea_e_bl = NaN; end
         if isfinite(blat_e) && isfinite(blat_base)
             blat_e_bl = blat_e - blat_base;
@@ -300,21 +300,21 @@ for subj = 1:length(subjects)
             gd_late = NaN; spl_late = NaN; pup_late = NaN; ms_late = NaN;
         end
 
-        % Baseline-correct late (dB for GD/SPL/MS; % for pupil)
+        % Baseline-correct late (% change for GD/SPL/MS/pupil)
         if isfinite(gd_late) && isfinite(gaze_dev_base) && gaze_dev_base > 0
-            gd_late_bl = 10*log10(gd_late/ gaze_dev_base);
+            gd_late_bl = 100 * (gd_late - gaze_dev_base) / gaze_dev_base;
         else
             gd_late_bl = NaN;
         end
 
         if isfinite(spl_late) && isfinite(spl_base) && spl_base > 0
-            spl_late_bl = 10*log10(spl_late/ spl_base);
+            spl_late_bl = 100 * (spl_late - spl_base) / spl_base;
         else
             spl_late_bl = NaN;
         end
 
         if isfinite(ms_late) && isfinite(ms_rate_base) && ms_rate_base > 0
-            ms_late_bl = 10*log10(ms_late/ ms_rate_base);
+            ms_late_bl = 100 * (ms_late - ms_rate_base) / ms_rate_base;
         else
             ms_late_bl = NaN;
         end
@@ -336,7 +336,7 @@ for subj = 1:length(subjects)
             else; bcea_l = NaN; blat_l = NaN; end
         else; bcea_l = NaN; blat_l = NaN; end
         if isfinite(bcea_l) && isfinite(bcea_base) && bcea_base > 0
-            bcea_l_bl = 10*log10(bcea_l / bcea_base);
+            bcea_l_bl = 100 * (bcea_l - bcea_base) / bcea_base;
         else; bcea_l_bl = NaN; end
         if isfinite(blat_l) && isfinite(blat_base)
             blat_l_bl = blat_l - blat_base;
@@ -366,21 +366,21 @@ for subj = 1:length(subjects)
             gd_full = NaN; spl_full = NaN; pup_full = NaN; ms_full = NaN;
         end
 
-        % Baseline-correct full (dB for GD/SPL/MS; % for pupil)
+        % Baseline-correct full (% change for GD/SPL/MS/pupil)
         if isfinite(gd_full) && isfinite(gaze_dev_base) && gaze_dev_base > 0
-            gd_full_bl = 10*log10(gd_full/ gaze_dev_base);
+            gd_full_bl = 100 * (gd_full - gaze_dev_base) / gaze_dev_base;
         else
             gd_full_bl = NaN;
         end
 
         if isfinite(spl_full) && isfinite(spl_base) && spl_base > 0
-            spl_full_bl = 10*log10(spl_full/ spl_base);
+            spl_full_bl = 100 * (spl_full - spl_base) / spl_base;
         else
             spl_full_bl = NaN;
         end
 
         if isfinite(ms_full) && isfinite(ms_rate_base) && ms_rate_base > 0
-            ms_full_bl = 10*log10(ms_full/ ms_rate_base);
+            ms_full_bl = 100 * (ms_full - ms_rate_base) / ms_rate_base;
         else
             ms_full_bl = NaN;
         end
@@ -402,7 +402,7 @@ for subj = 1:length(subjects)
             else; bcea_f = NaN; blat_f = NaN; end
         else; bcea_f = NaN; blat_f = NaN; end
         if isfinite(bcea_f) && isfinite(bcea_base) && bcea_base > 0
-            bcea_f_bl = 10*log10(bcea_f / bcea_base);
+            bcea_f_bl = 100 * (bcea_f - bcea_base) / bcea_base;
         else; bcea_f_bl = NaN; end
         if isfinite(blat_f) && isfinite(blat_base)
             blat_f_bl = blat_f - blat_base;
@@ -530,14 +530,14 @@ for subj = 1:length(subjects)
         PupilSizeFullBL(trl)       = pup_full_bl;
 
         MSRateEarly(trl)           = ms_early;      % events/s
-        MSRateEarlyBL(trl)         = ms_early_bl;   % dB
+        MSRateEarlyBL(trl)         = ms_early_bl;   % % change
         MSRateLate(trl)            = ms_late;       % events/s
-        MSRateLateBL(trl)          = ms_late_bl;    % dB
+        MSRateLateBL(trl)          = ms_late_bl;    % % change
         MSRateFull(trl)            = ms_full;       % events/s
-        MSRateFullBL(trl)          = ms_full_bl;    % dB
+        MSRateFullBL(trl)          = ms_full_bl;    % % change
 
         BCEAEarly(trl)            = bcea_e;       % px²
-        BCEAEarlyBL(trl)          = bcea_e_bl;    % dB
+        BCEAEarlyBL(trl)          = bcea_e_bl;    % % change
         BCEALate(trl)             = bcea_l;
         BCEALateBL(trl)           = bcea_l_bl;
         BCEAFull(trl)             = bcea_f;

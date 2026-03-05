@@ -1,15 +1,18 @@
 %% AOC Split Sternberg Alpha (Subject-Level)
 % Subject-level split (fixed across conditions) using merged_data_sternberg:
-%   mean AlphaPower_FOOOF_bl across WM2/4/6
+%   mean AlphaPower_FOOOF_bl across WM2/4/6 (baselined, FOOOFed alpha)
 %   < 0  -> reduction group
 %   > 0  -> amplification group
 %   == 0 -> excluded
+%
+% Uses baselined+FOOOFed alpha (power spectra, TFR, topoplots) and baselined gaze metrics (*FullBL).
+%
+% Outliers excluded via Tukey 1.5*IQR (per metric per condition) before visualization/analyses.
 %
 % Generates:
 % - Power spectra (3 conditions) for both groups
 % - TFRs per condition for both groups
 % - Topoplots per condition for both groups + group-difference topoplots
-% - Boxplots over conditions (SPL, velocity, gaze deviation, BCEA, microsaccades)
 % - Rainclouds for alpha + gaze metrics
 % - Within-subject trajectories over conditions
 % - Time-course panels (SPL, velocity, gaze deviation) with effect-size strips
@@ -111,11 +114,11 @@ end
 % Gaze summary metrics from merged subject table
 metrics = struct();
 metrics.Alpha = nan(nSubj, 3);
-metrics.SPL = nan(nSubj, 3);           % ScanPathLengthFullBL
-metrics.Dev = nan(nSubj, 3);           % GazeDeviationFullBL
-metrics.BCEA = nan(nSubj, 3);          % BCEAFullBL
-metrics.MS = nan(nSubj, 3);            % MSRateFullBL
-metrics.Vel = nan(nSubj, 3);           % computed below
+metrics.SPL = nan(nSubj, 3);           % ScanPathLengthFullBL [% change]
+metrics.Dev = nan(nSubj, 3);          % GazeDeviationFullBL [% change]
+metrics.BCEA = nan(nSubj, 3);         % BCEAFullBL [% change]
+metrics.MS = nan(nSubj, 3);           % MSRateFullBL [% change]
+metrics.Vel = nan(nSubj, 3);          % velocity [% change], computed below
 
 % Time courses per subject x condition (full resolution)
 fs = 500;
@@ -152,11 +155,11 @@ for s = 1:nSubj
         end
     end
 
-    % EEG power spectra and topography sources
+    % EEG power spectra and topography sources (baselined, FOOOFed)
     eeg_dir = fullfile(pathAOC, subj_folder, 'eeg');
     try
-        P = load(fullfile(eeg_dir, 'power_stern_raw.mat'), 'powload2', 'powload4', 'powload6');
-        pow_conds = {P.powload2, P.powload4, P.powload6};
+        P = load(fullfile(eeg_dir, 'power_stern_fooof.mat'), 'pow2_fooof_bl', 'pow4_fooof_bl', 'pow6_fooof_bl');
+        pow_conds = {P.pow2_fooof_bl, P.pow4_fooof_bl, P.pow6_fooof_bl};
         for c = 1:3
             if ismember(sid, reduction_ids)
                 pow_red{c}{end+1} = pow_conds{c}; %#ok<AGROW>
@@ -269,7 +272,7 @@ for s = 1:nSubj
                 v_bl = mean(vel(idx_bl), 'omitnan');
                 vel_full_trials(k) = v_full;
                 if isfinite(v_full) && isfinite(v_bl) && v_bl > 0
-                    vel_bl_trials(k) = 10 * log10(v_full / v_bl);
+                    vel_bl_trials(k) = 100 * (v_full - v_bl) / v_bl;
                 end
             end
 
@@ -283,6 +286,10 @@ end
 %% Define groups in row index space
 is_red = ismember(uIDs, reduction_ids);
 is_amp = ismember(uIDs, amplification_ids);
+
+%% Exclude outliers (Tukey 1.5*IQR) before visualization and analyses
+fprintf('\n=== Outlier exclusion (Tukey 1.5*IQR, per metric per condition) ===\n');
+[metrics, spl_tc, dev_tc, vel_tc] = exclude_outliers_tukey(metrics, spl_tc, dev_tc, vel_tc);
 
 %% Determine occipital channels (from first available power file)
 channels = {};
@@ -310,21 +317,16 @@ plot_group_power_spectrum(pow_amp, channels, colors, cond_labels, ...
     'Amplification Group Power Spectrum', ...
     fullfile(fig_dir, 'AOC_splitAlpha_powspctrm_amplification.png'), fig_pos, fontSize);
 
-%% -------- TFRs per condition (both groups) --------
+%% -------- TFRs per condition (both groups + diff, 3x3) --------
 color_map_tfr = interp1(linspace(0,1,5), ...
     [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], ...
     linspace(0,1,64));
 
-plot_group_tfrs(tfr_red, channels, cond_labels, headmodel, color_map_tfr, ...
-    'Reduction', fig_dir, fig_pos, fontSize);
-plot_group_tfrs(tfr_amp, channels, cond_labels, headmodel, color_map_tfr, ...
-    'Amplification', fig_dir, fig_pos, fontSize);
+plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, ...
+    color_map_tfr, fig_dir, fig_pos, fontSize);
 
 %% -------- Topoplots per condition (both groups + differences) --------
-plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, fig_dir, fig_pos, fontSize);
-
-%% -------- Boxplots --------
-plot_metric_boxplots(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_pos, fontSize);
+plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, fig_dir, fig_pos, fontSize);
 
 %% -------- Rainclouds --------
 plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_pos, fontSize);
@@ -345,12 +347,63 @@ plot_correlation_panels(metrics, is_red, is_amp, fig_dir, fig_pos, fontSize);
 
 %% -------- Sanity checks --------
 fprintf('\n=== Data Diagnostics ===\n');
-fprintf('Missing EEG power files: %d\n', numel(unique(missing_eeg)));
+fprintf('Missing EEG power (power_stern_fooof.mat): %d\n', numel(unique(missing_eeg)));
 fprintf('Missing TFR files: %d\n', numel(unique(missing_tfr)));
 fprintf('Missing gaze files/fields: %d\n', numel(unique(missing_gaze)));
 fprintf('Figures saved to: %s\n', fig_dir);
 
 %% ========================= Local Functions =========================
+function [metrics_out, spl_tc_out, dev_tc_out, vel_tc_out] = exclude_outliers_tukey(metrics_in, spl_tc_in, dev_tc_in, vel_tc_in)
+% Apply Tukey 1.5*IQR rule per metric per condition. Set outliers to NaN.
+% Also excludes corresponding time-course data for SPL, Dev, Vel.
+metrics_out = metrics_in;
+spl_tc_out = spl_tc_in;
+dev_tc_out = dev_tc_in;
+vel_tc_out = vel_tc_in;
+
+metric_fields = {'Alpha', 'SPL', 'Vel', 'Dev', 'BCEA', 'MS'};
+tc_map = containers.Map({'SPL', 'Dev', 'Vel'}, {1, 2, 3});  % index for spl/dev/vel
+tc_cells = {spl_tc_out, dev_tc_out, vel_tc_out};
+
+for m = 1:numel(metric_fields)
+    key = metric_fields{m};
+    X = metrics_out.(key);
+    nOut = 0;
+    for c = 1:3
+        vals = X(:, c);
+        vals_f = vals(isfinite(vals));
+        if numel(vals_f) < 4
+            continue
+        end
+        q1 = prctile(vals_f, 25);
+        q3 = prctile(vals_f, 75);
+        iqr_val = q3 - q1;
+        if iqr_val <= 0
+            continue
+        end
+        lo = q1 - 1.5 * iqr_val;
+        hi = q3 + 1.5 * iqr_val;
+        out_mask = (vals < lo) | (vals > hi);
+        nOut = nOut + sum(out_mask);
+        X(out_mask, c) = NaN;
+        % Exclude corresponding time course for gaze metrics
+        if isKey(tc_map, key)
+            tc_idx = tc_map(key);
+            tc = tc_cells{tc_idx};
+            tc(out_mask, c, :) = NaN;
+            tc_cells{tc_idx} = tc;
+        end
+    end
+    metrics_out.(key) = X;
+    if nOut > 0
+        fprintf('  %s: %d outlier(s) excluded\n', key, nOut);
+    end
+end
+spl_tc_out = tc_cells{1};
+dev_tc_out = tc_cells{2};
+vel_tc_out = tc_cells{3};
+end
+
 function conds = parse_trialinfo_conds(trialinfo)
 conds = [];
 if isempty(trialinfo)
@@ -451,27 +504,42 @@ saveas(gcf, out_file);
 close(gcf);
 end
 
-function plot_group_tfrs(tfr_cells, channels, cond_labels, headmodel, color_map, grp_label, fig_dir, fig_pos, fsz)
-if any(cellfun(@isempty, tfr_cells))
-    warning('Skipping TFR plot for %s (incomplete condition data).', grp_label);
+function plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, color_map, fig_dir, fig_pos, fsz)
+if any(cellfun(@isempty, tfr_red)) || any(cellfun(@isempty, tfr_amp))
+    warning('Skipping TFR plot (incomplete condition data).');
     return
 end
 
-ga = cell(1, 3);
+ga_red = cell(1, 3);
+ga_amp = cell(1, 3);
 for c = 1:3
-    ga{c} = ft_freqgrandaverage([], tfr_cells{c}{:});
+    ga_red{c} = ft_freqgrandaverage([], tfr_red{c}{:});
+    ga_amp{c} = ft_freqgrandaverage([], tfr_amp{c}{:});
 end
 
-% Shared clim within group
-[~, ch_idx] = ismember(channels, ga{1}.label);
-freq_idx = ga{1}.freq >= 5 & ga{1}.freq <= 30;
-time_idx = ga{1}.time >= -0.5 & ga{1}.time <= 2;
+% Shared clim: absolute for Reduction/Amplification, separate for Diff
+[~, ch_idx] = ismember(channels, ga_red{1}.label);
+freq_idx = ga_red{1}.freq >= 5 & ga_red{1}.freq <= 30;
+time_idx = ga_red{1}.time >= -0.5 & ga_red{1}.time <= 2;
 mx = 0;
+all_diff_vals = [];
 for c = 1:3
-    A = squeeze(mean(ga{c}.powspctrm(ch_idx, :, :), 1, 'omitnan'));
-    mx = max(mx, max(abs(A(freq_idx, time_idx)), [], 'all'));
+    Ared = squeeze(mean(ga_red{c}.powspctrm(ch_idx, :, :), 1, 'omitnan'));
+    Aamp = squeeze(mean(ga_amp{c}.powspctrm(ch_idx, :, :), 1, 'omitnan'));
+    mx = max(mx, max(abs(Ared(freq_idx, time_idx)), [], 'all'));
+    mx = max(mx, max(abs(Aamp(freq_idx, time_idx)), [], 'all'));
+    Adiff = Aamp - Ared;
+    tmp = Adiff(freq_idx, time_idx);
+    all_diff_vals = [all_diff_vals; tmp(:)]; %#ok<AGROW>
 end
-clim = [-mx mx];
+clim_abs = [-mx mx];
+all_diff_vals = all_diff_vals(isfinite(all_diff_vals));
+if isempty(all_diff_vals)
+    clim_diff = [-mx mx];
+else
+    mxdiff = prctile(abs(all_diff_vals), 99);
+    clim_diff = [-max(mxdiff, eps) max(mxdiff, eps)];
+end
 
 cfg = [];
 cfg.channel = channels;
@@ -481,24 +549,55 @@ cfg.xlim = [-.5 2];
 cfg.ylim = [5 30];
 cfg.layout = headmodel.layANThead;
 
+% Single 3x3 figure: row 1 = Reduction, row 2 = Amplification, row 3 = Diff
+figure('Position', fig_pos, 'Color', 'w');
 for c = 1:3
-    figure('Position', fig_pos, 'Color', 'w');
-    ft_singleplotTFR(cfg, ga{c});
-    colormap(color_map);
-    set(gca, 'CLim', clim);
-    cb = colorbar;
-    ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fsz);
-    xlabel('Time [s]');
-    ylabel('Frequency [Hz]');
-    rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4);
-    set(gca, 'FontSize', fsz);
-    title(sprintf('%s TFR - %s', grp_label, cond_labels{c}), 'FontSize', fsz + 2);
-    saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_tfr_%s_cond%d.png', lower(grp_label), c)));
-    close(gcf);
+    % Row 1: Reduction
+    ax = subplot(3, 3, c);
+    cfg.figure = ax;
+    ft_singleplotTFR(cfg, ga_red{c});
+    colormap(ax, color_map);
+    set(ax, 'CLim', clim_abs);
+    colorbar(ax);
+    xlabel(ax, 'Time [s]');
+    ylabel(ax, 'Frequency [Hz]');
+    rectangle(ax, 'Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4);
+    set(ax, 'FontSize', fsz);
+    title(ax, sprintf('Reduction - %s', cond_labels{c}), 'FontSize', fsz + 2);
+
+    % Row 2: Amplification
+    ax = subplot(3, 3, 3 + c);
+    cfg.figure = ax;
+    ft_singleplotTFR(cfg, ga_amp{c});
+    colormap(ax, color_map);
+    set(ax, 'CLim', clim_abs);
+    colorbar(ax);
+    xlabel(ax, 'Time [s]');
+    ylabel(ax, 'Frequency [Hz]');
+    rectangle(ax, 'Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4);
+    set(ax, 'FontSize', fsz);
+    title(ax, sprintf('Amplification - %s', cond_labels{c}), 'FontSize', fsz + 2);
+
+    % Row 3: Difference (Amplification - Reduction)
+    gd = ga_amp{c};
+    gd.powspctrm = ga_amp{c}.powspctrm - ga_red{c}.powspctrm;
+    ax = subplot(3, 3, 6 + c);
+    cfg.figure = ax;
+    ft_singleplotTFR(cfg, gd);
+    colormap(ax, rdbu_cmap(64));
+    set(ax, 'CLim', clim_diff);
+    colorbar(ax);
+    xlabel(ax, 'Time [s]');
+    ylabel(ax, 'Frequency [Hz]');
+    rectangle(ax, 'Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4);
+    set(ax, 'FontSize', fsz);
+    title(ax, sprintf('Amp - Red - %s', cond_labels{c}), 'FontSize', fsz + 2);
 end
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_tfr_all.png'));
+close(gcf);
 end
 
-function plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, fig_dir, fig_pos, fsz)
+function plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, fig_dir, fig_pos, fsz)
 if any(cellfun(@isempty, pow_red)) || any(cellfun(@isempty, pow_amp))
     warning('Skipping topoplots (missing power data).');
     return
@@ -551,27 +650,7 @@ else
     cfg.zlim = [zlo zhi];
 end
 
-for c = 1:3
-    figure('Position', fig_pos, 'Color', 'w');
-    ft_topoplotER(cfg, ga_red{c});
-    cb = colorbar;
-    ylabel(cb, 'Power [\muV^2/Hz]');
-    set(gca, 'FontSize', fsz);
-    title(sprintf('Reduction Topoplot - %s', cond_labels{c}));
-    saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_topo_reduction_cond%d.png', c)));
-    close(gcf);
-
-    figure('Position', fig_pos, 'Color', 'w');
-    ft_topoplotER(cfg, ga_amp{c});
-    cb = colorbar;
-    ylabel(cb, 'Power [\muV^2/Hz]');
-    set(gca, 'FontSize', fsz);
-    title(sprintf('Amplification Topoplot - %s', cond_labels{c}));
-    saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_topo_amplification_cond%d.png', c)));
-    close(gcf);
-end
-
-% Difference maps (Amplification - Reduction)
+% Difference map cfg (prepare before loop)
 cfgd = cfg;
 cmap_diff = rdbu_cmap(100);  % RdBu diverging, no cbrewer dependency
 cmap_diff = flipud(max(min(cmap_diff, 1), 0));
@@ -583,110 +662,100 @@ else
     mx = prctile(abs(all_diff), 99);
     cfgd.zlim = [-mx mx];
 end
+
+% Single 3x3 figure: row 1 = Reduction, row 2 = Amplification, row 3 = Diff
+figure('Position', fig_pos, 'Color', 'w');
 for c = 1:3
+    % Row 1: Reduction
+    ax = subplot(3, 3, c);
+    cfg.figure = ax;
+    ft_topoplotER(cfg, ga_red{c});
+    colorbar(ax);
+    set(ax, 'FontSize', fsz);
+    title(ax, sprintf('Reduction - %s', cond_labels{c}));
+
+    % Row 2: Amplification
+    ax = subplot(3, 3, 3 + c);
+    cfg.figure = ax;
+    ft_topoplotER(cfg, ga_amp{c});
+    colorbar(ax);
+    set(ax, 'FontSize', fsz);
+    title(ax, sprintf('Amplification - %s', cond_labels{c}));
+
+    % Row 3: Difference
     gd = ga_amp{c};
     gd.powspctrm = ga_amp{c}.powspctrm - ga_red{c}.powspctrm;
-    figure('Position', fig_pos, 'Color', 'w');
+    ax = subplot(3, 3, 6 + c);
+    cfgd.figure = ax;
     ft_topoplotER(cfgd, gd);
-    cb = colorbar;
-    ylabel(cb, 'Power [\muV^2/Hz]');
-    set(gca, 'FontSize', fsz);
-    title(sprintf('Topoplot Difference (Amp - Red) - %s', cond_labels{c}));
-    saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_topo_diff_cond%d.png', c)));
-    close(gcf);
+    colorbar(ax);
+    set(ax, 'FontSize', fsz);
+    title(ax, sprintf('Amp - Red - %s', cond_labels{c}));
 end
-end
-
-function plot_metric_boxplots(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_pos, fsz)
-metric_defs = { ...
-    'SPL', 'ScanPathLengthFullBL [dB]'; ...
-    'Vel', 'VelocityFullBL [dB]'; ...
-    'Dev', 'GazeDeviationFullBL [dB]'; ...
-    'BCEA', 'BCEAFullBL [dB]'; ...
-    'MS', 'MSRateFullBL [dB]'; ...
-    };
-
-for m = 1:size(metric_defs, 1)
-    key = metric_defs{m, 1};
-    yl = metric_defs{m, 2};
-    X = metrics.(key);
-
-    figure('Position', fig_pos, 'Color', 'w');
-    tiledlayout(1, 2, 'TileSpacing', 'compact');
-
-    nexttile; hold on
-    XR = X(is_red, :);
-    boxplot(XR, 'Colors', 'k', 'Symbol', '', 'Widths', 0.5);
-    for c = 1:3
-        scatter(c + 0.08*randn(size(XR,1),1), XR(:, c), 35, colors(c,:), 'filled', 'MarkerFaceAlpha', 0.45);
-    end
-    set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
-    title('Reduction');
-    ylabel(yl);
-    box on
-
-    nexttile; hold on
-    XA = X(is_amp, :);
-    boxplot(XA, 'Colors', 'k', 'Symbol', '', 'Widths', 0.5);
-    for c = 1:3
-        scatter(c + 0.08*randn(size(XA,1),1), XA(:, c), 35, colors(c,:), 'filled', 'MarkerFaceAlpha', 0.45);
-    end
-    set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
-    title('Amplification');
-    ylabel(yl);
-    box on
-
-    sgtitle(sprintf('%s by Condition', key), 'FontSize', fsz+2);
-    saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_boxplot_%s.png', lower(key))));
-    close(gcf);
-end
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_topo_all.png'));
+close(gcf);
 end
 
 function plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_pos, fsz)
 metric_defs = { ...
-    'Alpha', 'AlphaPower_FOOOF_bl'; ...
-    'SPL', 'ScanPathLengthFullBL'; ...
-    'Vel', 'VelocityFullBL'; ...
-    'Dev', 'GazeDeviationFullBL'; ...
-    'BCEA', 'BCEAFullBL'; ...
-    'MS', 'MSRateFullBL'; ...
+    'Alpha', 'AlphaPower_FOOOF_bl', false; ...
+    'SPL', 'Scan path length', true; ...
+    'Vel', 'Velocity', true; ...
+    'Dev', 'Gaze deviation', true; ...
+    'BCEA', 'BCEA', true; ...
+    'MS', 'Microsaccade rate', true; ...
     };
 
 for m = 1:size(metric_defs, 1)
     key = metric_defs{m, 1};
-    ylab = metric_defs{m, 2};
+    varname = metric_defs{m, 2};
+    is_pct = metric_defs{m, 3};
     X = metrics.(key);
+
+    % Shared ymax for both groups, centered around 0
+    all_vals = X(isfinite(X));
+    if isempty(all_vals)
+        ymax = 1;
+    else
+        ymax = max(abs(all_vals));
+        if ymax <= 0
+            ymax = 1;
+        end
+    end
+    ylim_shared = [-ymax ymax];
+
+    if is_pct
+        ylab = [varname ' [%]'];
+    else
+        ylab = varname;
+    end
 
     figure('Position', fig_pos, 'Color', 'w');
     tiledlayout(1, 2, 'TileSpacing', 'compact');
 
     nexttile; hold on
     for c = 1:3
-        draw_one_cloud(X(is_red, c), c, colors(c,:), 0.3, 24, 0.45);
+        draw_one_cloud(X(is_red, c), c, colors(c,:), 0.3, 96, 0.45);
     end
-    h1 = plot(nan, nan, '-', 'Color', colors(1,:), 'LineWidth', 2);
-    h2 = plot(nan, nan, '-', 'Color', colors(2,:), 'LineWidth', 2);
-    h3 = plot(nan, nan, '-', 'Color', colors(3,:), 'LineWidth', 2);
+    yline(0, '--', 'Color', [0.4 0.4 0.4]);
+    ylim(ylim_shared);
     set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
     title('Reduction');
     ylabel(ylab);
     box off
-    legend([h1 h2 h3], cond_labels, 'Location', 'best', 'FontSize', fsz-5);
 
     nexttile; hold on
     for c = 1:3
-        draw_one_cloud(X(is_amp, c), c, colors(c,:), 0.3, 24, 0.45);
+        draw_one_cloud(X(is_amp, c), c, colors(c,:), 0.3, 96, 0.45);
     end
-    h1 = plot(nan, nan, '-', 'Color', colors(1,:), 'LineWidth', 2);
-    h2 = plot(nan, nan, '-', 'Color', colors(2,:), 'LineWidth', 2);
-    h3 = plot(nan, nan, '-', 'Color', colors(3,:), 'LineWidth', 2);
+    yline(0, '--', 'Color', [0.4 0.4 0.4]);
+    ylim(ylim_shared);
     set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
     title('Amplification');
     ylabel(ylab);
     box off
-    legend([h1 h2 h3], cond_labels, 'Location', 'best', 'FontSize', fsz-5);
 
-    sgtitle(sprintf('Raincloud: %s', key), 'FontSize', fsz+2);
+    sgtitle(varname, 'FontSize', fsz+2);
     saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_raincloud_%s.png', lower(key))));
     close(gcf);
 end
@@ -694,9 +763,24 @@ end
 
 function plot_metric_trajectories(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_pos, fsz)
 metric_defs = {'Alpha','SPL','Vel','Dev','BCEA','MS'};
+ylab_defs = {'AlphaPower_FOOOF_bl', 'Scan path length [% change]', 'Velocity [% change]', ...
+    'Gaze deviation [% change]', 'BCEA [% change]', 'Microsaccade rate [% change]'};
 for m = 1:numel(metric_defs)
     key = metric_defs{m};
+    ylab = ylab_defs{m};
     X = metrics.(key);
+    % Shared ymax for both groups, centered around 0
+    all_vals = X(isfinite(X));
+    if isempty(all_vals)
+        ymax = 1;
+    else
+        ymax = max(abs(all_vals));
+        if ymax <= 0
+            ymax = 1;
+        end
+    end
+    ylim_shared = [-ymax ymax];
+
     figure('Position', fig_pos, 'Color', 'w');
     tiledlayout(1, 2, 'TileSpacing', 'compact');
 
@@ -707,9 +791,11 @@ for m = 1:numel(metric_defs)
     end
     hSub = plot(1:3, XR(1,:), '-', 'Color', [0.75 0.75 0.75], 'LineWidth', 1);
     hMean = plot(1:3, mean(XR,1,'omitnan'), '-o', 'Color', colors(1,:), 'LineWidth', 3, 'MarkerFaceColor', colors(1,:));
+    yline(0, '--', 'Color', [0.4 0.4 0.4], 'LineWidth', 0.5);
+    ylim(ylim_shared);
     set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
     title('Reduction');
-    ylabel(key);
+    ylabel(ylab);
     box on
     legend([hSub hMean], {'Subjects', 'Group mean'}, 'Location', 'best', 'FontSize', fsz-6);
 
@@ -720,9 +806,11 @@ for m = 1:numel(metric_defs)
     end
     hSub = plot(1:3, XA(1,:), '-', 'Color', [0.75 0.75 0.75], 'LineWidth', 1);
     hMean = plot(1:3, mean(XA,1,'omitnan'), '-o', 'Color', colors(3,:), 'LineWidth', 3, 'MarkerFaceColor', colors(3,:));
+    yline(0, '--', 'Color', [0.4 0.4 0.4], 'LineWidth', 0.5);
+    ylim(ylim_shared);
     set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
     title('Amplification');
-    ylabel(key);
+    ylabel(ylab);
     box on
     legend([hSub hMean], {'Subjects', 'Group mean'}, 'Location', 'best', 'FontSize', fsz-6);
 
@@ -766,6 +854,7 @@ nexttile(4); hold on
 Rall = squeeze(mean(tc(is_red, :, :), 2, 'omitnan'));
 Aall = squeeze(mean(tc(is_amp, :, :), 2, 'omitnan'));
 d = nan(1, size(tc, 3));
+pval = nan(1, size(tc, 3));
 for i = 1:size(tc, 3)
     x = Rall(:, i);
     y = Aall(:, i);
@@ -774,8 +863,30 @@ for i = 1:size(tc, 3)
     if numel(x) >= 3 && numel(y) >= 3
         sp = sqrt(((numel(x)-1)*var(x) + (numel(y)-1)*var(y)) / (numel(x)+numel(y)-2));
         d(i) = (mean(y) - mean(x)) / max(sp, eps);
+        [~, pval(i)] = ttest2(x, y);
     end
 end
+% Grey transparent boxes for significant timepoints (contiguous runs)
+dt = t(2) - t(1);
+sig = pval < 0.05 & isfinite(d);
+% Find contiguous runs of significant samples
+run_start = [false, diff(sig) == 1];
+run_end = [diff(sig) == -1, false];
+if sig(1), run_start(1) = true; end
+if sig(end), run_end(end) = true; end
+starts = find(run_start);
+ends = find(run_end);
+ylims = [min(d(isfinite(d)), [], 'omitnan') - 0.1, max(d(isfinite(d)), [], 'omitnan') + 0.1];
+if any(~isfinite(ylims)) || diff(ylims) < 0.1
+    ylims = [-1 1];
+end
+for k = 1:numel(starts)
+    t1 = t(starts(k)) - dt/2;
+    t2 = t(ends(k)) + dt/2;
+    patch([t1 t2 t2 t1], [ylims(1) ylims(1) ylims(2) ylims(2)], [0.5 0.5 0.5], ...
+        'FaceAlpha', 0.25, 'EdgeColor', 'none');
+end
+ylim(ylims);
 plot(t, d, 'k-', 'LineWidth', 2.5);
 yline(0, '--');
 xline(0, '--k');
@@ -799,7 +910,7 @@ BCEA = mean(metrics.BCEA, 2, 'omitnan');
 MS = mean(metrics.MS, 2, 'omitnan');
 
 Xset = {SPL, VEL, DEV, BCEA, MS};
-names = {'SPL', 'Velocity', 'GazeDeviation', 'BCEA', 'Microsaccades'};
+names = {'SPL [% change]', 'Velocity [% change]', 'Gaze deviation [% change]', 'BCEA [% change]', 'Microsaccades [% change]'};
 
 groups = {'reduction', 'amplification'};
 masks = {is_red, is_amp};
@@ -874,7 +985,8 @@ rectangle('Position', [xpos-box_w/2, q1, box_w, q3-q1], ...
     'FaceColor', [col 0.08], 'EdgeColor', 'k', 'LineWidth', 1.2);
 plot(xpos + [-box_w/2 box_w/2], [med med], '-k', 'LineWidth', 2);
 jit = 0.10*(rand(numel(y),1)-0.5);
-scatter(xpos + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, 'MarkerEdgeColor', 'none');
+scatter(xpos + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, ...
+    'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
 end
 
 function [vx, vy] = compute_velocity_sg(X, Y, fs, polyOrd)

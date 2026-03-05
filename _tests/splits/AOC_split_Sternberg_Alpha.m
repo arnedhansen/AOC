@@ -573,7 +573,7 @@ end
 
 % Difference maps (Amplification - Reduction)
 cfgd = cfg;
-cmap_diff = cbrewer('div', 'RdBu', 100);
+cmap_diff = rdbu_cmap(100);  % RdBu diverging, no cbrewer dependency
 cmap_diff = flipud(max(min(cmap_diff, 1), 0));
 cfgd.colormap = cmap_diff;
 all_diff = all_diff(isfinite(all_diff));
@@ -907,4 +907,14 @@ else
     vx = gradient(X) * fs;
     vy = gradient(Y) * fs;
 end
+end
+
+function cmap = rdbu_cmap(n)
+% RDBU_CMAP - Red-Blue diverging colormap (no external deps, ColorBrewer RdBu-like).
+% Usage: cmap = rdbu_cmap(n);  returns n x 3 RGB matrix.
+rdbu_11 = [33 102 172; 67 147 195; 146 197 222; 209 229 240; 247 247 247; ...
+           253 219 199; 244 165 130; 214 96 77; 178 24 43] / 255;
+x = linspace(0, 1, size(rdbu_11, 1));
+xi = linspace(0, 1, n);
+cmap = interp1(x, rdbu_11, xi, 'linear');
 end

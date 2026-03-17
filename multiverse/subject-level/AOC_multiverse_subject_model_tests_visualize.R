@@ -36,7 +36,7 @@ sig_colors <- c("Positive" = "#33CC66", "Negative" = "#fe0000", "Non-significant
 sig_levels <- c("Positive", "Negative", "Non-significant")
 
 elec_order <- c("posterior", "occipital")
-lat_order  <- c("0_500ms", "0_1000ms", "0_2000ms", "1000_2000ms")
+lat_order  <- c("0_1000ms", "1000_2000ms", "0_2000ms")
 gaze_order <- c("gaze_deviation", "gaze_velocity", "scan_path_length", "BCEA")
 
 filter_labels <- c(

@@ -7,3 +7,6 @@
 .DS_Store
 _BACKUP/.DS_Store
 .DS_Store
+.Rhistory
+.RData
+.Rhistory

@@ -87,7 +87,7 @@ ylabel('Frequency [Hz]');
 %rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 %rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
-title('1-back TFR');
+title('1-back');
 saveas(gcf, [figpath 'AOC_tfr_1back_fooof_bl_abs.png']);
 
 % 2-back
@@ -103,7 +103,7 @@ ylabel('Frequency [Hz]');
 %rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 %rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
-title('2-back TFR');
+title('2-back');
 saveas(gcf, [figpath 'AOC_tfr_2back_fooof_bl_abs.png']);
 
 % 3-back
@@ -119,7 +119,7 @@ ylabel('Frequency [Hz]');
 %rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 %rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
-title('3-back TFR');
+title('3-back');
 saveas(gcf, [figpath 'AOC_tfr_3back_fooof_bl_abs.png']);
 
 %% Plot the grand averages for the difference between condition 3 and condition 1
@@ -157,7 +157,7 @@ ylabel(cb, 'Absolute Power Change [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 %rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'r', 'LineWidth', 5);
-title('nback TFR Difference (WM load 6 minus WM load 2)', 'FontName', 'Arial', 'FontSize', 30);
+title('Difference (3-back - 1-back)', 'FontName', 'Arial', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
 
 % Save

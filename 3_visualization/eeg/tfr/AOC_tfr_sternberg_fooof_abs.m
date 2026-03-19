@@ -75,8 +75,8 @@ max_spctrm = max([ ...
 clim = [-max_spctrm, max_spctrm];
 
 % WM load 2
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+figure('Position', [0, 0, 1512, 982], 'Color', 'w');
+set(gcf, 'PaperPositionMode', 'auto');
 ft_singleplotTFR(cfg, gatfr2);
 colormap(color_map);
 set(gca, 'CLim', clim);
@@ -88,11 +88,12 @@ ylabel('Frequency [Hz]');
 %rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('WM load 2');
-saveas(gcf, [figpath 'AOC_tfr_sternberg_2_fooof_bl_absX.png']);
+drawnow;
+print(gcf, [figpath 'AOC_tfr_sternberg_2_fooof_bl_absX.png'], '-dpng', '-r300');
 
 % WM load 4
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+figure('Position', [0, 0, 1512, 982], 'Color', 'w');
+set(gcf, 'PaperPositionMode', 'auto');
 ft_singleplotTFR(cfg, gatfr4);
 colormap(color_map);
 set(gca, 'CLim', clim);
@@ -104,11 +105,12 @@ ylabel('Frequency [Hz]');
 %rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('WM load 4');
-saveas(gcf, [figpath 'AOC_tfr_sternberg_4_fooof_bl_absX.png']);
+drawnow;
+print(gcf, [figpath 'AOC_tfr_sternberg_4_fooof_bl_absX.png'], '-dpng', '-r300');
 
 % WM load 6
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+figure('Position', [0, 0, 1512, 982], 'Color', 'w');
+set(gcf, 'PaperPositionMode', 'auto');
 ft_singleplotTFR(cfg, gatfr6);
 colormap(color_map);
 set(gca, 'CLim', clim);
@@ -120,7 +122,8 @@ ylabel('Frequency [Hz]');
 %rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('WM load 6');
-saveas(gcf, [figpath 'AOC_tfr_sternberg_6_fooof_bl_absX.png']);
+drawnow;
+print(gcf, [figpath 'AOC_tfr_sternberg_6_fooof_bl_absX.png'], '-dpng', '-r300');
 
 %% Plot the grand averages for the difference between condition 3 and condition 1
 close all
@@ -147,8 +150,8 @@ max_spctrm = max(abs(mean(diff.powspctrm(channel_idx, freq_idx, time_idx), 1)), 
 clim = double([-max_spctrm max_spctrm]);
 
 % Plot: Difference Time-Frequency Response
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+figure('Position', [0, 0, 1512, 982], 'Color', 'w');
+set(gcf, 'PaperPositionMode', 'auto');
 ft_singleplotTFR(cfg, diff);
 colormap(color_map);
 set(gca, 'CLim', clim); 
@@ -156,10 +159,11 @@ cb = colorbar;
 ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
-rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
-title('Difference (WM load 6 -ow WM load 2)', 'FontName', 'Arial', 'FontSize', 30);
+%rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+%rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+title('Difference (WM load 6 - WM load 2)', 'FontName', 'Arial', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
 
 % Save
-saveas(gcf, [figpath 'AOC_tfr_sternberg_diff_fooof_bl_absX.png']);
+drawnow;
+print(gcf, [figpath 'AOC_tfr_sternberg_diff_fooof_bl_absX.png'], '-dpng', '-r150');

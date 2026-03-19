@@ -75,8 +75,8 @@ max_spctrm = max([ ...
 clim = [-max_spctrm, max_spctrm];
 
 % 1-back
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+figure('Position', [0, 0, 1512, 982], 'Color', 'w');
+set(gcf, 'PaperPositionMode', 'auto');
 ft_singleplotTFR(cfg, gatfr1);
 colormap(color_map);
 set(gca, 'CLim', clim);
@@ -88,11 +88,12 @@ ylabel('Frequency [Hz]');
 %rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('1-back');
-saveas(gcf, [figpath 'AOC_tfr_1back_fooof_bl_abs.png']);
+drawnow;
+print(gcf, [figpath 'AOC_tfr_1back_fooof_bl_abs.png'], '-dpng', '-r300');
 
 % 2-back
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+figure('Position', [0, 0, 1512, 982], 'Color', 'w');
+set(gcf, 'PaperPositionMode', 'auto');
 ft_singleplotTFR(cfg, gatfr2);
 colormap(color_map);
 set(gca, 'CLim', clim);
@@ -104,11 +105,12 @@ ylabel('Frequency [Hz]');
 %rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('2-back');
-saveas(gcf, [figpath 'AOC_tfr_2back_fooof_bl_abs.png']);
+drawnow;
+print(gcf, [figpath 'AOC_tfr_2back_fooof_bl_abs.png'], '-dpng', '-r300');
 
 % 3-back
-figure;
-set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
+figure('Position', [0, 0, 1512, 982], 'Color', 'w');
+set(gcf, 'PaperPositionMode', 'auto');
 ft_singleplotTFR(cfg, gatfr3);
 colormap(color_map);
 set(gca, 'CLim', clim);
@@ -120,7 +122,8 @@ ylabel('Frequency [Hz]');
 %rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('3-back');
-saveas(gcf, [figpath 'AOC_tfr_3back_fooof_bl_abs.png']);
+drawnow;
+print(gcf, [figpath 'AOC_tfr_3back_fooof_bl_abs.png'], '-dpng', '-r300');
 
 %% Plot the grand averages for the difference between condition 3 and condition 1
 close all
@@ -147,8 +150,8 @@ max_spctrm = max(abs(mean(diff.powspctrm(channel_idx, freq_idx, time_idx), 1)), 
 clim = double([-max_spctrm max_spctrm]);
 
 % Plot: Difference Time-Frequency Response
-figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
+figure('Position', [0, 0, 1512, 982], 'Color', 'w');
+set(gcf, 'PaperPositionMode', 'auto');
 ft_singleplotTFR(cfg, diff);
 colormap(color_map);
 set(gca, 'CLim', clim); 
@@ -161,4 +164,5 @@ title('Difference (3-back - 1-back)', 'FontName', 'Arial', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
 
 % Save
-saveas(gcf, [figpath 'AOC_tfr_nback_diff_fooof_bl_abs.png']);
+drawnow;
+print(gcf, [figpath 'AOC_tfr_nback_diff_fooof_bl_abs.png'], '-dpng', '-r300');

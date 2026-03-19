@@ -119,7 +119,7 @@ scatter(x_vals(idx_excl), alpha_mean(idx_excl), 80, [0.5 0.5 0.5], 'filled', 'Ma
 scatter(x_vals(idx_red), alpha_mean(idx_red), 80, [0.2 0.4 0.8], 'filled', 'MarkerFaceAlpha', 0.8);
 scatter(x_vals(idx_amp), alpha_mean(idx_amp), 80, [0.8 0.2 0.2], 'filled', 'MarkerFaceAlpha', 0.8);
 xlabel('Participant (index)');
-ylabel('AlphaPower\_FOOOF\_bl (mean across conditions)');
+ylabel('Alpha Power [dB]');
 title('Alpha Split: Reduction (blue), Amplification (red), Excluded (grey)');
 legend({'Excluded', 'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fontSize - 2);
 set(gca, 'FontSize', fontSize);
@@ -160,6 +160,7 @@ Tf = numel(t_plot);
 spl_tc = nan(nSubj, 3, Tf);
 dev_tc = nan(nSubj, 3, Tf);
 vel_tc = nan(nSubj, 3, Tf);
+bcea_tc = nan(nSubj, 3, Tf);
 
 missing_eeg = {};
 missing_tfr = {};
@@ -276,6 +277,7 @@ for s = 1:nSubj
 
             dev_mat = nan(numel(tr_idx), Tf);
             vel_mat = nan(numel(tr_idx), Tf);
+            bcea_mat = nan(numel(tr_idx), Tf);
             vel_full_trials = nan(numel(tr_idx), 1);
             vel_bl_trials = nan(numel(tr_idx), 1);
 
@@ -296,6 +298,7 @@ for s = 1:nSubj
                 try
                     dev_mat(k, :) = interp1(tt, dev, t_plot, 'linear', NaN);
                     vel_mat(k, :) = interp1(tt, vel, t_plot, 'linear', NaN);
+                    bcea_mat(k, :) = compute_bcea_timecourse(x, y, tt, t_plot, 0.1);
                 catch
                 end
 
@@ -311,6 +314,7 @@ for s = 1:nSubj
 
             dev_tc(s, c, :) = nanmean(dev_mat, 1);
             vel_tc(s, c, :) = nanmean(vel_mat, 1);
+            bcea_tc(s, c, :) = nanmean(bcea_mat, 1);
             metrics.Vel(s, c) = mean(vel_bl_trials, 'omitnan');
         end
     end
@@ -322,7 +326,7 @@ is_amp = ismember(uIDs, amplification_ids);
 
 %% Exclude outliers (Tukey 1.5*IQR) before visualization and analyses
 fprintf('\n=== Outlier exclusion (Tukey 1.5*IQR, per metric per condition) ===\n');
-[metrics, spl_tc, dev_tc, vel_tc] = exclude_outliers_tukey(metrics, spl_tc, dev_tc, vel_tc);
+[metrics, spl_tc, dev_tc, vel_tc, bcea_tc] = exclude_outliers_tukey(metrics, spl_tc, dev_tc, vel_tc, bcea_tc);
 
 %% Determine occipital channels (from first available power file)
 channels = {};
@@ -372,6 +376,8 @@ plot_timecourse_with_effect(vel_tc, is_red, is_amp, cond_labels, colors, ...
     'Eye Velocity [px/s]', 'velocity', fig_dir, fig_pos, fontSize, fs);
 plot_timecourse_with_effect(dev_tc, is_red, is_amp, cond_labels, colors, ...
     'Gaze Deviation [px]', 'gaze_deviation', fig_dir, fig_pos, fontSize, fs);
+plot_timecourse_with_effect(bcea_tc, is_red, is_amp, cond_labels, colors, ...
+    'BCEA [px^2]', 'bcea', fig_dir, fig_pos, fontSize, fs);
 
 %% -------- Correlation panels --------
 fprintf('\n=== Plotting correlation panels ===\n');
@@ -512,17 +518,18 @@ for m = 1:numel(metric_names)
 end
 
 %% ========================= Local Functions =========================
-function [metrics_out, spl_tc_out, dev_tc_out, vel_tc_out] = exclude_outliers_tukey(metrics_in, spl_tc_in, dev_tc_in, vel_tc_in)
+function [metrics_out, spl_tc_out, dev_tc_out, vel_tc_out, bcea_tc_out] = exclude_outliers_tukey(metrics_in, spl_tc_in, dev_tc_in, vel_tc_in, bcea_tc_in)
 % Apply Tukey 1.5*IQR rule per metric per condition. Set outliers to NaN.
-% Also excludes corresponding time-course data for SPL, Dev, Vel.
+% Also excludes corresponding time-course data for SPL, Dev, Vel, BCEA.
 metrics_out = metrics_in;
 spl_tc_out = spl_tc_in;
 dev_tc_out = dev_tc_in;
 vel_tc_out = vel_tc_in;
+bcea_tc_out = bcea_tc_in;
 
 metric_fields = {'Alpha', 'SPL', 'Vel', 'Dev', 'BCEA'};
-tc_map = containers.Map({'SPL', 'Dev', 'Vel'}, {1, 2, 3});  % index for spl/dev/vel
-tc_cells = {spl_tc_out, dev_tc_out, vel_tc_out};
+tc_map = containers.Map({'SPL', 'Dev', 'Vel', 'BCEA'}, {1, 2, 3, 4});  % index for spl/dev/vel/bcea
+tc_cells = {spl_tc_out, dev_tc_out, vel_tc_out, bcea_tc_out};
 
 for m = 1:numel(metric_fields)
     key = metric_fields{m};
@@ -561,6 +568,7 @@ end
 spl_tc_out = tc_cells{1};
 dev_tc_out = tc_cells{2};
 vel_tc_out = tc_cells{3};
+bcea_tc_out = tc_cells{4};
 end
 
 function conds = parse_trialinfo_conds(trialinfo)
@@ -618,6 +626,40 @@ zvy = (vy - nanmean(vy)) ./ (nanstd(vy) + eps);
 bad = abs(zvx) > 4 | abs(zvy) > 4;
 vx(bad) = NaN;
 vy(bad) = NaN;
+end
+
+function bcea_t = compute_bcea_timecourse(x, y, tt, t_plot, win_half)
+% BCEA time course: 95% bivariate contour ellipse area in sliding windows.
+% x, y: gaze coordinates; tt: time vector; t_plot: output time points;
+% win_half: half-window in s (e.g. 0.1 for 200 ms total).
+% Returns row vector of BCEA [px²] at each t_plot (NaN if insufficient samples).
+k95 = -log(1 - 0.95);
+nT = numel(t_plot);
+bcea_t = nan(1, nT);
+for j = 1:nT
+    t0 = t_plot(j);
+    idx = tt >= t0 - win_half & tt <= t0 + win_half;
+    xw = x(idx);
+    yw = y(idx);
+    valid = isfinite(xw) & isfinite(yw);
+    xw = xw(valid);
+    yw = yw(valid);
+    if numel(xw) < 10
+        continue
+    end
+    sx = std(xw);
+    sy = std(yw);
+    if sx <= 0 || sy <= 0
+        continue
+    end
+    r = corrcoef(xw, yw);
+    rho = r(1, 2);
+    if ~isfinite(rho)
+        continue
+    end
+    rho2 = max(0, min(1, rho^2));  % guard for numerical issues
+    bcea_t(j) = 2 * k95 * pi * sx * sy * sqrt(1 - rho2);
+end
 end
 
 function plot_group_power_spectrum_combined(pow_red, pow_amp, channels, colors, cond_labels, out_file, fig_pos, fsz)
@@ -693,7 +735,7 @@ for grp = 1:2
         set(eb(c).edge(2), 'Color', colors(c, :));
     end
     xlim([5 30]);
-    xline(0);
+    yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1);
     ylim(ylim_shared);
     xlabel('Frequency [Hz]');
     ylabel('Power [dB]');
@@ -813,7 +855,7 @@ all_alpha = all_alpha(isfinite(all_alpha));
 if isempty(all_alpha)
     cfg.zlim = 'maxabs';
 else
-    mx = prctile(abs(all_alpha), 99);
+    mx = prctile(abs(all_alpha), 95);
     if mx <= 0
         mx = max(abs(all_alpha));
     end
@@ -909,8 +951,8 @@ end
 end
 
 function plot_timecourse_with_effect(tc, is_red, is_amp, cond_labels, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs)
-% No smoothing. Full temporal resolution. Permutation testing for significance.
-% Inf/NaN sanitized to avoid computation issues.
+% Slight temporal smoothing (40 ms). Collapsed across conditions.
+% Permutation testing for significance. Inf/NaN sanitized to avoid computation issues.
 dt = 1 / fs;
 nT = size(tc, 3);
 t_plot = linspace(-0.5 + dt, 2, nT);
@@ -918,62 +960,53 @@ t_plot = linspace(-0.5 + dt, 2, nT);
 % Sanitize: replace Inf with NaN to avoid downstream inf/NaN issues
 tc(~isfinite(tc)) = NaN;
 
-% Use full resolution (no smoothing, no binning)
-figure('Position', fig_pos, 'Color', 'w');
-tiledlayout(4, 1, 'TileSpacing', 'compact');
-
-for c = 1:3
-    nexttile(c); hold on
-    R = squeeze(tc(is_red, c, :));
-    A = squeeze(tc(is_amp, c, :));
-    mR = mean(R, 1, 'omitnan');
-    mA = mean(A, 1, 'omitnan');
-    nR_fin = sum(isfinite(R), 1);
-    nA_fin = sum(isfinite(A), 1);
-    sR = std(R, 0, 1, 'omitnan') ./ max(sqrt(nR_fin), 1);
-    sA = std(A, 0, 1, 'omitnan') ./ max(sqrt(nA_fin), 1);
-    sR(~isfinite(sR)) = NaN;
-    sA(~isfinite(sA)) = NaN;
-
-    e1 = shadedErrorBar(t_plot, mR, sR, 'lineProps', {'-'}, 'transparent', true);
-    e2 = shadedErrorBar(t_plot, mA, sA, 'lineProps', {'-'}, 'transparent', true);
-    set(e1.mainLine, 'Color', colors(1,:), 'LineWidth', 2.5);
-    set(e2.mainLine, 'Color', colors(3,:), 'LineWidth', 2.5);
-    set(e1.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.25);
-    set(e2.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.25);
-    xline(0, '--k');
-    ylabel(ylab, 'FontSize', max(8, fsz-6));
-    title(cond_labels{c});
-    xlim([-0.5 2]);
-    box on
-    set(gca, 'FontSize', fsz-4);
-    legend([e1.mainLine e2.mainLine], {'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fsz-7);
-end
-
-nexttile(4); hold on
-% Effect-size strip: averaged across conditions, permutation test at each time point
+% Collapse across conditions (as in power spectrum and inclusion plots)
 Rall = squeeze(mean(tc(is_red, :, :), 2, 'omitnan'));
 Aall = squeeze(mean(tc(is_amp, :, :), 2, 'omitnan'));
 
+% Very slight temporal smoothing (40 ms at fs) to reduce noise
+win_sm = max(1, round(0.04 * fs));  % 40 ms
+if win_sm > 1
+    Rall = movmean(Rall, win_sm, 2, 'omitnan');
+    Aall = movmean(Aall, win_sm, 2, 'omitnan');
+end
+
+% Layout: 2/3 for gaze panel, 1/3 for Cohen's d
+figure('Position', fig_pos, 'Color', 'w');
+tiledlayout(3, 1, 'TileSpacing', 'compact');
+
+% Top panel (2/3): Gaze measure collapsed across conditions
+nexttile([2 1]); hold on
+mR = mean(Rall, 1, 'omitnan');
+mA = mean(Aall, 1, 'omitnan');
+nR_fin = sum(isfinite(Rall), 1);
+nA_fin = sum(isfinite(Aall), 1);
+sR = std(Rall, 0, 1, 'omitnan') ./ max(sqrt(nR_fin), 1);
+sA = std(Aall, 0, 1, 'omitnan') ./ max(sqrt(nA_fin), 1);
+sR(~isfinite(sR)) = NaN;
+sA(~isfinite(sA)) = NaN;
+
+e1 = shadedErrorBar(t_plot, mR, sR, 'lineProps', {'-'}, 'transparent', true);
+e2 = shadedErrorBar(t_plot, mA, sA, 'lineProps', {'-'}, 'transparent', true);
+set(e1.mainLine, 'Color', colors(1,:), 'LineWidth', 2.5);
+set(e2.mainLine, 'Color', colors(3,:), 'LineWidth', 2.5);
+set(e1.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.25);
+set(e2.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.25);
+xline(0, '--k');
+ylabel(ylab, 'FontSize', max(8, fsz-6));
+xlim([-0.5 2]);
+box on
+set(gca, 'FontSize', fsz-4);
+legend([e1.mainLine e2.mainLine], {'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fsz-7);
+
+% Bottom panel (1/3): Cohen's d with grey patches for cluster-based permutation significant time periods
+nexttile; hold on
 nR = size(Rall, 1);
 nA = size(Aall, 1);
 n_perm = 2000;
 min_per_group = 3;
 
 d = nan(1, nT);
-pval = nan(1, nT);
-obs_diff = mean(Aall, 1, 'omitnan') - mean(Rall, 1, 'omitnan');
-
-% Pool data for permutation; use mean difference as test statistic
-all_data = [Rall; Aall];
-null_diffs = zeros(n_perm, nT);
-for p = 1:n_perm
-    shuf = randperm(nR + nA);
-    g1 = all_data(shuf(1:nR), :);
-    g2 = all_data(shuf(nR+1:end), :);
-    null_diffs(p, :) = mean(g2, 1, 'omitnan') - mean(g1, 1, 'omitnan');
-end
-
 for t = 1:nT
     x = Rall(:, t);
     y = Aall(:, t);
@@ -982,34 +1015,27 @@ for t = 1:nT
     if numel(x) < min_per_group || numel(y) < min_per_group
         continue
     end
-    % Cohen's d with eps guard to avoid Inf
     sp = sqrt(((numel(x)-1)*var(x) + (numel(y)-1)*var(y)) / max(numel(x)+numel(y)-2, 1));
     d(t) = (mean(y) - mean(x)) / max(sp, eps);
-    % Two-tailed permutation p-value
-    if isfinite(obs_diff(t))
-        n_extreme = sum(abs(null_diffs(:, t)) >= abs(obs_diff(t)) - 1e-12);
-        pval(t) = (1 + n_extreme) / (n_perm + 1);
-    end
 end
 
-% FDR correction (Benjamini-Hochberg) at q = 0.05
-sig_fdr = false(size(pval));
-finite_mask = isfinite(pval);
-if any(finite_mask)
-    p_fin = pval(finite_mask);
-    [p_sorted, idx_sort] = sort(p_fin(:));
-    n_tests = numel(p_fin);
-    crit = (1:n_tests)' / n_tests * 0.05;
-    k = find(p_sorted <= crit, 1, 'last');
-    if ~isempty(k)
-        sig_mask_fin = false(n_tests, 1);
-        sig_mask_fin(idx_sort(1:k)) = true;
-        sig_fdr(finite_mask) = sig_mask_fin;
+% Cluster-based permutation test (one-tailed: Reduction > Amplification)
+[clusters, tvals_cl, thr] = cluster_permutation_2sample_1d(Rall, Aall, n_perm, 0.05, 'onetail_neg');
+
+% Diagnostic: time points exceeding one-tailed threshold (t < -tcrit)
+nAbove = sum(tvals_cl < -thr.tcrit & isfinite(tvals_cl));
+maxClMass = max([0, arrayfun(@(k) clusters(k).mass, 1:numel(clusters))]);
+fprintf('  [%s] n_red=%d n_amp=%d tcrit=%.2f (one-tailed) t<-tcrit at %d timepts; max cluster mass=%.1f; threshold=%.1f\n', ...
+    save_tag, nR, nA, thr.tcrit, nAbove, maxClMass, thr.mass);
+
+% Build sig mask from significant clusters (mass >= thr.mass)
+sig = false(1, nT);
+for k = 1:numel(clusters)
+    if clusters(k).mass >= thr.mass
+        sig(clusters(k).idx) = true;
     end
 end
-
-% Grey transparent boxes for FDR-significant time points (contiguous runs)
-sig = sig_fdr & isfinite(d);
+sig = sig & isfinite(d);
 run_start = [false, diff(sig) == 1];
 run_end = [diff(sig) == -1, false];
 if sig(1), run_start(1) = true; end
@@ -1170,4 +1196,99 @@ rdbu_11 = [33 102 172; 67 147 195; 146 197 222; 209 229 240; 247 247 247; ...
 x = linspace(0, 1, size(rdbu_11, 1));
 xi = linspace(0, 1, n);
 cmap = interp1(x, rdbu_11, xi, 'linear');
+end
+
+function [clusters, tvals, thr] = cluster_permutation_2sample_1d(Rall, Aall, nPerm, alpha, tail)
+% CLUSTER_PERMUTATION_2SAMPLE_1D  Two-sample cluster-permutation test (label shuffle).
+%   Rall: nR x nT (reduction group), Aall: nA x nT (amplification group).
+%   tail: 'twotail' (default) or 'onetail_neg' (H1: Reduction > Amplification, i.e. t < 0).
+%   Returns clusters, tvals, thr (thr.tcrit, thr.mass).
+if nargin < 5, tail = 'twotail'; end
+[nR, nT] = size(Rall);
+nA = size(Aall, 1);
+df = nR + nA - 2;
+if strcmpi(tail, 'onetail_neg')
+    tcrit = tinv(1 - alpha, df);  % one-tailed: cluster where t < -tcrit
+else
+    tcrit = tinv(1 - 0.5 * alpha, df);
+end
+thr.tcrit = tcrit;
+
+% Observed two-sample t at each time (use per-timepoint df when NaNs present)
+tvals = nan(1, nT);
+for t = 1:nT
+    x = Rall(:, t); y = Aall(:, t);
+    x = x(isfinite(x)); y = y(isfinite(y));
+    if numel(x) < 2 || numel(y) < 2
+        continue
+    end
+    m1 = mean(x); m2 = mean(y);
+    v1 = var(x); v2 = var(y);
+    dft = numel(x) + numel(y) - 2;
+    sp = sqrt(((numel(x)-1)*v1 + (numel(y)-1)*v2) / max(dft, 1));
+    se = sp * sqrt(1/numel(x) + 1/numel(y));
+    if se > 0
+        tvals(t) = (m2 - m1) / se;
+    end
+end
+
+clusters = compute_clusters_t(tvals, tcrit, tail);
+
+% Permutation null (max cluster mass)
+all_data = [Rall; Aall];
+maxMass = zeros(1, nPerm);
+for p = 1:nPerm
+    shuf = randperm(nR + nA);
+    g1 = all_data(shuf(1:nR), :);
+    g2 = all_data(shuf(nR+1:end), :);
+    tP = nan(1, nT);
+    for t = 1:nT
+        x = g1(:, t); y = g2(:, t);
+        x = x(isfinite(x)); y = y(isfinite(y));
+        if numel(x) < 2 || numel(y) < 2
+            continue
+        end
+        m1 = mean(x); m2 = mean(y);
+        v1 = var(x); v2 = var(y);
+        sp = sqrt(((numel(x)-1)*v1 + (numel(y)-1)*v2) / max(numel(x)+numel(y)-2, 1));
+        se = sp * sqrt(1/numel(x) + 1/numel(y));
+        if se > 0
+            tP(t) = (m2 - m1) / se;
+        end
+    end
+    clP = compute_clusters_t(tP, tcrit, tail);
+    if isempty(clP)
+        maxMass(p) = 0;
+    else
+        maxMass(p) = max([clP.mass]);
+    end
+end
+maxMass = sort(maxMass);
+thr.mass = maxMass(max(1, round((1 - alpha) * nPerm)));
+
+for k = 1:numel(clusters)
+    clusters(k).p = (1 + sum(maxMass >= clusters(k).mass)) / (nPerm + 1);
+end
+end
+
+function clusters = compute_clusters_t(tvals, tcrit, tail)
+if nargin < 3, tail = 'twotail'; end
+if strcmpi(tail, 'onetail_neg')
+    above = tvals < -tcrit & isfinite(tvals);  % H1: Reduction > Amplification
+else
+    above = abs(tvals) > tcrit & isfinite(tvals);
+end
+clusters = struct('idx', {}, 'mass', {}, 'sign', {});
+if ~any(above)
+    return
+end
+d = diff([0, above, 0]);
+on = find(d == 1);
+off = find(d == -1) - 1;
+for c = 1:numel(on)
+    idx = on(c):off(c);
+    clusters(end+1).idx = idx; %#ok<AGROW>
+    clusters(end).mass = sum(abs(tvals(idx)));
+    clusters(end).sign = sign(mean(tvals(idx), 'omitnan'));
+end
 end

@@ -87,7 +87,7 @@ ylabel('Frequency [Hz]');
 %rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 %rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
-title('Sternberg WM load 2 TFR');
+title('WM load 2');
 saveas(gcf, [figpath 'AOC_tfr_sternberg_2_fooof_bl_absX.png']);
 
 % WM load 4
@@ -103,7 +103,7 @@ ylabel('Frequency [Hz]');
 %rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 %rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
-title('Sternberg WM load 4 TFR');
+title('WM load 4');
 saveas(gcf, [figpath 'AOC_tfr_sternberg_4_fooof_bl_absX.png']);
 
 % WM load 6
@@ -119,7 +119,7 @@ ylabel('Frequency [Hz]');
 %rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 %rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
-title('Sternberg WM load 6 TFR');
+title('WM load 6');
 saveas(gcf, [figpath 'AOC_tfr_sternberg_6_fooof_bl_absX.png']);
 
 %% Plot the grand averages for the difference between condition 3 and condition 1
@@ -158,7 +158,7 @@ xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 rectangle('Position', [0, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
-title('Sternberg TFR Difference (WM load 6 minus WM load 2)', 'FontName', 'Arial', 'FontSize', 30);
+title('Difference (WM load 6 -ow WM load 2)', 'FontName', 'Arial', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
 
 % Save

@@ -119,13 +119,13 @@ histogram(slope(idx_nback),  20, 'FaceColor', [0 0 0.8], 'FaceAlpha', 0.6);
 histogram(slope(idx_flat),   11, 'FaceColor', [0.5 0.5 0.5], 'FaceAlpha', 0.6);
 xline(thr,  'k--', 'LineWidth', 2);
 xline(-thr, 'k--', 'LineWidth', 2);
-xlabel('Alpha power slope')
-ylabel('Participants')
-title('Linear Slope of Alpha Power across WM Load (2, 4, 6 items)', 'FontSize', 20)
-legend({sprintf('\\alpha increase with load (N=%d)', n_j), ...
-    sprintf('\\alpha decrease with load (N=%d)', n_n), ...
-    sprintf('intermediate (N=%d)', n_f), ...
-    'threshold'})
+xlabel('Alpha Power Slope')
+ylabel('Participant Count')
+title('Participant Split by Alpha-Load Slope', 'FontSize', 20)
+legend({sprintf('\\alpha Increase with Load (N=%d)', n_j), ...
+    sprintf('\\alpha Decrease with Load (N=%d)', n_n), ...
+    sprintf('Intermediate (N=%d)', n_f), ...
+    'Threshold'})
 box on
 set(gca, 'FontSize', 15)
 saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_histogram_inclusion.png'));
@@ -140,7 +140,7 @@ ga2nback = ft_freqgrandaverage(cfg,load2{idx_nback});
 ga4nback = ft_freqgrandaverage(cfg,load4{idx_nback});
 ga6nback = ft_freqgrandaverage(cfg,load6{idx_nback});
 
-%% TFR
+%% TFR EEG
 close all
 cfg = [];
 cfg.figure = 'gcf';
@@ -150,25 +150,25 @@ cfg.channel = channels;
 cfg.layout = headmodel.layANThead;
 cfg.zlim = [-.25 .25];
 figure('Position', fig_pos, 'Color', 'w');
-subplot(3,2,1); ft_singleplotTFR(cfg, ga2jensen); title('Increase: WM load 2', 'FontSize', fontSize);
+subplot(3,2,1); ft_singleplotTFR(cfg, ga2jensen); title('Alpha Amplification: WM Load 2', 'FontSize', fontSize);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
-subplot(3,2,3); ft_singleplotTFR(cfg, ga4jensen); title('Increase: WM load 4', 'FontSize', fontSize);
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Alpha Power [dB]'; c.Label.FontSize = fontSize;
+subplot(3,2,3); ft_singleplotTFR(cfg, ga4jensen); title('Alpha Amplification: WM Load 4', 'FontSize', fontSize);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
-subplot(3,2,5); ft_singleplotTFR(cfg, ga6jensen); title('Increase: WM load 6', 'FontSize', fontSize);
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Alpha Power [dB]'; c.Label.FontSize = fontSize;
+subplot(3,2,5); ft_singleplotTFR(cfg, ga6jensen); title('Alpha Amplification: WM Load 6', 'FontSize', fontSize);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Alpha Power [dB]'; c.Label.FontSize = fontSize;
 
-subplot(3,2,2); ft_singleplotTFR(cfg, ga2nback); title('Decrease: WM load 2', 'FontSize', fontSize);
+subplot(3,2,2); ft_singleplotTFR(cfg, ga2nback); title('Alpha Reduction: WM Load 2', 'FontSize', fontSize);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
-subplot(3,2,4); ft_singleplotTFR(cfg, ga4nback); title('Decrease: WM load 4', 'FontSize', fontSize);
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Alpha Power [dB]'; c.Label.FontSize = fontSize;
+subplot(3,2,4); ft_singleplotTFR(cfg, ga4nback); title('Alpha Reduction: WM Load 4', 'FontSize', fontSize);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
-subplot(3,2,6); ft_singleplotTFR(cfg, ga6nback); title('Decrease: WM load 6', 'FontSize', fontSize);
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Alpha Power [dB]'; c.Label.FontSize = fontSize;
+subplot(3,2,6); ft_singleplotTFR(cfg, ga6nback); title('Alpha Reduction: WM Load 6', 'FontSize', fontSize);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Alpha Power [dB]'; c.Label.FontSize = fontSize;
 colormap(gcf, color_map);
 saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_TFR.png'));
 
@@ -218,10 +218,10 @@ end
 xlim([2 30]);
 xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
 yline(0, '--')
-ylabel('Power [dB]', 'FontSize', fontSize);
+ylabel('Alpha Power [dB]', 'FontSize', fontSize);
 ylim([-.075 0.2])
-title('Increase', 'FontSize', fontSize);
-legend([eb_j.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
+title('Alpha Amplification Group', 'FontSize', fontSize);
+legend([eb_j.mainLine], {'WM Load 2', 'WM Load 4', 'WM Load 6'}, ...
     'Location', 'northeast', 'Box', 'off', 'FontSize', fontSize - 2);
 set(gca, 'FontSize', fontSize);
 box on
@@ -246,9 +246,9 @@ xlim([2 30]);
 xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
 yline(0, '--')
 ylim([-.075 0.2])
-ylabel('Power [dB]', 'FontSize', fontSize);
-title('Decrease', 'FontSize', fontSize);
-legend([eb_n.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
+ylabel('Alpha Power [dB]', 'FontSize', fontSize);
+title('Alpha Reduction Group', 'FontSize', fontSize);
+legend([eb_n.mainLine], {'WM Load 2', 'WM Load 4', 'WM Load 6'}, ...
     'Location', 'northeast', 'Box', 'off', 'FontSize', fontSize - 2);
 set(gca, 'FontSize', fontSize);
 box on
@@ -305,19 +305,20 @@ if isfile(gaze_file) && isfile(gaze_norm_file)
     ga4nback_gaze = ft_freqgrandaverage(cfg, load4_gaze{idx_nback});
     ga6nback_gaze = ft_freqgrandaverage(cfg, load6_gaze{idx_nback});
     
-    %% Plot gaze TFRs (Jensen / nback)
+    %% TFR Gaze
     close all
     cfg = [];
     cfg.figure = 'gcf';
     cfg.zlim = [-.05 .05];
     figure('Position', fig_pos, 'Color', 'w');
-    subplot(3,2,1);ft_singleplotTFR(cfg, ga2jensen_gaze);
-    subplot(3,2,3);ft_singleplotTFR(cfg, ga4jensen_gaze);
-    subplot(3,2,5);ft_singleplotTFR(cfg, ga6jensen_gaze);
-
-    subplot(3,2,2);ft_singleplotTFR(cfg, ga2nback_gaze);
-    subplot(3,2,4);ft_singleplotTFR(cfg, ga4nback_gaze);
-    subplot(3,2,6);ft_singleplotTFR(cfg, ga6nback_gaze);
+    subplot(3,2,1);ft_singleplotTFR(cfg, ga2jensen_gaze); title('Alpha Amplification: WM Load 2', 'FontSize', fontSize); c = colorbar; c.Label.String = 'Gaze Density Change [a.u.]'; c.Label.FontSize = fontSize - 2; c.FontSize = fontSize - 2; ax = gca; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-2); set(ax, 'FontSize', fontSize);
+    subplot(3,2,3);ft_singleplotTFR(cfg, ga4jensen_gaze); title('Alpha Amplification: WM Load 4', 'FontSize', fontSize); c = colorbar; c.Label.String = 'Gaze Density Change [a.u.]'; c.Label.FontSize = fontSize - 2; c.FontSize = fontSize - 2; ax = gca; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-2); set(ax, 'FontSize', fontSize);
+    subplot(3,2,5);ft_singleplotTFR(cfg, ga6jensen_gaze); title('Alpha Amplification: WM Load 6', 'FontSize', fontSize); c = colorbar; c.Label.String = 'Gaze Density Change [a.u.]'; c.Label.FontSize = fontSize - 2; c.FontSize = fontSize - 2; ax = gca; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-2); set(ax, 'FontSize', fontSize);
+ 
+    subplot(3,2,2);ft_singleplotTFR(cfg, ga2nback_gaze); title('Alpha Reduction: WM Load 2', 'FontSize', fontSize); c = colorbar; c.Label.String = 'Gaze Density Change [a.u.]'; c.Label.FontSize = fontSize - 2; c.FontSize = fontSize - 2; ax = gca; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-2); set(ax, 'FontSize', fontSize);
+    subplot(3,2,4);ft_singleplotTFR(cfg, ga4nback_gaze); title('Alpha Reduction: WM Load 4', 'FontSize', fontSize); c = colorbar; c.Label.String = 'Gaze Density Change [a.u.]'; c.Label.FontSize = fontSize - 2; c.FontSize = fontSize - 2; ax = gca; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-2); set(ax, 'FontSize', fontSize);
+    subplot(3,2,6);ft_singleplotTFR(cfg, ga6nback_gaze); title('Alpha Reduction: WM Load 6', 'FontSize', fontSize); c = colorbar; c.Label.String = 'Gaze Density Change [a.u.]'; c.Label.FontSize = fontSize - 2; c.FontSize = fontSize - 2; ax = gca; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-2); set(ax, 'FontSize', fontSize);
+    colormap(gcf, color_map);
 
     %%
     cfg = [];
@@ -412,104 +413,104 @@ if isfile(gaze_file) && isfile(gaze_norm_file)
     ft_singleplotTFR(cfg, stat_inc_2);
 
     set(gcf,'color','w');
-    set(gca,'Fontsize',20);
-    xlabel('x [px]');
-    ylabel('y [px]');
+    set(gca, 'FontSize', fontSize);
+    xlabel('Time [s]', 'FontSize', fontSize);
+    ylabel('Frequency [Hz]', 'FontSize', fontSize-2);
     % title('high- low during baseline')
     c = colorbar;
     c.LineWidth = 1;
     c.FontSize = 18;
     c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
     % title(c,'Gaze density [a.u.]');%\it d
-    c.Label.String = 'Gaze density [a.u.]';
-    c.Label.FontSize = 18;   % optional
-    title('')
+    c.Label.String = 't-value';
+    c.Label.FontSize = fontSize - 2;
+    title('Alpha Amplification: WM Load 2')
 
     subplot(3,2,3);
     ft_singleplotTFR(cfg,stat_inc_4);
 
     set(gcf,'color','w');
-    set(gca,'Fontsize',20);
-    xlabel('x [px]');
-    ylabel('y [px]');
+    set(gca, 'FontSize', fontSize);
+    xlabel('Time [s]', 'FontSize', fontSize);
+    ylabel('Frequency [Hz]', 'FontSize', fontSize-2);
     % title('high- low during baseline')
     c = colorbar;
     c.LineWidth = 1;
     c.FontSize = 18;
     c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
     % title(c,'Gaze density [a.u.]');%\it d
-    c.Label.String = 'Gaze density [a.u.]';
-    c.Label.FontSize = 18;   % optional
-    title('')
+    c.Label.String = 't-value';
+    c.Label.FontSize = fontSize - 2;
+    title('Alpha Amplification: WM Load 4')
 
     subplot(3,2,5);
     ft_singleplotTFR(cfg,stat_inc_6);
 
     set(gcf,'color','w');
-    set(gca,'Fontsize',20);
-    xlabel('x [px]');
-    ylabel('y [px]');
+    set(gca, 'FontSize', fontSize);
+    xlabel('Time [s]', 'FontSize', fontSize);
+    ylabel('Frequency [Hz]', 'FontSize', fontSize-2);
     % title('high- low during baseline')
     c = colorbar;
     c.LineWidth = 1;
     c.FontSize = 18;
     c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
     % title(c,'Gaze density [a.u.]');%\it d
-    c.Label.String = 'Gaze density [a.u.]';
-    c.Label.FontSize = 18;   % optional
-    title('')
+    c.Label.String = 't-value';
+    c.Label.FontSize = fontSize - 2;
+    title('Alpha Amplification: WM Load 6')
 
     % plot decreaseing
     subplot(3,2,2);
     ft_singleplotTFR(cfg,stat_inc_n_2);
 
     set(gcf,'color','w');
-    set(gca,'Fontsize',20);
-    xlabel('x [px]');
-    ylabel('y [px]');
+    set(gca, 'FontSize', fontSize);
+    xlabel('Time [s]', 'FontSize', fontSize);
+    ylabel('Frequency [Hz]', 'FontSize', fontSize-2);
     % title('high- low during baseline')
     c = colorbar;
     c.LineWidth = 1;
     c.FontSize = 18;
     c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
     % title(c,'Gaze density [a.u.]');%\it d
-    c.Label.String = 'Gaze density [a.u.]';
-    c.Label.FontSize = 18;   % optional
-    title('')
+    c.Label.String = 't-value';
+    c.Label.FontSize = fontSize - 2;
+    title('Alpha Reduction: WM Load 2')
 
     subplot(3,2,4);
     ft_singleplotTFR(cfg,stat_inc_n_4);
 
     set(gcf,'color','w');
-    set(gca,'Fontsize',20);
-    xlabel('x [px]');
-    ylabel('y [px]');
+    set(gca, 'FontSize', fontSize);
+    xlabel('Time [s]', 'FontSize', fontSize);
+    ylabel('Frequency [Hz]', 'FontSize', fontSize-2);
     % title('high- low during baseline')
     c = colorbar;
     c.LineWidth = 1;
     c.FontSize = 18;
     c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
     % title(c,'Gaze density [a.u.]');%\it d
-    c.Label.String = 'Gaze density [a.u.]';
-    c.Label.FontSize = 18;   % optional
-    title('')
+    c.Label.String = 't-value';
+    c.Label.FontSize = fontSize - 2;
+    title('Alpha Reduction: WM Load 4')
 
     subplot(3,2,6);
     ft_singleplotTFR(cfg,stat_inc_n_6);
 
     set(gcf,'color','w');
-    set(gca,'Fontsize',20);
-    xlabel('x [px]');
-    ylabel('y [px]');
+    set(gca, 'FontSize', fontSize);
+    xlabel('Time [s]', 'FontSize', fontSize);
+    ylabel('Frequency [Hz]', 'FontSize', fontSize-2);
     % title('high- low during baseline')
     c = colorbar;
     c.LineWidth = 1;
     c.FontSize = 18;
     c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
     % title(c,'Gaze density [a.u.]');%\it d
-    c.Label.String = 'Gaze density [a.u.]';
-    c.Label.FontSize = 18;   % optional
-    title('')
+    c.Label.String = 't-value';
+    c.Label.FontSize = fontSize - 2;
+    title('Alpha Reduction: WM Load 6')
     %%
 
     cfg                  = [];
@@ -580,31 +581,33 @@ if isfile(gaze_file) && isfile(gaze_norm_file)
     ft_singleplotTFR(cfg,statF_gaze);
 
     set(gcf,'color','w');
-    set(gca,'Fontsize',20);
-    xlabel('x [px]');
-    ylabel('y [px]');
+    set(gca, 'FontSize', fontSize);
+    xlabel('Time [s]', 'FontSize', fontSize);
+    ylabel('Frequency [Hz]', 'FontSize', fontSize-2);
     % title('high- low during baseline')
     c = colorbar;
     c.LineWidth = 1;
     c.FontSize = 18;
     c.Ticks = [0 10];
-    title(c,'F-values')
-    title('')
+    c.Label.String = 'F-value';
+    c.Label.FontSize = fontSize - 2;
+    title('Alpha Amplification: Omnibus Load Effect')
 
     subplot(3,2,2);
     ft_singleplotTFR(cfg,statF_gaze_n);
 
     set(gcf,'color','w');
-    set(gca,'Fontsize',20);
-    xlabel('x [px]');
-    ylabel('y [px]');
+    set(gca, 'FontSize', fontSize);
+    xlabel('Time [s]', 'FontSize', fontSize);
+    ylabel('Frequency [Hz]', 'FontSize', fontSize-2);
     % title('high- low during baseline')
     c = colorbar;
     c.LineWidth = 1;
     c.FontSize = 18;
     c.Ticks = [0 10];
-    title(c,'F-values')
-    title('')
+    c.Label.String = 'F-value';
+    c.Label.FontSize = fontSize - 2;
+    title('Alpha Reduction: Omnibus Load Effect')
 
     % zoomed version
     cfg         = [];
@@ -622,31 +625,33 @@ if isfile(gaze_file) && isfile(gaze_norm_file)
     ft_singleplotTFR(cfg,statF_gaze);
 
     set(gcf,'color','w');
-    set(gca,'Fontsize',20);
-    xlabel('x [px]');
-    ylabel('y [px]');
+    set(gca, 'FontSize', fontSize);
+    xlabel('Time [s]', 'FontSize', fontSize);
+    ylabel('Frequency [Hz]', 'FontSize', fontSize-2);
     % title('high- low during baseline')
     c = colorbar;
     c.LineWidth = 1;
     c.FontSize = 18;
     c.Ticks = [0 10];
-    title(c,'F-values')
-    title('')
+    c.Label.String = 'F-value';
+    c.Label.FontSize = fontSize - 2;
+    title('Alpha Amplification: Omnibus Load Effect (Zoom)')
 
     subplot(3,2,4);
     ft_singleplotTFR(cfg,statF_gaze_n);
 
     set(gcf,'color','w');
-    set(gca,'Fontsize',20);
-    xlabel('x [px]');
-    ylabel('y [px]');
+    set(gca, 'FontSize', fontSize);
+    xlabel('Time [s]', 'FontSize', fontSize);
+    ylabel('Frequency [Hz]', 'FontSize', fontSize-2);
     % title('high- low during baseline')
     c = colorbar;
     c.LineWidth = 1;
     c.FontSize = 18;
     c.Ticks = [0 10];
-    title(c,'F-values')
-    title('')
+    c.Label.String = 'F-value';
+    c.Label.FontSize = fontSize - 2;
+    title('Alpha Reduction: Omnibus Load Effect (Zoom)')
     %% Test linear trend (requires ft_statfun_loadtrend)
     funcs_paths = {fullfile(fileparts(mfilename('fullpath')), '..', 'funcs'), '/Volumes/Homestore/OCC/arne/funcs'};
     has_loadtrend = false;
@@ -729,31 +734,33 @@ if isfile(gaze_file) && isfile(gaze_norm_file)
         ft_singleplotTFR(cfg,statF_gaze);
 
         set(gcf,'color','w');
-        set(gca,'Fontsize',20);
-        xlabel('x [px]');
-        ylabel('y [px]');
+        set(gca, 'FontSize', fontSize);
+        xlabel('Time [s]', 'FontSize', fontSize);
+        ylabel('Frequency [Hz]', 'FontSize', fontSize-2);
         % title('high- low during baseline')
         c = colorbar;
         c.LineWidth = 1;
         c.FontSize = 18;
         c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-        title(c,'t-values')
-        title('')
+        c.Label.String = 't-value';
+        c.Label.FontSize = fontSize - 2;
+        title('Alpha Amplification: Linear Load Trend')
 
         subplot(3,2,2);
         ft_singleplotTFR(cfg,statF_gaze_n);
 
         set(gcf,'color','w');
-        set(gca,'Fontsize',20);
-        xlabel('x [px]');
-        ylabel('y [px]');
+        set(gca, 'FontSize', fontSize);
+        xlabel('Time [s]', 'FontSize', fontSize);
+        ylabel('Frequency [Hz]', 'FontSize', fontSize-2);
         % title('high- low during baseline')
         c = colorbar;
         c.LineWidth = 1;
         c.FontSize = 18;
         c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-        title(c,'t-values')
-        title('')
+        c.Label.String = 't-value';
+        c.Label.FontSize = fontSize - 2;
+        title('Alpha Reduction: Linear Load Trend')
         %% zoom
         cfg         = [];
         cfg.parameter = 'stat';
@@ -770,31 +777,33 @@ if isfile(gaze_file) && isfile(gaze_norm_file)
         ft_singleplotTFR(cfg,statF_gaze);
 
         set(gcf,'color','w');
-        set(gca,'Fontsize',20);
-        xlabel('x [px]');
-        ylabel('y [px]');
+        set(gca, 'FontSize', fontSize);
+        xlabel('Time [s]', 'FontSize', fontSize);
+        ylabel('Frequency [Hz]', 'FontSize', fontSize-2);
         % title('high- low during baseline')
         c = colorbar;
         c.LineWidth = 1;
         c.FontSize = 18;
         c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-        title(c,'t-values')
-        title('')
+        c.Label.String = 't-value';
+        c.Label.FontSize = fontSize - 2;
+        title('Alpha Amplification: Linear Load Trend (Zoom)')
 
         subplot(3,2,4);
         ft_singleplotTFR(cfg,statF_gaze_n);
 
         set(gcf,'color','w');
-        set(gca,'Fontsize',20);
-        xlabel('x [px]');
-        ylabel('y [px]');
+        set(gca, 'FontSize', fontSize);
+        xlabel('Time [s]', 'FontSize', fontSize);
+        ylabel('Frequency [Hz]', 'FontSize', fontSize-2);
         % title('high- low during baseline')
         c = colorbar;
         c.LineWidth = 1;
         c.FontSize = 18;
         c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-        title(c,'t-values')
-        title('')
+        c.Label.String = 't-value';
+        c.Label.FontSize = fontSize - 2;
+        title('Alpha Reduction: Linear Load Trend (Zoom)')
     else
         fprintf('Skipping linear trend: ft_statfun_loadtrend not found.\n');
     end
@@ -865,7 +874,7 @@ scatter(positions(2)+(rand(size(sb4))-0.5)*jitter, sb4, 'b.');
 scatter(positions(3)+(rand(size(sb6))-0.5)*jitter, sb6, 'r.');
 
 ylabel('Reaction Time [s]')
-title(sprintf('\\alpha increase with load (N=%d)', sum(idx_jensen)))
+title(sprintf('Alpha Amplification Group (N=%d)', sum(idx_jensen)))
 set(gca,'FontSize',18); box on;
 ylim([0 1.5])
 
@@ -885,7 +894,7 @@ scatter(positions(2)+(rand(size(nb2))-0.5)*jitter, nb2, 'b.');
 scatter(positions(3)+(rand(size(nb3))-0.5)*jitter, nb3, 'r.');
 
 ylabel('Reaction Time [s]')
-title(sprintf('\\alpha decrease with load (N=%d)', sum(idx_nback)))
+title(sprintf('Alpha Reduction Group (N=%d)', sum(idx_nback)))
 set(gca,'FontSize',18); box on;
 ylim([0 1.5])
 set(gcf,'color','w');
@@ -925,7 +934,7 @@ scatter(positions(2)+(rand(size(sb4))-0.5)*jitter, sb4, 'b.');
 scatter(positions(3)+(rand(size(sb6))-0.5)*jitter, sb6, 'r.');
 
 ylabel('Accuracy [%]')
-title(sprintf('\\alpha increase with load (N=%d)', sum(idx_jensen)))
+title(sprintf('Alpha Amplification Group (N=%d)', sum(idx_jensen)))
 set(gca,'FontSize',18); box on;
 
 ylim([50 110])   % adjust if needed
@@ -947,7 +956,7 @@ scatter(positions(2)+(rand(size(nb2))-0.5)*jitter, nb2, 'b.');
 scatter(positions(3)+(rand(size(nb3))-0.5)*jitter, nb3, 'r.');
 
 ylabel('Accuracy [%]')
-title(sprintf('\\alpha decrease with load (N=%d)', sum(idx_nback)))
+title(sprintf('Alpha Reduction Group (N=%d)', sum(idx_nback)))
 set(gca,'FontSize',18); box on;
 
 ylim([50 110])   % same scale for comparison

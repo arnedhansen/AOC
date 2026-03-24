@@ -1,55 +1,80 @@
-clear all
-close all
+%% AOC Split Sternberg Alpha Over Loads
+% Stratifies participants by alpha power slope across WM load (2,4,6).
+% Alpha increase vs decrease subgroups; TFRs, power spectra, behavioral (RT, ACC),
+% optional gaze density. Uses 1-2 s retention window for alpha extraction.
+%
+% Dependencies: startup, setup('AOC'), FieldTrip, behavioral_matrix_sternberg.mat
+% Gaze: optional sterngaze.mat, sterngaze_norm.mat (from gaze density pipeline)
 
-% Subject IDs
-load('/Volumes/Homestore/OCC/arne/subjects.mat');
+%% Setup
+startup
+[subjects, path, colors, headmodel] = setup('AOC');
 
-base_dir = '/Volumes/Homestore/OCC/arne/merged';
-
-%% Loop over subjects
-for s = 1:length(subjects)
-    subj = subjects{s};
-    subj_dir = fullfile(base_dir, subj);
-    cd(subj_dir)
-    load(strcat(subjects{s},'_Sternberg_cond22_fooof.mat'));
-    cfg = [];
-    cfg.baseline     = [-.5 -.25];
-    cfg.baselinetype = 'absolute';
-    tfr = ft_freqbaseline(cfg,tfr_fooof);
-    load2{s}=tfr;
-    load(strcat(subjects{s},'_Sternberg_cond24_fooof.mat'));
-    cfg = [];
-    cfg.baseline     = [-.5 -.25];
-    cfg.baselinetype = 'absolute';
-    tfr = ft_freqbaseline(cfg,tfr_fooof);
-    load4{s}=tfr;
-    load(strcat(subjects{s},'_Sternberg_cond26_fooof.mat'));
-    cfg = [];
-    cfg.baseline     = [-.5 -.25];
-    cfg.baselinetype = 'absolute';
-    tfr = ft_freqbaseline(cfg,tfr_fooof);
-    load6{s} = tfr;
+if ispc
+    base_data = 'W:\Students\Arne\AOC';
+else
+    base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC';
 end
-%% compute grand average
-load('/Users/tpopov/Documents/DATA4FT/DeepEye/headmodel_ant/layANThead.mat');
+feat_dir = fullfile(base_data, 'data', 'features');
+fig_dir = fullfile(base_data, 'figures', 'interactions', 'splitAlphaOverLoads');
+if ~isfolder(fig_dir)
+    mkdir(fig_dir);
+end
+
+fig_pos = [0 0 1512 982];
+fontSize = 20;
+channels = {'P7', 'POz', 'O1', 'O2', 'PO3', 'PO4', 'PO7', 'PO8', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO3h', 'POO4h'};
+color_map = interp1(linspace(0,1,5), ...
+    [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], ...
+    linspace(0,1,64));
+
+cfg_bl = [];
+cfg_bl.baseline     = [-.5 -.25];
+cfg_bl.baselinetype = 'absolute';
+
+%% Loop over subjects - load EEG TFR (FOOOF, baselined)
+for s = 1:length(subjects)
+    eeg_dir = fullfile(path, subjects{s}, 'eeg');
+    f = fullfile(eeg_dir, 'tfr_stern.mat');
+    if ~isfile(f)
+        error('Missing: %s', f);
+    end
+    R = load(f);
+    if isfield(R, 'tfr2_fooof_bl')
+        load2{s} = R.tfr2_fooof_bl;
+        load4{s} = R.tfr4_fooof_bl;
+        load6{s} = R.tfr6_fooof_bl;
+    else
+        load2{s} = ft_freqbaseline(cfg_bl, R.tfr2_fooof);
+        load4{s} = ft_freqbaseline(cfg_bl, R.tfr4_fooof);
+        load6{s} = ft_freqbaseline(cfg_bl, R.tfr6_fooof);
+    end
+end
+
+%% Compute grand average
 cfg = [];
 cfg.keepindividual = 'yes';
-ga2 = ft_freqgrandaverage(cfg,load2{:});
-ga4 = ft_freqgrandaverage(cfg,load4{:});
-ga6 = ft_freqgrandaverage(cfg,load6{:});
-%%
+ga2 = ft_freqgrandaverage(cfg, load2{:});
+ga4 = ft_freqgrandaverage(cfg, load4{:});
+ga6 = ft_freqgrandaverage(cfg, load6{:});
+
+%% Multiplot TFR (optional quick view)
 close all
 cfg = [];
 cfg.figure = 'gcf';
-cfg.ylim = [3 40];
-% cfg.zlim = [-2 2];
-cfg.layout = layANThead;
-figure; ft_multiplotTFR(cfg, ga6);
-%% select alpha power
+cfg.ylim = [5 30];
+cfg.xlim = [-.5 2];
+cfg.layout = headmodel.layANThead;
+figure('Position', fig_pos, 'Color', 'w');
+ft_multiplotTFR(cfg, ga6);
+colormap(color_map);
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaOverLoads_multiplot_ga6.png'));
+
+%% Select alpha power (retention 1-2 s)
 cfg = [];
 cfg.frequency = [8 14];
-cfg.latency = [1 3];
-cfg.channel = {'P7', 'POz', 'O1', 'O2', 'PO3', 'PO4', 'PO7', 'PO8', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO3h', 'POO4h'};% posterior chan
+cfg.latency = [1 2];
+cfg.channel = channels;
 % cfg.channel = {'Pz', 'P4', 'POz', 'P1', 'P2', 'P6','PO3', 'PO4', 'PPO1', 'PPO2', 'PPO6h', 'POO3h', 'POO4h'};% raw pow
 cfg.avgoverfreq = 'yes';
 cfg.avgovertime = 'yes';
@@ -91,9 +116,10 @@ idx_flat   = abs(slope) <= thr;
 sum(idx_jensen)
 sum(idx_nback)
 sum(idx_flat)
-%% plot included
+%% Plot slope distribution (inclusion)
 close all
-figure; hold on
+figure('Position', fig_pos, 'Color', 'w');
+hold on
 
 % counts
 n_j = sum(idx_jensen);
@@ -115,8 +141,10 @@ legend({sprintf('\\alpha increase with load (N=%d)', n_j), ...
         sprintf('\\alpha decrease with load (N=%d)', n_n), ...
         sprintf('intermediate (N=%d)', n_f), ...
         'threshold'})
-    box on
-%% plot
+box on
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaOverLoads_slope_hist.png'));
+
+%% Grand averages per subgroup
 cfg = [];
 cfg.keepindividual = 'yes';
 ga2jensen = ft_freqgrandaverage(cfg,load2{idx_jensen});
@@ -125,27 +153,29 @@ ga6jensen = ft_freqgrandaverage(cfg,load6{idx_jensen});
 ga2nback = ft_freqgrandaverage(cfg,load2{idx_nback});
 ga4nback = ft_freqgrandaverage(cfg,load4{idx_nback});
 ga6nback = ft_freqgrandaverage(cfg,load6{idx_nback});
-%% plot jensen
+%% TFR plots (Jensen / nback subgroups)
 close all
 cfg = [];
 cfg.figure = 'gcf';
-cfg.ylim = [3 40];
+cfg.ylim = [5 30];
+cfg.xlim = [-.5 2];
 cfg.zlim = [-.25 .25];
-% cfg.zlim = [0 1];
-cfg.channel = {'P7', 'POz', 'O1', 'O2', 'PO3', 'PO4', 'PO7', 'PO8', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO3h', 'POO4h'};% posterior chan
-% cfg.channel = {'Pz', 'P4', 'POz', 'P1', 'P2', 'P6','PO3', 'PO4', 'PPO1', 'PPO2', 'PPO6h', 'POO3h', 'POO4h'};% raw pow
-cfg.layout = layANThead;
-figure; 
-subplot(3,2,1);ft_singleplotTFR(cfg, ga2jensen);
+cfg.channel = channels;
+cfg.layout = headmodel.layANThead;
+figure('Position', fig_pos, 'Color', 'w');
+subplot(3,2,1); ft_singleplotTFR(cfg, ga2jensen);
 subplot(3,2,3);ft_singleplotTFR(cfg, ga4jensen);
 subplot(3,2,5);ft_singleplotTFR(cfg, ga6jensen);
 
-subplot(3,2,2);ft_singleplotTFR(cfg, ga2nback);
-subplot(3,2,4);ft_singleplotTFR(cfg, ga4nback);
-subplot(3,2,6);ft_singleplotTFR(cfg, ga6nback);
-%% select powspctrm
+subplot(3,2,2); ft_singleplotTFR(cfg, ga2nback);
+subplot(3,2,4); ft_singleplotTFR(cfg, ga4nback);
+subplot(3,2,6); ft_singleplotTFR(cfg, ga6nback);
+colormap(gcf, color_map);
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaOverLoads_tfr_6panel.png'));
+
+%% Select powspctrm (retention 1-2 s)
 cfg = [];
-cfg.latency = [1 3];
+cfg.latency = [1 2];
 cfg.avgovertime = 'yes';
 ga2jensen_spctrm = ft_selectdata(cfg,ga2jensen);
 ga2jensen_spctrm = rmfield(ga2jensen_spctrm,'time');
@@ -164,303 +194,56 @@ ga4nback_spctrm = rmfield(ga4nback_spctrm,'time');
 
 ga6nback_spctrm = ft_selectdata(cfg,ga6nback);
 ga6nback_spctrm = rmfield(ga6nback_spctrm,'time');
-%% plot spectra
+%% Power spectra (ft_singleplotER)
 close all
 cfg = [];
 cfg.figure = 'gcf';
-cfg.channel = {'P7', 'POz', 'O1', 'O2', 'PO3', 'PO4', 'PO7', 'PO8', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO3h', 'POO4h'};% posterior chan
-% cfg.channel = {'Pz', 'P4', 'POz', 'P1', 'P2', 'P6','PO3', 'PO4', 'PPO1', 'PPO2', 'PPO6h', 'POO3h', 'POO4h'};% raw pow
-cfg.layout = layANThead;
-figure; 
-subplot(2,1,1);ft_singleplotER(cfg, ga2jensen_spctrm,ga4jensen_spctrm,ga6jensen_spctrm);
-subplot(2,1,2);ft_singleplotER(cfg, ga2nback_spctrm,ga4nback_spctrm,ga6nback_spctrm);
-%% do nicer figure
+cfg.channel = channels;
+cfg.layout = headmodel.layANThead;
+figure('Position', fig_pos, 'Color', 'w');
+subplot(2,1,1); ft_singleplotER(cfg, ga2jensen_spctrm, ga4jensen_spctrm, ga6jensen_spctrm);
+subplot(2,1,2); ft_singleplotER(cfg, ga2nback_spctrm, ga4nback_spctrm, ga6nback_spctrm);
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaOverLoads_spectra_er.png'));
+%% TFR matrix panels (interpolated, Jensen / nback)
 close all
-figure;
-cfg = [];
-cfg.channel = {'P7', 'POz', 'O1', 'O2', 'PO3', 'PO4', 'PO7', 'PO8', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO3h', 'POO4h'};% posterior chan
-cfg.avgoverchan = 'yes';
-cfg.frequency = [1 40];
-cfg.latency   = [-1 3];
-freq = ft_selectdata(cfg,ga2jensen);
-meanpow = squeeze(mean(freq.powspctrm, 1));
+cfg_sel = [];
+cfg_sel.channel = channels;
+cfg_sel.avgoverchan = 'yes';
+cfg_sel.frequency = [1 40];
+cfg_sel.latency   = [-.5 2];
+clim_mat = [-.2 .2];
 
-% The finer time and frequency axes:
-tim_interp = linspace(freq.time(1), freq.time(end), 500);
-freq_interp = linspace(1, 40, 500);
-% We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab's meshgrid() does this for us:
-[tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
-[tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
-
-% And interpolate:
-pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow,...
-    tim_grid_interp, freq_grid_interp, 'spline');
-
-figure;
-subplot(3,2,1);ft_plot_matrix(flip(pow_interp));
-% subplot(2,1,1);ft_plot_matrix(flip(pow_interp),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
-ax = gca; hold(ax,'on');
-
-% map 0 sec to the interpolated column index
-x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
-xline(ax, x0, 'k-', 'LineWidth', 1);
-
-% ticks (still index-based)
-xticks( round(interp1(tim_interp, 1:numel(tim_interp), [-1 0 1 2 3])) );
-xticklabels({'-1','0','1','2','3'});
-yticks([1 125 250 375 ]); % positions in the interpolated grid
-yticklabels({'40','30','20','10'}); % corresponding freq values
-
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-xlabel('Time [sec]');
-ylabel('Frequency [Hz]');
-caxis([-.2 .2]);
-c = colorbar;
-c.LineWidth = 1;
-c.FontSize = 18;
-c.Ticks = [-.2 0 .2];
-% title(c,"Power change \newline from baseline")
-title(c,'dB')
-% load 4
-freq = ft_selectdata(cfg,ga4jensen);
-meanpow = squeeze(mean(freq.powspctrm, 1));
-
-% The finer time and frequency axes:
-tim_interp = linspace(freq.time(1), freq.time(end), 500);
-freq_interp = linspace(1, 40, 500);
-% We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab's meshgrid() does this for us:
-[tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
-[tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
-
-% And interpolate:
-pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow,...
-    tim_grid_interp, freq_grid_interp, 'spline');
-
-
-subplot(3,2,3);ft_plot_matrix(flip(pow_interp));
-% subplot(2,1,1);ft_plot_matrix(flip(pow_interp),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
-ax = gca; hold(ax,'on');
-
-% map 0 sec to the interpolated column index
-x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
-xline(ax, x0, 'k-', 'LineWidth', 1);
-
-% ticks (still index-based)
-xticks( round(interp1(tim_interp, 1:numel(tim_interp), [-1 0 1 2 3])) );
-xticklabels({'-1','0','1','2','3'});
-yticks([1 125 250 375 ]); % positions in the interpolated grid
-yticklabels({'40','30','20','10'}); % corresponding freq values
-
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-xlabel('Time [sec]');
-ylabel('Frequency [Hz]');
-caxis([-.2 .2]);
-c = colorbar;
-c.LineWidth = 1;
-c.FontSize = 18;
-c.Ticks = [-.2 0 .2];
-% title(c,"Power change \newline from baseline")
-title(c,'dB')
-% load 6
-freq = ft_selectdata(cfg,ga6jensen);
-meanpow = squeeze(mean(freq.powspctrm, 1));
-
-% The finer time and frequency axes:
-tim_interp = linspace(freq.time(1), freq.time(end), 500);
-freq_interp = linspace(1, 40, 500);
-% We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab's meshgrid() does this for us:
-[tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
-[tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
-
-% And interpolate:
-pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow,...
-    tim_grid_interp, freq_grid_interp, 'spline');
-
-
-subplot(3,2,5);ft_plot_matrix(flip(pow_interp));
-% subplot(2,1,1);ft_plot_matrix(flip(pow_interp),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
-ax = gca; hold(ax,'on');
-
-% map 0 sec to the interpolated column index
-x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
-xline(ax, x0, 'k-', 'LineWidth', 1);
-
-% ticks (still index-based)
-xticks( round(interp1(tim_interp, 1:numel(tim_interp), [-1 0 1 2 3])) );
-xticklabels({'-1','0','1','2','3'});
-yticks([1 125 250 375 ]); % positions in the interpolated grid
-yticklabels({'40','30','20','10'}); % corresponding freq values
-
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-xlabel('Time [sec]');
-ylabel('Frequency [Hz]');
-caxis([-.2 .2]);
-c = colorbar;
-c.LineWidth = 1;
-c.FontSize = 18;
-c.Ticks = [-.2 0 .2];
-% title(c,"Power change \newline from baseline")
-title(c,'dB')
-%% decrease with load
-cfg = [];
-cfg.channel = {'P7', 'POz', 'O1', 'O2', 'PO3', 'PO4', 'PO7', 'PO8', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO3h', 'POO4h'};% posterior chan
-cfg.avgoverchan = 'yes';
-cfg.frequency = [1 40];
-cfg.latency   = [-1 3];
-freq = ft_selectdata(cfg,ga2nback);
-meanpow = squeeze(mean(freq.powspctrm, 1));
-
-% The finer time and frequency axes:
-tim_interp = linspace(freq.time(1), freq.time(end), 500);
-freq_interp = linspace(1, 40, 500);
-% We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab's meshgrid() does this for us:
-[tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
-[tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
-
-% And interpolate:
-pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow,...
-    tim_grid_interp, freq_grid_interp, 'spline');
-
-
-subplot(3,2,2);ft_plot_matrix(flip(pow_interp));
-% subplot(2,1,1);ft_plot_matrix(flip(pow_interp),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
-ax = gca; hold(ax,'on');
-
-% map 0 sec to the interpolated column index
-x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
-xline(ax, x0, 'k-', 'LineWidth', 1);
-
-% ticks (still index-based)
-xticks( round(interp1(tim_interp, 1:numel(tim_interp), [-1 0 1 2 3])) );
-xticklabels({'-1','0','1','2','3'});
-yticks([1 125 250 375 ]); % positions in the interpolated grid
-yticklabels({'40','30','20','10'}); % corresponding freq values
-
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-xlabel('Time [sec]');
-ylabel('Frequency [Hz]');
-caxis([-.2 .2]);
-c = colorbar;
-c.LineWidth = 1;
-c.FontSize = 18;
-c.Ticks = [-.2 0 .2];
-% title(c,"Power change \newline from baseline")
-title(c,'dB')
-% load 4
-freq = ft_selectdata(cfg,ga4nback);
-meanpow = squeeze(mean(freq.powspctrm, 1));
-
-% The finer time and frequency axes:
-tim_interp = linspace(freq.time(1), freq.time(end), 500);
-freq_interp = linspace(1, 40, 500);
-% We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab's meshgrid() does this for us:
-[tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
-[tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
-
-% And interpolate:
-pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow,...
-    tim_grid_interp, freq_grid_interp, 'spline');
-
-
-subplot(3,2,4);ft_plot_matrix(flip(pow_interp));
-% subplot(2,1,1);ft_plot_matrix(flip(pow_interp),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
-ax = gca; hold(ax,'on');
-
-% map 0 sec to the interpolated column index
-x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
-xline(ax, x0, 'k-', 'LineWidth', 1);
-
-% ticks (still index-based)
-xticks( round(interp1(tim_interp, 1:numel(tim_interp), [-1 0 1 2 3])) );
-xticklabels({'-1','0','1','2','3'});
-yticks([1 125 250 375 ]); % positions in the interpolated grid
-yticklabels({'40','30','20','10'}); % corresponding freq values
-
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-xlabel('Time [sec]');
-ylabel('Frequency [Hz]');
-caxis([-.2 .2]);
-c = colorbar;
-c.LineWidth = 1;
-c.FontSize = 18;
-c.Ticks = [-.2 0 .2];
-% title(c,"Power change \newline from baseline")
-title(c,'dB')
-% load 6
-freq = ft_selectdata(cfg,ga6nback);
-meanpow = squeeze(mean(freq.powspctrm, 1));
-
-% The finer time and frequency axes:
-tim_interp = linspace(freq.time(1), freq.time(end), 500);
-freq_interp = linspace(1, 40, 500);
-% We need to make a full time/frequency grid of both the original and
-% interpolated coordinates. Matlab's meshgrid() does this for us:
-[tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
-[tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
-
-% And interpolate:
-pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow,...
-    tim_grid_interp, freq_grid_interp, 'spline');
-
-
-subplot(3,2,6);ft_plot_matrix(flip(pow_interp));
-% subplot(2,1,1);ft_plot_matrix(flip(pow_interp),'highlightstyle', 'outline','highlight', flip(abs(round(mask_interp))));
-ax = gca; hold(ax,'on');
-
-% map 0 sec to the interpolated column index
-x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
-xline(ax, x0, 'k-', 'LineWidth', 1);
-
-% ticks (still index-based)
-xticks( round(interp1(tim_interp, 1:numel(tim_interp), [-1 0 1 2 3])) );
-xticklabels({'-1','0','1','2','3'});
-yticks([1 125 250 375 ]); % positions in the interpolated grid
-yticklabels({'40','30','20','10'}); % corresponding freq values
-
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-xlabel('Time [sec]');
-ylabel('Frequency [Hz]');
-caxis([-.2 .2]);
-c = colorbar;
-c.LineWidth = 1;
-c.FontSize = 18;
-c.Ticks = [-.2 0 .2];
-% title(c,"Power change \newline from baseline")
-title(c,'dB')
+figure('Position', fig_pos, 'Color', 'w');
+plot_tfr_matrix_panel(1, ga2jensen, cfg_sel, clim_mat, fontSize);
+plot_tfr_matrix_panel(3, ga4jensen, cfg_sel, clim_mat, fontSize);
+plot_tfr_matrix_panel(5, ga6jensen, cfg_sel, clim_mat, fontSize);
+plot_tfr_matrix_panel(2, ga2nback, cfg_sel, clim_mat, fontSize);
+plot_tfr_matrix_panel(4, ga4nback, cfg_sel, clim_mat, fontSize);
+plot_tfr_matrix_panel(6, ga6nback, cfg_sel, clim_mat, fontSize);
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaOverLoads_tfr_matrix.png'));
 %% plot with SE sternberg
 cfg = [];
 cfg.figure = 'gcf';
 cfg.channel = {'P7', 'POz', 'O1', 'O2', 'PO3', 'PO4', 'PO7', 'PO8', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO3h', 'POO4h'};% posterior chan
 % cfg.channel = {'Pz', 'P4', 'POz', 'P1', 'P2', 'P6','PO3', 'PO4', 'PPO1', 'PPO2', 'PPO6h', 'POO3h', 'POO4h'};% raw pow
-cfg.layout = layANThead;
-figure; 
-subplot(2,1,1);ft_singleplotER(cfg, ga2jensen_spctrm,ga4jensen_spctrm,ga6jensen_spctrm);
-subplot(2,1,2);ft_singleplotER(cfg, ga2nback_spctrm,ga4nback_spctrm,ga6nback_spctrm);
-%%
-% close all
-figure;
+cfg.layout = headmodel.layANThead;
+figure('Position', fig_pos, 'Color', 'w');
+subplot(2,1,1); ft_singleplotER(cfg, ga2jensen_spctrm, ga4jensen_spctrm, ga6jensen_spctrm);
+subplot(2,1,2); ft_singleplotER(cfg, ga2nback_spctrm, ga4nback_spctrm, ga6nback_spctrm);
+%% Power spectra with SE (Jensen / nback)
+figure('Position', fig_pos, 'Color', 'w');
 subplot(2,1,1);
 cfg = [];
-cfg.channel = {'P7', 'POz', 'O1', 'O2', 'PO3', 'PO4', 'PO7', 'PO8', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO3h', 'POO4h'};% posterior chan
+cfg.channel = channels;
 cfg.avgoverchan = 'yes';
-tlk2_ind        = ft_selectdata(cfg,ga2jensen_spctrm);
-tlk4_ind        = ft_selectdata(cfg,ga4jensen_spctrm);
-tlk6_ind        = ft_selectdata(cfg,ga6jensen_spctrm);
+tlk2_ind = ft_selectdata(cfg, ga2jensen_spctrm);
+tlk4_ind = ft_selectdata(cfg, ga4jensen_spctrm);
+tlk6_ind = ft_selectdata(cfg, ga6jensen_spctrm);
+n_j = sum(idx_jensen);
 % plot load 6
-x = tlk6_ind.freq'; % x-axis def
-y = mean(squeeze(tlk6_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk6_ind.powspctrm), 1)' ./ sqrt(numel(subjects)); % sme
+x = tlk6_ind.freq';
+y = mean(squeeze(tlk6_ind.powspctrm), 1)';
+e = std(squeeze(tlk6_ind.powspctrm), 1)' ./ sqrt(n_j);
 low = y - e; % lower bound
 high = y + e; % upper bound
 
@@ -472,11 +255,11 @@ set(hp1, 'facecolor', [0.97, 0.26, 0.26], 'edgecolor', 'none', 'facealpha', 0.2)
 set(hl1, 'color', [0.97, 0.26, 0.26], 'linewidth', 2);
 
 % plot load 4
-x = tlk4_ind.freq'; % x-axis def
-y = mean(squeeze(tlk4_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk4_ind.powspctrm), 1)' ./ sqrt(numel(subjects)); % sme
-low = y - e; % lower bound
-high = y + e; % upper bound
+x = tlk4_ind.freq';
+y = mean(squeeze(tlk4_ind.powspctrm), 1)';
+e = std(squeeze(tlk4_ind.powspctrm), 1)' ./ sqrt(n_j);
+low = y - e;
+high = y + e;
 
 hp2 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'b', 'HandleVisibility', 'off');
 hl2 = line(x, y);
@@ -484,43 +267,38 @@ set(hp2, 'facecolor', [0.30, 0.75, 0.93], 'edgecolor', 'none', 'facealpha', 0.2)
 set(hl2, 'color', [0.30, 0.75, 0.93], 'linewidth', 2);
 
 % plot load 2
-x = tlk2_ind.freq'; % x-axis def
-y = mean(squeeze(tlk2_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk2_ind.powspctrm), 1)' ./ sqrt(numel(subjects)); % sme
-low = y - e; % lower bound
-high = y + e; % upper bound
+x = tlk2_ind.freq';
+y = mean(squeeze(tlk2_ind.powspctrm), 1)';
+e = std(squeeze(tlk2_ind.powspctrm), 1)' ./ sqrt(n_j);
+low = y - e;
+high = y + e;
 
 hp3 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'k', 'HandleVisibility', 'off');
 hl3 = line(x, y);
 set(hp3, 'facecolor', [0.5, 0.5, 0.5], 'edgecolor', 'none', 'facealpha', 0.2);
 set(hl3, 'color', 'k', 'linewidth', 2);
 
-% Label the axes
-set(gca, 'FontSize', 22);
+set(gca, 'FontSize', fontSize);
 title('');
 xlabel('Frequency [Hz]');
 ylabel("Change from \newline baseline [dB]");
 set(gcf,'color','w');
 box on;
-grid on;
-
-%     xticks([-1 0 .5 1]);
-% xticklabels({'o' '500' '1000'})
 xlim([1  40]);
-% ylim([-1.5 2.5]);
-legend({'Load 6','Load 4','Load 2'}, 'Location','northeast','Fontsize',20);
-% plot with SE nback
+legend({'Load 6','Load 4','Load 2'}, 'Location','northeast','Fontsize', fontSize);
+
 subplot(2,1,2);
 cfg = [];
-cfg.channel = {'P7', 'POz', 'O1', 'O2', 'PO3', 'PO4', 'PO7', 'PO8', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO3h', 'POO4h'};% posterior chan
+cfg.channel = channels;
 cfg.avgoverchan = 'yes';
-tlk2_ind        = ft_selectdata(cfg,ga2nback_spctrm);
-tlk4_ind        = ft_selectdata(cfg,ga4nback_spctrm);
-tlk6_ind        = ft_selectdata(cfg,ga6nback_spctrm);
-% plot load 3
-x = tlk6_ind.freq'; % x-axis def
-y = mean(squeeze(tlk6_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk6_ind.powspctrm), 1)' ./ sqrt(numel(subjects)); % sme
+tlk2_ind = ft_selectdata(cfg, ga2nback_spctrm);
+tlk4_ind = ft_selectdata(cfg, ga4nback_spctrm);
+tlk6_ind = ft_selectdata(cfg, ga6nback_spctrm);
+n_n = sum(idx_nback);
+% plot load 6
+x = tlk6_ind.freq';
+y = mean(squeeze(tlk6_ind.powspctrm), 1)';
+e = std(squeeze(tlk6_ind.powspctrm), 1)' ./ sqrt(n_n);
 low = y - e; % lower bound
 high = y + e; % upper bound
 
@@ -531,81 +309,71 @@ hl1 = line(x, y);
 set(hp1, 'facecolor', [0.97, 0.26, 0.26], 'edgecolor', 'none', 'facealpha', 0.2);
 set(hl1, 'color', [0.97, 0.26, 0.26], 'linewidth', 2);
 
-% plot load 2
-x = tlk4_ind.freq'; % x-axis def
-y = mean(squeeze(tlk4_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk4_ind.powspctrm), 1)' ./ sqrt(numel(subjects)); % sme
-low = y - e; % lower bound
-high = y + e; % upper bound
+% plot load 4
+x = tlk4_ind.freq';
+y = mean(squeeze(tlk4_ind.powspctrm), 1)';
+e = std(squeeze(tlk4_ind.powspctrm), 1)' ./ sqrt(n_n);
+low = y - e;
+high = y + e;
 
 hp2 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'b', 'HandleVisibility', 'off');
 hl2 = line(x, y);
 set(hp2, 'facecolor', [0.30, 0.75, 0.93], 'edgecolor', 'none', 'facealpha', 0.2);
 set(hl2, 'color', [0.30, 0.75, 0.93], 'linewidth', 2);
 
-% plot load 1
-x = tlk2_ind.freq'; % x-axis def
-y = mean(squeeze(tlk2_ind.powspctrm), 1)'; % y-axis def
-e = std(squeeze(tlk2_ind.powspctrm), 1)' ./ sqrt(numel(subjects)); % sme
-low = y - e; % lower bound
-high = y + e; % upper bound
+% plot load 2
+x = tlk2_ind.freq';
+y = mean(squeeze(tlk2_ind.powspctrm), 1)';
+e = std(squeeze(tlk2_ind.powspctrm), 1)' ./ sqrt(n_n);
+low = y - e;
+high = y + e;
 
 hp3 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'k', 'HandleVisibility', 'off');
 hl3 = line(x, y);
 set(hp3, 'facecolor', [0.5, 0.5, 0.5], 'edgecolor', 'none', 'facealpha', 0.2);
 set(hl3, 'color', 'k', 'linewidth', 2);
 
-% Label the axes
-set(gca, 'FontSize', 22);
+set(gca, 'FontSize', fontSize);
 title('');
 xlabel('Frequency [Hz]');
 ylabel("Change from \newline baseline [dB]");
 set(gcf,'color','w');
 box on;
-grid on;
-
-%     xticks([-1 0 .5 1]);
-% xticklabels({'o' '500' '1000'})
 xlim([1  40]);
-% ylim([-1.5 2.5]);
-legend({'Load 3','Load 2','Load 1'}, 'Location','northeast','Fontsize',20);
-%% now handle gaze
-load('sterngaze_norm.mat')
-load('sterngaze.mat')
-
-%% baseline gaze
-% for subj=1:length(allgazebase6_norm)
-%     load2{subj}=allgazebase2_norm{subj};
-%     load4{subj}=allgazebase4_norm{subj};
-%     load6{subj}=allgazebase6_norm{subj};
-%     load2{subj}.powspctrm=allgazebase2_norm{subj}.powspctrm-allgazetasklate2_norm{subj}.powspctrm;
-%     load4{subj}.powspctrm=allgazebase4_norm{subj}.powspctrm-allgazetasklate4_norm{subj}.powspctrm;
-%     load6{subj}.powspctrm=allgazebase6_norm{subj}.powspctrm-allgazetasklate6_norm{subj}.powspctrm;
-% end
-for subj=1:length(allgazebase6)
-    load2{subj}=allgazebase2{subj};
-    load4{subj}=allgazebase4{subj};
-    load6{subj}=allgazebase6{subj};
-    load2{subj}.powspctrm=allgazebase2{subj}.powspctrm-allgazetasklate2{subj}.powspctrm;
-    load4{subj}.powspctrm=allgazebase4{subj}.powspctrm-allgazetasklate4{subj}.powspctrm;
-    load6{subj}.powspctrm=allgazebase6{subj}.powspctrm-allgazetasklate6{subj}.powspctrm;
-end
-%% plot
-cfg = [];
-cfg.keepindividual = 'yes';
-ga2jensen_gaze = ft_freqgrandaverage(cfg,load2{idx_jensen});
-ga4jensen_gaze = ft_freqgrandaverage(cfg,load4{idx_jensen});
-ga6jensen_gaze = ft_freqgrandaverage(cfg,load6{idx_jensen});
-ga2nback_gaze = ft_freqgrandaverage(cfg,load2{idx_nback});
-ga4nback_gaze = ft_freqgrandaverage(cfg,load4{idx_nback});
-ga6nback_gaze = ft_freqgrandaverage(cfg,load6{idx_nback});
-%% plot jensen
+legend({'Load 6','Load 4','Load 2'}, 'Location','northeast','Fontsize', fontSize);
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaOverLoads_spectra_SE.png'));
+%% Gaze density (optional: requires sterngaze.mat from gaze density pipeline)
+gaze_file = fullfile(feat_dir, 'sterngaze.mat');
+gaze_norm_file = fullfile(feat_dir, 'sterngaze_norm.mat');
+if isfile(gaze_file) && isfile(gaze_norm_file)
+    load(gaze_norm_file);
+    load(gaze_file);
+    load2_gaze = cell(size(allgazebase2));
+    load4_gaze = cell(size(allgazebase4));
+    load6_gaze = cell(size(allgazebase6));
+    for subj = 1:length(allgazebase6)
+        load2_gaze{subj} = allgazebase2{subj};
+        load4_gaze{subj} = allgazebase4{subj};
+        load6_gaze{subj} = allgazebase6{subj};
+        load2_gaze{subj}.powspctrm = allgazetasklate2{subj}.powspctrm - allgazebase2{subj}.powspctrm;
+        load4_gaze{subj}.powspctrm = allgazetasklate4{subj}.powspctrm - allgazebase4{subj}.powspctrm;
+        load6_gaze{subj}.powspctrm = allgazetasklate6{subj}.powspctrm - allgazebase6{subj}.powspctrm;
+    end
+%% plot gaze
+    cfg = [];
+    cfg.keepindividual = 'yes';
+    ga2jensen_gaze = ft_freqgrandaverage(cfg, load2_gaze{idx_jensen});
+    ga4jensen_gaze = ft_freqgrandaverage(cfg, load4_gaze{idx_jensen});
+    ga6jensen_gaze = ft_freqgrandaverage(cfg, load6_gaze{idx_jensen});
+    ga2nback_gaze = ft_freqgrandaverage(cfg, load2_gaze{idx_nback});
+    ga4nback_gaze = ft_freqgrandaverage(cfg, load4_gaze{idx_nback});
+    ga6nback_gaze = ft_freqgrandaverage(cfg, load6_gaze{idx_nback});
+%% Plot gaze TFRs (Jensen / nback)
 close all
 cfg = [];
 cfg.figure = 'gcf';
-% cfg.ylim = [3 40];
 cfg.zlim = [-.05 .05];
-figure; 
+figure('Position', fig_pos, 'Color', 'w'); 
 subplot(3,2,1);ft_singleplotTFR(cfg, ga2jensen_gaze);
 subplot(3,2,3);ft_singleplotTFR(cfg, ga4jensen_gaze);
 subplot(3,2,5);ft_singleplotTFR(cfg, ga6jensen_gaze);
@@ -617,10 +385,7 @@ subplot(3,2,6);ft_singleplotTFR(cfg, ga6nback_gaze);
 cfg = [];
 cfg.spmversion = 'spm12';
 cfg.method           = 'montecarlo';
-cfg.statistic        = 'ft_statfun_depsamplesT';
-% cfg.latency =[300 500];
-% cfg.frequency =[200 400];
-cfg.statistic        = 'ft_statfun_diff';
+cfg.statistic        = 'ft_statfun_depsamplesT';  % paired: baseline vs task
 cfg.clusterthreshold ='nonparametric_common';
 cfg.correctm         = 'cluster';
 cfg.clusteralpha     = 0.05;
@@ -704,16 +469,15 @@ cfg.zlim = [-.001 .001];
 % cfg.xlim =[300 500];
 % cfg.ylim =[200 400];
 cfg.figure = 'gcf';
-figure;
+figure('Position', fig_pos, 'Color', 'w');
 subplot(3,2,1);
-ft_singleplotTFR(cfg,stat_inc_2);
+ft_singleplotTFR(cfg, stat_inc_2);
 
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
 xlabel('x [px]');
 ylabel('y [px]');
 % title('high- low during baseline')
-grid on
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -731,7 +495,6 @@ set(gca,'Fontsize',20);
 xlabel('x [px]');
 ylabel('y [px]');
 % title('high- low during baseline')
-grid on
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -749,7 +512,6 @@ set(gca,'Fontsize',20);
 xlabel('x [px]');
 ylabel('y [px]');
 % title('high- low during baseline')
-grid on
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -768,7 +530,6 @@ set(gca,'Fontsize',20);
 xlabel('x [px]');
 ylabel('y [px]');
 % title('high- low during baseline')
-grid on
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -786,7 +547,6 @@ set(gca,'Fontsize',20);
 xlabel('x [px]');
 ylabel('y [px]');
 % title('high- low during baseline')
-grid on
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -804,7 +564,6 @@ set(gca,'Fontsize',20);
 xlabel('x [px]');
 ylabel('y [px]');
 % title('high- low during baseline')
-grid on
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -839,7 +598,7 @@ cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
 cfg.ivar                  = 1; 
 cfg.uvar                  = 2;
 [statF_gaze_norm] = ft_freqstatistics(cfg, allgazetasklate2_norm{idx_jensen},allgazetasklate4_norm{idx_jensen},allgazetasklate6_norm{idx_jensen});
-[statF_gaze] = ft_freqstatistics(cfg, load2{idx_jensen},load4{idx_jensen},load6{idx_jensen});
+[statF_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
 statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
 
 cfg                  = [];
@@ -865,7 +624,7 @@ cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
 cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6]; 
 cfg.ivar                  = 1; 
 cfg.uvar                  = 2;
-[statF_gaze_n] = ft_freqstatistics(cfg, load2{idx_nback},load4{idx_nback},load6{idx_nback});
+[statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
 statF_gaze_n.stat(statF_gaze_n.mask==0)=0;% set everything not relevant to zero
 %%
 cfg         = [];
@@ -887,7 +646,6 @@ set(gca,'Fontsize',20);
 xlabel('x [px]');
 ylabel('y [px]');
 % title('high- low during baseline')
-grid on
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -903,7 +661,6 @@ set(gca,'Fontsize',20);
 xlabel('x [px]');
 ylabel('y [px]');
 % title('high- low during baseline')
-grid on
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -931,7 +688,6 @@ set(gca,'Fontsize',20);
 xlabel('x [px]');
 ylabel('y [px]');
 % title('high- low during baseline')
-grid on
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -947,15 +703,25 @@ set(gca,'Fontsize',20);
 xlabel('x [px]');
 ylabel('y [px]');
 % title('high- low during baseline')
-grid on
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
 c.Ticks = [0 10];
 title(c,'F-values')
 title('')
-%% test linear trend
-addpath('/Volumes/Homestore/OCC/arne/funcs');
+%% Test linear trend (requires ft_statfun_loadtrend)
+funcs_paths = {fullfile(fileparts(mfilename('fullpath')), '..', 'funcs'), '/Volumes/Homestore/OCC/arne/funcs'};
+has_loadtrend = false;
+for pp = 1:numel(funcs_paths)
+    if isfolder(funcs_paths{pp})
+        addpath(funcs_paths{pp});
+        if exist('ft_statfun_loadtrend', 'file')
+            has_loadtrend = true;
+            break;
+        end
+    end
+end
+if has_loadtrend
 cfg                  = [];
 cfg.method           = 'montecarlo'; 
 cfg.statistic        = 'ft_statfun_loadtrend'; % positive gaze increase with load at that location, negative gaze decrease with load at that location
@@ -980,7 +746,7 @@ cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
 cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6]; 
 cfg.ivar                  = 1; 
 cfg.uvar                  = 2;
-[statF_gaze] = ft_freqstatistics(cfg, load2{idx_jensen},load4{idx_jensen},load6{idx_jensen});
+[statF_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
 statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
 
 
@@ -1007,7 +773,7 @@ cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
 cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6]; 
 cfg.ivar                  = 1; 
 cfg.uvar                  = 2;
-[statF_gaze_n] = ft_freqstatistics(cfg, load2{idx_nback},load4{idx_nback},load6{idx_nback});
+[statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
 statF_gaze_n.stat(statF_gaze_n.mask==0)=0;% set everything not relevant to zero
 %%
 cfg         = [];
@@ -1029,7 +795,6 @@ set(gca,'Fontsize',20);
 xlabel('x [px]');
 ylabel('y [px]');
 % title('high- low during baseline')
-grid on
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -1045,7 +810,6 @@ set(gca,'Fontsize',20);
 xlabel('x [px]');
 ylabel('y [px]');
 % title('high- low during baseline')
-grid on
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -1072,7 +836,6 @@ set(gca,'Fontsize',20);
 xlabel('x [px]');
 ylabel('y [px]');
 % title('high- low during baseline')
-grid on
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -1088,17 +851,25 @@ set(gca,'Fontsize',20);
 xlabel('x [px]');
 ylabel('y [px]');
 % title('high- low during baseline')
-grid on
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
 c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
 title(c,'t-values')
 title('')
-%% 
-load('/Volumes/Homestore/OCC/arne/behavioral_matrix_sternberg.mat');
-% Load subjects (must match slope order!)
-load('/Volumes/Homestore/OCC/arne/subjects.mat');
+else
+    fprintf('Skipping linear trend: ft_statfun_loadtrend not found.\n');
+end
+else
+    fprintf('Skipping gaze density: %s or %s not found.\n', gaze_file, gaze_norm_file);
+end
+
+%% Behavioral data
+behav_file = fullfile(feat_dir, 'behavioral_matrix_sternberg.mat');
+if ~isfile(behav_file)
+    error('Missing: %s', behav_file);
+end
+load(behav_file);
 
 nSubj = length(subjects);
 
@@ -1134,7 +905,8 @@ nb1 = RT2(idx_nback);
 nb2 = RT4(idx_nback);
 nb3 = RT6(idx_nback);
 %%
-figure(30); clf;
+figure('Position', fig_pos, 'Color', 'w');
+clf;
 
 positions = [.3, .6, .9];
 jitter = 0.05;
@@ -1243,10 +1015,9 @@ set(gca,'FontSize',18); box on;
 ylim([50 110])   % same scale for comparison
 
 set(gcf,'color','w');
-%% test effects 
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaOverLoads_RT_ACC.png'));
 
-load('/Volumes/Homestore/OCC/arne/subjects.mat');
-
+%% LME / TOST (test effects)
 nSubj = length(subjects);
 
 
@@ -1362,6 +1133,35 @@ tost_welch(ACC_jensen, ACC_nback, 3)
 tost_welch(ACC_jensen, ACC_nback, 5)
 tost_welch(ACC_jensen, ACC_nback, 10)
 %% Helper functions
+function plot_tfr_matrix_panel(subplot_idx, ga_data, cfg_sel, clim, fsz)
+    freq = ft_selectdata(cfg_sel, ga_data);
+    meanpow = squeeze(mean(freq.powspctrm, 1));
+    tim_interp = linspace(freq.time(1), freq.time(end), 500);
+    freq_interp = linspace(1, 40, 500);
+    [tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
+    [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
+    pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow, ...
+        tim_grid_interp, freq_grid_interp, 'spline');
+    subplot(3, 2, subplot_idx);
+    ft_plot_matrix(flip(pow_interp));
+    ax = gca; hold(ax, 'on');
+    x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
+    xline(ax, x0, 'k-', 'LineWidth', 1);
+    xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-0.5 0 1 2], 'linear', 'extrap')));
+    xticklabels({'-0.5', '0', '1', '2'});
+    yticks([1 125 250 375]);
+    yticklabels({'40', '30', '20', '10'});
+    set(gca, 'FontSize', fsz);
+    xlabel('Time [s]');
+    ylabel('Frequency [Hz]');
+    caxis(clim);
+    c = colorbar;
+    c.LineWidth = 1;
+    c.FontSize = fsz - 2;
+    c.Ticks = clim;
+    ylabel(c, 'dB');
+end
+
 function sig_label = getSigLabel(p)
     if p < 0.001
         sig_label = '***';

@@ -5,6 +5,11 @@
 %
 % Dependencies: startup, setup('AOC'), FieldTrip, behavioral_matrix_sternberg.mat
 % Gaze: optional sterngaze.mat, sterngaze_norm.mat (from gaze density pipeline)
+%
+% Groups:
+%       Jensen: amplification of alpha over WM loads
+%       N-back: reduction of alpha over WM loads
+%       Flat: flat slope
 
 %% Setup
 startup
@@ -21,35 +26,45 @@ if ~isfolder(fig_dir)
     mkdir(fig_dir);
 end
 
+%% Figure setup
 fig_pos = [0 0 1512 982];
-fontSize = 20;
-channels = {'P7', 'POz', 'O1', 'O2', 'PO3', 'PO4', 'PO7', 'PO8', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO3h', 'POO4h'};
+fontSize = 18;
 color_map = interp1(linspace(0,1,5), ...
-    [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], ...
-    linspace(0,1,64));
+    [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
+%% Loop over subjects - load EEG TFR (FOOOF, baselined)
 cfg_bl = [];
 cfg_bl.baseline     = [-.5 -.25];
 cfg_bl.baselinetype = 'absolute';
-
-%% Loop over subjects - load EEG TFR (FOOOF, baselined)
-for s = 1:length(subjects)
-    eeg_dir = fullfile(path, subjects{s}, 'eeg');
+for subj = 1:length(subjects)
+    eeg_dir = fullfile(path, subjects{subj}, 'eeg');
     f = fullfile(eeg_dir, 'tfr_stern.mat');
     if ~isfile(f)
         error('Missing: %s', f);
     end
-    R = load(f);
-    if isfield(R, 'tfr2_fooof_bl')
-        load2{s} = R.tfr2_fooof_bl;
-        load4{s} = R.tfr4_fooof_bl;
-        load6{s} = R.tfr6_fooof_bl;
+    datTFR = load(f);
+    if isfield(datTFR, 'tfr2_fooof_bl')
+        load2{subj} = datTFR.tfr2_fooof_bl;
+        load4{subj} = datTFR.tfr4_fooof_bl;
+        load6{subj} = datTFR.tfr6_fooof_bl;
     else
-        load2{s} = ft_freqbaseline(cfg_bl, R.tfr2_fooof);
-        load4{s} = ft_freqbaseline(cfg_bl, R.tfr4_fooof);
-        load6{s} = ft_freqbaseline(cfg_bl, R.tfr6_fooof);
+        load2{subj} = ft_freqbaseline(cfg_bl, datTFR.tfr2_fooof);
+        load4{subj} = ft_freqbaseline(cfg_bl, datTFR.tfr4_fooof);
+        load6{subj} = ft_freqbaseline(cfg_bl, datTFR.tfr6_fooof);
     end
 end
+
+%% Determine occipital channels
+% Occipital channels
+occ_channels = {};
+labels = load2{1, 1}.label;
+for i = 1:length(labels)
+    label = labels{i};
+    if contains(label, {'O'}) || contains(label, {'I'})
+        occ_channels{end+1} = label;
+    end
+end
+channels = occ_channels;
 
 %% Compute grand average
 cfg = [];
@@ -58,24 +73,11 @@ ga2 = ft_freqgrandaverage(cfg, load2{:});
 ga4 = ft_freqgrandaverage(cfg, load4{:});
 ga6 = ft_freqgrandaverage(cfg, load6{:});
 
-%% Multiplot TFR (optional quick view)
-close all
-cfg = [];
-cfg.figure = 'gcf';
-cfg.ylim = [5 30];
-cfg.xlim = [-.5 2];
-cfg.layout = headmodel.layANThead;
-figure('Position', fig_pos, 'Color', 'w');
-ft_multiplotTFR(cfg, ga6);
-colormap(color_map);
-saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaOverLoads_multiplot_ga6.png'));
-
 %% Select alpha power (retention 1-2 s)
 cfg = [];
 cfg.frequency = [8 14];
 cfg.latency = [1 2];
 cfg.channel = channels;
-% cfg.channel = {'Pz', 'P4', 'POz', 'P1', 'P2', 'P6','PO3', 'PO4', 'PPO1', 'PPO2', 'PPO6h', 'POO3h', 'POO4h'};% raw pow
 cfg.avgoverfreq = 'yes';
 cfg.avgovertime = 'yes';
 cfg.avgoverchan = 'yes';
@@ -85,64 +87,48 @@ val6 = ft_selectdata(cfg,ga6);
 alpha2 = val2.powspctrm;
 alpha4 = val4.powspctrm;
 alpha6 = val6.powspctrm;
-%% individual slope across loads
-% X = [2 4 6]; % load levels
 
-% for s = 1:length(alpha2)
-%     y = [alpha2(s), alpha4(s), alpha6(s)];
-%     
-%     p = polyfit(X, y, 1); % linear slope
-%     slope(s) = p(1);
-% end
-%% use regression to identify slopes
-for s = 1:length(alpha2)
-    y = [alpha2(s), alpha4(s), alpha6(s)];
+%% Use regression to identify slopes
+for subj = 1:length(alpha2)
+    y = [alpha2(subj), alpha4(subj), alpha6(subj)];
     Xmat = [ones(3,1), [2;4;6]];
-    
     b = Xmat \ y';
-    slope(s) = b(2);
+    slope(subj) = b(2);
 end
-%% plot slopes
-figure
-histogram(slope, 20)
-xlabel('Alpha-load slope')
-ylabel('Count')
-%% split
-thr = 0.015; 
 
+%% Split and Plot slope distribution (inclusion)
+thr = 0.01; 
 idx_jensen = slope > thr;
 idx_nback  = slope < -thr;
 idx_flat   = abs(slope) <= thr;
 sum(idx_jensen)
 sum(idx_nback)
 sum(idx_flat)
-%% Plot slope distribution (inclusion)
-close all
-figure('Position', fig_pos, 'Color', 'w');
-hold on
 
 % counts
 n_j = sum(idx_jensen);
 n_n = sum(idx_nback);
 n_f = sum(idx_flat);
 
+% Plot
+close all
+figure('Position', fig_pos, 'Color', 'w');
+hold on
 histogram(slope(idx_jensen), 20, 'FaceColor', [0.8 0 0], 'FaceAlpha', 0.6);
 histogram(slope(idx_nback),  20, 'FaceColor', [0 0 0.8], 'FaceAlpha', 0.6);
-histogram(slope(idx_flat),   20, 'FaceColor', [0.5 0.5 0.5], 'FaceAlpha', 0.6);
-
+histogram(slope(idx_flat),   11, 'FaceColor', [0.5 0.5 0.5], 'FaceAlpha', 0.6);
 xline(thr,  'k--', 'LineWidth', 2);
 xline(-thr, 'k--', 'LineWidth', 2);
-
-xlabel('\alpha power slope')
-ylabel('# participants')
-% title('Distribution of \alpha power modulation across subjects')
-title('Subject-wise linear slope of \alpha power across memory load (2, 4, 6 items)')
+xlabel('Alpha power slope')
+ylabel('Participants')
+title('Linear Slope of Alpha Power across WM Load (2, 4, 6 items)', 'FontSize', 20)
 legend({sprintf('\\alpha increase with load (N=%d)', n_j), ...
         sprintf('\\alpha decrease with load (N=%d)', n_n), ...
         sprintf('intermediate (N=%d)', n_f), ...
         'threshold'})
 box on
-saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaOverLoads_slope_hist.png'));
+set(gca, 'FontSize', 15)
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_histogram_inclusion.png'));
 
 %% Grand averages per subgroup
 cfg = [];
@@ -153,198 +139,150 @@ ga6jensen = ft_freqgrandaverage(cfg,load6{idx_jensen});
 ga2nback = ft_freqgrandaverage(cfg,load2{idx_nback});
 ga4nback = ft_freqgrandaverage(cfg,load4{idx_nback});
 ga6nback = ft_freqgrandaverage(cfg,load6{idx_nback});
-%% TFR plots (Jensen / nback subgroups)
+
+%% TFR
 close all
 cfg = [];
 cfg.figure = 'gcf';
 cfg.ylim = [5 30];
 cfg.xlim = [-.5 2];
-cfg.zlim = [-.25 .25];
 cfg.channel = channels;
 cfg.layout = headmodel.layANThead;
+% Scale color limits to the maximum absolute value in displayed TFR data.
+tfr_sets = {ga2jensen, ga4jensen, ga6jensen, ga2nback, ga4nback, ga6nback};
+zmax = 0;
+for s = 1:numel(tfr_sets)
+    ch_idx = ismember(tfr_sets{s}.label, cfg.channel);
+    f_idx = tfr_sets{s}.freq >= cfg.ylim(1) & tfr_sets{s}.freq <= cfg.ylim(2);
+    t_idx = tfr_sets{s}.time >= cfg.xlim(1) & tfr_sets{s}.time <= cfg.xlim(2);
+    this_pow = tfr_sets{s}.powspctrm(:, ch_idx, f_idx, t_idx);
+    zmax = max(zmax, max(abs(this_pow(:)), [], 'omitnan'));
+end
+cfg.zlim = [-zmax zmax];
 figure('Position', fig_pos, 'Color', 'w');
-subplot(3,2,1); ft_singleplotTFR(cfg, ga2jensen);
-subplot(3,2,3);ft_singleplotTFR(cfg, ga4jensen);
-subplot(3,2,5);ft_singleplotTFR(cfg, ga6jensen);
+subplot(3,2,1); ft_singleplotTFR(cfg, ga2jensen); title('Increase: WM load 2', 'FontSize', fontSize);
+ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+subplot(3,2,3); ft_singleplotTFR(cfg, ga4jensen); title('Increase: WM load 4', 'FontSize', fontSize);
+ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+subplot(3,2,5); ft_singleplotTFR(cfg, ga6jensen); title('Increase: WM load 6', 'FontSize', fontSize);
+ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 
-subplot(3,2,2); ft_singleplotTFR(cfg, ga2nback);
-subplot(3,2,4); ft_singleplotTFR(cfg, ga4nback);
-subplot(3,2,6); ft_singleplotTFR(cfg, ga6nback);
+subplot(3,2,2); ft_singleplotTFR(cfg, ga2nback); title('Decrease: WM load 2', 'FontSize', fontSize);
+ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+subplot(3,2,4); ft_singleplotTFR(cfg, ga4nback); title('Decrease: WM load 4', 'FontSize', fontSize);
+ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+subplot(3,2,6); ft_singleplotTFR(cfg, ga6nback); title('Decrease: WM load 6', 'FontSize', fontSize);
+ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 colormap(gcf, color_map);
-saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaOverLoads_tfr_6panel.png'));
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_TFR.png'));
 
 %% Select powspctrm (retention 1-2 s)
 cfg = [];
 cfg.latency = [1 2];
 cfg.avgovertime = 'yes';
-ga2jensen_spctrm = ft_selectdata(cfg,ga2jensen);
-ga2jensen_spctrm = rmfield(ga2jensen_spctrm,'time');
+ga2jensen_powspctrm = ft_selectdata(cfg,ga2jensen);
+ga2jensen_powspctrm = rmfield(ga2jensen_powspctrm,'time');
 
-ga4jensen_spctrm = ft_selectdata(cfg,ga4jensen);
-ga4jensen_spctrm = rmfield(ga4jensen_spctrm,'time');
+ga4jensen_powspctrm = ft_selectdata(cfg,ga4jensen);
+ga4jensen_powspctrm = rmfield(ga4jensen_powspctrm,'time');
 
-ga6jensen_spctrm = ft_selectdata(cfg,ga6jensen);
-ga6jensen_spctrm = rmfield(ga6jensen_spctrm,'time');
+ga6jensen_powspctrm = ft_selectdata(cfg,ga6jensen);
+ga6jensen_powspctrm = rmfield(ga6jensen_powspctrm,'time');
 
-ga2nback_spctrm = ft_selectdata(cfg,ga2nback);
-ga2nback_spctrm = rmfield(ga2nback_spctrm,'time');
+ga2nback_powspctrm = ft_selectdata(cfg,ga2nback);
+ga2nback_powspctrm = rmfield(ga2nback_powspctrm,'time');
 
-ga4nback_spctrm = ft_selectdata(cfg,ga4nback);
-ga4nback_spctrm = rmfield(ga4nback_spctrm,'time');
+ga4nback_powspctrm = ft_selectdata(cfg,ga4nback);
+ga4nback_powspctrm = rmfield(ga4nback_powspctrm,'time');
 
-ga6nback_spctrm = ft_selectdata(cfg,ga6nback);
-ga6nback_spctrm = rmfield(ga6nback_spctrm,'time');
-%% Power spectra (ft_singleplotER)
+ga6nback_powspctrm = ft_selectdata(cfg,ga6nback);
+ga6nback_powspctrm = rmfield(ga6nback_powspctrm,'time');
+
+%% Plot Powerspectra
 close all
-cfg = [];
-cfg.figure = 'gcf';
-cfg.channel = channels;
-cfg.layout = headmodel.layANThead;
 figure('Position', fig_pos, 'Color', 'w');
-subplot(2,1,1); ft_singleplotER(cfg, ga2jensen_spctrm, ga4jensen_spctrm, ga6jensen_spctrm);
-subplot(2,1,2); ft_singleplotER(cfg, ga2nback_spctrm, ga4nback_spctrm, ga6nback_spctrm);
-saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaOverLoads_spectra_er.png'));
-%% TFR matrix panels (interpolated, Jensen / nback)
-close all
-cfg_sel = [];
-cfg_sel.channel = channels;
-cfg_sel.avgoverchan = 'yes';
-cfg_sel.frequency = [1 40];
-cfg_sel.latency   = [-.5 2];
-clim_mat = [-.2 .2];
+tiledlayout(1, 2, 'TileSpacing', 'compact');
 
-figure('Position', fig_pos, 'Color', 'w');
-plot_tfr_matrix_panel(1, ga2jensen, cfg_sel, clim_mat, fontSize);
-plot_tfr_matrix_panel(3, ga4jensen, cfg_sel, clim_mat, fontSize);
-plot_tfr_matrix_panel(5, ga6jensen, cfg_sel, clim_mat, fontSize);
-plot_tfr_matrix_panel(2, ga2nback, cfg_sel, clim_mat, fontSize);
-plot_tfr_matrix_panel(4, ga4nback, cfg_sel, clim_mat, fontSize);
-plot_tfr_matrix_panel(6, ga6nback, cfg_sel, clim_mat, fontSize);
-saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaOverLoads_tfr_matrix.png'));
-%% plot with SE sternberg
-cfg = [];
-cfg.figure = 'gcf';
-cfg.channel = {'P7', 'POz', 'O1', 'O2', 'PO3', 'PO4', 'PO7', 'PO8', 'PPO9h', 'PPO5h', 'PPO6h', 'PPO10h', 'POO3h', 'POO4h'};% posterior chan
-% cfg.channel = {'Pz', 'P4', 'POz', 'P1', 'P2', 'P6','PO3', 'PO4', 'PPO1', 'PPO2', 'PPO6h', 'POO3h', 'POO4h'};% raw pow
-cfg.layout = headmodel.layANThead;
-figure('Position', fig_pos, 'Color', 'w');
-subplot(2,1,1); ft_singleplotER(cfg, ga2jensen_spctrm, ga4jensen_spctrm, ga6jensen_spctrm);
-subplot(2,1,2); ft_singleplotER(cfg, ga2nback_spctrm, ga4nback_spctrm, ga6nback_spctrm);
-%% Power spectra with SE (Jensen / nback)
-figure('Position', fig_pos, 'Color', 'w');
-subplot(2,1,1);
-cfg = [];
-cfg.channel = channels;
-cfg.avgoverchan = 'yes';
-tlk2_ind = ft_selectdata(cfg, ga2jensen_spctrm);
-tlk4_ind = ft_selectdata(cfg, ga4jensen_spctrm);
-tlk6_ind = ft_selectdata(cfg, ga6jensen_spctrm);
-n_j = sum(idx_jensen);
-% plot load 6
-x = tlk6_ind.freq';
-y = mean(squeeze(tlk6_ind.powspctrm), 1)';
-e = std(squeeze(tlk6_ind.powspctrm), 1)' ./ sqrt(n_j);
-low = y - e; % lower bound
-high = y + e; % upper bound
+[~, ch_idx_j] = ismember(channels, ga2jensen_powspctrm.label);
+ch_idx_j = ch_idx_j(ch_idx_j > 0);
+freqs_j = ga2jensen_powspctrm.freq;
 
-
-hp1 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'r', 'HandleVisibility', 'off');
-hold on;
-hl1 = line(x, y);
-set(hp1, 'facecolor', [0.97, 0.26, 0.26], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl1, 'color', [0.97, 0.26, 0.26], 'linewidth', 2);
-
-% plot load 4
-x = tlk4_ind.freq';
-y = mean(squeeze(tlk4_ind.powspctrm), 1)';
-e = std(squeeze(tlk4_ind.powspctrm), 1)' ./ sqrt(n_j);
-low = y - e;
-high = y + e;
-
-hp2 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'b', 'HandleVisibility', 'off');
-hl2 = line(x, y);
-set(hp2, 'facecolor', [0.30, 0.75, 0.93], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl2, 'color', [0.30, 0.75, 0.93], 'linewidth', 2);
-
-% plot load 2
-x = tlk2_ind.freq';
-y = mean(squeeze(tlk2_ind.powspctrm), 1)';
-e = std(squeeze(tlk2_ind.powspctrm), 1)' ./ sqrt(n_j);
-low = y - e;
-high = y + e;
-
-hp3 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'k', 'HandleVisibility', 'off');
-hl3 = line(x, y);
-set(hp3, 'facecolor', [0.5, 0.5, 0.5], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl3, 'color', 'k', 'linewidth', 2);
-
+nexttile; hold on
+ga_j = {ga2jensen_powspctrm, ga4jensen_powspctrm, ga6jensen_powspctrm};
+for c = 1:3
+    subj_spec = squeeze(mean(ga_j{c}.powspctrm(:, ch_idx_j, :), 2, 'omitnan'));
+    m = mean(subj_spec, 1, 'omitnan');
+    se = std(subj_spec, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(subj_spec), 1)), 1);
+    eb_j(c) = shadedErrorBar(freqs_j, m, se, 'lineProps', {'-'}, 'transparent', true); %#ok<AGROW>
+    set(eb_j(c).mainLine, 'Color', colors(c, :), 'LineWidth', 3);
+    set(eb_j(c).patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
+    set(eb_j(c).edge(1), 'Color', colors(c, :));
+    set(eb_j(c).edge(2), 'Color', colors(c, :));
+end
+xlim([2 30]);
+xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
+ylabel('Power [dB]', 'FontSize', fontSize);
+title('Increase group', 'FontSize', fontSize);
+legend([eb_j.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
+    'Location', 'best', 'Box', 'off', 'FontSize', fontSize - 2);
 set(gca, 'FontSize', fontSize);
-title('');
-xlabel('Frequency [Hz]');
-ylabel("Change from \newline baseline [dB]");
-set(gcf,'color','w');
-box on;
-xlim([1  40]);
-legend({'Load 6','Load 4','Load 2'}, 'Location','northeast','Fontsize', fontSize);
+box on
 
-subplot(2,1,2);
-cfg = [];
-cfg.channel = channels;
-cfg.avgoverchan = 'yes';
-tlk2_ind = ft_selectdata(cfg, ga2nback_spctrm);
-tlk4_ind = ft_selectdata(cfg, ga4nback_spctrm);
-tlk6_ind = ft_selectdata(cfg, ga6nback_spctrm);
-n_n = sum(idx_nback);
-% plot load 6
-x = tlk6_ind.freq';
-y = mean(squeeze(tlk6_ind.powspctrm), 1)';
-e = std(squeeze(tlk6_ind.powspctrm), 1)' ./ sqrt(n_n);
-low = y - e; % lower bound
-high = y + e; % upper bound
+[~, ch_idx_n] = ismember(channels, ga2nback_powspctrm.label);
+ch_idx_n = ch_idx_n(ch_idx_n > 0);
+freqs_n = ga2nback_powspctrm.freq;
 
-
-hp1 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'r', 'HandleVisibility', 'off');
-hold on;
-hl1 = line(x, y);
-set(hp1, 'facecolor', [0.97, 0.26, 0.26], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl1, 'color', [0.97, 0.26, 0.26], 'linewidth', 2);
-
-% plot load 4
-x = tlk4_ind.freq';
-y = mean(squeeze(tlk4_ind.powspctrm), 1)';
-e = std(squeeze(tlk4_ind.powspctrm), 1)' ./ sqrt(n_n);
-low = y - e;
-high = y + e;
-
-hp2 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'b', 'HandleVisibility', 'off');
-hl2 = line(x, y);
-set(hp2, 'facecolor', [0.30, 0.75, 0.93], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl2, 'color', [0.30, 0.75, 0.93], 'linewidth', 2);
-
-% plot load 2
-x = tlk2_ind.freq';
-y = mean(squeeze(tlk2_ind.powspctrm), 1)';
-e = std(squeeze(tlk2_ind.powspctrm), 1)' ./ sqrt(n_n);
-low = y - e;
-high = y + e;
-
-hp3 = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], 'k', 'HandleVisibility', 'off');
-hl3 = line(x, y);
-set(hp3, 'facecolor', [0.5, 0.5, 0.5], 'edgecolor', 'none', 'facealpha', 0.2);
-set(hl3, 'color', 'k', 'linewidth', 2);
-
+nexttile; hold on
+ga_n = {ga2nback_powspctrm, ga4nback_powspctrm, ga6nback_powspctrm};
+for c = 1:3
+    subj_spec = squeeze(mean(ga_n{c}.powspctrm(:, ch_idx_n, :), 2, 'omitnan'));
+    m = mean(subj_spec, 1, 'omitnan');
+    se = std(subj_spec, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(subj_spec), 1)), 1);
+    eb_n(c) = shadedErrorBar(freqs_n, m, se, 'lineProps', {'-'}, 'transparent', true); %#ok<AGROW>
+    set(eb_n(c).mainLine, 'Color', colors(c, :), 'LineWidth', 3);
+    set(eb_n(c).patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
+    set(eb_n(c).edge(1), 'Color', colors(c, :));
+    set(eb_n(c).edge(2), 'Color', colors(c, :));
+end
+xlim([2 30]);
+xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
+ylabel('Power [dB]', 'FontSize', fontSize);
+title('Decrease group', 'FontSize', fontSize);
+legend([eb_n.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
+    'Location', 'best', 'Box', 'off', 'FontSize', fontSize - 2);
 set(gca, 'FontSize', fontSize);
-title('');
-xlabel('Frequency [Hz]');
-ylabel("Change from \newline baseline [dB]");
-set(gcf,'color','w');
-box on;
-xlim([1  40]);
-legend({'Load 6','Load 4','Load 2'}, 'Location','northeast','Fontsize', fontSize);
-saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaOverLoads_spectra_SE.png'));
+box on
+
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_powspctrm.png'));
+
 %% Gaze density (optional: requires sterngaze.mat from gaze density pipeline)
 gaze_file = fullfile(feat_dir, 'sterngaze.mat');
 gaze_norm_file = fullfile(feat_dir, 'sterngaze_norm.mat');
+if ~(isfile(gaze_file) && isfile(gaze_norm_file))
+    fprintf('Gaze files missing. Building sterngaze from dataET_sternberg and saving to %s.\n', feat_dir);
+    [allgazebase2, allgazetasklate2, allgazetaskearly2, ...
+        allgazebase4, allgazetasklate4, allgazetaskearly4, ...
+        allgazebase6, allgazetasklate6, allgazetaskearly6, ...
+        allgazebase2_norm, allgazetasklate2_norm, allgazetaskearly2_norm, ...
+        allgazebase4_norm, allgazetasklate4_norm, allgazetaskearly4_norm, ...
+        allgazebase6_norm, allgazetasklate6_norm, allgazetaskearly6_norm] = ...
+        build_sterngaze_from_raw_et(subjects, path);
+
+    save(gaze_file, ...
+        'allgazebase2', 'allgazetasklate2', 'allgazetaskearly2', ...
+        'allgazebase4', 'allgazetasklate4', 'allgazetaskearly4', ...
+        'allgazebase6', 'allgazetasklate6', 'allgazetaskearly6', '-v7.3');
+    save(gaze_norm_file, ...
+        'allgazebase2_norm', 'allgazetasklate2_norm', 'allgazetaskearly2_norm', ...
+        'allgazebase4_norm', 'allgazetasklate4_norm', 'allgazetaskearly4_norm', ...
+        'allgazebase6_norm', 'allgazetasklate6_norm', 'allgazetaskearly6_norm', '-v7.3');
+end
 if isfile(gaze_file) && isfile(gaze_norm_file)
     load(gaze_norm_file);
     load(gaze_file);
@@ -1015,7 +953,7 @@ set(gca,'FontSize',18); box on;
 ylim([50 110])   % same scale for comparison
 
 set(gcf,'color','w');
-saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaOverLoads_RT_ACC.png'));
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_RT_ACC.png'));
 
 %% LME / TOST (test effects)
 nSubj = length(subjects);
@@ -1238,4 +1176,116 @@ p1 = 1 - tcdf(t1, df);
 p2 = tcdf(t2, df);
 
 equivalent = (p1 < alpha) && (p2 < alpha);
+end
+
+function [allgazebase2, allgazetasklate2, allgazetaskearly2, ...
+    allgazebase4, allgazetasklate4, allgazetaskearly4, ...
+    allgazebase6, allgazetasklate6, allgazetaskearly6, ...
+    allgazebase2_norm, allgazetasklate2_norm, allgazetaskearly2_norm, ...
+    allgazebase4_norm, allgazetasklate4_norm, allgazetaskearly4_norm, ...
+    allgazebase6_norm, allgazetasklate6_norm, allgazetaskearly6_norm] = ...
+    build_sterngaze_from_raw_et(subjects, base_path)
+
+n_subj = length(subjects);
+allgazebase2 = cell(1, n_subj); allgazetasklate2 = cell(1, n_subj); allgazetaskearly2 = cell(1, n_subj);
+allgazebase4 = cell(1, n_subj); allgazetasklate4 = cell(1, n_subj); allgazetaskearly4 = cell(1, n_subj);
+allgazebase6 = cell(1, n_subj); allgazetasklate6 = cell(1, n_subj); allgazetaskearly6 = cell(1, n_subj);
+
+allgazebase2_norm = cell(1, n_subj); allgazetasklate2_norm = cell(1, n_subj); allgazetaskearly2_norm = cell(1, n_subj);
+allgazebase4_norm = cell(1, n_subj); allgazetasklate4_norm = cell(1, n_subj); allgazetaskearly4_norm = cell(1, n_subj);
+allgazebase6_norm = cell(1, n_subj); allgazetasklate6_norm = cell(1, n_subj); allgazetaskearly6_norm = cell(1, n_subj);
+
+num_bins = 1000;
+smoothing = 5;
+fsample = 500;
+x_grid = linspace(0, 800, num_bins + 1);
+y_grid = linspace(0, 600, num_bins + 1);
+
+for subj = 1:n_subj
+    et_file = fullfile(base_path, subjects{subj}, 'gaze', 'dataET_sternberg.mat');
+    if ~isfile(et_file)
+        et_file = fullfile(base_path, subjects{subj}, 'gaze', 'dataET_sternberg');
+    end
+    if ~isfile(et_file)
+        error('Missing ET file for subject %s: %s', subjects{subj}, et_file);
+    end
+
+    tmp = load(et_file);
+    et = select_et_struct(tmp, subjects{subj});
+
+    idx2 = find(et.trialinfo == 22);
+    idx4 = find(et.trialinfo == 24);
+    idx6 = find(et.trialinfo == 26);
+
+    [allgazebase2{subj}, allgazebase2_norm{subj}] = extract_gaze_window(et, idx2, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
+    [allgazebase4{subj}, allgazebase4_norm{subj}] = extract_gaze_window(et, idx4, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
+    [allgazebase6{subj}, allgazebase6_norm{subj}] = extract_gaze_window(et, idx6, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
+
+    [allgazetaskearly2{subj}, allgazetaskearly2_norm{subj}] = extract_gaze_window(et, idx2, [0 1], x_grid, y_grid, fsample, smoothing);
+    [allgazetaskearly4{subj}, allgazetaskearly4_norm{subj}] = extract_gaze_window(et, idx4, [0 1], x_grid, y_grid, fsample, smoothing);
+    [allgazetaskearly6{subj}, allgazetaskearly6_norm{subj}] = extract_gaze_window(et, idx6, [0 1], x_grid, y_grid, fsample, smoothing);
+
+    [allgazetasklate2{subj}, allgazetasklate2_norm{subj}] = extract_gaze_window(et, idx2, [1 2], x_grid, y_grid, fsample, smoothing);
+    [allgazetasklate4{subj}, allgazetasklate4_norm{subj}] = extract_gaze_window(et, idx4, [1 2], x_grid, y_grid, fsample, smoothing);
+    [allgazetasklate6{subj}, allgazetasklate6_norm{subj}] = extract_gaze_window(et, idx6, [1 2], x_grid, y_grid, fsample, smoothing);
+end
+end
+
+function et = select_et_struct(tmp, subj_label)
+if isfield(tmp, 'dataETlong')
+    et = tmp.dataETlong;
+elseif isfield(tmp, 'dataet')
+    et = tmp.dataet;
+elseif isfield(tmp, 'dataET')
+    et = tmp.dataET;
+else
+    error('No ET data structure found in dataET_sternberg for subject %s.', subj_label);
+end
+
+if ~isfield(et, 'trial') || ~isfield(et, 'trialinfo') || ~isfield(et, 'time')
+    error('ET structure for subject %s is missing trial/trialinfo/time fields.', subj_label);
+end
+end
+
+function [freq_raw, freq_norm] = extract_gaze_window(et, trial_idx, latency, x_grid, y_grid, fsample, smoothing)
+cfg = [];
+cfg.channel = {'L-GAZE-X', 'L-GAZE-Y'};
+cfg.latency = latency;
+cfg.trials = trial_idx;
+sel = ft_selectdata(cfg, et);
+[freq_raw, freq_norm] = compute_gaze_heatmap(sel, x_grid, y_grid, fsample, smoothing);
+end
+
+function [freq_raw, freq_norm] = compute_gaze_heatmap(data, x_grid, y_grid, fsample, smoothing)
+if isempty(data.trial)
+    binned = zeros(length(x_grid) - 1, length(y_grid) - 1);
+else
+    pos = horzcat(data.trial{:});
+    binned = histcounts2(pos(1, :), pos(2, :), x_grid, y_grid);
+end
+
+dwell_time = binned / fsample;
+smoothed = imgaussfilt(dwell_time, smoothing);
+
+freq_raw = [];
+freq_raw.powspctrm(1, :, :) = flipud(smoothed');
+freq_raw.time = x_grid(2:end);
+freq_raw.freq = y_grid(2:end);
+freq_raw.label = {'et'};
+freq_raw.dimord = 'chan_freq_time';
+
+total_dwell = sum(dwell_time(:));
+if total_dwell > 0
+    norm_time = dwell_time / total_dwell;
+else
+    norm_time = dwell_time;
+end
+norm_smooth = imgaussfilt(norm_time, smoothing);
+
+freq_norm = [];
+freq_norm.powspctrm(1, :, :) = flipud(norm_smooth');
+freq_norm.time = x_grid(2:end);
+freq_norm.freq = y_grid(2:end);
+freq_norm.label = {'et'};
+freq_norm.dimord = 'chan_freq_time';
 end

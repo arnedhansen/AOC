@@ -8,7 +8,7 @@
 % Cutoff = alpha_zero_pct of the alpha_ref_percentile of |alpha| (default: 5% of 95th percentile).
 %
 % Uses baselined+FOOOFed alpha (power spectra, TFR, topoplots) and baselined gaze metrics
-% (SPL, Dev, BCEA, Vel; all % change from baseline).
+% (SPL, Dev, BCEA, Vel; all in dB, 10*log10(value/baseline)).
 %
 % Outliers excluded via Tukey 1.5*IQR (per metric per condition) before visualization/analyses.
 %
@@ -120,7 +120,7 @@ scatter(x_vals(idx_amp), alpha_mean(idx_amp), 80, [0.8 0.2 0.2], 'filled', 'Mark
 xlabel('Participant (index)');
 ylabel('Alpha Power [dB]');
 title('Alpha Split: Reduction (blue), Amplification (red), Excluded (grey)');
-legend({'Excluded', 'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fontSize - 2);
+legend({'Excluded', 'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
 set(gca, 'FontSize', fontSize);
 box on
 saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_inclusion.png'));
@@ -350,41 +350,6 @@ if isempty(channels)
     error('No power data available for channel definition.');
 end
 
-%% Percentage change time courses (baseline -0.5 to -0.25 s for gaze; dB->linear for EEG)
-fprintf('\n=== Computing percentage change time courses ===\n');
-t_vec = linspace(-0.5, 2, Tf);
-bl_idx = (t_vec >= -0.5) & (t_vec <= -0.25);
-
-dev_bl = mean(dev_tc(:, :, bl_idx), 3, 'omitnan');
-dev_bl_3d = repmat(dev_bl, [1, 1, Tf]);
-dev_bl_3d(dev_bl_3d <= 0 | ~isfinite(dev_bl_3d)) = NaN;
-dev_tc_perc = 100 * (dev_tc - dev_bl_3d) ./ dev_bl_3d;
-dev_tc_perc(~isfinite(dev_tc_perc)) = NaN;
-
-spl_bl = mean(spl_tc(:, :, bl_idx), 3, 'omitnan');
-spl_bl_3d = repmat(spl_bl, [1, 1, Tf]);
-spl_bl_3d(spl_bl_3d <= 0 | ~isfinite(spl_bl_3d)) = NaN;
-spl_tc_perc = 100 * (spl_tc - spl_bl_3d) ./ spl_bl_3d;
-spl_tc_perc(~isfinite(spl_tc_perc)) = NaN;
-
-vel_bl = mean(vel_tc(:, :, bl_idx), 3, 'omitnan');
-vel_bl_3d = repmat(vel_bl, [1, 1, Tf]);
-vel_bl_3d(vel_bl_3d <= 0 | ~isfinite(vel_bl_3d)) = NaN;
-vel_tc_perc = 100 * (vel_tc - vel_bl_3d) ./ vel_bl_3d;
-vel_tc_perc(~isfinite(vel_tc_perc)) = NaN;
-
-bcea_bl = mean(bcea_tc(:, :, bl_idx), 3, 'omitnan');
-bcea_bl_3d = repmat(bcea_bl, [1, 1, Tf]);
-bcea_bl_3d(bcea_bl_3d <= 0 | ~isfinite(bcea_bl_3d)) = NaN;
-bcea_tc_perc = 100 * (bcea_tc - bcea_bl_3d) ./ bcea_bl_3d;
-bcea_tc_perc(~isfinite(bcea_tc_perc)) = NaN;
-
-eeg_tc_perc = [];
-if addEEG_TC && ~isempty(eeg_tc)
-    eeg_tc_perc = (10.^(eeg_tc / 10) - 1) * 100;
-    eeg_tc_perc(~isfinite(eeg_tc_perc)) = NaN;
-end
-
 %% Power spectra (both groups, single figure)
 close all
 fprintf('\n=== Plotting power spectra ===\n');
@@ -412,34 +377,57 @@ plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fi
 close all
 Tf = size(spl_tc, 3);
 t_full_eeg = linspace(-0.5, 2, Tf);
-addEEG_TC = true;
+addEEG_TC = false;
 eeg_tc = [];
 if addEEG_TC
     fprintf('\n=== Extracting EEG alpha time course from TFR ===\n');
     eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_subj, nSubj, channels, Tf, t_full_eeg);
 end
 
-%% Plot time courses
+% Baselined time courses: gaze in dB (baseline -0.5 to -0.25 s); EEG stays in dB
+fprintf('\n=== Computing baselined time courses ===\n');
+t_vec = linspace(-0.5, 2, Tf);
+bl_idx = (t_vec >= -0.5) & (t_vec <= -0.25);
+
+dev_bl = mean(dev_tc(:, :, bl_idx), 3, 'omitnan');
+dev_bl_3d = repmat(dev_bl, [1, 1, Tf]);
+dev_bl_3d(dev_bl_3d <= 0 | ~isfinite(dev_bl_3d)) = NaN;
+% dB baseline: 10*log10(value/baseline). Prefer over % when baseline is small (gaze deviation
+% ~10–15 px): % change explodes (e.g. 14->48 px = 243%) and inflates variance. dB compresses
+% the scale, is symmetric for doubling/halving, and matches EEG alpha convention.
+dev_tc_dB = 10 * log10(dev_tc ./ dev_bl_3d);
+dev_tc_dB(~isfinite(dev_tc_dB)) = NaN;
+
+% SPL, vel, BCEA: same dB convention as gaze deviation (see note above)
+spl_bl = mean(spl_tc(:, :, bl_idx), 3, 'omitnan');
+spl_bl_3d = repmat(spl_bl, [1, 1, Tf]);
+spl_bl_3d(spl_bl_3d <= 0 | ~isfinite(spl_bl_3d)) = NaN;
+spl_tc_dB = 10 * log10(spl_tc ./ spl_bl_3d);
+spl_tc_dB(~isfinite(spl_tc_dB)) = NaN;
+
+vel_bl = mean(vel_tc(:, :, bl_idx), 3, 'omitnan');
+vel_bl_3d = repmat(vel_bl, [1, 1, Tf]);
+vel_bl_3d(vel_bl_3d <= 0 | ~isfinite(vel_bl_3d)) = NaN;
+vel_tc_dB = 10 * log10(vel_tc ./ vel_bl_3d);
+vel_tc_dB(~isfinite(vel_tc_dB)) = NaN;
+
+bcea_bl = mean(bcea_tc(:, :, bl_idx), 3, 'omitnan');
+bcea_bl_3d = repmat(bcea_bl, [1, 1, Tf]);
+bcea_bl_3d(bcea_bl_3d <= 0 | ~isfinite(bcea_bl_3d)) = NaN;
+bcea_tc_dB = 10 * log10(bcea_tc ./ bcea_bl_3d);
+bcea_tc_dB(~isfinite(bcea_tc_dB)) = NaN;
+
+% Plot time courses
 fprintf('\n=== Plotting time courses ===\n');
-plot_timecourse_with_effect_CBPT(dev_tc, is_red, is_amp, cond_labels, colors, ...
-    'Gaze Deviation [px]', 'gaze_deviation', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
-plot_timecourse_with_effect_CBPT(dev_tc_perc, is_red, is_amp, cond_labels, colors, ...
-    'Gaze Deviation [%]', 'gaze_deviation_perc', fig_dir, fig_pos, fontSize, fs, eeg_tc_perc, addEEG_TC, 'Alpha Power [%]');
-
-plot_timecourse_with_effect_CBPT(spl_tc, is_red, is_amp, cond_labels, colors, ...
-    'Scan Path Length [px]', 'spl', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
-plot_timecourse_with_effect_CBPT(spl_tc_perc, is_red, is_amp, cond_labels, colors, ...
-    'Scan Path Length [%]', 'spl_perc', fig_dir, fig_pos, fontSize, fs, eeg_tc_perc, addEEG_TC, 'Alpha Power [%]');
-
-plot_timecourse_with_effect_CBPT(vel_tc, is_red, is_amp, cond_labels, colors, ...
-    'Eye Velocity [px/s]', 'velocity', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
-plot_timecourse_with_effect_CBPT(vel_tc_perc, is_red, is_amp, cond_labels, colors, ...
-    'Eye Velocity [%]', 'velocity_perc', fig_dir, fig_pos, fontSize, fs, eeg_tc_perc, addEEG_TC, 'Alpha Power [%]');
-
-plot_timecourse_with_effect_CBPT(bcea_tc, is_red, is_amp, cond_labels, colors, ...
-    'BCEA [px^2]', 'bcea', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
-plot_timecourse_with_effect_CBPT(bcea_tc_perc, is_red, is_amp, cond_labels, colors, ...
-    'BCEA [%]', 'bcea_perc', fig_dir, fig_pos, fontSize, fs, eeg_tc_perc, addEEG_TC, 'Alpha Power [%]');
+fontSizeTC = 25;
+plot_timecourse_with_effect_CBPT(dev_tc_dB, is_red, is_amp, cond_labels, colors, ...
+    'Gaze Deviation [dB]', 'gaze_deviation_dB', fig_dir, fig_pos, fontSizeTC, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+plot_timecourse_with_effect_CBPT(spl_tc_dB, is_red, is_amp, cond_labels, colors, ...
+    'Scan Path Length [dB]', 'spl_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+plot_timecourse_with_effect_CBPT(vel_tc_dB, is_red, is_amp, cond_labels, colors, ...
+    'Eye Velocity [dB]', 'velocity_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+plot_timecourse_with_effect_CBPT(bcea_tc_dB, is_red, is_amp, cond_labels, colors, ...
+    'BCEA [dB]', 'bcea_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
 
 %% Sanity checks
 fprintf('\n=== Data Diagnostics ===\n');
@@ -451,7 +439,7 @@ fprintf('Figures saved to: %s\n', fig_dir);
 %% Group comparison: Reduction vs Amplification (gaze metrics)
 fprintf('\n=== Parametric group comparison (reduction > amp) ===\n');
 metric_names = {'SPL', 'Dev', 'BCEA', 'Vel'};
-metric_labels = {'Scan path length [%]', 'Gaze deviation [%]', 'BCEA [%]', 'Velocity [%]'};
+metric_labels = {'Scan path length [dB]', 'Gaze deviation [dB]', 'BCEA [dB]', 'Velocity [dB]'};
 
 for m = 1:numel(metric_names)
     key = metric_names{m};
@@ -798,7 +786,7 @@ for grp = 1:2
     xlabel('Frequency [Hz]');
     ylabel('Power [dB]');
     title(ttl, 'FontSize', fsz + 4);
-    legend([eb.mainLine], cond_labels, 'FontSize', fsz - 2, 'Location', 'best');
+    legend([eb.mainLine], cond_labels, 'FontSize', fsz - 2, 'Location', 'best', 'Box', 'off');
     set(gca, 'FontSize', fsz);
     box on
 end
@@ -955,7 +943,7 @@ metric_defs = { ...
 for m = 1:size(metric_defs, 1)
     key = metric_defs{m, 1};
     varname = metric_defs{m, 2};
-    is_pct = metric_defs{m, 3};
+    is_dB = metric_defs{m, 3};
     X = metrics.(key);
 
     % Shared ymax for both groups, centered around 0; add margin for density curve
@@ -971,8 +959,8 @@ for m = 1:size(metric_defs, 1)
     end
     ylim_shared = [-ymax ymax];
 
-    if is_pct
-        ylab = [varname ' [%]'];
+    if is_dB
+        ylab = [varname ' [dB]'];
     else
         ylab = varname;
     end
@@ -1057,7 +1045,7 @@ if has_eeg
 else
     tiledlayout(3, 1, 'TileSpacing', 'compact');
 end
-nexttile([2 1]); hold on
+ax_gaze = nexttile([2 1]); hold on
 mR = mean(Rall, 1, 'omitnan');
 mA = mean(Aall, 1, 'omitnan');
 nR_fin = sum(isfinite(Rall), 1);
@@ -1080,10 +1068,10 @@ set(gca, 'FontSize', fsz-4);
 % Legend with colored patch boxes (clearer than thin lines)
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
 leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
-legend([leg_p1 leg_p2], {'Reduction', 'Amplification'}, 'Location', 'northeast', 'FontSize', fsz-2);
-if strcmp(save_tag, 'gaze_deviation')
-    yl = ylim;
-    ylim([max(0, yl(1)) yl(2)]);
+legend([leg_p1 leg_p2], {'Reduction', 'Amplification'}, 'Location', 'northeast', 'FontSize', fsz-2, 'Box', 'off');
+if strcmp(save_tag, 'gaze_deviation_dB')
+    ylim([-.15 5.25])
+    yticks([0, 1, 2, 3, 4, 5])
 end
 nexttile; hold on
 n_perm = 1000;
@@ -1183,6 +1171,9 @@ xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Cohen''s d');
 xlim([-0.5 2]);
+if strcmp(save_tag, 'gaze_deviation_dB')
+    yticks([-0.5, -0.25, 0, 0.25, 0.5])
+end
 box on
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)
@@ -1223,6 +1214,7 @@ if has_eeg
         ymax_eeg = 0.1;
     end
     ylim([-ymax_eeg ymax_eeg]);
+    ax_eeg = gca;
     ylabel(eeg_ylab);
     xlabel('Time [s]');
     xlim([-0.5 2]);
@@ -1230,6 +1222,13 @@ if has_eeg
     set(gca, 'FontSize', fsz-4);
     leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
     leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
+    % Align y-labels to same horizontal position
+    drawnow;
+    pos_g = get(ax_gaze, 'Position');
+    pos_e = get(ax_eeg, 'Position');
+    left_min = min(pos_g(1), pos_e(1));
+    set(ax_gaze, 'Position', [left_min, pos_g(2), pos_g(3) + (pos_g(1) - left_min), pos_g(4)]);
+    set(ax_eeg,  'Position', [left_min, pos_e(2), pos_e(3) + (pos_e(1) - left_min), pos_e(4)]);
 end
 
 saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_timecourse_%s_CBPT.png', save_tag)));

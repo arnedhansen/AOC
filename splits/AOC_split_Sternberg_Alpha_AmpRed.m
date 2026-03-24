@@ -50,7 +50,7 @@ cond_codes = [22 24 26];
 cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
 
 fontSize = 20;
-rng(42);
+% rng(42);
 alpha_zero_pct = 5; % Exclude near-zero alpha within this % of robust |alpha| reference
 alpha_ref_percentile = 95; % Use this percentile of |alpha| for reference (outlier-resistant)
 
@@ -135,9 +135,11 @@ for c = 1:3
     pow_amp{c} = {};
 end
 
-% EEG TFR
+% EEG TFR (tfr_*_subj: subject indices corresponding to each TFR, for correct variance mapping)
 tfr_red = cell(1, 3);
 tfr_amp = cell(1, 3);
+tfr_red_subj = [];
+tfr_amp_subj = [];
 for c = 1:3
     tfr_red{c} = {};
     tfr_amp{c} = {};
@@ -204,17 +206,21 @@ for s = 1:nSubj
         missing_eeg{end+1} = sid_str; %#ok<AGROW>
     end
 
-    % EEG TFR sources
+    % EEG TFR sources (store subject index for correct time-course extraction)
     try
         % Use FOOOFed + baselined TFR to avoid raw-power scale skew.
         R = load(fullfile(eeg_dir, 'tfr_stern.mat'), 'tfr2_fooof_bl', 'tfr4_fooof_bl', 'tfr6_fooof_bl');
         tfr_conds = {R.tfr2_fooof_bl, R.tfr4_fooof_bl, R.tfr6_fooof_bl};
-        for c = 1:3
-            if ismember(sid, reduction_ids)
+        if ismember(sid, reduction_ids)
+            for c = 1:3
                 tfr_red{c}{end+1} = tfr_conds{c}; %#ok<AGROW>
-            elseif ismember(sid, amplification_ids)
+            end
+            tfr_red_subj(end+1) = s; %#ok<AGROW>
+        elseif ismember(sid, amplification_ids)
+            for c = 1:3
                 tfr_amp{c}{end+1} = tfr_conds{c}; %#ok<AGROW>
             end
+            tfr_amp_subj(end+1) = s; %#ok<AGROW>
         end
     catch
         missing_tfr{end+1} = sid_str; %#ok<AGROW>
@@ -344,6 +350,41 @@ if isempty(channels)
     error('No power data available for channel definition.');
 end
 
+%% Percentage change time courses (baseline -0.5 to -0.25 s for gaze; dB->linear for EEG)
+fprintf('\n=== Computing percentage change time courses ===\n');
+t_vec = linspace(-0.5, 2, Tf);
+bl_idx = (t_vec >= -0.5) & (t_vec <= -0.25);
+
+dev_bl = mean(dev_tc(:, :, bl_idx), 3, 'omitnan');
+dev_bl_3d = repmat(dev_bl, [1, 1, Tf]);
+dev_bl_3d(dev_bl_3d <= 0 | ~isfinite(dev_bl_3d)) = NaN;
+dev_tc_perc = 100 * (dev_tc - dev_bl_3d) ./ dev_bl_3d;
+dev_tc_perc(~isfinite(dev_tc_perc)) = NaN;
+
+spl_bl = mean(spl_tc(:, :, bl_idx), 3, 'omitnan');
+spl_bl_3d = repmat(spl_bl, [1, 1, Tf]);
+spl_bl_3d(spl_bl_3d <= 0 | ~isfinite(spl_bl_3d)) = NaN;
+spl_tc_perc = 100 * (spl_tc - spl_bl_3d) ./ spl_bl_3d;
+spl_tc_perc(~isfinite(spl_tc_perc)) = NaN;
+
+vel_bl = mean(vel_tc(:, :, bl_idx), 3, 'omitnan');
+vel_bl_3d = repmat(vel_bl, [1, 1, Tf]);
+vel_bl_3d(vel_bl_3d <= 0 | ~isfinite(vel_bl_3d)) = NaN;
+vel_tc_perc = 100 * (vel_tc - vel_bl_3d) ./ vel_bl_3d;
+vel_tc_perc(~isfinite(vel_tc_perc)) = NaN;
+
+bcea_bl = mean(bcea_tc(:, :, bl_idx), 3, 'omitnan');
+bcea_bl_3d = repmat(bcea_bl, [1, 1, Tf]);
+bcea_bl_3d(bcea_bl_3d <= 0 | ~isfinite(bcea_bl_3d)) = NaN;
+bcea_tc_perc = 100 * (bcea_tc - bcea_bl_3d) ./ bcea_bl_3d;
+bcea_tc_perc(~isfinite(bcea_tc_perc)) = NaN;
+
+eeg_tc_perc = [];
+if addEEG_TC && ~isempty(eeg_tc)
+    eeg_tc_perc = (10.^(eeg_tc / 10) - 1) * 100;
+    eeg_tc_perc(~isfinite(eeg_tc_perc)) = NaN;
+end
+
 %% Power spectra (both groups, single figure)
 close all
 fprintf('\n=== Plotting power spectra ===\n');
@@ -375,18 +416,30 @@ addEEG_TC = true;
 eeg_tc = [];
 if addEEG_TC
     fprintf('\n=== Extracting EEG alpha time course from TFR ===\n');
-    eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, is_red, is_amp, channels, Tf, t_full_eeg);
+    eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_subj, nSubj, channels, Tf, t_full_eeg);
 end
 
+%% Plot time courses
 fprintf('\n=== Plotting time courses ===\n');
 plot_timecourse_with_effect_CBPT(dev_tc, is_red, is_amp, cond_labels, colors, ...
     'Gaze Deviation [px]', 'gaze_deviation', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
-% plot_timecourse_with_effect_CBPT(spl_tc, is_red, is_amp, cond_labels, colors, ...
-%     'Scan Path Length [px]', 'spl', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
-% plot_timecourse_with_effect_CBPT(vel_tc, is_red, is_amp, cond_labels, colors, ...
-%     'Eye Velocity [px/s]', 'velocity', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
-% plot_timecourse_with_effect_CBPT(bcea_tc, is_red, is_amp, cond_labels, colors, ...
-%     'BCEA [px^2]', 'bcea', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
+plot_timecourse_with_effect_CBPT(dev_tc_perc, is_red, is_amp, cond_labels, colors, ...
+    'Gaze Deviation [%]', 'gaze_deviation_perc', fig_dir, fig_pos, fontSize, fs, eeg_tc_perc, addEEG_TC, 'Alpha Power [%]');
+
+plot_timecourse_with_effect_CBPT(spl_tc, is_red, is_amp, cond_labels, colors, ...
+    'Scan Path Length [px]', 'spl', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
+plot_timecourse_with_effect_CBPT(spl_tc_perc, is_red, is_amp, cond_labels, colors, ...
+    'Scan Path Length [%]', 'spl_perc', fig_dir, fig_pos, fontSize, fs, eeg_tc_perc, addEEG_TC, 'Alpha Power [%]');
+
+plot_timecourse_with_effect_CBPT(vel_tc, is_red, is_amp, cond_labels, colors, ...
+    'Eye Velocity [px/s]', 'velocity', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
+plot_timecourse_with_effect_CBPT(vel_tc_perc, is_red, is_amp, cond_labels, colors, ...
+    'Eye Velocity [%]', 'velocity_perc', fig_dir, fig_pos, fontSize, fs, eeg_tc_perc, addEEG_TC, 'Alpha Power [%]');
+
+plot_timecourse_with_effect_CBPT(bcea_tc, is_red, is_amp, cond_labels, colors, ...
+    'BCEA [px^2]', 'bcea', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
+plot_timecourse_with_effect_CBPT(bcea_tc_perc, is_red, is_amp, cond_labels, colors, ...
+    'BCEA [%]', 'bcea_perc', fig_dir, fig_pos, fontSize, fs, eeg_tc_perc, addEEG_TC, 'Alpha Power [%]');
 
 %% Sanity checks
 fprintf('\n=== Data Diagnostics ===\n');
@@ -398,7 +451,7 @@ fprintf('Figures saved to: %s\n', fig_dir);
 %% Group comparison: Reduction vs Amplification (gaze metrics)
 fprintf('\n=== Parametric group comparison (reduction > amp) ===\n');
 metric_names = {'SPL', 'Dev', 'BCEA', 'Vel'};
-metric_labels = {'Scan path length [%%]', 'Gaze deviation [%%]', 'BCEA [%%]', 'Velocity [%%]'};
+metric_labels = {'Scan path length [%]', 'Gaze deviation [%]', 'BCEA [%]', 'Velocity [%]'};
 
 for m = 1:numel(metric_names)
     key = metric_names{m};
@@ -980,9 +1033,10 @@ scatter(xpos + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, ..
 end
 
 % Cluster-based permutation test
-function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, cond_labels, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, eeg_tc, addEEG_TC)
+function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, cond_labels, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, eeg_tc, addEEG_TC, eeg_ylab)
 if nargin < 12, eeg_tc = []; end
 if nargin < 13, addEEG_TC = ~isempty(eeg_tc); end
+if nargin < 14, eeg_ylab = 'Alpha Power [dB]'; end
 dt = 1 / fs;
 nT = size(tc, 3);
 t_plot = linspace(-0.5 + dt, 2, nT);
@@ -1137,6 +1191,7 @@ if ~any(sig_cluster) && any(sig_uncorr)
 end
 
 % Alpha power time course panel (4th row when has_eeg) - two lines with shaded error bars
+% Error bars: between-subject SEM = std(sample) / sqrt(n) at each time point.
 if has_eeg
     EegR = squeeze(mean(eeg_tc(is_red, :, :), 2, 'omitnan'));
     EegA = squeeze(mean(eeg_tc(is_amp, :, :), 2, 'omitnan'));
@@ -1168,7 +1223,7 @@ if has_eeg
         ymax_eeg = 0.1;
     end
     ylim([-ymax_eeg ymax_eeg]);
-    ylabel('Alpha Power [dB]');
+    ylabel(eeg_ylab);
     xlabel('Time [s]');
     xlim([-0.5 2]);
     box on
@@ -1430,18 +1485,18 @@ xi = linspace(0, 1, n);
 cmap = interp1(x, rdbu_11, xi, 'linear');
 end
 
-function eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, is_red, is_amp, channels, Tf, t_target)
+function eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_subj, nSubj, channels, Tf, t_target)
 % Extract alpha power (8-14 Hz) over occipital channels from TFR, per subject x condition.
+% tfr_*_subj: subject indices (1..nSubj) for each TFR in the cell arrays; required for correct
+%   variance when some subjects have missing TFR (otherwise j-th TFR may not match j-th in group).
 % Returns eeg_tc: nSubj x 3 x Tf.
-nSubj = numel(is_red);
 eeg_tc = nan(nSubj, 3, Tf);
-red_list = find(is_red);
-amp_list = find(is_amp);
 alpha_freq = [8 14];
 for c = 1:3
-    for j = 1:numel(red_list)
-        if j > numel(tfr_red{c}), continue, end
+    for j = 1:numel(tfr_red_subj)
+        if j > numel(tfr_red{c}), break, end
         T = tfr_red{c}{j};
+        s = tfr_red_subj(j);
         if ~isfield(T, 'powspctrm') || ~isfield(T, 'label'), continue, end
         ch_idx = find(ismember(T.label, channels));
         freq_idx = T.freq >= alpha_freq(1) & T.freq <= alpha_freq(2);
@@ -1449,13 +1504,14 @@ for c = 1:3
         alpha_raw = squeeze(mean(mean(T.powspctrm(ch_idx, freq_idx, :), 1, 'omitnan'), 2, 'omitnan'));
         if numel(alpha_raw) ~= numel(T.time), alpha_raw = alpha_raw(:); end
         try
-            eeg_tc(red_list(j), c, :) = interp1(T.time(:), alpha_raw(:), t_target(:), 'linear', NaN);
+            eeg_tc(s, c, :) = interp1(T.time(:), alpha_raw(:), t_target(:), 'linear', NaN);
         catch
         end
     end
-    for j = 1:numel(amp_list)
-        if j > numel(tfr_amp{c}), continue, end
+    for j = 1:numel(tfr_amp_subj)
+        if j > numel(tfr_amp{c}), break, end
         T = tfr_amp{c}{j};
+        s = tfr_amp_subj(j);
         if ~isfield(T, 'powspctrm') || ~isfield(T, 'label'), continue, end
         ch_idx = find(ismember(T.label, channels));
         freq_idx = T.freq >= alpha_freq(1) & T.freq <= alpha_freq(2);
@@ -1463,7 +1519,7 @@ for c = 1:3
         alpha_raw = squeeze(mean(mean(T.powspctrm(ch_idx, freq_idx, :), 1, 'omitnan'), 2, 'omitnan'));
         if numel(alpha_raw) ~= numel(T.time), alpha_raw = alpha_raw(:); end
         try
-            eeg_tc(amp_list(j), c, :) = interp1(T.time(:), alpha_raw(:), t_target(:), 'linear', NaN);
+            eeg_tc(s, c, :) = interp1(T.time(:), alpha_raw(:), t_target(:), 'linear', NaN);
         catch
         end
     end

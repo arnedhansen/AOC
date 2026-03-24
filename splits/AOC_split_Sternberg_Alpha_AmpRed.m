@@ -143,23 +143,23 @@ for c = 1:3
     tfr_amp{c} = {};
 end
 
-% Gaze summary metrics from merged subject table
-metrics = struct();
-metrics.Alpha = nan(nSubj, 3);
-metrics.SPL = nan(nSubj, 3);           % ScanPathLengthFullBL [% change]
-metrics.Dev = nan(nSubj, 3);          % GazeDeviationFullBL [% change]
-metrics.BCEA = nan(nSubj, 3);         % BCEAFullBL [% change]
-metrics.Vel = nan(nSubj, 3);          % velocity [% change], computed below
+% Gaze summary metrics from merged subject table (pre-outlier exclusion)
+metrics_raw = struct();
+metrics_raw.Alpha = nan(nSubj, 3);
+metrics_raw.SPL = nan(nSubj, 3);           % ScanPathLengthFullBL [% change]
+metrics_raw.Dev = nan(nSubj, 3);          % GazeDeviationFullBL [% change]
+metrics_raw.BCEA = nan(nSubj, 3);         % BCEAFullBL [% change]
+metrics_raw.Vel = nan(nSubj, 3);          % velocity [% change], computed below
 
-% Time courses per subject x condition (full resolution)
+% Time courses per subject x condition (full resolution, pre-outlier exclusion)
 fs = 500;
 t_full = -0.5:1/fs:2;
 t_plot = t_full(2:end);
 Tf = numel(t_plot);
-spl_tc = nan(nSubj, 3, Tf);
-dev_tc = nan(nSubj, 3, Tf);
-vel_tc = nan(nSubj, 3, Tf);
-bcea_tc = nan(nSubj, 3, Tf);
+spl_tc_raw = nan(nSubj, 3, Tf);
+dev_tc_raw = nan(nSubj, 3, Tf);
+vel_tc_raw = nan(nSubj, 3, Tf);
+bcea_tc_raw = nan(nSubj, 3, Tf);
 
 missing_eeg = {};
 missing_tfr = {};
@@ -181,10 +181,10 @@ for s = 1:nSubj
     for c = 1:3
         cmask = subj_rows.Condition == cond_vals(c);
         if any(cmask)
-            metrics.Alpha(s, c) = mean(subj_rows.AlphaPower_FOOOF_bl(cmask), 'omitnan');
-            metrics.SPL(s, c) = mean(subj_rows.ScanPathLengthFullBL(cmask), 'omitnan');
-            metrics.Dev(s, c) = mean(subj_rows.GazeDeviationFullBL(cmask), 'omitnan');
-            metrics.BCEA(s, c) = mean(subj_rows.BCEAFullBL(cmask), 'omitnan');
+            metrics_raw.Alpha(s, c) = mean(subj_rows.AlphaPower_FOOOF_bl(cmask), 'omitnan');
+            metrics_raw.SPL(s, c) = mean(subj_rows.ScanPathLengthFullBL(cmask), 'omitnan');
+            metrics_raw.Dev(s, c) = mean(subj_rows.GazeDeviationFullBL(cmask), 'omitnan');
+            metrics_raw.BCEA(s, c) = mean(subj_rows.BCEAFullBL(cmask), 'omitnan');
         end
     end
 
@@ -260,7 +260,7 @@ for s = 1:nSubj
                 catch
                 end
             end
-            spl_tc(s, c, :) = nanmean(mat, 1);
+            spl_tc_raw(s, c, :) = nanmean(mat, 1);
         end
     end
 
@@ -311,10 +311,10 @@ for s = 1:nSubj
                 end
             end
 
-            dev_tc(s, c, :) = nanmean(dev_mat, 1);
-            vel_tc(s, c, :) = nanmean(vel_mat, 1);
-            bcea_tc(s, c, :) = nanmean(bcea_mat, 1);
-            metrics.Vel(s, c) = mean(vel_bl_trials, 'omitnan');
+            dev_tc_raw(s, c, :) = nanmean(dev_mat, 1);
+            vel_tc_raw(s, c, :) = nanmean(vel_mat, 1);
+            bcea_tc_raw(s, c, :) = nanmean(bcea_mat, 1);
+            metrics_raw.Vel(s, c) = mean(vel_bl_trials, 'omitnan');
         end
     end
 end
@@ -325,30 +325,7 @@ is_amp = ismember(uIDs, amplification_ids);
 
 %% Exclude outliers (Tukey 1.5*IQR) before visualization and analyses
 fprintf('\n=== Outlier exclusion (Tukey 1.5*IQR, per metric per condition) ===\n');
-[metrics, spl_tc, dev_tc, vel_tc, bcea_tc] = exclude_outliers_tukey(metrics, spl_tc, dev_tc, vel_tc, bcea_tc);
-
-%% Convert time courses to % change from baseline (match raincloud units)
-bl_idx = t_plot >= -0.5 & t_plot <= -0.25;
-for s = 1:nSubj
-    for c = 1:3
-        bl_spl = mean(spl_tc(s, c, bl_idx), 'omitnan');
-        if isfinite(bl_spl) && bl_spl > 0
-            spl_tc(s, c, :) = 100 * (spl_tc(s, c, :) - bl_spl) / bl_spl;
-        end
-        bl_dev = mean(dev_tc(s, c, bl_idx), 'omitnan');
-        if isfinite(bl_dev) && bl_dev > 0
-            dev_tc(s, c, :) = 100 * (dev_tc(s, c, :) - bl_dev) / bl_dev;
-        end
-        bl_vel = mean(vel_tc(s, c, bl_idx), 'omitnan');
-        if isfinite(bl_vel) && bl_vel > 0
-            vel_tc(s, c, :) = 100 * (vel_tc(s, c, :) - bl_vel) / bl_vel;
-        end
-        bl_bcea = mean(bcea_tc(s, c, bl_idx), 'omitnan');
-        if isfinite(bl_bcea) && bl_bcea > 0
-            bcea_tc(s, c, :) = 100 * (bcea_tc(s, c, :) - bl_bcea) / bl_bcea;
-        end
-    end
-end
+[metrics, spl_tc, dev_tc, vel_tc, bcea_tc] = exclude_outliers_tukey(metrics_raw, spl_tc_raw, dev_tc_raw, vel_tc_raw, bcea_tc_raw);
 
 %% Determine occipital channels (from first available power file)
 channels = {};
@@ -390,22 +367,26 @@ plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, 
 fprintf('\n=== Plotting rainclouds ===\n');
 plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_pos, fontSize);
 
-%% Time courses with effect-size strips
+%% EEG and Gaze time courses with effect-size
 close all
 Tf = size(spl_tc, 3);
 t_full_eeg = linspace(-0.5, 2, Tf);
-% fprintf('\n=== Extracting EEG alpha time course from TFR ===\n');
-% eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, is_red, is_amp, channels, Tf, t_full_eeg);
+addEEG_TC = true;
+eeg_tc = [];
+if addEEG_TC
+    fprintf('\n=== Extracting EEG alpha time course from TFR ===\n');
+    eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, is_red, is_amp, channels, Tf, t_full_eeg);
+end
 
 fprintf('\n=== Plotting time courses ===\n');
 plot_timecourse_with_effect_CBPT(dev_tc, is_red, is_amp, cond_labels, colors, ...
-    'Gaze deviation [px]', 'gaze_deviation', fig_dir, fig_pos, fontSize, fs, []);
+    'Gaze Deviation [px]', 'gaze_deviation', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
 % plot_timecourse_with_effect_CBPT(spl_tc, is_red, is_amp, cond_labels, colors, ...
-%     'Scan path length [px]', 'spl', fig_dir, fig_pos, fontSize, fs, []);
+%     'Scan Path Length [px]', 'spl', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
 % plot_timecourse_with_effect_CBPT(vel_tc, is_red, is_amp, cond_labels, colors, ...
-%     'Eye velocity [px/s]', 'velocity', fig_dir, fig_pos, fontSize, fs, []);
+%     'Eye Velocity [px/s]', 'velocity', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
 % plot_timecourse_with_effect_CBPT(bcea_tc, is_red, is_amp, cond_labels, colors, ...
-%     'BCEA [px^2]', 'bcea', fig_dir, fig_pos, fontSize, fs, []);
+%     'BCEA [px^2]', 'bcea', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC);
 
 %% Sanity checks
 fprintf('\n=== Data Diagnostics ===\n');
@@ -806,12 +787,12 @@ cfg.xlim = [-.5 2];
 cfg.ylim = [5 30];
 cfg.layout = headmodel.layANThead;
 
-% Single 2x3 figure: row 1 = Reduction, row 2 = Amplification
+% Single 3x2 figure: column 1 = Reduction, column 2 = Amplification
 fsz_tfr = round(fsz * 0.8);  % ~20% reduction
 figure('Position', fig_pos, 'Color', 'w');
 for c = 1:3
-    % Row 1: Reduction
-    ax = subplot(2, 3, c);
+    % Column 1: Reduction (rows 1–3)
+    ax = subplot(3, 2, (c-1)*2 + 1);
     cfg.figure = ax;
     ft_singleplotTFR(cfg, ga_red{c});
     colormap(ax, color_map);
@@ -822,8 +803,8 @@ for c = 1:3
     set(ax, 'FontSize', fsz_tfr);
     title(ax, sprintf('Reduction - %s', cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
 
-    % Row 2: Amplification
-    ax = subplot(2, 3, 3 + c);
+    % Column 2: Amplification (rows 1–3)
+    ax = subplot(3, 2, (c-1)*2 + 2);
     cfg.figure = ax;
     ft_singleplotTFR(cfg, ga_amp{c});
     colormap(ax, color_map);
@@ -889,7 +870,7 @@ end
 % Single 2x3 figure: row 1 = Reduction, row 2 = Amplification
 figure('Position', fig_pos, 'Color', 'w');
 for c = 1:3
-    % Row 1: Reduction
+    % Row 1: Reduction (cols 1–3)
     ax = subplot(2, 3, c);
     cfg.figure = ax;
     ft_topoplotER(cfg, ga_red{c});
@@ -897,7 +878,7 @@ for c = 1:3
     set(ax, 'FontSize', fsz);
     title(ax, sprintf('Reduction - %s', cond_labels{c}), 'Interpreter', 'none');
 
-    % Row 2: Amplification
+    % Row 2: Amplification (cols 1–3)
     ax = subplot(2, 3, 3 + c);
     cfg.figure = ax;
     ft_topoplotER(cfg, ga_amp{c});
@@ -974,9 +955,34 @@ for m = 1:size(metric_defs, 1)
 end
 end
 
+function draw_one_cloud(yvals, xpos, col, box_w, dot_size, dot_alpha)
+y = yvals(isfinite(yvals));
+if numel(y) < 3
+    return
+end
+[f, xi] = ksdensity(y, 'NumPoints', 120);
+f = f / max(f) * 0.35;
+fill([xpos - f, fliplr(repmat(xpos, 1, numel(f)))], [xi, fliplr(xi)], col, ...
+    'FaceAlpha', 0.30, 'EdgeColor', col, 'LineWidth', 1);
+q1 = prctile(y, 25);
+q3 = prctile(y, 75);
+med = median(y);
+p5 = prctile(y, 5);
+p95 = prctile(y, 95);
+plot([xpos xpos], [p5 q1], '-k', 'LineWidth', 1.2);
+plot([xpos xpos], [q3 p95], '-k', 'LineWidth', 1.2);
+rectangle('Position', [xpos-box_w/2, q1, box_w, q3-q1], ...
+    'FaceColor', [col 0.08], 'EdgeColor', 'k', 'LineWidth', 1.2);
+plot(xpos + [-box_w/2 box_w/2], [med med], '-k', 'LineWidth', 2);
+jit = 0.10*(rand(numel(y),1)-0.5);
+scatter(xpos + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, ...
+    'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
+end
+
 % Cluster-based permutation test
-function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, cond_labels, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, eeg_tc)
+function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, cond_labels, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, eeg_tc, addEEG_TC)
 if nargin < 12, eeg_tc = []; end
+if nargin < 13, addEEG_TC = ~isempty(eeg_tc); end
 dt = 1 / fs;
 nT = size(tc, 3);
 t_plot = linspace(-0.5 + dt, 2, nT);
@@ -991,10 +997,7 @@ end
 figure('Position', fig_pos, 'Color', 'w');
 nR = size(Rall, 1);
 nA = size(Aall, 1);
-has_eeg = ~isempty(eeg_tc) && numel(eeg_tc) >= nT && size(eeg_tc, 1) >= (nR + nA);
-if has_eeg
-    has_eeg = size(eeg_tc, 2) >= 1 && size(eeg_tc, 3) >= nT;
-end
+has_eeg = addEEG_TC && ~isempty(eeg_tc) && size(eeg_tc, 1) >= (nR + nA) && size(eeg_tc, 2) >= 1 && size(eeg_tc, 3) >= nT;
 if has_eeg
     tiledlayout(4, 1, 'TileSpacing', 'compact');
 else
@@ -1011,18 +1014,25 @@ sR(~isfinite(sR)) = NaN;
 sA(~isfinite(sA)) = NaN;
 e1 = shadedErrorBar(t_plot, mR, sR, 'lineProps', {'-'}, 'transparent', true);
 e2 = shadedErrorBar(t_plot, mA, sA, 'lineProps', {'-'}, 'transparent', true);
-set(e1.mainLine, 'Color', colors(1,:), 'LineWidth', 2.5);
-set(e2.mainLine, 'Color', colors(3,:), 'LineWidth', 2.5);
+set(e1.mainLine, 'Color', colors(1,:), 'LineWidth', 3.5);
+set(e2.mainLine, 'Color', colors(3,:), 'LineWidth', 3.5);
 set(e1.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.25);
 set(e2.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.25);
 xline(0, '--k');
-ylabel(ylab, 'FontSize', max(8, fsz-2));
+ylabel(ylab);
 xlim([-0.5 2]);
 box on
-set(gca, 'FontSize', fsz-2);
-legend([e1.mainLine e2.mainLine], {'Reduction', 'Amplification'}, 'Location', 'northeast', 'FontSize', fsz-2);
+set(gca, 'FontSize', fsz-4);
+% Legend with colored patch boxes (clearer than thin lines)
+leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
+leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
+legend([leg_p1 leg_p2], {'Reduction', 'Amplification'}, 'Location', 'northeast', 'FontSize', fsz-2);
+if strcmp(save_tag, 'gaze_deviation')
+    yl = ylim;
+    ylim([max(0, yl(1)) yl(2)]);
+end
 nexttile; hold on
-n_perm = 2000;
+n_perm = 1000;
 min_per_group = 3;
 d = nan(1, nT);
 for t = 1:nT
@@ -1032,17 +1042,17 @@ for t = 1:nT
     sp = sqrt(((numel(x)-1)*var(x) + (numel(y)-1)*var(y)) / max(numel(x)+numel(y)-2, 1));
     d(t) = (mean(y) - mean(x)) / max(sp, eps);
 end
-ds_factor = 5;
+ds_factor = 10;
 Rall_ds = Rall(:, 1:ds_factor:end);
 Aall_ds = Aall(:, 1:ds_factor:end);
 nT_ds = size(Rall_ds, 2);
 t_plot_ds = t_plot(1:ds_factor:end);
 dt_ds = ds_factor * dt;
-[clusters, tvals_cl, thr, maxMassNull, maxExtentNull] = ft_cluster_permutation_1d(Rall_ds, Aall_ds, n_perm, 0.05, 'onetail_neg', t_plot_ds);
-nAbove = sum(tvals_cl < -thr.tcrit & isfinite(tvals_cl));
+[clusters, tvals_cl, thr, maxMassNull, maxExtentNull] = ft_cluster_permutation_1d(Rall_ds, Aall_ds, n_perm, 0.05, 'onetail_pos', t_plot_ds);
+nAbove = sum(tvals_cl > thr.tcrit & isfinite(tvals_cl));
 maxClMass = max([0, arrayfun(@(k) clusters(k).mass, 1:numel(clusters))]);
 maxClExtent = max([0, arrayfun(@(k) clusters(k).extent, 1:numel(clusters))]);
-fprintf('  [%s] n_red=%d n_amp=%d tcrit=%.2f (one-tailed) t<-tcrit at %d timepts; max cluster mass=%.1f; max cluster extent=%d\n', ...
+fprintf('  [%s] n_red=%d n_amp=%d tcrit=%.2f (one-tailed Red>Amp) t>tcrit at %d timepts; max cluster mass=%.1f; max cluster extent=%d\n', ...
     save_tag, nR, nA, thr.tcrit, nAbove, maxClMass, maxClExtent);
 if ~isempty(maxMassNull)
     fprintf('    CBPT gaze: nT_ds=%d (%.0f ms bins); null mass: median=%.1f, 90th=%.1f, 95th=%.1f; null extent: median=%d, 90th=%d, 95th=%d\n', ...
@@ -1070,9 +1080,9 @@ if ~isempty(clusters)
 else
     t_fin = tvals_cl(isfinite(tvals_cl));
     if ~isempty(t_fin)
-        [t_min, idx_min] = min(tvals_cl);
-        fprintf('    No clusters formed (no contiguous t<-tcrit); most negative t=%.2f at t=%.2fs\n', ...
-            t_min, t_plot_ds(idx_min));
+        [t_max, idx_max] = max(tvals_cl);
+        fprintf('    No clusters formed (no contiguous t>tcrit); largest t=%.2f at t=%.2fs\n', ...
+            t_max, t_plot_ds(idx_max));
     else
         fprintf('    No clusters; no valid t-values\n');
     end
@@ -1083,11 +1093,11 @@ for k = 1:numel(clusters)
         sig_cluster(clusters(k).idx) = true;
     end
 end
-sig_uncorr = (tvals_cl < -thr.tcrit) & isfinite(tvals_cl);
+sig_uncorr = (tvals_cl > thr.tcrit) & isfinite(tvals_cl);
 sig = sig_cluster;
 if ~any(sig) && any(sig_uncorr)
     sig = sig_uncorr;
-    fprintf('  [%s] (cluster n.s.; shading uncorrected t<-tcrit)\n', save_tag);
+    fprintf('  [%s] (cluster n.s.; shading uncorrected t>tcrit)\n', save_tag);
 end
 d_ds = d(1:ds_factor:end);
 if any(sig_cluster)
@@ -1100,101 +1110,71 @@ if sig(end), run_end(end) = true; end
 starts = find(run_start);
 ends = find(run_end);
 d_fin = d(isfinite(d));
-ylims = [min(d_fin, [], 'omitnan') - 0.1, max(d_fin, [], 'omitnan') + 0.1];
-if isempty(d_fin) || any(~isfinite(ylims)) || diff(ylims) < 0.1, ylims = [-1 1]; end
+mx = max(abs(d_fin), [], 'omitnan');
+if isempty(d_fin) || ~isfinite(mx) || mx == 0
+    ylims = [-0.6 0.6];
+else
+    ylims = [-max(mx + 0.1, 0.6), max(mx + 0.1, 0.6)];
+end
 patch_alpha = 0.4 * ~any(sig_cluster) + 0.25 * any(sig_cluster);
 for k = 1:numel(starts)
-    t1 = t_plot_ds(starts(k)) - dt_ds/2;
+    t1 = max(0, t_plot_ds(starts(k)) - dt_ds/2);
     t2 = t_plot_ds(ends(k)) + dt_ds/2;
     patch([t1 t2 t2 t1], [ylims(1) ylims(1) ylims(2) ylims(2)], [0.5 0.5 0.5], 'FaceAlpha', patch_alpha, 'EdgeColor', 'none');
 end
 ylim(ylims);
-plot(t_plot, d, 'k-', 'LineWidth', 2.5);
+plot(t_plot, d, 'k-', 'LineWidth', 3.5);
 yline(0, '--');
 xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Cohen''s d');
-title('Gaze');
 xlim([-0.5 2]);
 box on
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)
-    text(0.75, ylims(2) - 0.08*diff(ylims), 'WARNING: No significant clusters; shading shows uncorrected t<-t_{crit}', ...
+    text(0.75, ylims(2) - 0.08*diff(ylims), 'WARNING: No significant clusters; shading shows uncorrected t>t_{crit}', ...
         'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'HorizontalAlignment', 'center');
 end
 
-% EEG Cohen's d panel (4th row when has_eeg) - CBPT with 50 ms bins
+% Alpha power time course panel (4th row when has_eeg) - two lines with shaded error bars
 if has_eeg
     EegR = squeeze(mean(eeg_tc(is_red, :, :), 2, 'omitnan'));
     EegA = squeeze(mean(eeg_tc(is_amp, :, :), 2, 'omitnan'));
-    d_eeg = nan(1, nT);
-    for t = 1:nT
-        x = EegR(:, t); y = EegA(:, t);
-        x = x(isfinite(x)); y = y(isfinite(y));
-        if numel(x) < min_per_group || numel(y) < min_per_group, continue, end
-        sp = sqrt(((numel(x)-1)*var(x) + (numel(y)-1)*var(y)) / max(numel(x)+numel(y)-2, 1));
-        d_eeg(t) = (mean(y) - mean(x)) / max(sp, eps);
+    if win_sm > 1
+        EegR = movmean(EegR, win_sm, 2, 'omitnan');
+        EegA = movmean(EegA, win_sm, 2, 'omitnan');
     end
-    ds_factor_eeg = 25;  % 50 ms bins
-    EegR_ds = EegR(:, 1:ds_factor_eeg:end);
-    EegA_ds = EegA(:, 1:ds_factor_eeg:end);
-    nT_ds_eeg = size(EegR_ds, 2);
-    t_plot_ds_eeg = t_plot(1:ds_factor_eeg:end);
-    dt_ds_eeg = ds_factor_eeg * dt;
-    [clusters_eeg, tvals_eeg, thr_eeg, ~, ~] = ft_cluster_permutation_1d(EegR_ds, EegA_ds, n_perm, 0.05, 'twotail', t_plot_ds_eeg);
-    nAbove_eeg = sum(abs(tvals_eeg) > thr_eeg.tcrit & isfinite(tvals_eeg));
-    maxClMass_eeg = max([0, arrayfun(@(k) clusters_eeg(k).mass, 1:numel(clusters_eeg))]);
-    maxClExtent_eeg = max([0, arrayfun(@(k) clusters_eeg(k).extent, 1:numel(clusters_eeg))]);
-    fprintf('  [%s EEG alpha] n_red=%d n_amp=%d tcrit=%.2f |t|>tcrit at %d timepts; max cluster mass=%.1f; max extent=%d\n', ...
-        save_tag, nR, nA, thr_eeg.tcrit, nAbove_eeg, maxClMass_eeg, maxClExtent_eeg);
-    sig_cluster_eeg = false(1, nT_ds_eeg);
-    for k = 1:numel(clusters_eeg)
-        if clusters_eeg(k).p < 0.05
-            sig_cluster_eeg(clusters_eeg(k).idx) = true;
-        end
-    end
-    sig_uncorr_eeg = (abs(tvals_eeg) > thr_eeg.tcrit) & isfinite(tvals_eeg);
-    sig_eeg = sig_cluster_eeg;
-    if ~any(sig_eeg) && any(sig_uncorr_eeg)
-        sig_eeg = sig_uncorr_eeg;
-        fprintf('  [%s EEG alpha] (cluster n.s.; shading uncorrected |t|>t_{crit})\n', save_tag);
-    end
-    d_eeg_ds = d_eeg(1:ds_factor_eeg:end);
-    if any(sig_cluster_eeg)
-        sig_eeg = sig_eeg & isfinite(d_eeg_ds);
-    end
-    run_s = [false, diff(sig_eeg) == 1]; run_e = [diff(sig_eeg) == -1, false];
-    if sig_eeg(1), run_s(1) = true; end
-    if sig_eeg(end), run_e(end) = true; end
-    starts_e = find(run_s); ends_e = find(run_e);
+    mR_eeg = mean(EegR, 1, 'omitnan');
+    mA_eeg = mean(EegA, 1, 'omitnan');
+    nR_fin_eeg = sum(isfinite(EegR), 1);
+    nA_fin_eeg = sum(isfinite(EegA), 1);
+    sR_eeg = std(EegR, 0, 1, 'omitnan') ./ max(sqrt(nR_fin_eeg), 1);
+    sA_eeg = std(EegA, 0, 1, 'omitnan') ./ max(sqrt(nA_fin_eeg), 1);
+    sR_eeg(~isfinite(sR_eeg)) = NaN;
+    sA_eeg(~isfinite(sA_eeg)) = NaN;
     nexttile; hold on
-    d_eeg_fin = d_eeg(isfinite(d_eeg));
-    mx_eeg = max(abs(d_eeg_fin), [], 'omitnan');
-    if isempty(d_eeg_fin) || ~isfinite(mx_eeg) || mx_eeg == 0
-        yl_eeg = [-1 1];
-    else
-        yl_eeg = [-mx_eeg - 0.1, mx_eeg + 0.1];
-    end
-    patch_alpha_eeg = 0.4 * ~any(sig_cluster_eeg) + 0.25 * any(sig_cluster_eeg);
-    for k = 1:numel(starts_e)
-        t1 = t_plot_ds_eeg(starts_e(k)) - dt_ds_eeg/2;
-        t2 = t_plot_ds_eeg(ends_e(k)) + dt_ds_eeg/2;
-        patch([t1 t2 t2 t1], [yl_eeg(1) yl_eeg(1) yl_eeg(2) yl_eeg(2)], [0.5 0.5 0.5], 'FaceAlpha', patch_alpha_eeg, 'EdgeColor', 'none');
-    end
-    ylim(yl_eeg);
-    plot(t_plot, d_eeg, 'k-', 'LineWidth', 2.5);
+    ebR = shadedErrorBar(t_plot, mR_eeg, sR_eeg, 'lineProps', {'-'}, 'transparent', true);
+    ebA = shadedErrorBar(t_plot, mA_eeg, sA_eeg, 'lineProps', {'-'}, 'transparent', true);
+    set(ebR.mainLine, 'Color', colors(1,:), 'LineWidth', 3.5);
+    set(ebA.mainLine, 'Color', colors(3,:), 'LineWidth', 3.5);
+    set(ebR.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.25);
+    set(ebA.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.25);
     yline(0, '--');
     xline(0, '--k');
+    all_eeg_vals = [mR_eeg(:); mA_eeg(:); mR_eeg(:)-sR_eeg(:); mR_eeg(:)+sR_eeg(:); mA_eeg(:)-sA_eeg(:); mA_eeg(:)+sA_eeg(:)];
+    all_eeg_vals = all_eeg_vals(isfinite(all_eeg_vals));
+    ymax_eeg = max(abs(all_eeg_vals), [], 'omitnan') * 1.1;
+    if isempty(all_eeg_vals) || ~isfinite(ymax_eeg) || ymax_eeg == 0
+        ymax_eeg = 0.1;
+    end
+    ylim([-ymax_eeg ymax_eeg]);
+    ylabel('Alpha Power [dB]');
     xlabel('Time [s]');
-    ylabel('Cohen''s d (EEG)');
-    title('EEG alpha');
     xlim([-0.5 2]);
     box on
     set(gca, 'FontSize', fsz-4);
-    if ~any(sig_cluster_eeg) && any(sig_uncorr_eeg)
-        text(0.75, yl_eeg(2) - 0.08*diff(yl_eeg), 'WARNING: No significant clusters; shading shows uncorrected |t|>t_{crit}', ...
-            'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'HorizontalAlignment', 'center');
-    end
+    leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
+    leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
 end
 
 saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_timecourse_%s_CBPT.png', save_tag)));
@@ -1211,14 +1191,15 @@ function [clusters, tvals, thr, maxMassNull, maxExtentNull] = ft_cluster_permuta
 %   Aall      - nA x nT matrix (group 2, e.g. Amplification)
 %   nPerm     - number of permutations (e.g. 2000)
 %   alpha     - significance level (e.g. 0.05)
-%   tail      - 'onetail_neg' (H1: group1 > group2, i.e. t < 0)
+%   tail      - 'onetail_pos' (H1: group1 > group2, i.e. t > 0; use for Red > Amp)
+%               'onetail_neg' (H1: group1 < group2, i.e. t < 0)
 %               or 'twotail' (H1: group1 ~= group2)
 %   t_plot_ds - (optional) 1 x nT actual time vector. If provided, uses cfg.latency=[0 2]
 %               to restrict clustering to post-stimulus only (avoids baseline clusters).
 %
 % Outputs (compatible with previous cluster_permutation_2sample_1d):
 %   clusters     - struct array with .idx, .mass, .extent, .p, .p_extent
-%   tvals        - 1 x nT t-values (group2 - group1)
+%   tvals        - 1 x nT t-values (group1 - group2; FT indepsamplesT)
 %   thr          - struct with .tcrit, .mass, .extent
 %   maxMassNull  - []; FieldTrip does not expose null distribution
 %   maxExtentNull - []
@@ -1295,8 +1276,13 @@ else
 end
 cfg.channel = chan_label;
 
-if strcmpi(tail, 'onetail_neg')
-    % H1: group1 > group2  =>  t = (mean2 - mean1)/se  < 0
+if strcmpi(tail, 'onetail_pos')
+    % H1: group1 > group2  =>  t = (mean1 - mean2)/se > 0
+    cfg.tail = 1;
+    cfg.clustertail = 1;
+    cfg.alpha = alpha;  % one-tailed
+elseif strcmpi(tail, 'onetail_neg')
+    % H1: group1 < group2  =>  t = (mean1 - mean2)/se < 0
     cfg.tail = -1;
     cfg.clustertail = -1;
     cfg.alpha = alpha;  % one-tailed
@@ -1334,7 +1320,15 @@ clusters = struct('idx', {}, 'mass', {}, 'extent', {}, 'p', {}, 'p_extent', {});
 has_neg = isfield(stat, 'negclusters') && ~isempty(stat.negclusters);
 has_pos = isfield(stat, 'posclusters') && ~isempty(stat.posclusters);
 
-if strcmpi(tail, 'onetail_neg')
+if strcmpi(tail, 'onetail_pos')
+    if has_pos
+        clist = stat.posclusters;
+        lmat = stat.posclusterslabelmat;
+    else
+        clist = struct('prob', {});
+        lmat = zeros(1, nT);
+    end
+elseif strcmpi(tail, 'onetail_neg')
     if has_neg
         clist = stat.negclusters;
         lmat = stat.negclusterslabelmat;
@@ -1381,10 +1375,10 @@ for k = 1:numel(clist)
 end
 
 % Threshold for uncorrected shading
-if strcmpi(tail, 'onetail_neg')
-    thr.tcrit = tinv(1 - alpha, df);
+if strcmpi(tail, 'onetail_pos') || strcmpi(tail, 'onetail_neg')
+    thr.tcrit = tinv(1 - alpha, df);  % one-tailed upper critical value
 else
-    thr.tcrit = tinv(1 - alpha/2, df);
+    thr.tcrit = tinv(1 - alpha/2, df);  % two-tailed
 end
 % FT does not expose explicit mass/extent thresholds
 thr.mass = NaN;

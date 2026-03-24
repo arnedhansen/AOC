@@ -420,14 +420,15 @@ bcea_tc_dB(~isfinite(bcea_tc_dB)) = NaN;
 % Plot time courses
 fprintf('\n=== Plotting time courses ===\n');
 fontSizeTC = 25;
+rng(321)
 plot_timecourse_with_effect_CBPT(dev_tc_dB, is_red, is_amp, cond_labels, colors, ...
     'Gaze Deviation [dB]', 'gaze_deviation_dB', fig_dir, fig_pos, fontSizeTC, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
-plot_timecourse_with_effect_CBPT(spl_tc_dB, is_red, is_amp, cond_labels, colors, ...
-    'Scan Path Length [dB]', 'spl_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
-plot_timecourse_with_effect_CBPT(vel_tc_dB, is_red, is_amp, cond_labels, colors, ...
-    'Eye Velocity [dB]', 'velocity_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
-plot_timecourse_with_effect_CBPT(bcea_tc_dB, is_red, is_amp, cond_labels, colors, ...
-    'BCEA [dB]', 'bcea_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+% plot_timecourse_with_effect_CBPT(spl_tc_dB, is_red, is_amp, cond_labels, colors, ...
+%     'Scan Path Length [dB]', 'spl_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+% plot_timecourse_with_effect_CBPT(vel_tc_dB, is_red, is_amp, cond_labels, colors, ...
+%     'Eye Velocity [dB]', 'velocity_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+% plot_timecourse_with_effect_CBPT(bcea_tc_dB, is_red, is_amp, cond_labels, colors, ...
+%     'BCEA [dB]', 'bcea_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
 
 %% Sanity checks
 fprintf('\n=== Data Diagnostics ===\n');
@@ -459,8 +460,8 @@ for m = 1:numel(metric_names)
     [~, p_one, ~, stats] = ttest2(red_vals, amp_vals, 'Tail', 'right');  % H1: reduction > amp
     [~, p_two] = ttest2(red_vals, amp_vals);
     d = (mean(red_vals) - mean(amp_vals)) / sqrt(((numel(red_vals)-1)*var(red_vals) + (numel(amp_vals)-1)*var(amp_vals)) / (numel(red_vals)+numel(amp_vals)-2));
-    fprintf('  %s: Red mean=%.2f, Amp mean=%.2f; diff=%.2f; one-tailed p(reduction>amp)=%.4f; two-tailed p=%.4f; d=%.3f; n_red=%d, n_amp=%d\n', ...
-        key, mean(red_vals), mean(amp_vals), mean(red_vals)-mean(amp_vals), p_one, p_two, d, numel(red_vals), numel(amp_vals));
+    fprintf('  %s: Red mean=%.2f (SD=%.2f), Amp mean=%.2f (SD=%.2f); diff=%.2f; one-tailed p(reduction>amp)=%.4f; two-tailed p=%.4f; d=%.3f; t(%d)=%.2f; n_red=%d, n_amp=%d\n', ...
+        key, mean(red_vals), std(red_vals), mean(amp_vals), std(amp_vals), mean(red_vals)-mean(amp_vals), p_one, p_two, d, stats.df, stats.tstat, numel(red_vals), numel(amp_vals));
 end
 
 %% Mixed ANOVA: Group × Condition
@@ -1074,7 +1075,7 @@ if strcmp(save_tag, 'gaze_deviation_dB')
     yticks([0, 1, 2, 3, 4, 5])
 end
 nexttile; hold on
-n_perm = 1000;
+n_perm = 10000;
 min_per_group = 3;
 d = nan(1, nT);
 for t = 1:nT
@@ -1104,16 +1105,20 @@ else
     fprintf('    CBPT gaze: nT_ds=%d (%.0f ms bins); FieldTrip ft_timelockstatistics (cluster mass)\n', nT_ds, ds_factor*1000/fs);
 end
 if ~isempty(clusters)
+    bin_width_ms = dt_ds * 1000;
     for k = 1:numel(clusters)
         t_lo = t_plot_ds(clusters(k).idx(1));
         t_hi = t_plot_ds(clusters(k).idx(end));
+        t_start = t_lo - dt_ds/2;  % leading edge of first bin (post-stimulus)
+        t_end = t_hi + dt_ds/2;    % trailing edge of last bin
+        duration_ms = clusters(k).extent * bin_width_ms;
         pass_p = clusters(k).p < 0.05;
         status = 'n.s.';
         if pass_p
             status = 'SIGNIFICANT';
         end
-        fprintf('    Cluster %d: t=[%.2f, %.2f]s, extent=%d pts, mass=%.1f; p=%.4f; %s\n', ...
-            k, t_lo, t_hi, clusters(k).extent, clusters(k).mass, clusters(k).p, status);
+        fprintf('    Cluster %d: window [%.3f, %.3f]s post-stim (duration=%d ms, %d bins @ %.0f ms); mass=%.1f; p=%.4f; %s\n', ...
+            k, t_start, t_end, round(duration_ms), clusters(k).extent, bin_width_ms, clusters(k).mass, clusters(k).p, status);
     end
     if isfinite(thr.mass)
         fprintf('    Gap to significance: mass need +%.1f (have %.1f, need %.1f); extent need +%d (have %d, need %d)\n', ...

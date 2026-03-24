@@ -375,13 +375,13 @@ fprintf('\n=== Extracting EEG alpha time course from TFR ===\n');
 eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, is_red, is_amp, channels, Tf, t_full_eeg);
 
 fprintf('\n=== Plotting time courses ===\n');
-plot_timecourse_with_effect(spl_tc, is_red, is_amp, cond_labels, colors, ...
+plot_timecourse_with_effect_CBPT(spl_tc, is_red, is_amp, cond_labels, colors, ...
     'Scan Path Length [px]', 'spl', fig_dir, fig_pos, fontSize, fs, eeg_tc);
-plot_timecourse_with_effect(vel_tc, is_red, is_amp, cond_labels, colors, ...
+plot_timecourse_with_effect_CBPT(vel_tc, is_red, is_amp, cond_labels, colors, ...
     'Eye Velocity [px/s]', 'velocity', fig_dir, fig_pos, fontSize, fs, eeg_tc);
-plot_timecourse_with_effect(dev_tc, is_red, is_amp, cond_labels, colors, ...
+plot_timecourse_with_effect_CBPT(dev_tc, is_red, is_amp, cond_labels, colors, ...
     'Gaze Deviation [px]', 'gaze_deviation', fig_dir, fig_pos, fontSize, fs, eeg_tc);
-plot_timecourse_with_effect(bcea_tc, is_red, is_amp, cond_labels, colors, ...
+plot_timecourse_with_effect_CBPT(bcea_tc, is_red, is_amp, cond_labels, colors, ...
     'BCEA [px^2]', 'bcea', fig_dir, fig_pos, fontSize, fs, eeg_tc);
 
 %% Correlation panels 
@@ -955,8 +955,9 @@ for m = 1:size(metric_defs, 1)
 end
 end
 
-function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, cond_labels, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs)
+function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, cond_labels, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, eeg_tc)
 % Backup: cluster-based permutation test version. Saves figures with _CBPT suffix.
+if nargin < 12, eeg_tc = []; end
 dt = 1 / fs;
 nT = size(tc, 3);
 t_plot = linspace(-0.5 + dt, 2, nT);
@@ -969,7 +970,12 @@ if win_sm > 1
     Aall = movmean(Aall, win_sm, 2, 'omitnan');
 end
 figure('Position', fig_pos, 'Color', 'w');
-has_eeg = ~isempty(eeg_tc) && size(eeg_tc, 1) == numel(is_red) && size(eeg_tc, 3) == nT;
+nR = size(Rall, 1);
+nA = size(Aall, 1);
+has_eeg = ~isempty(eeg_tc) && numel(eeg_tc) >= nT && size(eeg_tc, 1) >= (nR + nA);
+if has_eeg
+    has_eeg = size(eeg_tc, 2) >= 1 && size(eeg_tc, 3) >= nT;
+end
 if has_eeg
     tiledlayout(4, 1, 'TileSpacing', 'compact');
 else
@@ -997,8 +1003,6 @@ box on
 set(gca, 'FontSize', fsz-2);
 legend([e1.mainLine e2.mainLine], {'Reduction', 'Amplification'}, 'Location', 'northeast', 'FontSize', fsz-2);
 nexttile; hold on
-nR = size(Rall, 1);
-nA = size(Aall, 1);
 n_perm = 2000;
 min_per_group = 3;
 d = nan(1, nT);
@@ -1009,19 +1013,13 @@ for t = 1:nT
     sp = sqrt(((numel(x)-1)*var(x) + (numel(y)-1)*var(y)) / max(numel(x)+numel(y)-2, 1));
     d(t) = (mean(y) - mean(x)) / max(sp, eps);
 end
-ds_factor = 10;
-Rall_ds = Rall(:, 1:ds_factor:end);
-Aall_ds = Aall(:, 1:ds_factor:end);
-nT_ds = size(Rall_ds, 2);
-t_plot_ds = t_plot(1:ds_factor:end);
-dt_ds = ds_factor * dt;
-[clusters, tvals_cl, thr] = cluster_permutation_2sample_1d(Rall_ds, Aall_ds, n_perm, 0.05, 'onetail_neg');
+[clusters, tvals_cl, thr] = cluster_permutation_2sample_1d(Rall, Aall, n_perm, 0.05, 'onetail_neg');
 nAbove = sum(tvals_cl < -thr.tcrit & isfinite(tvals_cl));
 maxClMass = max([0, arrayfun(@(k) clusters(k).mass, 1:numel(clusters))]);
 maxClExtent = max([0, arrayfun(@(k) clusters(k).extent, 1:numel(clusters))]);
 fprintf('  [%s] n_red=%d n_amp=%d tcrit=%.2f (one-tailed) t<-tcrit at %d timepts; max cluster mass=%.1f; mass_thr=%.1f; max cluster extent=%d; extent_thr=%d\n', ...
     save_tag, nR, nA, thr.tcrit, nAbove, maxClMass, thr.mass, maxClExtent, thr.extent);
-sig_cluster = false(1, nT_ds);
+sig_cluster = false(1, nT);
 for k = 1:numel(clusters)
     if clusters(k).mass >= thr.mass || clusters(k).extent >= thr.extent
         sig_cluster(clusters(k).idx) = true;
@@ -1033,9 +1031,8 @@ if ~any(sig) && any(sig_uncorr)
     sig = sig_uncorr;
     fprintf('  [%s] (cluster n.s.; shading uncorrected t<-tcrit)\n', save_tag);
 end
-d_ds = d(1:ds_factor:end);
 if any(sig_cluster)
-    sig = sig & isfinite(d_ds);
+    sig = sig & isfinite(d);
 end
 run_start = [false, diff(sig) == 1];
 run_end = [diff(sig) == -1, false];
@@ -1048,8 +1045,8 @@ ylims = [min(d_fin, [], 'omitnan') - 0.1, max(d_fin, [], 'omitnan') + 0.1];
 if isempty(d_fin) || any(~isfinite(ylims)) || diff(ylims) < 0.1, ylims = [-1 1]; end
 patch_alpha = 0.4 * ~any(sig_cluster) + 0.25 * any(sig_cluster);
 for k = 1:numel(starts)
-    t1 = t_plot_ds(starts(k)) - dt_ds/2;
-    t2 = t_plot_ds(ends(k)) + dt_ds/2;
+    t1 = t_plot(starts(k)) - dt/2;
+    t2 = t_plot(ends(k)) + dt/2;
     patch([t1 t2 t2 t1], [ylims(1) ylims(1) ylims(2) ylims(2)], [0.5 0.5 0.5], 'FaceAlpha', patch_alpha, 'EdgeColor', 'none');
 end
 ylim(ylims);
@@ -1057,10 +1054,85 @@ plot(t_plot, d, 'k-', 'LineWidth', 2.5);
 yline(0, '--');
 xline(0, '--k');
 xlabel('Time [s]');
-ylabel('Cohen''s d');
+ylabel('Cohen''s d (gaze)');
+title('Gaze');
 xlim([-0.5 2]);
 box on
 set(gca, 'FontSize', fsz-4);
+if ~any(sig_cluster) && any(sig_uncorr)
+    text(0.75, ylims(2) - 0.08*diff(ylims), 'WARNING: No significant clusters; shading shows uncorrected t<-t_{crit}', ...
+        'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'HorizontalAlignment', 'center');
+end
+
+% EEG Cohen's d panel (4th row when has_eeg)
+if has_eeg
+    EegR = squeeze(mean(eeg_tc(is_red, :, :), 2, 'omitnan'));
+    EegA = squeeze(mean(eeg_tc(is_amp, :, :), 2, 'omitnan'));
+    d_eeg = nan(1, nT);
+    for t = 1:nT
+        x = EegR(:, t); y = EegA(:, t);
+        x = x(isfinite(x)); y = y(isfinite(y));
+        if numel(x) < min_per_group || numel(y) < min_per_group, continue, end
+        sp = sqrt(((numel(x)-1)*var(x) + (numel(y)-1)*var(y)) / max(numel(x)+numel(y)-2, 1));
+        d_eeg(t) = (mean(y) - mean(x)) / max(sp, eps);
+    end
+    bin_width = 0.1;
+    bin_edges = 0:bin_width:2;
+    nBins = numel(bin_edges) - 1;
+    p_bins_eeg = nan(1, nBins);
+    for b = 1:nBins
+        t_lo = bin_edges(b); t_hi = bin_edges(b + 1);
+        idx = t_plot >= t_lo & (t_plot < t_hi | (b == nBins & t_plot <= t_hi));
+        if sum(idx) < 2, continue, end
+        red_b = mean(EegR(:, idx), 2, 'omitnan'); red_b = red_b(isfinite(red_b));
+        amp_b = mean(EegA(:, idx), 2, 'omitnan'); amp_b = amp_b(isfinite(amp_b));
+        if numel(red_b) < 3 || numel(amp_b) < 3, continue, end
+        [~, p_bins_eeg(b)] = ttest2(red_b, amp_b, 'Tail', 'right');
+    end
+    valid_eeg = isfinite(p_bins_eeg);
+    if any(valid_eeg)
+        q_bins_eeg = nan(size(p_bins_eeg));
+        q_bins_eeg(valid_eeg) = mafdr(p_bins_eeg(valid_eeg), 'BHFDR', true);
+    else
+        q_bins_eeg = nan(size(p_bins_eeg));
+    end
+    sig_eeg = false(1, nT);
+    for b = 1:nBins
+        if ~isfinite(q_bins_eeg(b)) || q_bins_eeg(b) >= 0.05, continue, end
+        t_lo = bin_edges(b); t_hi = bin_edges(b + 1);
+        idx = t_plot >= t_lo & (t_plot < t_hi | (b == nBins & t_plot <= t_hi));
+        sig_eeg(idx) = true;
+    end
+    run_s = [false, diff(sig_eeg) == 1]; run_e = [diff(sig_eeg) == -1, false];
+    if sig_eeg(1), run_s(1) = true; end
+    if sig_eeg(end), run_e(end) = true; end
+    starts_e = find(run_s); ends_e = find(run_e);
+    nexttile; hold on
+    d_eeg_fin = d_eeg(isfinite(d_eeg));
+    mx_eeg = max(abs(d_eeg_fin), [], 'omitnan');
+    if isempty(d_eeg_fin) || ~isfinite(mx_eeg) || mx_eeg == 0
+        yl_eeg = [-1 1];
+    else
+        yl_eeg = [-mx_eeg - 0.1, mx_eeg + 0.1];
+    end
+    for k = 1:numel(starts_e)
+        t1 = t_plot(starts_e(k)) - dt/2; t2 = t_plot(ends_e(k)) + dt/2;
+        patch([t1 t2 t2 t1], [yl_eeg(1) yl_eeg(1) yl_eeg(2) yl_eeg(2)], [0.5 0.5 0.5], 'FaceAlpha', 0.3, 'EdgeColor', 'none');
+    end
+    ylim(yl_eeg);
+    plot(t_plot, d_eeg, 'k-', 'LineWidth', 2.5);
+    yline(0, '--');
+    xline(0, '--k');
+    xlabel('Time [s]');
+    ylabel('Cohen''s d (EEG)');
+    title('EEG alpha');
+    xlim([-0.5 2]);
+    box on
+    set(gca, 'FontSize', fsz-4);
+    n_sig_eeg = sum(q_bins_eeg < 0.05 & isfinite(q_bins_eeg));
+    fprintf('  [%s EEG alpha] 100 ms bins: %d sig (FDR q<0.05)\n', save_tag, n_sig_eeg);
+end
+
 saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_timecourse_%s_CBPT.png', save_tag)));
 close(gcf);
 end

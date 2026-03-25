@@ -34,7 +34,7 @@ end
 addpath(seb_path);
 
 feat_dir = fullfile(base_data, 'data', 'features');
-fig_dir = fullfile(base_data, 'figures', 'interactions', 'SplitAlphaAmpRed');
+fig_dir = fullfile(base_data, 'figures', 'splits', 'SplitAlphaAmpRed');
 if ~isfolder(fig_dir)
     mkdir(fig_dir);
 end

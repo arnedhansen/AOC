@@ -1,4 +1,4 @@
-%% AOC Split Sternberg Alpha Over Loads
+%% AOC Split Sternberg Alpha Loads
 % Stratifies participants by alpha power slope across WM load (2,4,6).
 % Alpha increase vs decrease subgroups; TFRs, power spectra, behavioral (RT, ACC),
 % optional gaze density. Uses 1-2 s retention window for alpha extraction.
@@ -21,7 +21,7 @@ else
     base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC';
 end
 feat_dir = fullfile(base_data, 'data', 'features');
-fig_dir = fullfile(base_data, 'figures', 'interactions', 'splitAlphaOverLoads');
+fig_dir = fullfile(base_data, 'figures', 'splits', 'SplitAlphaLoads');
 if ~isfolder(fig_dir)
     mkdir(fig_dir);
 end
@@ -38,10 +38,12 @@ color_map = interp1(linspace(0,1,5), ...
     [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
 %% Loop over subjects - load EEG TFR (FOOOF, baselined)
+clc
 cfg_bl = [];
 cfg_bl.baseline     = [-.5 -.25];
 cfg_bl.baselinetype = 'absolute';
 for subj = 1:length(subjects)
+    fprintf('LOADING Subject %d', subj)
     eeg_dir = fullfile(path, subjects{subj}, 'eeg');
     f = fullfile(eeg_dir, 'tfr_stern.mat');
     if ~isfile(f)
@@ -106,9 +108,6 @@ thr = 0.01;
 idx_jensen = slope > thr;
 idx_nback  = slope < -thr;
 idx_flat   = abs(slope) <= thr;
-sum(idx_jensen)
-sum(idx_nback)
-sum(idx_flat)
 
 % counts
 n_j = sum(idx_jensen);
@@ -133,7 +132,7 @@ legend({sprintf('\\alpha increase with load (N=%d)', n_j), ...
     'threshold'})
 box on
 set(gca, 'FontSize', 15)
-saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_histogram_inclusion.png'));
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_histogram_inclusion.png'));
 
 %% Grand averages per subgroup
 cfg = [];
@@ -175,7 +174,7 @@ subplot(3,2,6); ft_singleplotTFR(cfg, ga6nback); title('Decrease: WM load 6', 'F
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
 set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 colormap(gcf, color_map);
-saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_TFR.png'));
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_TFR.png'));
 
 %% Select powspctrm (retention 1-2 s)
 cfg = [];
@@ -268,7 +267,7 @@ legend(leg_p_n, {'WM load 2', 'WM load 4', 'WM load 6'}, ...
 set(gca, 'FontSize', fontSize);
 box on
 
-saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_powspctrm.png'));
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_powspctrm.png'));
 
 %% Gaze density (cache: sternberg_split_alphaLoads_gaze.mat)
 gaze_ready = false;
@@ -373,7 +372,7 @@ if ~isfinite(zlimAbs) || zlimAbs == 0
     zlimAbs = 3;
 end
 cfg.zlim = [-zlimAbs zlimAbs];
-figure('Position', [0 0 1512*0.8 982], 'Color', 'w');
+figure('Position', fig_pos, 'Color', 'w');
 
 % Gaze density relative to baseline (dB; tasklate / baseline)
 subplot(3,2,1);
@@ -449,10 +448,10 @@ c.Label.FontSize = fontSize - 2;
 c.FontSize = fontSize - 2;
 
 colormap(gcf, color_map);
-saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_gaze_TFR_dBbaseline.png'));
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_dBbaseline.png'));
 
 %%
-cbpt_file_gaze_taskVsBase = fullfile(stats_dir, 'AOC_split_AlphaOverLoads_CBPT_gaze_tasklate_minus_base.mat');
+cbpt_file_gaze_taskVsBase = fullfile(stats_dir, 'AOC_split_AlphaLoads_CBPT_gaze_tasklate_minus_base.mat');
 if isfile(cbpt_file_gaze_taskVsBase)
     disp('Loading cached CBPT: gaze tasklate vs baseline...')
     load(cbpt_file_gaze_taskVsBase);
@@ -635,7 +634,7 @@ c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
 colormap(color_map);
 
-saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_gaze_TFR_statInc.png'));
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statInc.png'));
 
 %%
 
@@ -662,7 +661,7 @@ cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
 cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
-cbpt_file_gaze_omnibus = fullfile(stats_dir, 'AOC_split_AlphaOverLoads_CBPT_gaze_omnibus_loadEffect.mat');
+cbpt_file_gaze_omnibus = fullfile(stats_dir, 'AOC_split_AlphaLoads_CBPT_gaze_omnibus_loadEffect.mat');
 if isfile(cbpt_file_gaze_omnibus)
     disp('Loading cached CBPT: gaze omnibus load effect...')
     load(cbpt_file_gaze_omnibus);
@@ -787,7 +786,7 @@ c.Ticks = [0 10];
 c.Label.String = 'F-value';
 c.Label.FontSize = fontSize - 2;
 
-saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_gaze_TFR_statF_omnibus.png'));
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statF_omnibus.png'));
 close(gcf);
 %% Test linear (and quadratic) trends across WM load
 funcs_paths = {fullfile(fileparts(mfilename('fullpath')), '..', 'funcs'), '/Volumes/Homestore/OCC/arne/funcs'};
@@ -809,7 +808,7 @@ for pp = 1:numel(funcs_paths)
 end
 
 % ---------------- Linear load trend ----------------
-cbpt_file_gaze_loadtrend = fullfile(stats_dir, 'AOC_split_AlphaOverLoads_CBPT_gaze_linearLoadTrend.mat');
+cbpt_file_gaze_loadtrend = fullfile(stats_dir, 'AOC_split_AlphaLoads_CBPT_gaze_linearLoadTrend.mat');
 do_plot_loadtrend = false;
 if isfile(cbpt_file_gaze_loadtrend)
     disp('Loading cached CBPT: gaze linear load trend...')
@@ -958,7 +957,7 @@ if do_plot_loadtrend
     c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
     c.Label.String = 't-value';
     c.Label.FontSize = fontSize - 2;
-    saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_gaze_TFR_loadTrend.png'));
+    saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadTrend.png'));
     close(gcf);
 end
 
@@ -967,7 +966,7 @@ if ~has_loadtrend
 end
 
 % ---------------- Quadratic load trend ----------------
-cbpt_file_gaze_loadquadratic = fullfile(stats_dir, 'AOC_split_AlphaOverLoads_CBPT_gaze_quadraticLoadTrend.mat');
+cbpt_file_gaze_loadquadratic = fullfile(stats_dir, 'AOC_split_AlphaLoads_CBPT_gaze_quadraticLoadTrend.mat');
 do_plot_loadquadratic = false;
 if isfile(cbpt_file_gaze_loadquadratic)
     disp('Loading cached CBPT: gaze quadratic load trend...')
@@ -1118,7 +1117,7 @@ if do_plot_loadquadratic
     c.Label.String = 't-value';
     c.Label.FontSize = fontSize - 2;
 
-    saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_gaze_TFR_loadQuadratic.png'));
+    saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadQuadratic.png'));
     close(gcf);
 end
 
@@ -1275,7 +1274,7 @@ set(gca,'FontSize',18); box on;
 ylim([50 110])   % same scale for comparison
 
 set(gcf,'color','w');
-saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_RT_ACC.png'));
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_RT_ACC.png'));
 
 %% LME / TOST (test effects)
 nSubj = length(subjects);

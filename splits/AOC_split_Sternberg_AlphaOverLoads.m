@@ -26,6 +26,11 @@ if ~isfolder(fig_dir)
     mkdir(fig_dir);
 end
 
+stats_dir = fullfile(fig_dir, 'cbpt_stats');
+if ~isfolder(stats_dir)
+    mkdir(stats_dir);
+end
+
 %% Figure setup
 fig_pos = [0 0 1512 982];
 fontSize = 15;
@@ -265,150 +270,48 @@ box on
 
 saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_powspctrm.png'));
 
-%% Gaze computation
-fprintf('\n=== Gaze density: per-subject cache check ===\n');
+%% Gaze density (cache: sternberg_split_alphaLoads_gaze.mat)
+gaze_ready = false;
+gaze_cache_file = fullfile(feat_dir, 'sternberg_split_alphaLoads_gaze.mat');
 
-% Heatmap parameters
-fs = 500;
-smooth_val = 5;
-min_valid_samples = 100; % per window, after cleaning
-num_bins = 1000;
-x_grid = linspace(0, 800, num_bins);
-y_grid = linspace(0, 600, num_bins);
-
-t_series = [-0.5, 2];
-t_base = [-0.5, -0.25];
-t_early = [0, 1];
-t_late = [1, 2]; % stimulus window
-
-nSubj = numel(subjects);
-
-% Raw heatmaps (FieldTrip freq structs)
-allgazebase2 = cell(1, nSubj);
-allgazetaskearly2 = cell(1, nSubj);
-allgazetasklate2 = cell(1, nSubj);
-allgazebase4 = cell(1, nSubj);
-allgazetaskearly4 = cell(1, nSubj);
-allgazetasklate4 = cell(1, nSubj);
-allgazebase6 = cell(1, nSubj);
-allgazetaskearly6 = cell(1, nSubj);
-allgazetasklate6 = cell(1, nSubj);
-
-% Normalized heatmaps
-allgazebase2_norm = cell(1, nSubj);
-allgazetaskearly2_norm = cell(1, nSubj);
-allgazetasklate2_norm = cell(1, nSubj);
-allgazebase4_norm = cell(1, nSubj);
-allgazetaskearly4_norm = cell(1, nSubj);
-allgazetasklate4_norm = cell(1, nSubj);
-allgazebase6_norm = cell(1, nSubj);
-allgazetaskearly6_norm = cell(1, nSubj);
-allgazetasklate6_norm = cell(1, nSubj);
-
-cond_codes = [22, 24, 26];   % trialinfo codes used for heatmaps
-cond_list = [2, 4, 6];       % output heatmap labels (WM load)
-
-missing_subjects = {};
-have_any = false;
-
-for s = 1:nSubj
-    subj_id = subjects{s};
-    subj_gaze_dir = fullfile(feat_dir, subj_id, 'gaze');
-    cache_raw = fullfile(subj_gaze_dir, 'sternberg_gaze_dwell_raw.mat');
-    cache_norm = fullfile(subj_gaze_dir, 'sternberg_gaze_dwell_norm.mat');
-
-    if isfile(cache_raw) && isfile(cache_norm)
-        R = load(cache_raw, 'dwell_raw');
-        N = load(cache_norm, 'dwell_norm');
-        if isfield(R, 'dwell_raw') && isfield(N, 'dwell_norm')
-            dw = R.dwell_raw;
-            dn = N.dwell_norm;
-
-            allgazebase2{s} = dw.base2; allgazetaskearly2{s} = dw.early2; allgazetasklate2{s} = dw.late2;
-            allgazebase4{s} = dw.base4; allgazetaskearly4{s} = dw.early4; allgazetasklate4{s} = dw.late4;
-            allgazebase6{s} = dw.base6; allgazetaskearly6{s} = dw.early6; allgazetasklate6{s} = dw.late6;
-
-            allgazebase2_norm{s} = dn.base2; allgazetaskearly2_norm{s} = dn.early2; allgazetasklate2_norm{s} = dn.late2;
-            allgazebase4_norm{s} = dn.base4; allgazetaskearly4_norm{s} = dn.early4; allgazetasklate4_norm{s} = dn.late4;
-            allgazebase6_norm{s} = dn.base6; allgazetaskearly6_norm{s} = dn.early6; allgazetasklate6_norm{s} = dn.late6;
-
-            have_any = true;
-            continue
-        end
-        % If cache exists but is invalid, fall through to recompute.
-        fprintf('  Subject %s: cache invalid, recomputing.\n', subj_id);
-    end
-
-    gaze_series_file = fullfile(subj_gaze_dir, 'gaze_series_sternberg_trials.mat');
-    if ~isfile(gaze_series_file)
-        missing_subjects{end+1} = subj_id; %#ok<AGROW>
-        continue
-    end
-
-    G = load(gaze_series_file);
-    if ~isfield(G, 'gaze_x') || ~isfield(G, 'gaze_y') || ~isfield(G, 'trialinfo')
-        missing_subjects{end+1} = subj_id; %#ok<AGROW>
-        continue
-    end
-
-    gaze_x = G.gaze_x;
-    gaze_y = G.gaze_y;
-    trialinfo = G.trialinfo;
-
-    % Extract trial indices for each WM load condition.
-    conds = parse_trialinfo_conds_for_sternberg_heatmap(trialinfo);
-    trl_idx = cell(1, numel(cond_codes));
-    for ci = 1:numel(cond_codes)
-        trl_idx{ci} = find(conds == cond_codes(ci));
-    end
-
-    dwell_raw = struct();
-    dwell_norm = struct();
-
-    for ci = 1:numel(cond_codes)
-        cond = cond_list(ci);
-        tidx = trl_idx{ci};
-
-        pos_base = extractPosCellsForGazeWindow(gaze_x, gaze_y, tidx, t_series, t_base, min_valid_samples);
-        [freq_base, freq_base_norm] = computeGazeHeatmapFromPosCells(pos_base, x_grid, y_grid, fs, smooth_val);
-
-        pos_early = extractPosCellsForGazeWindow(gaze_x, gaze_y, tidx, t_series, t_early, min_valid_samples);
-        [freq_early, freq_early_norm] = computeGazeHeatmapFromPosCells(pos_early, x_grid, y_grid, fs, smooth_val);
-
-        pos_late = extractPosCellsForGazeWindow(gaze_x, gaze_y, tidx, t_series, t_late, min_valid_samples);
-        [freq_late, freq_late_norm] = computeGazeHeatmapFromPosCells(pos_late, x_grid, y_grid, fs, smooth_val);
-
-        if cond == 2
-            allgazebase2{s} = freq_base; allgazetaskearly2{s} = freq_early; allgazetasklate2{s} = freq_late;
-            allgazebase2_norm{s} = freq_base_norm; allgazetaskearly2_norm{s} = freq_early_norm; allgazetasklate2_norm{s} = freq_late_norm;
-            dwell_raw.base2 = freq_base; dwell_raw.early2 = freq_early; dwell_raw.late2 = freq_late;
-            dwell_norm.base2 = freq_base_norm; dwell_norm.early2 = freq_early_norm; dwell_norm.late2 = freq_late_norm;
-        elseif cond == 4
-            allgazebase4{s} = freq_base; allgazetaskearly4{s} = freq_early; allgazetasklate4{s} = freq_late;
-            allgazebase4_norm{s} = freq_base_norm; allgazetaskearly4_norm{s} = freq_early_norm; allgazetasklate4_norm{s} = freq_late_norm;
-            dwell_raw.base4 = freq_base; dwell_raw.early4 = freq_early; dwell_raw.late4 = freq_late;
-            dwell_norm.base4 = freq_base_norm; dwell_norm.early4 = freq_early_norm; dwell_norm.late4 = freq_late_norm;
-        elseif cond == 6
-            allgazebase6{s} = freq_base; allgazetaskearly6{s} = freq_early; allgazetasklate6{s} = freq_late;
-            allgazebase6_norm{s} = freq_base_norm; allgazetaskearly6_norm{s} = freq_early_norm; allgazetasklate6_norm{s} = freq_late_norm;
-            dwell_raw.base6 = freq_base; dwell_raw.early6 = freq_early; dwell_raw.late6 = freq_late;
-            dwell_norm.base6 = freq_base_norm; dwell_norm.early6 = freq_early_norm; dwell_norm.late6 = freq_late_norm;
-        end
-    end
-
-    if ~isfolder(subj_gaze_dir)
-        mkdir(subj_gaze_dir);
-    end
-    save(cache_raw, 'dwell_raw', '-v7.3');
-    save(cache_norm, 'dwell_norm', '-v7.3');
-
-    have_any = true;
-    fprintf('  Subject %d/%d computed + cached.\n', s, nSubj);
+if ~isfile(gaze_cache_file)
+    fprintf('Gaze cache missing. Building gaze heatmaps from dataET_sternberg and saving to %s.\n', gaze_cache_file);
+    [gaze_raw, gaze_norm] = build_sternberg_split_alphaLoads_gaze_from_raw_et(subjects, path);
+    save(gaze_cache_file, 'gaze_raw', 'gaze_norm', 'subjects', '-v7.3');
 end
 
-gaze_ready = have_any;
-if ~isempty(missing_subjects)
-    fprintf('Gaze dwell heatmaps missing for: %s\n', strjoin(missing_subjects, ', '));
+if isfile(gaze_cache_file)
+    disp('Loading gaze cache...')
+    R = load(gaze_cache_file, 'gaze_raw');
+    N = load(gaze_cache_file, 'gaze_norm');
+    gaze_raw = R.gaze_raw;
+    gaze_norm = N.gaze_norm;
+
+    % Unpack raw
+    allgazebase2 = gaze_raw.allgazebase2;
+    allgazebase4 = gaze_raw.allgazebase4;
+    allgazebase6 = gaze_raw.allgazebase6;
+    allgazetaskearly2 = gaze_raw.allgazetaskearly2;
+    allgazetaskearly4 = gaze_raw.allgazetaskearly4;
+    allgazetaskearly6 = gaze_raw.allgazetaskearly6;
+    allgazetasklate2 = gaze_raw.allgazetasklate2;
+    allgazetasklate4 = gaze_raw.allgazetasklate4;
+    allgazetasklate6 = gaze_raw.allgazetasklate6;
+
+    % Unpack norm
+    allgazebase2_norm = gaze_norm.allgazebase2_norm;
+    allgazebase4_norm = gaze_norm.allgazebase4_norm;
+    allgazebase6_norm = gaze_norm.allgazebase6_norm;
+    allgazetaskearly2_norm = gaze_norm.allgazetaskearly2_norm;
+    allgazetaskearly4_norm = gaze_norm.allgazetaskearly4_norm;
+    allgazetaskearly6_norm = gaze_norm.allgazetaskearly6_norm;
+    allgazetasklate2_norm = gaze_norm.allgazetasklate2_norm;
+    allgazetasklate4_norm = gaze_norm.allgazetasklate4_norm;
+    allgazetasklate6_norm = gaze_norm.allgazetasklate6_norm;
+
+    gaze_ready = true;
+else
+    fprintf('Skipping gaze density: %s not found.\n', gaze_cache_file);
 end
 
 %% Baseline [dB]
@@ -454,151 +357,167 @@ ga4nback_gaze_db = ft_freqgrandaverage(cfg, load4_gaze_db{idx_nback});
 ga6nback_gaze_db = ft_freqgrandaverage(cfg, load6_gaze_db{idx_nback});
 
 %% Plot Gaze TFRs
-% close all
-% cfg = [];
-% cfg.figure = 'gcf';
-% % Robust symmetric z-limits for dB baseline maps
-% allGazeDB = [ ...
-%     ga2jensen_gaze_db.powspctrm(:); ...
-%     ga4jensen_gaze_db.powspctrm(:); ...
-%     ga6jensen_gaze_db.powspctrm(:); ...
-%     ga2nback_gaze_db.powspctrm(:); ...
-%     ga4nback_gaze_db.powspctrm(:); ...
-%     ga6nback_gaze_db.powspctrm(:) ];
-% zlimAbs = max(abs(prctile(allGazeDB, [1 97.5])));
-% if ~isfinite(zlimAbs) || zlimAbs == 0
-%     zlimAbs = 3;
-% end
-% cfg.zlim = [-zlimAbs zlimAbs];
-% figure('Position', [0 0 1512*0.8 982], 'Color', 'w');
-% 
-% % Gaze density relative to baseline (dB; tasklate / baseline)
-% subplot(3,2,1);
-% ft_singleplotTFR(cfg, ga2jensen_gaze_db);
-% title('Amplification: WM Load 2', 'FontSize', fontSize);
-% ax = gca;
-% xlabel(ax, 'x [px]', 'FontSize', fontSize);
-% ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
-% set(ax, 'FontSize', fontSize);
-% c = colorbar(ax);
-% c.Label.String = 'Gaze Density [dB]';
-% c.Label.FontSize = fontSize - 2;
-% c.FontSize = fontSize - 2;
-% 
-% subplot(3,2,3);
-% ft_singleplotTFR(cfg, ga4jensen_gaze_db);
-% title('Amplification: WM Load 4', 'FontSize', fontSize);
-% ax = gca;
-% xlabel(ax, 'x [px]', 'FontSize', fontSize);
-% ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
-% set(ax, 'FontSize', fontSize);
-% c = colorbar(ax);
-% c.Label.String = 'Gaze Density [dB]';
-% c.Label.FontSize = fontSize - 2;
-% c.FontSize = fontSize - 2;
-% 
-% subplot(3,2,5);
-% ft_singleplotTFR(cfg, ga6jensen_gaze_db);
-% title('Amplification: WM Load 6', 'FontSize', fontSize);
-% ax = gca;
-% xlabel(ax, 'x [px]', 'FontSize', fontSize);
-% ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
-% set(ax, 'FontSize', fontSize);
-% c = colorbar(ax);
-% c.Label.String = 'Gaze Density [dB]';
-% c.Label.FontSize = fontSize - 2;
-% c.FontSize = fontSize - 2;
-% 
-% subplot(3,2,2);
-% ft_singleplotTFR(cfg, ga2nback_gaze_db);
-% title('Reduction: WM Load 2', 'FontSize', fontSize);
-% ax = gca;
-% xlabel(ax, 'x [px]', 'FontSize', fontSize);
-% ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
-% set(ax, 'FontSize', fontSize);
-% c = colorbar(ax);
-% c.Label.String = 'Gaze Density [dB]';
-% c.Label.FontSize = fontSize - 2;
-% c.FontSize = fontSize - 2;
-% 
-% subplot(3,2,4);
-% ft_singleplotTFR(cfg, ga4nback_gaze_db);
-% title('Reduction: WM Load 4', 'FontSize', fontSize);
-% ax = gca;
-% xlabel(ax, 'x [px]', 'FontSize', fontSize);
-% ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
-% set(ax, 'FontSize', fontSize);
-% c = colorbar(ax);
-% c.Label.String = 'Gaze Density [dB]';
-% c.Label.FontSize = fontSize - 2;
-% c.FontSize = fontSize - 2;
-% 
-% subplot(3,2,6);
-% ft_singleplotTFR(cfg, ga6nback_gaze_db);
-% title('Reduction: WM Load 6', 'FontSize', fontSize);
-% ax = gca;
-% xlabel(ax, 'x [px]', 'FontSize', fontSize);
-% ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
-% set(ax, 'FontSize', fontSize);
-% c = colorbar(ax);
-% c.Label.String = 'Gaze Density [dB]';
-% c.Label.FontSize = fontSize - 2;
-% c.FontSize = fontSize - 2;
-% 
-% colormap(gcf, color_map);
-% saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_gaze_TFR_dBbaseline.png'));
+close all
+cfg = [];
+cfg.figure = 'gcf';
+% Robust symmetric z-limits for dB baseline maps
+allGazeDB = [ ...
+    ga2jensen_gaze_db.powspctrm(:); ...
+    ga4jensen_gaze_db.powspctrm(:); ...
+    ga6jensen_gaze_db.powspctrm(:); ...
+    ga2nback_gaze_db.powspctrm(:); ...
+    ga4nback_gaze_db.powspctrm(:); ...
+    ga6nback_gaze_db.powspctrm(:) ];
+zlimAbs = max(abs(prctile(allGazeDB, [1 97.5])));
+if ~isfinite(zlimAbs) || zlimAbs == 0
+    zlimAbs = 3;
+end
+cfg.zlim = [-zlimAbs zlimAbs];
+figure('Position', [0 0 1512*0.8 982], 'Color', 'w');
+
+% Gaze density relative to baseline (dB; tasklate / baseline)
+subplot(3,2,1);
+ft_singleplotTFR(cfg, ga2jensen_gaze_db);
+title('Amplification: WM Load 2', 'FontSize', fontSize);
+ax = gca;
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+set(ax, 'FontSize', fontSize);
+c = colorbar(ax);
+c.Label.String = 'Gaze Density [dB]';
+c.Label.FontSize = fontSize - 2;
+c.FontSize = fontSize - 2;
+
+subplot(3,2,3);
+ft_singleplotTFR(cfg, ga4jensen_gaze_db);
+title('Amplification: WM Load 4', 'FontSize', fontSize);
+ax = gca;
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+set(ax, 'FontSize', fontSize);
+c = colorbar(ax);
+c.Label.String = 'Gaze Density [dB]';
+c.Label.FontSize = fontSize - 2;
+c.FontSize = fontSize - 2;
+
+subplot(3,2,5);
+ft_singleplotTFR(cfg, ga6jensen_gaze_db);
+title('Amplification: WM Load 6', 'FontSize', fontSize);
+ax = gca;
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+set(ax, 'FontSize', fontSize);
+c = colorbar(ax);
+c.Label.String = 'Gaze Density [dB]';
+c.Label.FontSize = fontSize - 2;
+c.FontSize = fontSize - 2;
+
+subplot(3,2,2);
+ft_singleplotTFR(cfg, ga2nback_gaze_db);
+title('Reduction: WM Load 2', 'FontSize', fontSize);
+ax = gca;
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+set(ax, 'FontSize', fontSize);
+c = colorbar(ax);
+c.Label.String = 'Gaze Density [dB]';
+c.Label.FontSize = fontSize - 2;
+c.FontSize = fontSize - 2;
+
+subplot(3,2,4);
+ft_singleplotTFR(cfg, ga4nback_gaze_db);
+title('Reduction: WM Load 4', 'FontSize', fontSize);
+ax = gca;
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+set(ax, 'FontSize', fontSize);
+c = colorbar(ax);
+c.Label.String = 'Gaze Density [dB]';
+c.Label.FontSize = fontSize - 2;
+c.FontSize = fontSize - 2;
+
+subplot(3,2,6);
+ft_singleplotTFR(cfg, ga6nback_gaze_db);
+title('Reduction: WM Load 6', 'FontSize', fontSize);
+ax = gca;
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+set(ax, 'FontSize', fontSize);
+c = colorbar(ax);
+c.Label.String = 'Gaze Density [dB]';
+c.Label.FontSize = fontSize - 2;
+c.FontSize = fontSize - 2;
+
+colormap(gcf, color_map);
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_gaze_TFR_dBbaseline.png'));
 
 %%
-cfg                  = [];
-cfg.spmversion       = 'spm12';
-cfg.method           = 'montecarlo';
-cfg.statistic        = 'ft_statfun_depsamplesT';  % paired: baseline vs task
-cfg.clusterthreshold ='nonparametric_common';
-cfg.correctm         = 'cluster';
-cfg.clusteralpha     = 0.05;
-cfg.clusterstatistic = 'maxsum';
-cfg.tail             = 0;
-cfg.clustertail      = 0;
-cfg.alpha            = 0.05;
-cfg.numrandomization = 1000;
+cbpt_file_gaze_taskVsBase = fullfile(stats_dir, 'AOC_split_AlphaOverLoads_CBPT_gaze_tasklate_minus_base.mat');
+if isfile(cbpt_file_gaze_taskVsBase)
+    disp('Loading cached CBPT: gaze tasklate vs baseline...')
+    load(cbpt_file_gaze_taskVsBase);
+else
+    cfg                  = [];
+    cfg.spmversion       = 'spm12';
+    cfg.method           = 'montecarlo';
+    cfg.statistic        = 'ft_statfun_depsamplesT';  % paired: baseline vs task
+    cfg.clusterthreshold ='nonparametric_common';
+    cfg.correctm         = 'cluster';
+    cfg.clusteralpha     = 0.05;
+    cfg.clusterstatistic = 'maxsum';
+    cfg.tail             = 0;
+    cfg.clustertail      = 0;
+    cfg.alpha            = 0.05;
+    cfg.numrandomization = 1000;
 
-cfg.neighbours=[];
-clear design
-subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
-design = zeros(2,2*subj);
-for i = 1:subj
-    design(1,i) = i;
-end
-for i = 1:subj
-    design(1,subj+i) = i;
-end
-design(2,1:subj)        = 1;
-design(2,subj+1:2*subj) = 2;
+    cfg.neighbours=[];
+    clear design
+    subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
+    design = zeros(2,2*subj);
+    for i = 1:subj
+        design(1,i) = i;
+    end
+    for i = 1:subj
+        design(1,subj+i) = i;
+    end
+    design(2,1:subj)        = 1;
+    design(2,subj+1:2*subj) = 2;
 
-cfg.design   = design;
-cfg.uvar     = 1;
-cfg.ivar     = 2;
-disp(upper('[stat_inc_2 JENSEN]')); [stat_inc_2] = ft_freqstatistics(cfg, allgazetasklate2{idx_jensen},allgazebase2{idx_jensen});
-disp(upper('[stat_inc_4 JENSEN]')); [stat_inc_4] = ft_freqstatistics(cfg, allgazetasklate4{idx_jensen},allgazebase4{idx_jensen});
-disp(upper('[stat_inc_6 JENSEN]')); [stat_inc_6] = ft_freqstatistics(cfg, allgazetasklate6{idx_jensen},allgazebase6{idx_jensen});
+    cfg.design   = design;
+    cfg.uvar     = 1;
+    cfg.ivar     = 2;
+    cfg_cbpt_gaze_taskVsBase_jensen = cfg;
+    design_cbpt_gaze_taskVsBase_jensen = design;
+    disp(upper('[stat_inc_2 JENSEN]')); [stat_inc_2] = ft_freqstatistics(cfg, allgazetasklate2{idx_jensen},allgazebase2{idx_jensen});
+    disp(upper('[stat_inc_4 JENSEN]')); [stat_inc_4] = ft_freqstatistics(cfg, allgazetasklate4{idx_jensen},allgazebase4{idx_jensen});
+    disp(upper('[stat_inc_6 JENSEN]')); [stat_inc_6] = ft_freqstatistics(cfg, allgazetasklate6{idx_jensen},allgazebase6{idx_jensen});
 
-subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
-design = zeros(2,2*subj);
-for i = 1:subj
-    design(1,i) = i;
-end
-for i = 1:subj
-    design(1,subj+i) = i;
-end
-design(2,1:subj)        = 1;
-design(2,subj+1:2*subj) = 2;
+    subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
+    design = zeros(2,2*subj);
+    for i = 1:subj
+        design(1,i) = i;
+    end
+    for i = 1:subj
+        design(1,subj+i) = i;
+    end
+    design(2,1:subj)        = 1;
+    design(2,subj+1:2*subj) = 2;
 
-cfg.design   = design;
-cfg.uvar     = 1;
-cfg.ivar     = 2;
-disp(upper('[stat_inc_n_2 N-back]')); [stat_inc_n_2] = ft_freqstatistics(cfg, allgazetasklate2{idx_nback},allgazebase2{idx_nback});
-disp(upper('[stat_inc_n_4 N-back]')); [stat_inc_n_4] = ft_freqstatistics(cfg, allgazetasklate4{idx_nback},allgazebase4{idx_nback});
-disp(upper('[stat_inc_n_6 N-back]')); [stat_inc_n_6] = ft_freqstatistics(cfg, allgazetasklate6{idx_nback},allgazebase6{idx_nback});
+    cfg.design   = design;
+    cfg.uvar     = 1;
+    cfg.ivar     = 2;
+    cfg_cbpt_gaze_taskVsBase_nback = cfg;
+    design_cbpt_gaze_taskVsBase_nback = design;
+    disp(upper('[stat_inc_n_2 N-back]')); [stat_inc_n_2] = ft_freqstatistics(cfg, allgazetasklate2{idx_nback},allgazebase2{idx_nback});
+    disp(upper('[stat_inc_n_4 N-back]')); [stat_inc_n_4] = ft_freqstatistics(cfg, allgazetasklate4{idx_nback},allgazebase4{idx_nback});
+    disp(upper('[stat_inc_n_6 N-back]')); [stat_inc_n_6] = ft_freqstatistics(cfg, allgazetasklate6{idx_nback},allgazebase6{idx_nback});
+
+    save(cbpt_file_gaze_taskVsBase, ...
+        'stat_inc_2', 'stat_inc_4', 'stat_inc_6', ...
+        'stat_inc_n_2', 'stat_inc_n_4', 'stat_inc_n_6', ...
+        'cfg_cbpt_gaze_taskVsBase_jensen', 'design_cbpt_gaze_taskVsBase_jensen', ...
+        'cfg_cbpt_gaze_taskVsBase_nback', 'design_cbpt_gaze_taskVsBase_nback', '-v7.3');
+end
 
 % cohensd=((stat_inc_2.stat)./sqrt(subj));
 % stat_inc_2.stat=cohensd;
@@ -743,34 +662,46 @@ cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
 cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
-[statF_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
-statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
+cbpt_file_gaze_omnibus = fullfile(stats_dir, 'AOC_split_AlphaOverLoads_CBPT_gaze_omnibus_loadEffect.mat');
+if isfile(cbpt_file_gaze_omnibus)
+    disp('Loading cached CBPT: gaze omnibus load effect...')
+    load(cbpt_file_gaze_omnibus);
+else
+    cfg_cbpt_gaze_omnibus_jensen = cfg;
+    [statF_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
+    statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
 
-cfg                  = [];
-cfg.method           = 'montecarlo';
-cfg.statistic        = 'ft_statfun_depsamplesFunivariate';
+    cfg                  = [];
+    cfg.method           = 'montecarlo';
+    cfg.statistic        = 'ft_statfun_depsamplesFunivariate';
 
-cfg.correctm         = 'cluster';
-cfg.clusteralpha     = 0.05;
+    cfg.correctm         = 'cluster';
+    cfg.clusteralpha     = 0.05;
 
-cfg.clusterstatistic = 'maxsum';
+    cfg.clusterstatistic = 'maxsum';
 
-cfg.tail             = 1;
-cfg.clustertail      = cfg.tail;
-cfg.alpha            = 0.05;
-cfg.numrandomization = 1000;
+    cfg.tail             = 1;
+    cfg.clustertail      = cfg.tail;
+    cfg.alpha            = 0.05;
+    cfg.numrandomization = 1000;
 
-subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
-n_2  = subj;
-n_4  = subj;
-n_6 =  subj;
+    subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
+    n_2  = subj;
+    n_4  = subj;
+    n_6 =  subj;
 
-cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
-cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
-cfg.ivar                  = 1;
-cfg.uvar                  = 2;
-[statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
-statF_gaze_n.stat(statF_gaze_n.mask==0)=0;% set everything not relevant to zero
+    cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
+    cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
+    cfg.ivar                  = 1;
+    cfg.uvar                  = 2;
+    cfg_cbpt_gaze_omnibus_nback = cfg;
+    [statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
+    statF_gaze_n.stat(statF_gaze_n.mask==0)=0;% set everything not relevant to zero
+
+    save(cbpt_file_gaze_omnibus, ...
+        'statF_gaze', 'statF_gaze_n', ...
+        'cfg_cbpt_gaze_omnibus_jensen', 'cfg_cbpt_gaze_omnibus_nback', '-v7.3');
+end
 
 %%
 cfg         = [];
@@ -878,7 +809,13 @@ for pp = 1:numel(funcs_paths)
 end
 
 % ---------------- Linear load trend ----------------
-if has_loadtrend
+cbpt_file_gaze_loadtrend = fullfile(stats_dir, 'AOC_split_AlphaOverLoads_CBPT_gaze_linearLoadTrend.mat');
+do_plot_loadtrend = false;
+if isfile(cbpt_file_gaze_loadtrend)
+    disp('Loading cached CBPT: gaze linear load trend...')
+    load(cbpt_file_gaze_loadtrend);
+    do_plot_loadtrend = true;
+elseif has_loadtrend
     cfg                  = [];
     cfg.method           = 'montecarlo';
     cfg.statistic        = 'ft_statfun_loadtrend'; % positive gaze increase with load at that location, negative gaze decrease with load at that location
@@ -901,6 +838,7 @@ if has_loadtrend
     cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
     cfg.ivar                  = 1;
     cfg.uvar                  = 2;
+    cfg_cbpt_gaze_loadtrend_jensen = cfg;
     [statF_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
     statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
 
@@ -928,8 +866,16 @@ if has_loadtrend
     cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
     cfg.ivar                  = 1;
     cfg.uvar                  = 2;
+    cfg_cbpt_gaze_loadtrend_nback = cfg;
     [statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
     statF_gaze_n.stat(statF_gaze_n.mask==0)=0;% set everything not relevant to zero
+    save(cbpt_file_gaze_loadtrend, ...
+        'statF_gaze', 'statF_gaze_n', ...
+        'cfg_cbpt_gaze_loadtrend_jensen', 'cfg_cbpt_gaze_loadtrend_nback', '-v7.3');
+    do_plot_loadtrend = true;
+end
+
+if do_plot_loadtrend
     %%
     cfg         = [];
     cfg.parameter = 'stat';
@@ -1021,7 +967,13 @@ if ~has_loadtrend
 end
 
 % ---------------- Quadratic load trend ----------------
-if has_loadquadratic
+cbpt_file_gaze_loadquadratic = fullfile(stats_dir, 'AOC_split_AlphaOverLoads_CBPT_gaze_quadraticLoadTrend.mat');
+do_plot_loadquadratic = false;
+if isfile(cbpt_file_gaze_loadquadratic)
+    disp('Loading cached CBPT: gaze quadratic load trend...')
+    load(cbpt_file_gaze_loadquadratic);
+    do_plot_loadquadratic = true;
+elseif has_loadquadratic
     cfg                  = [];
     cfg.method           = 'montecarlo';
     cfg.statistic        = 'ft_statfun_loadquadratic'; % positive U-shape lowest at mid load, negative inverted U-shape peaks at mid load
@@ -1045,6 +997,7 @@ if has_loadquadratic
     cfg.design(2,:)           = [1:n_2, 1:n_4, 1:n_6];
     cfg.ivar                  = 1;
     cfg.uvar                  = 2;
+    cfg_cbpt_gaze_loadquadratic_jensen = cfg;
     [statF_gaze_quad] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
     statF_gaze_quad.stat(statF_gaze_quad.mask==0)=0; % set everything not relevant to zero
 
@@ -1071,9 +1024,19 @@ if has_loadquadratic
     cfg.design(2,:)           = [1:n_2, 1:n_4, 1:n_6];
     cfg.ivar                  = 1;
     cfg.uvar                  = 2;
+    cfg_cbpt_gaze_loadquadratic_nback = cfg;
     [statF_gaze_quad_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
     statF_gaze_quad_n.stat(statF_gaze_quad_n.mask==0)=0; % set everything not relevant to zero
 
+    save(cbpt_file_gaze_loadquadratic, ...
+        'statF_gaze_quad', 'statF_gaze_quad_n', ...
+        'cfg_cbpt_gaze_loadquadratic_jensen', 'cfg_cbpt_gaze_loadquadratic_nback', '-v7.3');
+    do_plot_loadquadratic = true;
+else
+    fprintf('Skipping quadratic trend: ft_statfun_loadquadratic not found.\n');
+end
+
+if do_plot_loadquadratic
     cfg         = [];
     cfg.parameter = 'stat';
     cfg.maskparameter = 'mask';
@@ -1157,8 +1120,6 @@ if has_loadquadratic
 
     saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_gaze_TFR_loadQuadratic.png'));
     close(gcf);
-else
-    fprintf('Skipping quadratic trend: ft_statfun_loadquadratic not found.\n');
 end
 
 clear statF_gaze_quad statF_gaze_quad_n
@@ -1611,6 +1572,192 @@ else
     freq_norm = freq_raw;
     freq_norm.powspctrm(:) = 0;
 end
+end
+
+function [gaze_raw, gaze_norm] = build_sternberg_split_alphaLoads_gaze_from_raw_et(subjects, base_path)
+
+n_subj = length(subjects);
+num_bins = 1000;
+% Match heatmap creation settings used in `3_visualization/gaze/heatmap/AOC_gaze_heatmap_sternberg.m`
+smoothing = 10;
+fsample = 500;
+x_grid = linspace(0, 800, num_bins + 1);
+y_grid = linspace(0, 600, num_bins + 1);
+
+allgazebase2 = cell(1, n_subj); allgazetasklate2 = cell(1, n_subj); allgazetaskearly2 = cell(1, n_subj);
+allgazebase4 = cell(1, n_subj); allgazetasklate4 = cell(1, n_subj); allgazetaskearly4 = cell(1, n_subj);
+allgazebase6 = cell(1, n_subj); allgazetasklate6 = cell(1, n_subj); allgazetaskearly6 = cell(1, n_subj);
+
+allgazebase2_norm = cell(1, n_subj); allgazetasklate2_norm = cell(1, n_subj); allgazetaskearly2_norm = cell(1, n_subj);
+allgazebase4_norm = cell(1, n_subj); allgazetasklate4_norm = cell(1, n_subj); allgazetaskearly4_norm = cell(1, n_subj);
+allgazebase6_norm = cell(1, n_subj); allgazetasklate6_norm = cell(1, n_subj); allgazetaskearly6_norm = cell(1, n_subj);
+
+for subj = 1:n_subj
+    fprintf('Building sterngaze subject %d/%d (%s)\n', subj, n_subj, subjects{subj});
+    et_file = fullfile(base_path, subjects{subj}, 'gaze', 'dataET_sternberg.mat');
+    if ~isfile(et_file)
+        et_file = fullfile(base_path, subjects{subj}, 'gaze', 'dataET_sternberg');
+    end
+    if ~isfile(et_file)
+        error('Missing ET file for subject %s: %s', subjects{subj}, et_file);
+    end
+
+    tmp = load(et_file);
+    et = select_et_struct(tmp, subjects{subj});
+
+    n_trials = numel(et.trial);
+    trialinfo_vec = align_trialinfo_to_trials(et.trialinfo, n_trials, subjects{subj});
+    if isempty(trialinfo_vec)
+        error('No trials available after trialinfo alignment for subject %s.', subjects{subj});
+    end
+    idx2 = find(trialinfo_vec == 22);
+    idx4 = find(trialinfo_vec == 24);
+    idx6 = find(trialinfo_vec == 26);
+
+    [allgazebase2{subj}, allgazebase2_norm{subj}] = extract_gaze_window(et, idx2, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
+    [allgazebase4{subj}, allgazebase4_norm{subj}] = extract_gaze_window(et, idx4, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
+    [allgazebase6{subj}, allgazebase6_norm{subj}] = extract_gaze_window(et, idx6, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
+
+    [allgazetaskearly2{subj}, allgazetaskearly2_norm{subj}] = extract_gaze_window(et, idx2, [0 1], x_grid, y_grid, fsample, smoothing);
+    [allgazetaskearly4{subj}, allgazetaskearly4_norm{subj}] = extract_gaze_window(et, idx4, [0 1], x_grid, y_grid, fsample, smoothing);
+    [allgazetaskearly6{subj}, allgazetaskearly6_norm{subj}] = extract_gaze_window(et, idx6, [0 1], x_grid, y_grid, fsample, smoothing);
+
+    [allgazetasklate2{subj}, allgazetasklate2_norm{subj}] = extract_gaze_window(et, idx2, [1 2], x_grid, y_grid, fsample, smoothing);
+    [allgazetasklate4{subj}, allgazetasklate4_norm{subj}] = extract_gaze_window(et, idx4, [1 2], x_grid, y_grid, fsample, smoothing);
+    [allgazetasklate6{subj}, allgazetasklate6_norm{subj}] = extract_gaze_window(et, idx6, [1 2], x_grid, y_grid, fsample, smoothing);
+end
+
+gaze_raw = struct();
+gaze_raw.allgazebase2 = allgazebase2;
+gaze_raw.allgazetaskearly2 = allgazetaskearly2;
+gaze_raw.allgazetasklate2 = allgazetasklate2;
+gaze_raw.allgazebase4 = allgazebase4;
+gaze_raw.allgazetaskearly4 = allgazetaskearly4;
+gaze_raw.allgazetasklate4 = allgazetasklate4;
+gaze_raw.allgazebase6 = allgazebase6;
+gaze_raw.allgazetaskearly6 = allgazetaskearly6;
+gaze_raw.allgazetasklate6 = allgazetasklate6;
+
+gaze_norm = struct();
+gaze_norm.allgazebase2_norm = allgazebase2_norm;
+gaze_norm.allgazetaskearly2_norm = allgazetaskearly2_norm;
+gaze_norm.allgazetasklate2_norm = allgazetasklate2_norm;
+gaze_norm.allgazebase4_norm = allgazebase4_norm;
+gaze_norm.allgazetaskearly4_norm = allgazetaskearly4_norm;
+gaze_norm.allgazetasklate4_norm = allgazetasklate4_norm;
+gaze_norm.allgazebase6_norm = allgazebase6_norm;
+gaze_norm.allgazetaskearly6_norm = allgazetaskearly6_norm;
+gaze_norm.allgazetasklate6_norm = allgazetasklate6_norm;
+end
+
+function et = select_et_struct(tmp, subj_label)
+if isfield(tmp, 'dataETlong')
+    et = tmp.dataETlong;
+elseif isfield(tmp, 'dataet')
+    et = tmp.dataet;
+elseif isfield(tmp, 'dataET')
+    et = tmp.dataET;
+else
+    error('No ET data structure found in dataET_sternberg for subject %s.', subj_label);
+end
+
+if ~isfield(et, 'trial') || ~isfield(et, 'trialinfo') || ~isfield(et, 'time')
+    error('ET structure for subject %s is missing trial/trialinfo/time fields.', subj_label);
+end
+end
+
+function [freq_raw, freq_norm] = extract_gaze_window(et, trial_idx, latency, x_grid, y_grid, fsample, smoothing)
+cfg = [];
+cfg.channel = {'L-GAZE-X', 'L-GAZE-Y'};
+cfg.latency = latency;
+cfg.trials = trial_idx;
+sel = ft_selectdata(cfg, et);
+[freq_raw, freq_norm] = compute_gaze_heatmap(sel, x_grid, y_grid, fsample, smoothing);
+end
+
+function [freq_raw, freq_norm] = compute_gaze_heatmap(data, x_grid, y_grid, fsample, smoothing)
+% RAW: use the canonical `computeGazeHeatmap` from the functions repo.
+if isempty(data.trial)
+    pos = zeros(2, 0);
+else
+    pos = horzcat(data.trial{:});
+end
+data3 = [pos; zeros(1, size(pos, 2))]; % computeGazeHeatmap expects at least 3 rows
+freq_raw = computeGazeHeatmap(data3, numel(x_grid), smoothing);
+
+% NORM: same binning/smoothing, but normalized by valid (finite) samples instead of full window length.
+freq_norm = computeGazeHeatmap_validnorm(data3, numel(x_grid), smoothing);
+end
+
+function dataOut = computeGazeHeatmap_validnorm(data, num_bins, smoothing_factor)
+valid_data_indices = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
+valid_data = data(1:3, valid_data_indices);
+
+win_size = 50;
+data = remove_blinks(valid_data, win_size);
+
+x_positions = data(1, :);
+y_positions = data(2, :);
+
+x_grid_pixels = linspace(0, 800, num_bins);
+y_grid_pixels = linspace(0, 600, num_bins);
+
+finite_xy = isfinite(x_positions) & isfinite(y_positions);
+if any(finite_xy)
+    binned_data_pixels = histcounts2(x_positions(finite_xy), y_positions(finite_xy), x_grid_pixels, y_grid_pixels);
+else
+    binned_data_pixels = zeros(num_bins-1, num_bins-1);
+end
+
+binned_time = binned_data_pixels / 500; % seconds per bin
+valid_length = sum(finite_xy) / 500;    % seconds of valid samples
+if valid_length > 0
+    binned_rate = binned_time / valid_length;
+else
+    binned_rate = binned_time;
+end
+
+smoothed_data_pixels = imgaussfilt(binned_rate, smoothing_factor);
+
+freq = [];
+freq.powspctrm(1,:,:) = squeeze(smoothed_data_pixels');
+freq.time       = x_grid_pixels(2:end);
+freq.freq       = y_grid_pixels(2:end);
+freq.label      = {'et'};
+freq.dimord     = 'chan_freq_time';
+dataOut = freq;
+end
+
+function trialinfo_vec = align_trialinfo_to_trials(trialinfo, n_trials, subj_label)
+trialinfo_vec = trialinfo(:);
+n_ti = numel(trialinfo_vec);
+
+if n_trials == 0 || n_ti == 0
+    trialinfo_vec = [];
+    return
+end
+
+if n_ti == n_trials
+    return
+end
+
+% Common in these files: every trialinfo entry appears twice.
+if n_ti == 2 * n_trials
+    ti2 = reshape(trialinfo_vec, 2, n_trials)';
+    if all(ti2(:, 1) == ti2(:, 2))
+        trialinfo_vec = ti2(:, 1);
+        fprintf('Warning: subject %s had duplicated trialinfo rows (2x). Collapsing to %d trials.\n', subj_label, n_trials);
+    else
+        trialinfo_vec = ti2(:, 1);
+        fprintf('Warning: subject %s trialinfo is 2x trial count but pair values differ. Using first entry per pair.\n', subj_label);
+    end
+    return
+end
+
+n_common = min(n_trials, n_ti);
+trialinfo_vec = trialinfo_vec(1:n_common);
+fprintf('Warning: trial/trialinfo length mismatch for subject %s (trial=%d, trialinfo=%d). Truncating to %d.\n', ...
+    subj_label, n_trials, n_ti, n_common);
 end
 
 %% ================= TOST FUNCTION =================

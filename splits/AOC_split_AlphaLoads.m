@@ -1,4 +1,4 @@
-wel%% AOC Split Sternberg Alpha Loads
+%% AOC Split Sternberg Alpha Loads
 % Stratifies participants by alpha power slope across WM load (2,4,6).
 % Alpha increase vs decrease subgroups; TFRs, power spectra, behavioral (RT, ACC),
 % optional gaze density. Uses 1-2 s retention window for alpha extraction.
@@ -444,7 +444,7 @@ cbpt_file_gaze_taskVsBase = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_t
     cfg.tail             = 0;
     cfg.clustertail      = 0;
     cfg.alpha            = 0.05;
-    cfg.numrandomization = 100
+    cfg.numrandomization = 1000;
 
     cfg.neighbours=[];
     clear design
@@ -650,7 +650,7 @@ cfg.clusterstatistic = 'maxsum';
 cfg.tail             = 1;
 cfg.clustertail      = cfg.tail;
 cfg.alpha            = 0.05;
-cfg.numrandomization = 100
+cfg.numrandomization = 1000;
 
 subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
 n_2  = subj;
@@ -683,7 +683,7 @@ cbpt_file_gaze_omnibus = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_omni
     cfg.tail             = 1;
     cfg.clustertail      = cfg.tail;
     cfg.alpha            = 0.05;
-    cfg.numrandomization = 100
+    cfg.numrandomization = 1000;
 
     subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
     n_2  = subj;

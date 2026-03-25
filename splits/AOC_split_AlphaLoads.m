@@ -356,8 +356,8 @@ subplot(3,2,1);
 ft_singleplotTFR(cfg, ga2jensen_gaze);
 title('Amplification: WM Load 2', 'FontSize', fontSize);
 ax = gca;
-xlabel(ax, 'x [px]', 'FontSize', fontSize);
-ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 set(ax, 'FontSize', fontSize);
 c = colorbar(ax);
 c.Label.String = 'Gaze Density [a.u.]';
@@ -368,8 +368,8 @@ subplot(3,2,3);
 ft_singleplotTFR(cfg, ga4jensen_gaze);
 title('Amplification: WM Load 4', 'FontSize', fontSize);
 ax = gca;
-xlabel(ax, 'x [px]', 'FontSize', fontSize);
-ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 set(ax, 'FontSize', fontSize);
 c = colorbar(ax);
 c.Label.String = 'Gaze Density [a.u.]';
@@ -380,8 +380,8 @@ subplot(3,2,5);
 ft_singleplotTFR(cfg, ga6jensen_gaze);
 title('Amplification: WM Load 6', 'FontSize', fontSize);
 ax = gca;
-xlabel(ax, 'x [px]', 'FontSize', fontSize);
-ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 set(ax, 'FontSize', fontSize);
 c = colorbar(ax);
 c.Label.String = 'Gaze Density [a.u.]';
@@ -392,8 +392,8 @@ subplot(3,2,2);
 ft_singleplotTFR(cfg, ga2nback_gaze);
 title('Reduction: WM Load 2', 'FontSize', fontSize);
 ax = gca;
-xlabel(ax, 'x [px]', 'FontSize', fontSize);
-ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 set(ax, 'FontSize', fontSize);
 c = colorbar(ax);
 c.Label.String = 'Gaze Density [a.u.]';
@@ -404,8 +404,8 @@ subplot(3,2,4);
 ft_singleplotTFR(cfg, ga4nback_gaze);
 title('Reduction: WM Load 4', 'FontSize', fontSize);
 ax = gca;
-xlabel(ax, 'x [px]', 'FontSize', fontSize);
-ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 set(ax, 'FontSize', fontSize);
 c = colorbar(ax);
 c.Label.String = 'Gaze Density [a.u.]';
@@ -416,8 +416,8 @@ subplot(3,2,6);
 ft_singleplotTFR(cfg, ga6nback_gaze);
 title('Reduction: WM Load 6', 'FontSize', fontSize);
 ax = gca;
-xlabel(ax, 'x [px]', 'FontSize', fontSize);
-ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 set(ax, 'FontSize', fontSize);
 c = colorbar(ax);
 c.Label.String = 'Gaze Density [a.u.]';
@@ -427,13 +427,13 @@ c.FontSize = fontSize - 2;
 colormap(gcf, color_map);
 saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_subtractionBaseline.png'));
 
-%% Compute CBPT stats
+%% Compute CBPT stats: paired baseline-vs-task tests separately for each load (2/4/6) and each subgroup (increase vs decrease)
 clc
 cbpt_file_gaze_taskVsBase = fullfile(stats_dir, 'AOC_split_AlphaLoads_CBPT_gaze_tasklate_minus_base.mat');
-if isfile(cbpt_file_gaze_taskVsBase)
-    disp('Loading cached CBPT: gaze tasklate vs baseline...')
-    load(cbpt_file_gaze_taskVsBase);
-else
+% if isfile(cbpt_file_gaze_taskVsBase)
+%     disp('Loading cached CBPT: gaze tasklate vs baseline...')
+%     load(cbpt_file_gaze_taskVsBase);
+% else
     cfg                  = [];
     cfg.spmversion       = 'spm12';
     cfg.method           = 'montecarlo';
@@ -445,7 +445,7 @@ else
     cfg.tail             = 0;
     cfg.clustertail      = 0;
     cfg.alpha            = 0.05;
-    cfg.numrandomization = 100;
+    cfg.numrandomization = 100
 
     cfg.neighbours=[];
     clear design
@@ -468,6 +468,10 @@ else
     clc; disp(upper('[stat_inc_2 JENSEN]')); [stat_inc_2] = ft_freqstatistics(cfg, allgazetasklate2{idx_jensen},allgazebase2{idx_jensen});
     clc; disp(upper('[stat_inc_4 JENSEN]')); [stat_inc_4] = ft_freqstatistics(cfg, allgazetasklate4{idx_jensen},allgazebase4{idx_jensen});
     clc; disp(upper('[stat_inc_6 JENSEN]')); [stat_inc_6] = ft_freqstatistics(cfg, allgazetasklate6{idx_jensen},allgazebase6{idx_jensen});
+    % Hide non-significant pixels in visualization
+    stat_inc_2.stat(stat_inc_2.mask==0) = NaN;
+    stat_inc_4.stat(stat_inc_4.mask==0) = NaN;
+    stat_inc_6.stat(stat_inc_6.mask==0) = NaN;
 
     subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
     design = zeros(2,2*subj);
@@ -488,13 +492,17 @@ else
     clc; disp(upper('[stat_inc_n_2 N-back]')); [stat_inc_n_2] = ft_freqstatistics(cfg, allgazetasklate2{idx_nback},allgazebase2{idx_nback});
     clc; disp(upper('[stat_inc_n_4 N-back]')); [stat_inc_n_4] = ft_freqstatistics(cfg, allgazetasklate4{idx_nback},allgazebase4{idx_nback});
     clc; disp(upper('[stat_inc_n_6 N-back]')); [stat_inc_n_6] = ft_freqstatistics(cfg, allgazetasklate6{idx_nback},allgazebase6{idx_nback});
+    % Hide non-significant pixels in visualization
+    stat_inc_n_2.stat(stat_inc_n_2.mask==0) = NaN;
+    stat_inc_n_4.stat(stat_inc_n_4.mask==0) = NaN;
+    stat_inc_n_6.stat(stat_inc_n_6.mask==0) = NaN;
 
     save(cbpt_file_gaze_taskVsBase, ...
         'stat_inc_2', 'stat_inc_4', 'stat_inc_6', ...
         'stat_inc_n_2', 'stat_inc_n_4', 'stat_inc_n_6', ...
         'cfg_cbpt_gaze_taskVsBase_jensen', 'design_cbpt_gaze_taskVsBase_jensen', ...
         'cfg_cbpt_gaze_taskVsBase_nback', 'design_cbpt_gaze_taskVsBase_nback', '-v7.3');
-end
+% end
 
 % cohensd=((stat_inc_2.stat)./sqrt(subj));
 % stat_inc_2.stat=cohensd;
@@ -508,7 +516,7 @@ end
 % stat_inc_6.stat=cohensd;
 % stat_inc_6.stat(stat_inc_6.mask==0)=0;% set everything not relevant to zero
 
-%%
+%% Plot CBPT Raw Stats
 stat_inc_n_2.cfg=[];
 stat_inc_n_4.cfg=[];
 stat_inc_n_6.cfg=[];
@@ -517,105 +525,123 @@ cfg         = [];
 cfg.parameter = 'stat';
 cfg.maskparameter = 'mask';
 cfg.maskstyle        = 'outline';
-cfg.zlim = 'absmax';
+cfg.zlim = 'maxabs';
 cfg.figure = 'gcf';
+
 figure('Position', fig_pos, 'Color', 'w');
 subplot(3,2,1);
 ft_singleplotTFR(cfg, stat_inc_2);
-
+img = findobj(gca, 'Type', 'image');
+if ~isempty(img) && isprop(img(1), 'CData')
+    set(img(1), 'AlphaData', ~isnan(img(1).CData));
+end
+set(gca, 'Color', [1 1 1]);
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
-xlabel('x [px]');
-ylabel('y [px]');
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-%c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-c.Label.String = 'Gaze Density [a.u.]';
+c.Label.String = 't-value';
 c.Label.FontSize = 18;   % optional
 title('Amplification: WM Load 2', 'FontSize', fontSize, 'Interpreter', 'none')
 
 subplot(3,2,3);
 ft_singleplotTFR(cfg,stat_inc_4);
-
+img = findobj(gca, 'Type', 'image');
+if ~isempty(img) && isprop(img(1), 'CData')
+    set(img(1), 'AlphaData', ~isnan(img(1).CData));
+end
+set(gca, 'Color', [1 1 1]);
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
-xlabel('x [px]');
-ylabel('y [px]');
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-%c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-c.Label.String = 'Gaze Density [a.u.]';
+c.Label.String = 't-value';
 c.Label.FontSize = 18;   % optional
 title('Amplification: WM Load 4', 'FontSize', fontSize, 'Interpreter', 'none')
 
 subplot(3,2,5);
 ft_singleplotTFR(cfg,stat_inc_6);
-
+img = findobj(gca, 'Type', 'image');
+if ~isempty(img) && isprop(img(1), 'CData')
+    set(img(1), 'AlphaData', ~isnan(img(1).CData));
+end
+set(gca, 'Color', [1 1 1]);
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
-xlabel('x [px]');
-ylabel('y [px]');
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-%c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-c.Label.String = 'Gaze Density [a.u.]';
+c.Label.String = 't-value';
 c.Label.FontSize = 18;   % optional
 title('Amplification: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
 
 % plot decreaseing
 subplot(3,2,2);
 ft_singleplotTFR(cfg,stat_inc_n_2);
-
+img = findobj(gca, 'Type', 'image');
+if ~isempty(img) && isprop(img(1), 'CData')
+    set(img(1), 'AlphaData', ~isnan(img(1).CData));
+end
+set(gca, 'Color', [1 1 1]);
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
-xlabel('x [px]');
-ylabel('y [px]');
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-%c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-c.Label.String = 'Gaze Density [a.u.]';
+c.Label.String = 't-value';
 c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 2', 'FontSize', fontSize, 'Interpreter', 'none')
 
 subplot(3,2,4);
 ft_singleplotTFR(cfg,stat_inc_n_4);
-
+img = findobj(gca, 'Type', 'image');
+if ~isempty(img) && isprop(img(1), 'CData')
+    set(img(1), 'AlphaData', ~isnan(img(1).CData));
+end
+set(gca, 'Color', [1 1 1]);
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
-xlabel('x [px]');
-ylabel('y [px]');
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-%c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-c.Label.String = 'Gaze Density [a.u.]';
+c.Label.String = 't-value';
 c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 4', 'FontSize', fontSize, 'Interpreter', 'none')
 
 subplot(3,2,6);
 ft_singleplotTFR(cfg,stat_inc_n_6);
-
+img = findobj(gca, 'Type', 'image');
+if ~isempty(img) && isprop(img(1), 'CData')
+    set(img(1), 'AlphaData', ~isnan(img(1).CData));
+end
+set(gca, 'Color', [1 1 1]);
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
-xlabel('x [px]');
-ylabel('y [px]');
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-%c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-c.Label.String = 'Gaze Density [a.u.]';
+c.Label.String = 't-value';
 c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
 colormap(color_map);
 
 saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statInc.png'));
 
-%%
-
+%% CBPT Stats: repeated-measures (dependent-samples) F test across the three loads
 cfg                  = [];
 cfg.method           = 'montecarlo';
 cfg.statistic        = 'ft_statfun_depsamplesFunivariate';
@@ -628,7 +654,7 @@ cfg.clusterstatistic = 'maxsum';
 cfg.tail             = 1;
 cfg.clustertail      = cfg.tail;
 cfg.alpha            = 0.05;
-cfg.numrandomization = 1000;
+cfg.numrandomization = 100
 
 subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
 n_2  = subj;
@@ -640,10 +666,10 @@ cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
 cbpt_file_gaze_omnibus = fullfile(stats_dir, 'AOC_split_AlphaLoads_CBPT_gaze_omnibus_loadEffect.mat');
-if isfile(cbpt_file_gaze_omnibus)
-    disp('Loading cached CBPT: gaze omnibus load effect...')
-    load(cbpt_file_gaze_omnibus);
-else
+% if isfile(cbpt_file_gaze_omnibus)
+%     disp('Loading cached CBPT: gaze omnibus load effect...')
+%     load(cbpt_file_gaze_omnibus);
+% else
     cfg_cbpt_gaze_omnibus_jensen = cfg;
     [statF_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
     statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
@@ -678,14 +704,14 @@ else
     save(cbpt_file_gaze_omnibus, ...
         'statF_gaze', 'statF_gaze_n', ...
         'cfg_cbpt_gaze_omnibus_jensen', 'cfg_cbpt_gaze_omnibus_nback', '-v7.3');
-end
+%end
 
 %%
 cfg         = [];
 cfg.parameter = 'stat';
 cfg.maskparameter = 'mask';
 cfg.maskstyle        = 'outline';
-cfg.zlim = 'absmax';
+cfg.zlim = 'maxabs';
 cfg.colormap = 'YlOrRd';
 cfg.zlim = [0 10];
 % cfg.xlim =[300 500];
@@ -698,8 +724,8 @@ title('Amplification: Omnibus Load Effect', 'FontSize', fontSize, 'Interpreter',
 
 ax = gca;
 set(ax, 'FontSize', fontSize);
-xlabel(ax, 'x [px]', 'FontSize', fontSize);
-ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax);
 c.LineWidth = 1;
 c.FontSize = fontSize - 2;
@@ -713,8 +739,8 @@ title('Reduction: Omnibus Load Effect', 'FontSize', fontSize, 'Interpreter', 'no
 
 ax = gca;
 set(ax, 'FontSize', fontSize);
-xlabel(ax, 'x [px]', 'FontSize', fontSize);
-ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax);
 c.LineWidth = 1;
 c.FontSize = fontSize - 2;
@@ -727,7 +753,7 @@ cfg         = [];
 cfg.parameter = 'stat';
 cfg.maskparameter = 'mask';
 cfg.maskstyle        = 'outline';
-cfg.zlim = 'absmax';
+cfg.zlim = 'maxabs';
 cfg.colormap = 'YlOrRd';
 cfg.zlim = [0 10];
 cfg.xlim =[300 500];
@@ -740,8 +766,8 @@ title('Amplification: Omnibus Load Effect (Zoom)', 'FontSize', fontSize, 'Interp
 
 ax = gca;
 set(ax, 'FontSize', fontSize);
-xlabel(ax, 'x [px]', 'FontSize', fontSize);
-ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax);
 c.LineWidth = 1;
 c.FontSize = fontSize - 2;
@@ -755,8 +781,8 @@ title('Reduction: Omnibus Load Effect (Zoom)', 'FontSize', fontSize, 'Interprete
 
 ax = gca;
 set(ax, 'FontSize', fontSize);
-xlabel(ax, 'x [px]', 'FontSize', fontSize);
-ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax);
 c.LineWidth = 1;
 c.FontSize = fontSize - 2;
@@ -766,6 +792,7 @@ c.Label.FontSize = fontSize - 2;
 
 saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statF_omnibus.png'));
 close(gcf);
+
 %% Test linear (and quadratic) trends across WM load
 funcs_paths = {fullfile(fileparts(mfilename('fullpath')), '..', 'funcs'), '/Volumes/Homestore/OCC/arne/funcs'};
 has_loadtrend = false;
@@ -858,7 +885,7 @@ if do_plot_loadtrend
     cfg.parameter = 'stat';
     cfg.maskparameter = 'mask';
     cfg.maskstyle        = 'outline';
-    cfg.zlim = 'absmax';
+    cfg.zlim = 'maxabs';
     % cfg.colormap = 'YlOrRd';
     cfg.zlim = [-5 5];
     % cfg.xlim =[300 500];
@@ -871,8 +898,8 @@ if do_plot_loadtrend
 
     ax = gca;
     set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'x [px]', 'FontSize', fontSize);
-    ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
     c = colorbar(ax);
     c.LineWidth = 1;
     c.FontSize = fontSize - 2;
@@ -886,8 +913,8 @@ if do_plot_loadtrend
 
     ax = gca;
     set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'x [px]', 'FontSize', fontSize);
-    ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
     c = colorbar(ax);
     c.LineWidth = 1;
     c.FontSize = fontSize - 2;
@@ -899,7 +926,7 @@ if do_plot_loadtrend
     cfg.parameter = 'stat';
     cfg.maskparameter = 'mask';
     cfg.maskstyle        = 'outline';
-    cfg.zlim = 'absmax';
+    cfg.zlim = 'maxabs';
     % cfg.colormap = 'YlOrRd';
     cfg.zlim = [-5 5];
     cfg.xlim =[300 500];
@@ -912,8 +939,8 @@ if do_plot_loadtrend
 
     ax = gca;
     set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'x [px]', 'FontSize', fontSize);
-    ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
     c = colorbar(ax);
     c.LineWidth = 1;
     c.FontSize = fontSize - 2;
@@ -927,8 +954,8 @@ if do_plot_loadtrend
 
     ax = gca;
     set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'x [px]', 'FontSize', fontSize);
-    ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
     c = colorbar(ax);
     c.LineWidth = 1;
     c.FontSize = fontSize - 2;
@@ -1018,7 +1045,7 @@ if do_plot_loadquadratic
     cfg.parameter = 'stat';
     cfg.maskparameter = 'mask';
     cfg.maskstyle        = 'outline';
-    cfg.zlim = 'absmax';
+    cfg.zlim = 'maxabs';
     cfg.zlim = [-5 5];
     cfg.figure = 'gcf';
 
@@ -1030,8 +1057,8 @@ if do_plot_loadquadratic
 
     ax = gca;
     set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'x [px]', 'FontSize', fontSize);
-    ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
     c = colorbar(ax);
     c.LineWidth = 1;
     c.FontSize = fontSize - 2;
@@ -1045,8 +1072,8 @@ if do_plot_loadquadratic
 
     ax = gca;
     set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'x [px]', 'FontSize', fontSize);
-    ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
     c = colorbar(ax);
     c.LineWidth = 1;
     c.FontSize = fontSize - 2;
@@ -1059,7 +1086,7 @@ if do_plot_loadquadratic
     cfg.parameter = 'stat';
     cfg.maskparameter = 'mask';
     cfg.maskstyle        = 'outline';
-    cfg.zlim = 'absmax';
+    cfg.zlim = 'maxabs';
     cfg.zlim = [-5 5];
     cfg.xlim =[300 500];
     cfg.ylim =[200 400];
@@ -1071,8 +1098,8 @@ if do_plot_loadquadratic
 
     ax = gca;
     set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'x [px]', 'FontSize', fontSize);
-    ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
     c = colorbar(ax);
     c.LineWidth = 1;
     c.FontSize = fontSize - 2;
@@ -1086,8 +1113,8 @@ if do_plot_loadquadratic
 
     ax = gca;
     set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'x [px]', 'FontSize', fontSize);
-    ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
     c = colorbar(ax);
     c.LineWidth = 1;
     c.FontSize = fontSize - 2;
@@ -1544,7 +1571,6 @@ function gaze_dwell_time = build_sternberg_split_alphaLoads_gaze_from_raw_et(sub
 
 n_subj = length(subjects);
 num_bins = 1000;
-% Match heatmap creation settings used in `3_visualization/gaze/heatmap/AOC_gaze_heatmap_sternberg.m`
 smoothing = 10;
 fsample = 500;
 x_grid = linspace(0, 800, num_bins + 1);

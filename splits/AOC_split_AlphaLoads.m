@@ -123,7 +123,7 @@ legend({sprintf('Alpha increase with load (N=%d)', n_j), ...
     'threshold'})
 box on
 set(gca, 'FontSize', 15)
-saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_histogram_inclusion.png'));
+drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_histogram_inclusion.png'));
 
 %% Grand averages per subgroup
 cfg = [];
@@ -165,7 +165,7 @@ subplot(3,2,6); ft_singleplotTFR(cfg, ga6nback); title('Decrease: WM load 6', 'F
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
 set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 colormap(gcf, color_map);
-saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_TFR.png'));
+drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_TFR.png'));
 
 %% Select powspctrm (retention 1-2 s)
 cfg = [];
@@ -198,6 +198,7 @@ tiledlayout(1, 2, 'TileSpacing', 'compact');
 ch_idx_j = ch_idx_j(ch_idx_j > 0);
 freqs_j = ga2jensen_powspctrm.freq;
 
+addpath('W:\Students\Arne\toolboxes\shadedErrorBar\')
 nexttile; hold on
 ga_j = {ga2jensen_powspctrm, ga4jensen_powspctrm, ga6jensen_powspctrm};
 for c = 1:3
@@ -424,7 +425,7 @@ c.Label.FontSize = fontSize - 2;
 c.FontSize = fontSize - 2;
 
 colormap(gcf, color_map);
-saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_subtractionBaseline.png'));
+drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_subtractionBaseline.png'));
 
 %% Compute CBPT stats: paired baseline-vs-task tests separately for each load (2/4/6) and each subgroup (increase vs decrease)
 clc
@@ -638,7 +639,7 @@ c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
 colormap(color_map);
 
-saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statInc.png'));
+drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statInc.png'));
 
 %% CBPT Stats: repeated-measures (dependent-samples) F test across the three loads
 cfg                  = [];
@@ -745,7 +746,7 @@ c = colorbar(ax2);
 c.LineWidth = 1; c.FontSize = fontSize-2;
 c.Ticks = [0 10]; c.Label.String = 'F-value'; c.Label.FontSize = fontSize-2;
 
-saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statF_omnibus.png'));
+drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statF_omnibus.png'));
 
 %% Test linear (and quadratic) trends across WM load
 funcs_paths = {fullfile(fileparts(mfilename('fullpath')), '..', 'funcs'), '/Volumes/Homestore/OCC/arne/funcs'};
@@ -916,7 +917,7 @@ if do_plot_loadtrend
     c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
     c.Label.String = 't-value';
     c.Label.FontSize = fontSize - 2;
-    saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadTrend.png'));
+    drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadTrend.png'));
     close(gcf);
 end
 
@@ -1076,7 +1077,7 @@ if do_plot_loadquadratic
     c.Label.String = 't-value';
     c.Label.FontSize = fontSize - 2;
 
-    saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadQuadratic.png'));
+    drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadQuadratic.png'));
 end
 
 clear statF_gaze_quad statF_gaze_quad_n
@@ -1233,7 +1234,7 @@ set(gca,'FontSize',18); box on;
 ylim([50 110])   % same scale for comparison
 
 set(gcf,'color','w');
-saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_RT_ACC.png'));
+drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_RT_ACC.png'));
 
 %% LME / TOST (test effects)
 nSubj = length(subjects);

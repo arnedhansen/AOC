@@ -97,7 +97,7 @@ for subj = 1:length(alpha2)
 end
 
 %% Split and Plot slope distribution (inclusion)
-thr = 0.01; 
+thr = 0.01;
 idx_jensen = slope > thr;
 idx_nback  = slope < -thr;
 idx_flat   = abs(slope) <= thr;
@@ -123,9 +123,9 @@ xlabel('Alpha power slope')
 ylabel('Participants')
 title('Linear Slope of Alpha Power across WM Load (2, 4, 6 items)', 'FontSize', 20)
 legend({sprintf('\\alpha increase with load (N=%d)', n_j), ...
-        sprintf('\\alpha decrease with load (N=%d)', n_n), ...
-        sprintf('intermediate (N=%d)', n_f), ...
-        'threshold'})
+    sprintf('\\alpha decrease with load (N=%d)', n_n), ...
+    sprintf('intermediate (N=%d)', n_f), ...
+    'threshold'})
 box on
 set(gca, 'FontSize', 15)
 saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_histogram_inclusion.png'));
@@ -218,9 +218,15 @@ end
 xlim([2 30]);
 xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
 yline(0, '--')
+ylim([-0.075 0.225])
 ylabel('Power [dB]', 'FontSize', fontSize);
 title('Increase group', 'FontSize', fontSize);
-legend([eb_j.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
+% Legend with colored patch boxes (clearer than thin line samples)
+leg_p_j = gobjects(1, 3);
+for c = 1:3
+    leg_p_j(c) = patch(NaN, NaN, colors(c, :), 'EdgeColor', 'none');
+end
+legend(leg_p_j, {'WM load 2', 'WM load 4', 'WM load 6'}, ...
     'Location', 'best', 'Box', 'off', 'FontSize', fontSize - 2);
 set(gca, 'FontSize', fontSize);
 box on
@@ -244,54 +250,272 @@ end
 xlim([2 30]);
 xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
 yline(0, '--')
+ylim([-0.075 0.225])
 ylabel('Power [dB]', 'FontSize', fontSize);
 title('Decrease group', 'FontSize', fontSize);
-legend([eb_n.mainLine], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
+% Legend with colored patch boxes (clearer than thin line samples)
+leg_p_n = gobjects(1, 3);
+for c = 1:3
+    leg_p_n(c) = patch(NaN, NaN, colors(c, :), 'EdgeColor', 'none');
+end
+legend(leg_p_n, {'WM load 2', 'WM load 4', 'WM load 6'}, ...
     'Location', 'best', 'Box', 'off', 'FontSize', fontSize - 2);
 set(gca, 'FontSize', fontSize);
 box on
 
 saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_powspctrm.png'));
 
-%% Gaze density (optional: requires sterngaze.mat from gaze density pipeline)
-gaze_file = fullfile(feat_dir, 'sterngaze.mat');
-gaze_norm_file = fullfile(feat_dir, 'sterngaze_norm.mat');
-if isfile(gaze_file) && isfile(gaze_norm_file)
-    load(gaze_norm_file);
-    load(gaze_file);
-    load2_gaze = cell(size(allgazebase2));
-    load4_gaze = cell(size(allgazebase4));
-    load6_gaze = cell(size(allgazebase6));
-    for subj = 1:length(allgazebase6)
-        load2_gaze{subj} = allgazebase2{subj};
-        load4_gaze{subj} = allgazebase4{subj};
-        load6_gaze{subj} = allgazebase6{subj};
-        load2_gaze{subj}.powspctrm = allgazetasklate2{subj}.powspctrm - allgazebase2{subj}.powspctrm;
-        load4_gaze{subj}.powspctrm = allgazetasklate4{subj}.powspctrm - allgazebase4{subj}.powspctrm;
-        load6_gaze{subj}.powspctrm = allgazetasklate6{subj}.powspctrm - allgazebase6{subj}.powspctrm;
+%% Gaze density
+fprintf('\n=== Gaze density: per-subject cache check ===\n');
+
+% Heatmap parameters
+fs = 500;
+smooth_val = 5;
+min_valid_samples = 100; % per window, after cleaning
+num_bins = 1000;
+x_grid = linspace(0, 800, num_bins);
+y_grid = linspace(0, 600, num_bins);
+
+t_series = [-0.5, 2];
+t_base = [-0.5, -0.25];
+t_early = [0, 1];
+t_late = [1, 2]; % stimulus window
+
+nSubj = numel(subjects);
+
+% Raw heatmaps (FieldTrip freq structs, 1 per subject)
+allgazebase2 = cell(1, nSubj);
+allgazetaskearly2 = cell(1, nSubj);
+allgazetasklate2 = cell(1, nSubj);
+allgazebase4 = cell(1, nSubj);
+allgazetaskearly4 = cell(1, nSubj);
+allgazetasklate4 = cell(1, nSubj);
+allgazebase6 = cell(1, nSubj);
+allgazetaskearly6 = cell(1, nSubj);
+allgazetasklate6 = cell(1, nSubj);
+
+% Normalized heatmaps
+allgazebase2_norm = cell(1, nSubj);
+allgazetaskearly2_norm = cell(1, nSubj);
+allgazetasklate2_norm = cell(1, nSubj);
+allgazebase4_norm = cell(1, nSubj);
+allgazetaskearly4_norm = cell(1, nSubj);
+allgazetasklate4_norm = cell(1, nSubj);
+allgazebase6_norm = cell(1, nSubj);
+allgazetaskearly6_norm = cell(1, nSubj);
+allgazetasklate6_norm = cell(1, nSubj);
+
+cond_codes = [22, 24, 26];   % trialinfo codes used for heatmaps
+cond_list = [2, 4, 6];       % output heatmap labels (WM load)
+
+missing_subjects = {};
+have_any = false;
+
+for s = 1:nSubj
+    subj_id = subjects{s};
+    subj_gaze_dir = fullfile(feat_dir, subj_id, 'gaze');
+    cache_raw = fullfile(subj_gaze_dir, 'sternberg_gaze_dwell_raw.mat');
+    cache_norm = fullfile(subj_gaze_dir, 'sternberg_gaze_dwell_norm.mat');
+
+    if isfile(cache_raw) && isfile(cache_norm)
+        R = load(cache_raw, 'dwell_raw');
+        N = load(cache_norm, 'dwell_norm');
+        if isfield(R, 'dwell_raw') && isfield(N, 'dwell_norm')
+            dw = R.dwell_raw;
+            dn = N.dwell_norm;
+
+            allgazebase2{s} = dw.base2; allgazetaskearly2{s} = dw.early2; allgazetasklate2{s} = dw.late2;
+            allgazebase4{s} = dw.base4; allgazetaskearly4{s} = dw.early4; allgazetasklate4{s} = dw.late4;
+            allgazebase6{s} = dw.base6; allgazetaskearly6{s} = dw.early6; allgazetasklate6{s} = dw.late6;
+
+            allgazebase2_norm{s} = dn.base2; allgazetaskearly2_norm{s} = dn.early2; allgazetasklate2_norm{s} = dn.late2;
+            allgazebase4_norm{s} = dn.base4; allgazetaskearly4_norm{s} = dn.early4; allgazetasklate4_norm{s} = dn.late4;
+            allgazebase6_norm{s} = dn.base6; allgazetaskearly6_norm{s} = dn.early6; allgazetasklate6_norm{s} = dn.late6;
+
+            have_any = true;
+            continue
+        end
+        % If cache exists but is invalid, fall through to recompute.
+        fprintf('  Subject %s: cache invalid, recomputing.\n', subj_id);
     end
-%% plot gaze
-    cfg = [];
-    cfg.keepindividual = 'yes';
-    ga2jensen_gaze = ft_freqgrandaverage(cfg, load2_gaze{idx_jensen});
-    ga4jensen_gaze = ft_freqgrandaverage(cfg, load4_gaze{idx_jensen});
-    ga6jensen_gaze = ft_freqgrandaverage(cfg, load6_gaze{idx_jensen});
-    ga2nback_gaze = ft_freqgrandaverage(cfg, load2_gaze{idx_nback});
-    ga4nback_gaze = ft_freqgrandaverage(cfg, load4_gaze{idx_nback});
-    ga6nback_gaze = ft_freqgrandaverage(cfg, load6_gaze{idx_nback});
+
+    gaze_series_file = fullfile(subj_gaze_dir, 'gaze_series_sternberg_trials.mat');
+    if ~isfile(gaze_series_file)
+        missing_subjects{end+1} = subj_id; %#ok<AGROW>
+        continue
+    end
+
+    G = load(gaze_series_file);
+    if ~isfield(G, 'gaze_x') || ~isfield(G, 'gaze_y') || ~isfield(G, 'trialinfo')
+        missing_subjects{end+1} = subj_id; %#ok<AGROW>
+        continue
+    end
+
+    gaze_x = G.gaze_x;
+    gaze_y = G.gaze_y;
+    trialinfo = G.trialinfo;
+
+    % Extract trial indices for each WM load condition.
+    conds = parse_trialinfo_conds_for_sternberg_heatmap(trialinfo);
+    trl_idx = cell(1, numel(cond_codes));
+    for ci = 1:numel(cond_codes)
+        trl_idx{ci} = find(conds == cond_codes(ci));
+    end
+
+    dwell_raw = struct();
+    dwell_norm = struct();
+
+    for ci = 1:numel(cond_codes)
+        cond = cond_list(ci);
+        tidx = trl_idx{ci};
+
+        pos_base = extractPosCellsForGazeWindow(gaze_x, gaze_y, tidx, t_series, t_base, min_valid_samples);
+        [freq_base, freq_base_norm] = computeGazeHeatmapFromPosCells(pos_base, x_grid, y_grid, fs, smooth_val);
+
+        pos_early = extractPosCellsForGazeWindow(gaze_x, gaze_y, tidx, t_series, t_early, min_valid_samples);
+        [freq_early, freq_early_norm] = computeGazeHeatmapFromPosCells(pos_early, x_grid, y_grid, fs, smooth_val);
+
+        pos_late = extractPosCellsForGazeWindow(gaze_x, gaze_y, tidx, t_series, t_late, min_valid_samples);
+        [freq_late, freq_late_norm] = computeGazeHeatmapFromPosCells(pos_late, x_grid, y_grid, fs, smooth_val);
+
+        if cond == 2
+            allgazebase2{s} = freq_base; allgazetaskearly2{s} = freq_early; allgazetasklate2{s} = freq_late;
+            allgazebase2_norm{s} = freq_base_norm; allgazetaskearly2_norm{s} = freq_early_norm; allgazetasklate2_norm{s} = freq_late_norm;
+            dwell_raw.base2 = freq_base; dwell_raw.early2 = freq_early; dwell_raw.late2 = freq_late;
+            dwell_norm.base2 = freq_base_norm; dwell_norm.early2 = freq_early_norm; dwell_norm.late2 = freq_late_norm;
+        elseif cond == 4
+            allgazebase4{s} = freq_base; allgazetaskearly4{s} = freq_early; allgazetasklate4{s} = freq_late;
+            allgazebase4_norm{s} = freq_base_norm; allgazetaskearly4_norm{s} = freq_early_norm; allgazetasklate4_norm{s} = freq_late_norm;
+            dwell_raw.base4 = freq_base; dwell_raw.early4 = freq_early; dwell_raw.late4 = freq_late;
+            dwell_norm.base4 = freq_base_norm; dwell_norm.early4 = freq_early_norm; dwell_norm.late4 = freq_late_norm;
+        elseif cond == 6
+            allgazebase6{s} = freq_base; allgazetaskearly6{s} = freq_early; allgazetasklate6{s} = freq_late;
+            allgazebase6_norm{s} = freq_base_norm; allgazetaskearly6_norm{s} = freq_early_norm; allgazetasklate6_norm{s} = freq_late_norm;
+            dwell_raw.base6 = freq_base; dwell_raw.early6 = freq_early; dwell_raw.late6 = freq_late;
+            dwell_norm.base6 = freq_base_norm; dwell_norm.early6 = freq_early_norm; dwell_norm.late6 = freq_late_norm;
+        end
+    end
+
+    if ~isfolder(subj_gaze_dir)
+        mkdir(subj_gaze_dir);
+    end
+    save(cache_raw, 'dwell_raw', '-v7.3');
+    save(cache_norm, 'dwell_norm', '-v7.3');
+
+    have_any = true;
+    fprintf('  Subject %d/%d computed + cached.\n', s, nSubj);
+end
+
+gaze_ready = have_any;
+if ~isempty(missing_subjects)
+    fprintf('Gaze dwell heatmaps missing for: %s\n', strjoin(missing_subjects, ', '));
+end
+
+load2_gaze = cell(size(allgazebase2));
+load4_gaze = cell(size(allgazebase4));
+load6_gaze = cell(size(allgazebase6));
+for subj = 1:length(allgazebase6)
+    load2_gaze{subj} = allgazebase2{subj};
+    load4_gaze{subj} = allgazebase4{subj};
+    load6_gaze{subj} = allgazebase6{subj};
+    load2_gaze{subj}.powspctrm = allgazetasklate2{subj}.powspctrm - allgazebase2{subj}.powspctrm;
+    load4_gaze{subj}.powspctrm = allgazetasklate4{subj}.powspctrm - allgazebase4{subj}.powspctrm;
+    load6_gaze{subj}.powspctrm = allgazetasklate6{subj}.powspctrm - allgazebase6{subj}.powspctrm;
+end
+
+%% Compute gaze
+cfg = [];
+cfg.keepindividual = 'yes';
+ga2jensen_gaze = ft_freqgrandaverage(cfg, load2_gaze{idx_jensen});
+ga4jensen_gaze = ft_freqgrandaverage(cfg, load4_gaze{idx_jensen});
+ga6jensen_gaze = ft_freqgrandaverage(cfg, load6_gaze{idx_jensen});
+ga2nback_gaze = ft_freqgrandaverage(cfg, load2_gaze{idx_nback});
+ga4nback_gaze = ft_freqgrandaverage(cfg, load4_gaze{idx_nback});
+ga6nback_gaze = ft_freqgrandaverage(cfg, load6_gaze{idx_nback});
+
 %% Plot gaze TFRs (Jensen / nback)
 close all
 cfg = [];
 cfg.figure = 'gcf';
 cfg.zlim = [-.05 .05];
-figure('Position', fig_pos, 'Color', 'w'); 
-subplot(3,2,1);ft_singleplotTFR(cfg, ga2jensen_gaze);
-subplot(3,2,3);ft_singleplotTFR(cfg, ga4jensen_gaze);
-subplot(3,2,5);ft_singleplotTFR(cfg, ga6jensen_gaze);
+figure('Position', [0 0 1512 982], 'Color', 'w');
 
-subplot(3,2,2);ft_singleplotTFR(cfg, ga2nback_gaze);
-subplot(3,2,4);ft_singleplotTFR(cfg, ga4nback_gaze);
-subplot(3,2,6);ft_singleplotTFR(cfg, ga6nback_gaze);
+% Raw gaze density difference maps (Jensen/Amp vs N-back/Reduction)
+subplot(3,2,1);
+ft_singleplotTFR(cfg, ga2jensen_gaze);
+title('Alpha Amplification: WM Load 2', 'FontSize', fontSize);
+ax = gca;
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+set(ax, 'FontSize', fontSize);
+c = colorbar(ax);
+c.Label.String = 'Gaze Density Change [a.u.]';
+c.Label.FontSize = fontSize - 2;
+c.FontSize = fontSize - 2;
+
+subplot(3,2,3);
+ft_singleplotTFR(cfg, ga4jensen_gaze);
+title('Alpha Amplification: WM Load 4', 'FontSize', fontSize);
+ax = gca;
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+set(ax, 'FontSize', fontSize);
+c = colorbar(ax);
+c.Label.String = 'Gaze Density Change [a.u.]';
+c.Label.FontSize = fontSize - 2;
+c.FontSize = fontSize - 2;
+
+subplot(3,2,5);
+ft_singleplotTFR(cfg, ga6jensen_gaze);
+title('Alpha Amplification: WM Load 6', 'FontSize', fontSize);
+ax = gca;
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+set(ax, 'FontSize', fontSize);
+c = colorbar(ax);
+c.Label.String = 'Gaze Density Change [a.u.]';
+c.Label.FontSize = fontSize - 2;
+c.FontSize = fontSize - 2;
+
+subplot(3,2,2);
+ft_singleplotTFR(cfg, ga2nback_gaze);
+title('Alpha Reduction: WM Load 2', 'FontSize', fontSize);
+ax = gca;
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+set(ax, 'FontSize', fontSize);
+c = colorbar(ax);
+c.Label.String = 'Gaze Density Change [a.u.]';
+c.Label.FontSize = fontSize - 2;
+c.FontSize = fontSize - 2;
+
+subplot(3,2,4);
+ft_singleplotTFR(cfg, ga4nback_gaze);
+title('Alpha Reduction: WM Load 4', 'FontSize', fontSize);
+ax = gca;
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+set(ax, 'FontSize', fontSize);
+c = colorbar(ax);
+c.Label.String = 'Gaze Density Change [a.u.]';
+c.Label.FontSize = fontSize - 2;
+c.FontSize = fontSize - 2;
+
+subplot(3,2,6);
+ft_singleplotTFR(cfg, ga6nback_gaze);
+title('Alpha Reduction: WM Load 6', 'FontSize', fontSize);
+ax = gca;
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+set(ax, 'FontSize', fontSize);
+c = colorbar(ax);
+c.Label.String = 'Gaze Density Change [a.u.]';
+c.Label.FontSize = fontSize - 2;
+c.FontSize = fontSize - 2;
+
+colormap(gcf, color_map);
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_gaze_TFR_raw.png'));
+close(gcf);
 %%
 cfg = [];
 cfg.spmversion = 'spm12';
@@ -356,11 +580,11 @@ cfg.ivar     = 2;
 % cohensd=((stat_inc_2.stat)./sqrt(subj));
 % stat_inc_2.stat=cohensd;
 % stat_inc_2.stat(stat_inc_2.mask==0)=0;% set everything not relevant to zero
-% 
+%
 % cohensd=((stat_inc_4.stat)./sqrt(subj));
 % stat_inc_4.stat=cohensd;
 % stat_inc_4.stat(stat_inc_4.mask==0)=0;% set everything not relevant to zero
-% 
+%
 % cohensd=((stat_inc_6.stat)./sqrt(subj));
 % stat_inc_6.stat=cohensd;
 % stat_inc_6.stat(stat_inc_6.mask==0)=0;% set everything not relevant to zero
@@ -374,7 +598,7 @@ cfg         = [];
 cfg.parameter = 'stat';
 cfg.maskparameter = 'mask';
 cfg.maskstyle        = 'outline';
-cfg.zlim = 'absmax';  
+cfg.zlim = 'absmax';
 % cfg.zlim = [-10e-5 10e-5];
 cfg.zlim = [-.001 .001];
 % cfg.xlim =[300 500];
@@ -394,9 +618,9 @@ c.LineWidth = 1;
 c.FontSize = 18;
 c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
 % title(c,'Gaze density [a.u.]');%\it d
-c.Label.String = 'Gaze density [a.u.]';
+c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
-title('')
+title('Alpha Amplification: WM Load 2', 'FontSize', fontSize, 'Interpreter', 'none')
 
 subplot(3,2,3);
 ft_singleplotTFR(cfg,stat_inc_4);
@@ -411,9 +635,9 @@ c.LineWidth = 1;
 c.FontSize = 18;
 c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
 % title(c,'Gaze density [a.u.]');%\it d
-c.Label.String = 'Gaze density [a.u.]';
+c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
-title('')
+title('Alpha Amplification: WM Load 4', 'FontSize', fontSize, 'Interpreter', 'none')
 
 subplot(3,2,5);
 ft_singleplotTFR(cfg,stat_inc_6);
@@ -428,9 +652,9 @@ c.LineWidth = 1;
 c.FontSize = 18;
 c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
 % title(c,'Gaze density [a.u.]');%\it d
-c.Label.String = 'Gaze density [a.u.]';
+c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
-title('')
+title('Alpha Amplification: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
 
 % plot decreaseing
 subplot(3,2,2);
@@ -446,9 +670,9 @@ c.LineWidth = 1;
 c.FontSize = 18;
 c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
 % title(c,'Gaze density [a.u.]');%\it d
-c.Label.String = 'Gaze density [a.u.]';
+c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
-title('')
+title('Alpha Reduction: WM Load 2', 'FontSize', fontSize, 'Interpreter', 'none')
 
 subplot(3,2,4);
 ft_singleplotTFR(cfg,stat_inc_n_4);
@@ -463,9 +687,9 @@ c.LineWidth = 1;
 c.FontSize = 18;
 c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
 % title(c,'Gaze density [a.u.]');%\it d
-c.Label.String = 'Gaze density [a.u.]';
+c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
-title('')
+title('Alpha Reduction: WM Load 4', 'FontSize', fontSize, 'Interpreter', 'none')
 
 subplot(3,2,6);
 ft_singleplotTFR(cfg,stat_inc_n_6);
@@ -480,60 +704,63 @@ c.LineWidth = 1;
 c.FontSize = 18;
 c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
 % title(c,'Gaze density [a.u.]');%\it d
-c.Label.String = 'Gaze density [a.u.]';
+c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
-title('')
+title('Alpha Reduction: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
+
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_gaze_TFR_statInc.png'));
+close(gcf);
 %%
 
 cfg                  = [];
-cfg.method           = 'montecarlo'; 
-cfg.statistic        = 'ft_statfun_depsamplesFunivariate'; 
-                              
+cfg.method           = 'montecarlo';
+cfg.statistic        = 'ft_statfun_depsamplesFunivariate';
+
 cfg.correctm         = 'cluster';
-cfg.clusteralpha     = 0.05;       
-                                  
-cfg.clusterstatistic = 'maxsum';  
-                                                             
-cfg.tail             = 1;          
-cfg.clustertail      = cfg.tail;  
-cfg.alpha            = 0.05;      
-cfg.numrandomization = 1000;        
+cfg.clusteralpha     = 0.05;
+
+cfg.clusterstatistic = 'maxsum';
+
+cfg.tail             = 1;
+cfg.clustertail      = cfg.tail;
+cfg.alpha            = 0.05;
+cfg.numrandomization = 1000;
 
 subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
 n_2  = subj;
 n_4  = subj;
 n_6 =  subj;
 
-cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3]; 
-cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6]; 
-cfg.ivar                  = 1; 
+cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
+cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
+cfg.ivar                  = 1;
 cfg.uvar                  = 2;
 [statF_gaze_norm] = ft_freqstatistics(cfg, allgazetasklate2_norm{idx_jensen},allgazetasklate4_norm{idx_jensen},allgazetasklate6_norm{idx_jensen});
 [statF_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
 statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
 
 cfg                  = [];
-cfg.method           = 'montecarlo'; 
-cfg.statistic        = 'ft_statfun_depsamplesFunivariate'; 
-                              
+cfg.method           = 'montecarlo';
+cfg.statistic        = 'ft_statfun_depsamplesFunivariate';
+
 cfg.correctm         = 'cluster';
-cfg.clusteralpha     = 0.05;       
-                                  
-cfg.clusterstatistic = 'maxsum';  
-                                                             
-cfg.tail             = 1;          
-cfg.clustertail      = cfg.tail;  
-cfg.alpha            = 0.05;      
-cfg.numrandomization = 1000;        
+cfg.clusteralpha     = 0.05;
+
+cfg.clusterstatistic = 'maxsum';
+
+cfg.tail             = 1;
+cfg.clustertail      = cfg.tail;
+cfg.alpha            = 0.05;
+cfg.numrandomization = 1000;
 
 subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
 n_2  = subj;
 n_4  = subj;
 n_6 =  subj;
 
-cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3]; 
-cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6]; 
-cfg.ivar                  = 1; 
+cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
+cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
+cfg.ivar                  = 1;
 cfg.uvar                  = 2;
 [statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
 statF_gaze_n.stat(statF_gaze_n.mask==0)=0;% set everything not relevant to zero
@@ -542,49 +769,49 @@ cfg         = [];
 cfg.parameter = 'stat';
 cfg.maskparameter = 'mask';
 cfg.maskstyle        = 'outline';
-cfg.zlim = 'absmax';  
+cfg.zlim = 'absmax';
 cfg.colormap = 'YlOrRd';
 cfg.zlim = [0 10];
 % cfg.xlim =[300 500];
 % cfg.ylim =[200 400];
 cfg.figure = 'gcf';
-figure;
+figure('Position', [0 0 1512 982], 'Color', 'w');
 subplot(3,2,1);
 ft_singleplotTFR(cfg,statF_gaze);
+title('Alpha Amplification: Omnibus Load Effect', 'FontSize', fontSize, 'Interpreter', 'none');
 
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-xlabel('x [px]');
-ylabel('y [px]');
-% title('high- low during baseline')
-c = colorbar;
+ax = gca;
+set(ax, 'FontSize', fontSize);
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+c = colorbar(ax);
 c.LineWidth = 1;
-c.FontSize = 18;
+c.FontSize = fontSize - 2;
 c.Ticks = [0 10];
-title(c,'F-values')
-title('')
+c.Label.String = 'F-value';
+c.Label.FontSize = fontSize - 2;
 
 subplot(3,2,2);
 ft_singleplotTFR(cfg,statF_gaze_n);
+title('Alpha Reduction: Omnibus Load Effect', 'FontSize', fontSize, 'Interpreter', 'none');
 
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-xlabel('x [px]');
-ylabel('y [px]');
-% title('high- low during baseline')
-c = colorbar;
+ax = gca;
+set(ax, 'FontSize', fontSize);
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+c = colorbar(ax);
 c.LineWidth = 1;
-c.FontSize = 18;
+c.FontSize = fontSize - 2;
 c.Ticks = [0 10];
-title(c,'F-values')
-title('')
+c.Label.String = 'F-value';
+c.Label.FontSize = fontSize - 2;
 
 % zoomed version
 cfg         = [];
 cfg.parameter = 'stat';
 cfg.maskparameter = 'mask';
 cfg.maskstyle        = 'outline';
-cfg.zlim = 'absmax';  
+cfg.zlim = 'absmax';
 cfg.colormap = 'YlOrRd';
 cfg.zlim = [0 10];
 cfg.xlim =[300 500];
@@ -593,33 +820,36 @@ cfg.figure = 'gcf';
 
 subplot(3,2,3);
 ft_singleplotTFR(cfg,statF_gaze);
+title('Alpha Amplification: Omnibus Load Effect (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
 
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-xlabel('x [px]');
-ylabel('y [px]');
-% title('high- low during baseline')
-c = colorbar;
+ax = gca;
+set(ax, 'FontSize', fontSize);
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+c = colorbar(ax);
 c.LineWidth = 1;
-c.FontSize = 18;
+c.FontSize = fontSize - 2;
 c.Ticks = [0 10];
-title(c,'F-values')
-title('')
+c.Label.String = 'F-value';
+c.Label.FontSize = fontSize - 2;
 
 subplot(3,2,4);
 ft_singleplotTFR(cfg,statF_gaze_n);
+title('Alpha Reduction: Omnibus Load Effect (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
 
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-xlabel('x [px]');
-ylabel('y [px]');
-% title('high- low during baseline')
-c = colorbar;
+ax = gca;
+set(ax, 'FontSize', fontSize);
+xlabel(ax, 'x [px]', 'FontSize', fontSize);
+ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+c = colorbar(ax);
 c.LineWidth = 1;
-c.FontSize = 18;
+c.FontSize = fontSize - 2;
 c.Ticks = [0 10];
-title(c,'F-values')
-title('')
+c.Label.String = 'F-value';
+c.Label.FontSize = fontSize - 2;
+
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_gaze_TFR_statF_omnibus.png'));
+close(gcf);
 %% Test linear trend (requires ft_statfun_loadtrend)
 funcs_paths = {fullfile(fileparts(mfilename('fullpath')), '..', 'funcs'), '/Volumes/Homestore/OCC/arne/funcs'};
 has_loadtrend = false;
@@ -633,146 +863,145 @@ for pp = 1:numel(funcs_paths)
     end
 end
 if has_loadtrend
-cfg                  = [];
-cfg.method           = 'montecarlo'; 
-cfg.statistic        = 'ft_statfun_loadtrend'; % positive gaze increase with load at that location, negative gaze decrease with load at that location
-% cfg.statistic        = 'ft_statfun_loadquadratic'; % positive U shape lowest at the middle load, negative inverted U shape peaks at middle load
-                                    
-cfg.correctm         = 'cluster';
-cfg.clusteralpha     = 0.05;       
-                                  
-cfg.clusterstatistic = 'maxsum';  
-                                                             
-cfg.tail             = 0;          
-cfg.clustertail      = cfg.tail;  
-cfg.alpha            = 0.05;      
-cfg.numrandomization = 1000;        
+    cfg                  = [];
+    cfg.method           = 'montecarlo';
+    cfg.statistic        = 'ft_statfun_loadtrend'; % positive gaze increase with load at that location, negative gaze decrease with load at that location
+    % cfg.statistic        = 'ft_statfun_loadquadratic'; % positive U shape lowest at the middle load, negative inverted U shape peaks at middle load
 
-subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
-n_2  = subj;
-n_4  = subj;
-n_6 =  subj;
+    cfg.correctm         = 'cluster';
+    cfg.clusteralpha     = 0.05;
 
-cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3]; 
-cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6]; 
-cfg.ivar                  = 1; 
-cfg.uvar                  = 2;
-[statF_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
-statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
+    cfg.clusterstatistic = 'maxsum';
+
+    cfg.tail             = 0;
+    cfg.clustertail      = cfg.tail;
+    cfg.alpha            = 0.05;
+    cfg.numrandomization = 1000;
+
+    subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
+    n_2  = subj;
+    n_4  = subj;
+    n_6 =  subj;
+
+    cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
+    cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
+    cfg.ivar                  = 1;
+    cfg.uvar                  = 2;
+    [statF_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
+    statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
 
 
-cfg                  = [];
-cfg.method           = 'montecarlo'; 
-cfg.statistic        = 'ft_statfun_loadtrend'; % positive gaze increase with load at that location, negative gaze decrease with load at that location
-% cfg.statistic        = 'ft_statfun_loadquadratic'; % positive U shape lowest at the middle load, negative inverted U shape peaks at middle load
-                                    
-cfg.correctm         = 'cluster';
-cfg.clusteralpha     = 0.05;       
-                                  
-cfg.clusterstatistic = 'maxsum';  
-                                                             
-cfg.tail             = 0;          
-cfg.clustertail      = cfg.tail;  
-cfg.alpha            = 0.05;      
-cfg.numrandomization = 1000;        
-subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
-n_2  = subj;
-n_4  = subj;
-n_6 =  subj;
+    cfg                  = [];
+    cfg.method           = 'montecarlo';
+    cfg.statistic        = 'ft_statfun_loadtrend'; % positive gaze increase with load at that location, negative gaze decrease with load at that location
+    % cfg.statistic        = 'ft_statfun_loadquadratic'; % positive U shape lowest at the middle load, negative inverted U shape peaks at middle load
 
-cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3]; 
-cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6]; 
-cfg.ivar                  = 1; 
-cfg.uvar                  = 2;
-[statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
-statF_gaze_n.stat(statF_gaze_n.mask==0)=0;% set everything not relevant to zero
-%%
-cfg         = [];
-cfg.parameter = 'stat';
-cfg.maskparameter = 'mask';
-cfg.maskstyle        = 'outline';
-cfg.zlim = 'absmax';  
-% cfg.colormap = 'YlOrRd';
-cfg.zlim = [-5 5];
-% cfg.xlim =[300 500];
-% cfg.ylim =[200 400];
-cfg.figure = 'gcf';
-figure;
-subplot(3,2,1);
-ft_singleplotTFR(cfg,statF_gaze);
+    cfg.correctm         = 'cluster';
+    cfg.clusteralpha     = 0.05;
 
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-xlabel('x [px]');
-ylabel('y [px]');
-% title('high- low during baseline')
-c = colorbar;
-c.LineWidth = 1;
-c.FontSize = 18;
-c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-title(c,'t-values')
-title('')
+    cfg.clusterstatistic = 'maxsum';
 
-subplot(3,2,2);
-ft_singleplotTFR(cfg,statF_gaze_n);
+    cfg.tail             = 0;
+    cfg.clustertail      = cfg.tail;
+    cfg.alpha            = 0.05;
+    cfg.numrandomization = 1000;
+    subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
+    n_2  = subj;
+    n_4  = subj;
+    n_6 =  subj;
 
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-xlabel('x [px]');
-ylabel('y [px]');
-% title('high- low during baseline')
-c = colorbar;
-c.LineWidth = 1;
-c.FontSize = 18;
-c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-title(c,'t-values')
-title('')
-%% zoom
-cfg         = [];
-cfg.parameter = 'stat';
-cfg.maskparameter = 'mask';
-cfg.maskstyle        = 'outline';
-cfg.zlim = 'absmax';  
-% cfg.colormap = 'YlOrRd';
-cfg.zlim = [-5 5];
-cfg.xlim =[300 500];
-cfg.ylim =[200 400];
-cfg.figure = 'gcf';
+    cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
+    cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
+    cfg.ivar                  = 1;
+    cfg.uvar                  = 2;
+    [statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
+    statF_gaze_n.stat(statF_gaze_n.mask==0)=0;% set everything not relevant to zero
+    %%
+    cfg         = [];
+    cfg.parameter = 'stat';
+    cfg.maskparameter = 'mask';
+    cfg.maskstyle        = 'outline';
+    cfg.zlim = 'absmax';
+    % cfg.colormap = 'YlOrRd';
+    cfg.zlim = [-5 5];
+    % cfg.xlim =[300 500];
+    % cfg.ylim =[200 400];
+    cfg.figure = 'gcf';
+    figure('Position', [0 0 1512 982], 'Color', 'w');
+    subplot(3,2,1);
+    ft_singleplotTFR(cfg,statF_gaze);
+    title('Alpha Amplification: Linear Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
 
-subplot(3,2,3);
-ft_singleplotTFR(cfg,statF_gaze);
+    ax = gca;
+    set(ax, 'FontSize', fontSize);
+    xlabel(ax, 'x [px]', 'FontSize', fontSize);
+    ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+    c = colorbar(ax);
+    c.LineWidth = 1;
+    c.FontSize = fontSize - 2;
+    c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
+    c.Label.String = 't-value';
+    c.Label.FontSize = fontSize - 2;
 
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-xlabel('x [px]');
-ylabel('y [px]');
-% title('high- low during baseline')
-c = colorbar;
-c.LineWidth = 1;
-c.FontSize = 18;
-c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-title(c,'t-values')
-title('')
+    subplot(3,2,2);
+    ft_singleplotTFR(cfg,statF_gaze_n);
+    title('Alpha Reduction: Linear Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
 
-subplot(3,2,4);
-ft_singleplotTFR(cfg,statF_gaze_n);
+    ax = gca;
+    set(ax, 'FontSize', fontSize);
+    xlabel(ax, 'x [px]', 'FontSize', fontSize);
+    ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+    c = colorbar(ax);
+    c.LineWidth = 1;
+    c.FontSize = fontSize - 2;
+    c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
+    c.Label.String = 't-value';
+    c.Label.FontSize = fontSize - 2;
+    %% zoom
+    cfg         = [];
+    cfg.parameter = 'stat';
+    cfg.maskparameter = 'mask';
+    cfg.maskstyle        = 'outline';
+    cfg.zlim = 'absmax';
+    % cfg.colormap = 'YlOrRd';
+    cfg.zlim = [-5 5];
+    cfg.xlim =[300 500];
+    cfg.ylim =[200 400];
+    cfg.figure = 'gcf';
 
-set(gcf,'color','w');
-set(gca,'Fontsize',20);
-xlabel('x [px]');
-ylabel('y [px]');
-% title('high- low during baseline')
-c = colorbar;
-c.LineWidth = 1;
-c.FontSize = 18;
-c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-title(c,'t-values')
-title('')
+    subplot(3,2,3);
+    ft_singleplotTFR(cfg,statF_gaze);
+    title('Alpha Amplification: Linear Load Trend (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
+
+    ax = gca;
+    set(ax, 'FontSize', fontSize);
+    xlabel(ax, 'x [px]', 'FontSize', fontSize);
+    ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+    c = colorbar(ax);
+    c.LineWidth = 1;
+    c.FontSize = fontSize - 2;
+    c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
+    c.Label.String = 't-value';
+    c.Label.FontSize = fontSize - 2;
+
+    subplot(3,2,4);
+    ft_singleplotTFR(cfg,statF_gaze_n);
+    title('Alpha Reduction: Linear Load Trend (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
+
+    ax = gca;
+    set(ax, 'FontSize', fontSize);
+    xlabel(ax, 'x [px]', 'FontSize', fontSize);
+    ylabel(ax, 'y [px]', 'FontSize', fontSize-2);
+    c = colorbar(ax);
+    c.LineWidth = 1;
+    c.FontSize = fontSize - 2;
+    c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
+    c.Label.String = 't-value';
+    c.Label.FontSize = fontSize - 2;
+    saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaOverLoads_gaze_TFR_loadTrend.png'));
+    close(gcf);
 else
     fprintf('Skipping linear trend: ft_statfun_loadtrend not found.\n');
-end
-else
-    fprintf('Skipping gaze density: %s or %s not found.\n', gaze_file, gaze_norm_file);
 end
 
 %% Behavioral data
@@ -789,19 +1018,19 @@ RT2 = nan(nSubj,1); RT4 = nan(nSubj,1); RT6 = nan(nSubj,1);
 ACC2 = nan(nSubj,1); ACC4 = nan(nSubj,1); ACC6 = nan(nSubj,1);
 
 for i = 1:nSubj
-    
+
     subj_id = str2double(subjects{i}); % assumes subjects like '301'
-    
+
     idx = [behav_data_sternberg.ID] == subj_id;
-    
+
     cond = [behav_data_sternberg(idx).Condition];
     RT   = [behav_data_sternberg(idx).ReactionTime];
     ACC  = [behav_data_sternberg(idx).Accuracy];
-    
+
     RT2(i) = RT(cond==2);
     RT4(i) = RT(cond==4);
     RT6(i) = RT(cond==6);
-    
+
     ACC2(i) = ACC(cond==2);
     ACC4(i) = ACC(cond==4);
     ACC6(i) = ACC(cond==6);
@@ -936,27 +1165,27 @@ RT2 = nan(nSubj,1); RT4 = nan(nSubj,1); RT6 = nan(nSubj,1);
 ACC2 = nan(nSubj,1); ACC4 = nan(nSubj,1); ACC6 = nan(nSubj,1);
 
 for i = 1:nSubj
-    
+
     subj_id = str2double(subjects{i});
-    
+
     idx = [behav_data_sternberg.ID] == subj_id;
-    
+
     if sum(idx)==0
         continue
     end
-    
+
     cond = [behav_data_sternberg(idx).Condition];
     RT   = [behav_data_sternberg(idx).ReactionTime];
     ACC  = [behav_data_sternberg(idx).Accuracy];
-    
+
     if sum(cond==2)==0 || sum(cond==4)==0 || sum(cond==6)==0
         continue
     end
-    
+
     RT2(i) = RT(cond==2);
     RT4(i) = RT(cond==4);
     RT6(i) = RT(cond==6);
-    
+
     ACC2(i) = ACC(cond==2);
     ACC4(i) = ACC(cond==4);
     ACC6(i) = ACC(cond==6);
@@ -976,7 +1205,7 @@ RT = [];
 ACC = [];
 
 for i = 1:nSubj
-    
+
     if idx_jensen(i)
         g = 1;
     elseif idx_nback(i)
@@ -984,15 +1213,15 @@ for i = 1:nSubj
     else
         continue
     end
-    
+
     if any(isnan([RT2(i), RT4(i), RT6(i), ACC2(i), ACC4(i), ACC6(i)]))
         continue
     end
-    
+
     Subject = [Subject; i; i; i];
     Load = [Load; 2; 4; 6];
     Group = [Group; g; g; g];
-    
+
     RT = [RT; RT2(i); RT4(i); RT6(i)];
     ACC = [ACC; ACC2(i); ACC4(i); ACC6(i)];
 end
@@ -1045,44 +1274,44 @@ tost_welch(ACC_jensen, ACC_nback, 5)
 tost_welch(ACC_jensen, ACC_nback, 10)
 %% Helper functions
 function plot_tfr_matrix_panel(subplot_idx, ga_data, cfg_sel, clim, fsz)
-    freq = ft_selectdata(cfg_sel, ga_data);
-    meanpow = squeeze(mean(freq.powspctrm, 1));
-    tim_interp = linspace(freq.time(1), freq.time(end), 500);
-    freq_interp = linspace(1, 40, 500);
-    [tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
-    [tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
-    pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow, ...
-        tim_grid_interp, freq_grid_interp, 'spline');
-    subplot(3, 2, subplot_idx);
-    ft_plot_matrix(flip(pow_interp));
-    ax = gca; hold(ax, 'on');
-    x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
-    xline(ax, x0, 'k-', 'LineWidth', 1);
-    xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-0.5 0 1 2], 'linear', 'extrap')));
-    xticklabels({'-0.5', '0', '1', '2'});
-    yticks([1 125 250 375]);
-    yticklabels({'40', '30', '20', '10'});
-    set(gca, 'FontSize', fsz);
-    xlabel('Time [s]');
-    ylabel('Frequency [Hz]');
-    caxis(clim);
-    c = colorbar;
-    c.LineWidth = 1;
-    c.FontSize = fsz - 2;
-    c.Ticks = clim;
-    ylabel(c, 'dB');
+freq = ft_selectdata(cfg_sel, ga_data);
+meanpow = squeeze(mean(freq.powspctrm, 1));
+tim_interp = linspace(freq.time(1), freq.time(end), 500);
+freq_interp = linspace(1, 40, 500);
+[tim_grid_orig, freq_grid_orig] = meshgrid(freq.time, freq.freq);
+[tim_grid_interp, freq_grid_interp] = meshgrid(tim_interp, freq_interp);
+pow_interp = interp2(tim_grid_orig, freq_grid_orig, meanpow, ...
+    tim_grid_interp, freq_grid_interp, 'spline');
+subplot(3, 2, subplot_idx);
+ft_plot_matrix(flip(pow_interp));
+ax = gca; hold(ax, 'on');
+x0 = interp1(tim_interp, 1:numel(tim_interp), 0, 'linear', 'extrap');
+xline(ax, x0, 'k-', 'LineWidth', 1);
+xticks(round(interp1(tim_interp, 1:numel(tim_interp), [-0.5 0 1 2], 'linear', 'extrap')));
+xticklabels({'-0.5', '0', '1', '2'});
+yticks([1 125 250 375]);
+yticklabels({'40', '30', '20', '10'});
+set(gca, 'FontSize', fsz);
+xlabel('Time [s]');
+ylabel('Frequency [Hz]');
+caxis(clim);
+c = colorbar;
+c.LineWidth = 1;
+c.FontSize = fsz - 2;
+c.Ticks = clim;
+ylabel(c, 'dB');
 end
 
 function sig_label = getSigLabel(p)
-    if p < 0.001
-        sig_label = '***';
-    elseif p < 0.01
-        sig_label = '**';
-    elseif p < 0.05
-        sig_label = '*';
-    else
-        sig_label = '';
-    end
+if p < 0.001
+    sig_label = '***';
+elseif p < 0.01
+    sig_label = '**';
+elseif p < 0.05
+    sig_label = '*';
+else
+    sig_label = '';
+end
 end
 function [p1, p2, equivalent] = tost(x1, x2, delta, alpha)
 
@@ -1116,6 +1345,113 @@ p1 = 1 - tcdf(t1, df);
 p2 = tcdf(t2, df);
 
 equivalent = (p1 < alpha) && (p2 < alpha);
+end
+
+% ----- Helper functions for gaze dwell heatmaps -----
+function conds = parse_trialinfo_conds_for_sternberg_heatmap(trialinfo)
+% Returns per-trial condition codes (22/24/26) from the trialinfo array.
+conds = [];
+if isempty(trialinfo)
+    return
+end
+if isvector(trialinfo)
+    conds = trialinfo(:);
+elseif size(trialinfo, 2) >= 1
+    if size(trialinfo, 2) == 2
+        conds = trialinfo(:, 1);
+    elseif size(trialinfo, 1) == 2
+        conds = trialinfo(1, :)';
+    else
+        conds = trialinfo(:, 1);
+    end
+end
+end
+
+function pos_cells = extractPosCellsForGazeWindow( ...
+    gaze_x, gaze_y, trial_idx, t_series, t_win, min_valid_samples)
+% Extracts per-trial [x;y] matrices for a given time window.
+% NaN positions are allowed and ignored by `histcounts2`.
+pos_cells = {};
+if isempty(trial_idx)
+    return
+end
+
+for ii = 1:numel(trial_idx)
+    trl = trial_idx(ii);
+    x = double(gaze_x{trl});
+    y = double(gaze_y{trl});
+    if isempty(x) || isempty(y) || numel(x) ~= numel(y)
+        continue
+    end
+    x = x(:)'; y = y(:)';
+
+    tt = linspace(t_series(1), t_series(2), numel(x));
+    idx_win = tt >= t_win(1) & tt <= t_win(2);
+    if ~any(idx_win)
+        continue
+    end
+
+    xw = x(idx_win);
+    yw = y(idx_win);
+
+    valid = isfinite(xw) & isfinite(yw);
+    if sum(valid) < min_valid_samples
+        continue
+    end
+
+    xw(~valid) = NaN;
+    yw(~valid) = NaN;
+
+    pos_cells{end+1} = [xw; yw]; %#ok<AGROW>
+end
+end
+
+function [freq_raw, freq_norm] = computeGazeHeatmapFromPosCells( ...
+    pos_cells, x_grid, y_grid, fs, smoothing)
+% Implements the supervisor's `computeGazeHeatmap()` logic (raw + normalized dwell maps).
+nTime = numel(x_grid) - 1;
+nFreq = numel(y_grid) - 1;
+
+% Empty fallback: return all-zero maps with correct FieldTrip structure.
+if isempty(pos_cells)
+    freq_raw = struct();
+    freq_raw.powspctrm = zeros(1, nFreq, nTime);
+    freq_raw.time = x_grid(2:end);
+    freq_raw.freq = y_grid(2:end);
+    freq_raw.label = {'et'};
+    freq_raw.dimord = 'chan_freq_time';
+
+    freq_norm = freq_raw;
+    return
+end
+
+pos = horzcat(pos_cells{:});
+binned = histcounts2(pos(1, :), pos(2, :), x_grid, y_grid);
+dwell_time = binned / fs;
+smoothed = imgaussfilt(dwell_time, smoothing);
+
+freq_raw = struct();
+freq_raw.powspctrm(1, :, :) = flipud(smoothed');
+freq_raw.time = x_grid(2:end);
+freq_raw.freq = y_grid(2:end);
+freq_raw.label = {'et'};
+freq_raw.dimord = 'chan_freq_time';
+
+denom = sum(dwell_time(:));
+if denom > 0
+    norm_time = dwell_time / denom;
+    norm_smooth = imgaussfilt(norm_time, smoothing);
+
+    freq_norm = struct();
+    freq_norm.powspctrm(1, :, :) = flipud(norm_smooth');
+    freq_norm.time = x_grid(2:end);
+    freq_norm.freq = y_grid(2:end);
+    freq_norm.label = {'et'};
+    freq_norm.dimord = 'chan_freq_time';
+else
+    freq_norm = freq_raw;
+    freq_norm.powspctrm(:) = 0;
+end
 end
 
 %% ================= TOST FUNCTION =================

@@ -20,7 +20,6 @@ else
 end
 feat_dir = fullfile(base_data, 'data', 'features');
 fig_dir = fullfile(base_data, 'figures', 'splits', 'SplitAlphaLoads');
-stats_dir = fullfile(fig_dir, 'cbpt_stats');
 
 %% Figure setup
 fig_pos = [0 0 1512 982];
@@ -429,7 +428,7 @@ saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_subtractionBaseline
 
 %% Compute CBPT stats: paired baseline-vs-task tests separately for each load (2/4/6) and each subgroup (increase vs decrease)
 clc
-cbpt_file_gaze_taskVsBase = fullfile(stats_dir, 'AOC_split_AlphaLoads_CBPT_gaze_tasklate_minus_base.mat');
+cbpt_file_gaze_taskVsBase = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_tasklate_minus_base.mat');
 % if isfile(cbpt_file_gaze_taskVsBase)
 %     disp('Loading cached CBPT: gaze tasklate vs baseline...')
 %     load(cbpt_file_gaze_taskVsBase);
@@ -645,12 +644,9 @@ saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statInc.png'));
 cfg                  = [];
 cfg.method           = 'montecarlo';
 cfg.statistic        = 'ft_statfun_depsamplesFunivariate';
-
 cfg.correctm         = 'cluster';
 cfg.clusteralpha     = 0.05;
-
 cfg.clusterstatistic = 'maxsum';
-
 cfg.tail             = 1;
 cfg.clustertail      = cfg.tail;
 cfg.alpha            = 0.05;
@@ -665,7 +661,8 @@ cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
 cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
-cbpt_file_gaze_omnibus = fullfile(stats_dir, 'AOC_split_AlphaLoads_CBPT_gaze_omnibus_loadEffect.mat');
+cbpt_file_gaze_omnibus = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_omnibus_loadEffect.mat');
+
 % if isfile(cbpt_file_gaze_omnibus)
 %     disp('Loading cached CBPT: gaze omnibus load effect...')
 %     load(cbpt_file_gaze_omnibus);
@@ -686,7 +683,7 @@ cbpt_file_gaze_omnibus = fullfile(stats_dir, 'AOC_split_AlphaLoads_CBPT_gaze_omn
     cfg.tail             = 1;
     cfg.clustertail      = cfg.tail;
     cfg.alpha            = 0.05;
-    cfg.numrandomization = 1000;
+    cfg.numrandomization = 100
 
     subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
     n_2  = subj;
@@ -706,92 +703,49 @@ cbpt_file_gaze_omnibus = fullfile(stats_dir, 'AOC_split_AlphaLoads_CBPT_gaze_omn
         'cfg_cbpt_gaze_omnibus_jensen', 'cfg_cbpt_gaze_omnibus_nback', '-v7.3');
 %end
 
-%%
-cfg         = [];
+%% Plot F-stats
+close all
+cfg = [];
 cfg.parameter = 'stat';
 cfg.maskparameter = 'mask';
-cfg.maskstyle        = 'outline';
-cfg.zlim = 'maxabs';
-cfg.colormap = 'YlOrRd';
-cfg.zlim = [0 10];
-% cfg.xlim =[300 500];
-% cfg.ylim =[200 400];
+cfg.maskstyle = 'outline';
+cfg.zlim = [0 14];
 cfg.figure = 'gcf';
-figure('Position', [0 0 1512 982], 'Color', 'w');
-subplot(3,2,1);
-ft_singleplotTFR(cfg,statF_gaze);
+cfg.colormap = 'YlOrRd';
+
+figure('Position', [0 0 1512*0.5 982], 'Color', 'w');
+
+% plot
+ax1 = subplot(2,1,1);
+ft_singleplotTFR(cfg, statF_gaze);
 title('Amplification: Omnibus Load Effect', 'FontSize', fontSize, 'Interpreter', 'none');
 
-ax = gca;
-set(ax, 'FontSize', fontSize);
-xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
-ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-c = colorbar(ax);
-c.LineWidth = 1;
-c.FontSize = fontSize - 2;
-c.Ticks = [0 10];
-c.Label.String = 'F-value';
-c.Label.FontSize = fontSize - 2;
-
-subplot(3,2,2);
-ft_singleplotTFR(cfg,statF_gaze_n);
+ax2 = subplot(2,1,2);
+ft_singleplotTFR(cfg, statF_gaze_n);
 title('Reduction: Omnibus Load Effect', 'FontSize', fontSize, 'Interpreter', 'none');
 
-ax = gca;
-set(ax, 'FontSize', fontSize);
-xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
-ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-c = colorbar(ax);
-c.LineWidth = 1;
-c.FontSize = fontSize - 2;
-c.Ticks = [0 10];
-c.Label.String = 'F-value';
-c.Label.FontSize = fontSize - 2;
+% fix colormaps
+cmap = colormap(ax1);
+cmap(1,:) = [1 1 1];
+colormap(ax1, cmap);
+colormap(ax2, cmap);
 
-% zoomed version
-cfg         = [];
-cfg.parameter = 'stat';
-cfg.maskparameter = 'mask';
-cfg.maskstyle        = 'outline';
-cfg.zlim = 'maxabs';
-cfg.colormap = 'YlOrRd';
-cfg.zlim = [0 10];
-cfg.xlim =[300 500];
-cfg.ylim =[200 400];
-cfg.figure = 'gcf';
+% format
+set(ax1, 'FontSize', fontSize);
+xlabel(ax1, 'Screen Width [px]', 'FontSize', fontSize);
+ylabel(ax1, 'Screen Height [px]', 'FontSize', fontSize-2);
+c = colorbar(ax1);
+c.LineWidth = 1; c.FontSize = fontSize-2;
+c.Ticks = [0 10]; c.Label.String = 'F-value'; c.Label.FontSize = fontSize-2;
 
-subplot(3,2,3);
-ft_singleplotTFR(cfg,statF_gaze);
-title('Amplification: Omnibus Load Effect (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
-
-ax = gca;
-set(ax, 'FontSize', fontSize);
-xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
-ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-c = colorbar(ax);
-c.LineWidth = 1;
-c.FontSize = fontSize - 2;
-c.Ticks = [0 10];
-c.Label.String = 'F-value';
-c.Label.FontSize = fontSize - 2;
-
-subplot(3,2,4);
-ft_singleplotTFR(cfg,statF_gaze_n);
-title('Reduction: Omnibus Load Effect (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
-
-ax = gca;
-set(ax, 'FontSize', fontSize);
-xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
-ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-c = colorbar(ax);
-c.LineWidth = 1;
-c.FontSize = fontSize - 2;
-c.Ticks = [0 10];
-c.Label.String = 'F-value';
-c.Label.FontSize = fontSize - 2;
+set(ax2, 'FontSize', fontSize);
+xlabel(ax2, 'Screen Width [px]', 'FontSize', fontSize);
+ylabel(ax2, 'Screen Height [px]', 'FontSize', fontSize-2);
+c = colorbar(ax2);
+c.LineWidth = 1; c.FontSize = fontSize-2;
+c.Ticks = [0 10]; c.Label.String = 'F-value'; c.Label.FontSize = fontSize-2;
 
 saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statF_omnibus.png'));
-close(gcf);
 
 %% Test linear (and quadratic) trends across WM load
 funcs_paths = {fullfile(fileparts(mfilename('fullpath')), '..', 'funcs'), '/Volumes/Homestore/OCC/arne/funcs'};
@@ -813,7 +767,7 @@ for pp = 1:numel(funcs_paths)
 end
 
 % ---------------- Linear load trend ----------------
-cbpt_file_gaze_loadtrend = fullfile(stats_dir, 'AOC_split_AlphaLoads_CBPT_gaze_linearLoadTrend.mat');
+cbpt_file_gaze_loadtrend = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_linearLoadTrend.mat');
 do_plot_loadtrend = false;
 if isfile(cbpt_file_gaze_loadtrend)
     disp('Loading cached CBPT: gaze linear load trend...')
@@ -971,7 +925,7 @@ if ~has_loadtrend
 end
 
 % ---------------- Quadratic load trend ----------------
-cbpt_file_gaze_loadquadratic = fullfile(stats_dir, 'AOC_split_AlphaLoads_CBPT_gaze_quadraticLoadTrend.mat');
+cbpt_file_gaze_loadquadratic = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_quadraticLoadTrend.mat');
 do_plot_loadquadratic = false;
 if isfile(cbpt_file_gaze_loadquadratic)
     disp('Loading cached CBPT: gaze quadratic load trend...')
@@ -1123,7 +1077,6 @@ if do_plot_loadquadratic
     c.Label.FontSize = fontSize - 2;
 
     saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadQuadratic.png'));
-    close(gcf);
 end
 
 clear statF_gaze_quad statF_gaze_quad_n
@@ -1168,6 +1121,7 @@ sb6 = RT6(idx_jensen);
 nb1 = RT2(idx_nback);
 nb2 = RT4(idx_nback);
 nb3 = RT6(idx_nback);
+
 %%
 figure('Position', fig_pos, 'Color', 'w');
 clf;
@@ -1191,7 +1145,7 @@ scatter(positions(2)+(rand(size(sb4))-0.5)*jitter, sb4, 'b.');
 scatter(positions(3)+(rand(size(sb6))-0.5)*jitter, sb6, 'r.');
 
 ylabel('Reaction Time [s]')
-title(sprintf('\\alpha increase with load (N=%d)', sum(idx_jensen)))
+title(sprintf('Alpha increase with load (N=%d)', sum(idx_jensen)))
 set(gca,'FontSize',18); box on;
 ylim([0 1.5])
 
@@ -1211,7 +1165,7 @@ scatter(positions(2)+(rand(size(nb2))-0.5)*jitter, nb2, 'b.');
 scatter(positions(3)+(rand(size(nb3))-0.5)*jitter, nb3, 'r.');
 
 ylabel('Reaction Time [s]')
-title(sprintf('\\alpha decrease with load (N=%d)', sum(idx_nback)))
+title(sprintf('Alpha decrease with load (N=%d)', sum(idx_nback)))
 set(gca,'FontSize',18); box on;
 ylim([0 1.5])
 set(gcf,'color','w');
@@ -1251,7 +1205,7 @@ scatter(positions(2)+(rand(size(sb4))-0.5)*jitter, sb4, 'b.');
 scatter(positions(3)+(rand(size(sb6))-0.5)*jitter, sb6, 'r.');
 
 ylabel('Accuracy [%]')
-title(sprintf('\\alpha increase with load (N=%d)', sum(idx_jensen)))
+title(sprintf('Alpha increase with load (N=%d)', sum(idx_jensen)))
 set(gca,'FontSize',18); box on;
 
 ylim([50 110])   % adjust if needed
@@ -1273,7 +1227,7 @@ scatter(positions(2)+(rand(size(nb2))-0.5)*jitter, nb2, 'b.');
 scatter(positions(3)+(rand(size(nb3))-0.5)*jitter, nb3, 'r.');
 
 ylabel('Accuracy [%]')
-title(sprintf('\\alpha decrease with load (N=%d)', sum(idx_nback)))
+title(sprintf('Alpha decrease with load (N=%d)', sum(idx_nback)))
 set(gca,'FontSize',18); box on;
 
 ylim([50 110])   % same scale for comparison

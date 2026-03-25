@@ -303,6 +303,15 @@ if isfile(gaze_cache_file)
     allgazetasklate4 = scale_gaze_cells_powspctrm(allgazetasklate4, t_late_len);
     allgazetasklate6 = scale_gaze_cells_powspctrm(allgazetasklate6, t_late_len);
 
+    % Reduce gaze map resolution for permutation stats to avoid OOM on servers.
+    gaze_cbpt_bins = 200;
+    allgazebase2 = downsample_gaze_cells_powspctrm(allgazebase2, gaze_cbpt_bins);
+    allgazebase4 = downsample_gaze_cells_powspctrm(allgazebase4, gaze_cbpt_bins);
+    allgazebase6 = downsample_gaze_cells_powspctrm(allgazebase6, gaze_cbpt_bins);
+    allgazetasklate2 = downsample_gaze_cells_powspctrm(allgazetasklate2, gaze_cbpt_bins);
+    allgazetasklate4 = downsample_gaze_cells_powspctrm(allgazetasklate4, gaze_cbpt_bins);
+    allgazetasklate6 = downsample_gaze_cells_powspctrm(allgazetasklate6, gaze_cbpt_bins);
+
     gaze_ready = true;
 else
     fprintf('Skipping gaze density: %s not found.\n', gaze_cache_file);
@@ -445,6 +454,7 @@ cbpt_file_gaze_taskVsBase = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_t
     cfg.tail             = 0;
     cfg.clustertail      = 0;
     cfg.alpha            = 0.05;
+    cfg.correcttail      = 'alpha';
     cfg.numrandomization = 1000;
 
     cfg.neighbours=[];
@@ -1675,6 +1685,38 @@ for ii = 1:numel(cells_out)
         continue
     end
     cells_out{ii}.powspctrm = cells_out{ii}.powspctrm .* scale_factor;
+end
+end
+
+function cells_out = downsample_gaze_cells_powspctrm(cells_in, target_bins)
+cells_out = cells_in;
+for ii = 1:numel(cells_out)
+    if isempty(cells_out{ii}) || ~isfield(cells_out{ii}, 'powspctrm')
+        continue
+    end
+
+    P = cells_out{ii}.powspctrm;
+    if isempty(P)
+        continue
+    end
+
+    % Expected shape for gaze maps in this script: 1 x freq x time.
+    if ndims(P) ~= 3 || size(P, 1) ~= 1
+        continue
+    end
+
+    P2 = squeeze(P(1, :, :));
+    if ~isequal(size(P2), [target_bins, target_bins])
+        P2 = imresize(P2, [target_bins, target_bins], 'bilinear');
+    end
+    cells_out{ii}.powspctrm = reshape(P2, [1, target_bins, target_bins]);
+
+    if isfield(cells_out{ii}, 'freq') && ~isempty(cells_out{ii}.freq)
+        cells_out{ii}.freq = linspace(min(cells_out{ii}.freq), max(cells_out{ii}.freq), target_bins);
+    end
+    if isfield(cells_out{ii}, 'time') && ~isempty(cells_out{ii}.time)
+        cells_out{ii}.time = linspace(min(cells_out{ii}.time), max(cells_out{ii}.time), target_bins);
+    end
 end
 end
 

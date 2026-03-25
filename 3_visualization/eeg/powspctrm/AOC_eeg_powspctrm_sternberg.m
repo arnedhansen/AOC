@@ -119,7 +119,7 @@ saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/powspct
 %% Plot INDIVIDUAL power spectra
 close all
 output_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
-load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/eeg_matrix_sternberg.mat')
+load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg.mat')
 
 for subj = 1:length(subjects)
     close all;

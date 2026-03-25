@@ -22,6 +22,7 @@ import statsmodels.formula.api as smf
 
 from functions.stats_helpers import iqr_outlier_filter
 from functions.mixedlm_helpers import fit_mixedlm, drop1_lrt
+from functions.aoc_feature_files import feature_file
 
 warnings.filterwarnings("ignore", message=".*onvergence.*")
 warnings.filterwarnings("ignore", message=".*The Hessian.*")
@@ -34,12 +35,12 @@ os.makedirs(output_dir, exist_ok=True)
 
 # %% Data sources
 LONG_FILES = {
-    "sternberg": os.path.join(base_dir, "data/features/merged_data_sternberg.csv"),
-    "nback":     os.path.join(base_dir, "data/features/merged_data_nback.csv"),
+    "sternberg": feature_file(base_dir, "merged_data_sternberg.csv"),
+    "nback":     feature_file(base_dir, "merged_data_nback.csv"),
 }
 TRIAL_FILES = {
-    "sternberg": os.path.join(base_dir, "data/features/merged_data_sternberg_trials.csv"),
-    "nback":     os.path.join(base_dir, "data/features/merged_data_nback_trials.csv"),
+    "sternberg": feature_file(base_dir, "merged_data_sternberg_trials.csv"),
+    "nback":     feature_file(base_dir, "merged_data_nback_trials.csv"),
 }
 
 COND_MAP = {

@@ -32,6 +32,7 @@ import statsmodels.formula.api as smf
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", message=".*onvergence.*")
+from functions.aoc_feature_files import feature_file
 
 # %% Plot settings (match project style)
 pal_group = {"odd": "#93B8C4", "even": "#D998A2"}  # blue = odd, pink = even
@@ -67,12 +68,12 @@ os.makedirs(fig_dir, exist_ok=True)
 # %% Task configuration
 tasks = {
     "sternberg": {
-        "csv":        f"{base_dir}/data/features/merged_data_sternberg_LONG.csv",
+        "csv":        feature_file(base_dir, "merged_data_sternberg_LONG.csv"),
         "cond_map":   {2: "WM load 2", 4: "WM load 4", 6: "WM load 6"},
         "cond_order": ["WM load 2", "WM load 4", "WM load 6"],
     },
     "nback": {
-        "csv":        f"{base_dir}/data/features/merged_data_nback_LONG.csv",
+        "csv":        feature_file(base_dir, "merged_data_nback_LONG.csv"),
         "cond_map":   {1: "1-back", 2: "2-back", 3: "3-back"},
         "cond_order": ["1-back", "2-back", "3-back"],
     },

@@ -552,4 +552,4 @@ for subj = 1:length(subjects)
 end
 
 % Grand save across subjects
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/gaze_matrix_nback_trials gaze_data_nback_trials
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_matrix_nback_trials gaze_data_nback_trials

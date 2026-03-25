@@ -23,6 +23,7 @@ from functions.stats_helpers import (
 from functions.rainclouds_plotting_helpers import add_stat_brackets
 
 from functions.export_model_table import export_model_table
+from functions.aoc_feature_files import feature_file
 
 from functions.mixedlm_helpers import (
     fit_mixedlm, drop1_lrt, pairwise_condition_contrasts_at_mean_gaze, mixedlm_fixed_effects_to_df, lr_effect_sizes
@@ -102,7 +103,7 @@ ylims_map = {
 tasks = [
     {
         "name"       : "sternberg",
-        "input_csv"  : f"{base_dir}/data/features/merged_data_sternberg.csv",
+        "input_csv"  : feature_file(base_dir, "merged_data_sternberg.csv"),
         # Accept numeric encodings {1,2,3} or {2,4,6}; otherwise normalise existing strings
         "cond_to_label_numeric": [{1: "WM load 2", 2: "WM load 4", 3: "WM load 6"},
                                   {2: "WM load 2", 4: "WM load 4", 6: "WM load 6"}],
@@ -112,7 +113,7 @@ tasks = [
     },
     {
         "name"       : "nback",
-        "input_csv"  : f"{base_dir}/data/features/merged_data_nback.csv",
+        "input_csv"  : feature_file(base_dir, "merged_data_nback.csv"),
         "cond_to_label_numeric": [{1: "1-back", 2: "2-back", 3: "3-back"}],
         "categories" : ["1-back", "2-back", "3-back"],
         "comparisons": [("1-back", "2-back"), ("1-back", "3-back"), ("2-back", "3-back")],

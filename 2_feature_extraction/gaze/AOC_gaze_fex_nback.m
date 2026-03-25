@@ -224,5 +224,5 @@ for subj = 1:length(subjects)
     % Append to the final structure array
     gaze_data_nback = [gaze_data_nback; subj_data_gaze];
 end
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/gaze_nback gaze_x gaze_y
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/gaze_matrix_nback gaze_data_nback
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_nback gaze_x gaze_y
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_matrix_nback gaze_data_nback

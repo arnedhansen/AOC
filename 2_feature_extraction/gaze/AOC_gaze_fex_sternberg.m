@@ -227,5 +227,5 @@ for subj = 1:length(subjects)
     gaze_data_sternberg = [gaze_data_sternberg; subj_data_gaze];
 end
 trialinfo = dataet.trialinfo';
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/gaze_sternberg gaze_x gaze_y trialinfo
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/gaze_matrix_sternberg gaze_data_sternberg
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_sternberg gaze_x gaze_y trialinfo
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_matrix_sternberg gaze_data_sternberg

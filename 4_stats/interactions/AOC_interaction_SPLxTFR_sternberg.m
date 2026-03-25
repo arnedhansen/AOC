@@ -19,7 +19,7 @@ time_series = linspace(-0.5, 2, 51); % 51 points -> 50 steps
 T = numel(time_series) - 1; % step series aligns to time_series(2:end)
 
 %% Load data
-load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/merged_data_sternberg_trials.mat')
+load(fullfile(path, 'AOC_merged_data_sternberg_trials.mat'))
 
 %% Preallocate holders for subject-level TFRs and SPL time-courses
 low_tfr_subs = cell(1, length(subjects)); % per-subject LOW-SPL TFR (avg over trials)

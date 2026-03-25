@@ -33,6 +33,7 @@ import seaborn as sns
 from scipy import stats as sp_stats
 import statsmodels.formula.api as smf
 import warnings
+from functions.aoc_feature_files import feature_file
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -91,13 +92,13 @@ STERN_COND_MAP = {2: "WM load 2", 4: "WM load 4", 6: "WM load 6"}
 # ──────────────────────────────────────────────────────────────────────────────
 
 # %% Load N-back subject-level data (has AlphaPower)
-nb_subj_path = os.path.join(feature_dir, "merged_data_nback.csv")
+nb_subj_path = feature_file(base_dir, "merged_data_nback.csv")
 nb_subj_raw = pd.read_csv(nb_subj_path)
 nb_subj_raw["ID"] = nb_subj_raw["ID"].astype(str)
 nb_subj_raw["Condition"] = nb_subj_raw["Condition"].astype(int)
 
 # %% Load N-back trial-level data
-nback_path = os.path.join(feature_dir, "merged_data_nback_trials.csv")
+nback_path = feature_file(base_dir, "merged_data_nback_trials.csv")
 nb = pd.read_csv(nback_path)
 nb["ID"] = nb["ID"].astype(str)
 nb = nb.dropna(subset=[ALPHA_COL_NB_TRIALS, "Trial", "Condition"])
@@ -109,7 +110,7 @@ nb["Block"] = np.ceil(nb["Trial"] / NBACK_TRIALS_PER_BLOCK).astype(int)
 nb["TrialInBlock"] = ((nb["Trial"] - 1) % NBACK_TRIALS_PER_BLOCK) + 1
 
 # %% Load Sternberg trial-level data
-stern_path = os.path.join(feature_dir, "merged_data_sternberg_trials.csv")
+stern_path = feature_file(base_dir, "merged_data_sternberg_trials.csv")
 st = pd.read_csv(stern_path)
 st["ID"] = st["ID"].astype(str)
 st = st.dropna(subset=[ALPHA_COL_ST_TRIALS, "Trial", "Condition"])

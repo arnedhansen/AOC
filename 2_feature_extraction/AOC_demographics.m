@@ -11,7 +11,9 @@ clear
 % demos = table2struct(demos(1:120, :));
 % histogram([demos.Alter])
 
-load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/merged_data_nback.mat');
+startup
+[~, featPath, ~, ~] = setup('AOC', 0);
+load(fullfile(featPath, 'AOC_merged_data_nback.mat'));
 dat = merged_data_nback;
 
 %% Basic participant characteristics

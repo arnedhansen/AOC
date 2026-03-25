@@ -246,7 +246,7 @@ for subj = 1:length(subjects)
     end
 end
 if ispc == 1
-    save W:\Students\Arne\AOC\data\features\eeg_matrix_sternberg eeg_data_sternberg
+    save W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_sternberg eeg_data_sternberg
 else
-    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/eeg_matrix_sternberg eeg_data_sternberg
+    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg eeg_data_sternberg
 end

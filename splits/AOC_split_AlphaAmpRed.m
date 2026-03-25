@@ -56,7 +56,7 @@ alpha_ref_percentile = 95; % Use this percentile of |alpha| for reference (outli
 
 %% Load subject-level merged data and define alpha split
 fprintf('\n=== Loading merged data ===\n');
-merged_file = fullfile(feat_dir, 'merged_data_sternberg.mat');
+merged_file = fullfile(feat_dir, 'AOC_merged_data_sternberg.mat');
 if ~isfile(merged_file)
     error('Missing file: %s', merged_file);
 end

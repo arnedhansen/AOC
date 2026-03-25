@@ -109,5 +109,5 @@ for subj = 1:length(subjects)
     behav_data_nback_trials = [behav_data_nback_trials; subj_data_behav_trials];
     behav_data_nback = [behav_data_nback; subj_data_behav];
 end
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/behavioral_matrix_nback_trials behav_data_nback_trials
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/behavioral_matrix_nback behav_data_nback
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_behavioral_matrix_nback_trials behav_data_nback_trials
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_behavioral_matrix_nback behav_data_nback

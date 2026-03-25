@@ -115,5 +115,5 @@ for subj = 1:length(subjects)
         fprintf('Continuing to next subject...\n');
     end
 end
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/behavioral_matrix_sternberg_trials behav_data_sternberg_trials
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/behavioral_matrix_sternberg behav_data_sternberg
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_behavioral_matrix_sternberg_trials behav_data_sternberg_trials
+save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_behavioral_matrix_sternberg behav_data_sternberg

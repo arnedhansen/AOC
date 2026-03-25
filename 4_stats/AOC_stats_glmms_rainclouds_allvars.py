@@ -23,6 +23,7 @@ from functions.stats_helpers import (
     iqr_outlier_filter, mixedlm_pairwise_contrasts, p_to_signif
 )
 from functions.rainclouds_plotting_helpers import add_stat_brackets
+from functions.aoc_feature_files import feature_file
 
 # %% Parameters
 
@@ -135,7 +136,7 @@ def _save_name(var):
 tasks = [
     {
         "name"       : "sternberg",
-        "input_csv"  : f"{base_dir}/data/features/merged_data_sternberg.csv",
+        "input_csv"  : feature_file(base_dir, "merged_data_sternberg.csv"),
         "cond_to_label_numeric": [
             {1: "WM load 2", 2: "WM load 4", 3: "WM load 6"},
             {2: "WM load 2", 4: "WM load 4", 6: "WM load 6"},
@@ -148,7 +149,7 @@ tasks = [
     },
     {
         "name"       : "nback",
-        "input_csv"  : f"{base_dir}/data/features/merged_data_nback.csv",
+        "input_csv"  : feature_file(base_dir, "merged_data_nback.csv"),
         "cond_to_label_numeric": [{1: "1-back", 2: "2-back", 3: "3-back"}],
         "categories" : ["1-back", "2-back", "3-back"],
         "comparisons": [("1-back", "2-back"),

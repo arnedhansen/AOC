@@ -370,7 +370,7 @@ end
 
 % Save pooled table
 if ispc == 1
-    save W:\Students\Arne\AOC\data\features\eeg_matrix_nback_trials eeg_data_nback_trials
+    save W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_nback_trials eeg_data_nback_trials
 else
-    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/eeg_matrix_nback_trials eeg_data_nback_trials
+    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_nback_trials eeg_data_nback_trials
 end

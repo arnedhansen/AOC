@@ -38,7 +38,8 @@
 clear
 clc
 close all
-featPath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
+startup
+[~, featPath, ~, ~] = setup('AOC', 0);
 
 %% Load data
 % Demographics
@@ -47,19 +48,19 @@ demog = demog(:, {'ID', 'Gender', 'Alter', 'H_ndigkeit', 'OcularDominance'});
 demog = table2struct(demog(1:120, :));
 
 % Behavioral
-load(fullfile(featPath, 'behavioral_matrix_sternberg.mat'));  % behav_data_sternberg
+load(fullfile(featPath, 'AOC_behavioral_matrix_sternberg.mat'));  % behav_data_sternberg
 
 % EEG (original: AlphaPower, IAF, Lateralization)
-load(fullfile(featPath, 'eeg_matrix_sternberg.mat'));         % eeg_data_sternberg
+load(fullfile(featPath, 'AOC_eeg_matrix_sternberg.mat'));         % eeg_data_sternberg
 
 % Gaze (original: subject-level, non-baselined)
-load(fullfile(featPath, 'gaze_matrix_sternberg.mat'));        % gaze_data_sternberg
+load(fullfile(featPath, 'AOC_gaze_matrix_sternberg.mat'));        % gaze_data_sternberg
 
 % Gaze (trial-level with baselined metrics)
-load(fullfile(featPath, 'gaze_matrix_sternberg_trials.mat')); % gaze_data_sternberg_trials
+load(fullfile(featPath, 'AOC_gaze_matrix_sternberg_trials.mat')); % gaze_data_sternberg_trials
 
 % EEG (trial-level with baselined alpha power)
-load(fullfile(featPath, 'eeg_matrix_sternberg_trials.mat'));  % eeg_data_sternberg_trials
+load(fullfile(featPath, 'AOC_eeg_matrix_sternberg_trials.mat'));  % eeg_data_sternberg_trials
 
 %% Merge demographics into behavioral struct
 demoIDs = [demog.ID];
@@ -259,12 +260,12 @@ merged_data_sternberg = struct( ...
     'BCEALatLateBL',           num2cell(gazeBL(:,18))');
 
 %% Save as .mat
-save(fullfile(featPath, 'merged_data_sternberg.mat'), 'merged_data_sternberg');
+save(fullfile(featPath, 'AOC_merged_data_sternberg.mat'), 'merged_data_sternberg');
 fprintf('Saved merged_data_sternberg.mat\n');
 
 %% Save as .csv
 merged_table = struct2table(merged_data_sternberg);
-writetable(merged_table, fullfile(featPath, 'merged_data_sternberg.csv'));
+writetable(merged_table, fullfile(featPath, 'AOC_merged_data_sternberg.csv'));
 fprintf('Saved merged_data_sternberg.csv\n');
 
 %% Summary

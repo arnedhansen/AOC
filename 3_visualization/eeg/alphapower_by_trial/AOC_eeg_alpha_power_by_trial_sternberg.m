@@ -6,13 +6,13 @@
 
 %% Load data struct
 clear
-load('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg_trials.mat');
+load('/Volumes/methlab/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg_trials.mat');
 
 %% Plot trial-by-trial ALPHA POWER GRAND AVERAGE
 %% Grand-average α-power across subjects (trial-by-trial)
 
 % Load data (if not already in workspace)
-% load('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg_trials.mat');
+% load('/Volumes/methlab/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg_trials.mat');
 
 % Identify unique subjects
 subjIDs = unique([eeg_data_sternberg_trials.ID]);

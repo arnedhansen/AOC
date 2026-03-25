@@ -10,7 +10,8 @@
 clear
 clc
 close all
-featPath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
+startup
+[~, featPath, ~, ~] = setup('AOC', 0);
 
 %% Load data
 % Demographics from methlab_vp
@@ -19,13 +20,13 @@ demog_data_nback = demog_data_nback(:, {'ID', 'Gender', 'Alter', 'H_ndigkeit', '
 demog_data_nback = table2struct(demog_data_nback(1:120, :));
 
 % Behavioral
-load(fullfile(featPath, 'behavioral_matrix_nback_trials.mat'));
+load(fullfile(featPath, 'AOC_behavioral_matrix_nback_trials.mat'));
 
 % Gaze
-load(fullfile(featPath, 'gaze_matrix_nback_trials.mat'));
+load(fullfile(featPath, 'AOC_gaze_matrix_nback_trials.mat'));
 
 % EEG
-load(fullfile(featPath, 'eeg_matrix_nback_trials.mat'));
+load(fullfile(featPath, 'AOC_eeg_matrix_nback_trials.mat'));
 
 %% Merge structures
 %  based on global trial IDs
@@ -139,7 +140,7 @@ newOrder = [ ...
 merged_data_nback_trials = merged_data_nback_trials(:, newOrder);
 
 %% Save as .mat
-save(fullfile(featPath, 'merged_data_nback_trials.mat'), 'merged_data_nback_trials');
+save(fullfile(featPath, 'AOC_merged_data_nback_trials.mat'), 'merged_data_nback_trials');
 
 %% Save as .csv
-writetable(merged_data_nback_trials, fullfile(featPath, 'merged_data_nback_trials.csv'));
+writetable(merged_data_nback_trials, fullfile(featPath, 'AOC_merged_data_nback_trials.csv'));

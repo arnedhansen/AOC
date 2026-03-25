@@ -14,7 +14,7 @@ library(colorspace)  # provides darken(), lighten(), desaturate()
 pal <- c("#93B8C4", "#82AD82", "#D998A2") 
 
 # Read in the data
-dat <- read.csv("/Volumes/methlab/Students/Arne/AOC/data/features/merged_data_sternberg.csv")
+dat <- read.csv("/Volumes/methlab/Students/Arne/AOC/data/features/AOC_merged_data_sternberg.csv")
 
 # Remove outliers by setting any points over 0.55 or -0.55 in dat$Lateralization to NA
 dat$Lateralization[dat$Lateralization > 0.55 | dat$Lateralization < -0.55] <- NA

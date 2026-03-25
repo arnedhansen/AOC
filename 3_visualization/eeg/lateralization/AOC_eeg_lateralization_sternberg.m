@@ -13,7 +13,7 @@ folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
 %% Load data
-load('/Volumes/methlab/Students/Arne/AOC/data/features/eeg_matrix_sternberg_trials.mat');
+load('/Volumes/methlab/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg_trials.mat');
 
 %% Visualize Lateralization
 for subs = 1:length(subjects)

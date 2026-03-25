@@ -1,4 +1,4 @@
-%% AOC Split Sternberg Alpha Loads
+wel%% AOC Split Sternberg Alpha Loads
 % Stratifies participants by alpha power slope across WM load (2,4,6).
 % Alpha increase vs decrease subgroups; TFRs, power spectra, behavioral (RT, ACC),
 % optional gaze density. Uses 1-2 s retention window for alpha extraction.
@@ -269,34 +269,27 @@ gaze_cache_file = fullfile(feat_dir, 'sternberg_split_alphaLoads_gaze.mat');
 
 if ~isfile(gaze_cache_file)
     fprintf('Gaze cache missing. Building gaze heatmaps from dataET_sternberg and saving to %s.\n', gaze_cache_file);
-    [gaze_raw, gaze_norm] = build_sternberg_split_alphaLoads_gaze_from_raw_et(subjects, path);
-    save(gaze_cache_file, 'gaze_raw', 'gaze_norm', 'subjects', '-v7.3');
+    gaze_dwell_time = build_sternberg_split_alphaLoads_gaze_from_raw_et(subjects, path);
+    save(gaze_cache_file, 'gaze_dwell_time', 'subjects', '-v7.3');
 end
 
 if isfile(gaze_cache_file)
     tic
     disp(upper('Loading gaze cache...'))
-    R = load(gaze_cache_file, 'gaze_raw');
-    N = load(gaze_cache_file, 'gaze_norm');
+    S = load(gaze_cache_file, 'gaze_dwell_time');
     toc
-    gaze_raw = R.gaze_raw;
-    gaze_norm = N.gaze_norm;
+    if ~isfield(S, 'gaze_dwell_time')
+        error('Gaze cache found at %s but does not contain `gaze_dwell_time`.', gaze_cache_file);
+    end
+    gaze_dwell_time = S.gaze_dwell_time;
 
     % Unpack raw
-    allgazebase2 = gaze_raw.allgazebase2;
-    allgazebase4 = gaze_raw.allgazebase4;
-    allgazebase6 = gaze_raw.allgazebase6;
-    allgazetasklate2 = gaze_raw.allgazetasklate2;
-    allgazetasklate4 = gaze_raw.allgazetasklate4;
-    allgazetasklate6 = gaze_raw.allgazetasklate6;
-
-    % Unpack norm
-    allgazebase2_norm = gaze_norm.allgazebase2_norm;
-    allgazebase4_norm = gaze_norm.allgazebase4_norm;
-    allgazebase6_norm = gaze_norm.allgazebase6_norm;
-    allgazetasklate2_norm = gaze_norm.allgazetasklate2_norm;
-    allgazetasklate4_norm = gaze_norm.allgazetasklate4_norm;
-    allgazetasklate6_norm = gaze_norm.allgazetasklate6_norm;
+    allgazebase2 = gaze_dwell_time.allgazebase2;
+    allgazebase4 = gaze_dwell_time.allgazebase4;
+    allgazebase6 = gaze_dwell_time.allgazebase6;
+    allgazetasklate2 = gaze_dwell_time.allgazetasklate2;
+    allgazetasklate4 = gaze_dwell_time.allgazetasklate4;
+    allgazetasklate6 = gaze_dwell_time.allgazetasklate6;
 
     % Convert from dwell proportion (computeGazeHeatmap output) to rough dwell time [s/bin]
     % NOTE: computeGazeHeatmap normalizes by window duration; multiplying by the nominal
@@ -1110,7 +1103,7 @@ end
 clear statF_gaze_quad statF_gaze_quad_n
 
 %% Behavioral data
-behav_file = fullfile(feat_dir, 'behavioral_matrix_sternberg.mat');
+behav_file = fullfile(feat_dir, 'AOC_behavioral_matrix_sternberg.mat');
 if ~isfile(behav_file)
     error('Missing: %s', behav_file);
 end
@@ -1511,7 +1504,7 @@ for ii = 1:numel(trial_idx)
 end
 end
 
-function [freq_raw, freq_norm] = computeGazeHeatmapFromPosCells( ...
+function freq_raw = computeGazeHeatmapFromPosCells( ...
     pos_cells, x_grid, y_grid, fs, smoothing)
 % Implements the supervisor's `computeGazeHeatmap()` logic (raw + normalized dwell maps).
 nTime = numel(x_grid) - 1;
@@ -1525,8 +1518,6 @@ if isempty(pos_cells)
     freq_raw.freq = y_grid(2:end);
     freq_raw.label = {'et'};
     freq_raw.dimord = 'chan_freq_time';
-
-    freq_norm = freq_raw;
     return
 end
 
@@ -1546,20 +1537,11 @@ denom = sum(dwell_time(:));
 if denom > 0
     norm_time = dwell_time / denom;
     norm_smooth = imgaussfilt(norm_time, smoothing);
-
-    freq_norm = struct();
-    freq_norm.powspctrm(1, :, :) = flipud(norm_smooth');
-    freq_norm.time = x_grid(2:end);
-    freq_norm.freq = y_grid(2:end);
-    freq_norm.label = {'et'};
-    freq_norm.dimord = 'chan_freq_time';
 else
-    freq_norm = freq_raw;
-    freq_norm.powspctrm(:) = 0;
 end
 end
 
-function [gaze_raw, gaze_norm] = build_sternberg_split_alphaLoads_gaze_from_raw_et(subjects, base_path)
+function gaze_dwell_time = build_sternberg_split_alphaLoads_gaze_from_raw_et(subjects, base_path)
 
 n_subj = length(subjects);
 num_bins = 1000;
@@ -1572,10 +1554,6 @@ y_grid = linspace(0, 600, num_bins + 1);
 allgazebase2 = cell(1, n_subj); allgazetasklate2 = cell(1, n_subj);
 allgazebase4 = cell(1, n_subj); allgazetasklate4 = cell(1, n_subj);
 allgazebase6 = cell(1, n_subj); allgazetasklate6 = cell(1, n_subj);
-
-allgazebase2_norm = cell(1, n_subj); allgazetasklate2_norm = cell(1, n_subj);
-allgazebase4_norm = cell(1, n_subj); allgazetasklate4_norm = cell(1, n_subj);
-allgazebase6_norm = cell(1, n_subj); allgazetasklate6_norm = cell(1, n_subj);
 
 for subj = 1:n_subj
     clc
@@ -1600,30 +1578,22 @@ for subj = 1:n_subj
     idx4 = find(trialinfo_vec == 24);
     idx6 = find(trialinfo_vec == 26);
 
-    [allgazebase2{subj}, allgazebase2_norm{subj}] = extract_gaze_window(et, idx2, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
-    [allgazebase4{subj}, allgazebase4_norm{subj}] = extract_gaze_window(et, idx4, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
-    [allgazebase6{subj}, allgazebase6_norm{subj}] = extract_gaze_window(et, idx6, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
+    allgazebase2{subj} = extract_gaze_window(et, idx2, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
+    allgazebase4{subj} = extract_gaze_window(et, idx4, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
+    allgazebase6{subj} = extract_gaze_window(et, idx6, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
 
-    [allgazetasklate2{subj}, allgazetasklate2_norm{subj}] = extract_gaze_window(et, idx2, [1 2], x_grid, y_grid, fsample, smoothing);
-    [allgazetasklate4{subj}, allgazetasklate4_norm{subj}] = extract_gaze_window(et, idx4, [1 2], x_grid, y_grid, fsample, smoothing);
-    [allgazetasklate6{subj}, allgazetasklate6_norm{subj}] = extract_gaze_window(et, idx6, [1 2], x_grid, y_grid, fsample, smoothing);
+    allgazetasklate2{subj} = extract_gaze_window(et, idx2, [1 2], x_grid, y_grid, fsample, smoothing);
+    allgazetasklate4{subj} = extract_gaze_window(et, idx4, [1 2], x_grid, y_grid, fsample, smoothing);
+    allgazetasklate6{subj} = extract_gaze_window(et, idx6, [1 2], x_grid, y_grid, fsample, smoothing);
 end
 
-gaze_raw = struct();
-gaze_raw.allgazebase2 = allgazebase2;
-gaze_raw.allgazetasklate2 = allgazetasklate2;
-gaze_raw.allgazebase4 = allgazebase4;
-gaze_raw.allgazetasklate4 = allgazetasklate4;
-gaze_raw.allgazebase6 = allgazebase6;
-gaze_raw.allgazetasklate6 = allgazetasklate6;
-
-gaze_norm = struct();
-gaze_norm.allgazebase2_norm = allgazebase2_norm;
-gaze_norm.allgazetasklate2_norm = allgazetasklate2_norm;
-gaze_norm.allgazebase4_norm = allgazebase4_norm;
-gaze_norm.allgazetasklate4_norm = allgazetasklate4_norm;
-gaze_norm.allgazebase6_norm = allgazebase6_norm;
-gaze_norm.allgazetasklate6_norm = allgazetasklate6_norm;
+gaze_dwell_time = struct();
+gaze_dwell_time.allgazebase2 = allgazebase2;
+gaze_dwell_time.allgazetasklate2 = allgazetasklate2;
+gaze_dwell_time.allgazebase4 = allgazebase4;
+gaze_dwell_time.allgazetasklate4 = allgazetasklate4;
+gaze_dwell_time.allgazebase6 = allgazebase6;
+gaze_dwell_time.allgazetasklate6 = allgazetasklate6;
 end
 
 function et = select_et_struct(tmp, subj_label)
@@ -1642,16 +1612,16 @@ if ~isfield(et, 'trial') || ~isfield(et, 'trialinfo') || ~isfield(et, 'time')
 end
 end
 
-function [freq_raw, freq_norm] = extract_gaze_window(et, trial_idx, latency, x_grid, y_grid, fsample, smoothing)
+function freq_raw = extract_gaze_window(et, trial_idx, latency, x_grid, y_grid, fsample, smoothing)
 cfg = [];
 cfg.channel = {'L-GAZE-X', 'L-GAZE-Y'};
 cfg.latency = latency;
 cfg.trials = trial_idx;
 sel = ft_selectdata(cfg, et);
-[freq_raw, freq_norm] = compute_gaze_heatmap(sel, x_grid, y_grid, fsample, smoothing);
+freq_raw = compute_gaze_heatmap(sel, x_grid, y_grid, fsample, smoothing);
 end
 
-function [freq_raw, freq_norm] = compute_gaze_heatmap(data, x_grid, y_grid, fsample, smoothing)
+function freq_raw = compute_gaze_heatmap(data, x_grid, y_grid, fsample, smoothing)
 % RAW: use the canonical `computeGazeHeatmap` from the functions repo.
 if isempty(data.trial)
     pos = zeros(2, 0);
@@ -1660,48 +1630,6 @@ else
 end
 data3 = [pos; zeros(1, size(pos, 2))]; % computeGazeHeatmap expects at least 3 rows
 freq_raw = computeGazeHeatmap(data3, numel(x_grid), smoothing);
-
-% NORM: same binning/smoothing, but normalized by valid (finite) samples instead of full window length.
-freq_norm = computeGazeHeatmap_validnorm(data3, numel(x_grid), smoothing);
-end
-
-function dataOut = computeGazeHeatmap_validnorm(data, num_bins, smoothing_factor)
-valid_data_indices = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
-valid_data = data(1:3, valid_data_indices);
-
-win_size = 50;
-data = remove_blinks(valid_data, win_size);
-
-x_positions = data(1, :);
-y_positions = data(2, :);
-
-x_grid_pixels = linspace(0, 800, num_bins);
-y_grid_pixels = linspace(0, 600, num_bins);
-
-finite_xy = isfinite(x_positions) & isfinite(y_positions);
-if any(finite_xy)
-    binned_data_pixels = histcounts2(x_positions(finite_xy), y_positions(finite_xy), x_grid_pixels, y_grid_pixels);
-else
-    binned_data_pixels = zeros(num_bins-1, num_bins-1);
-end
-
-binned_time = binned_data_pixels / 500; % seconds per bin
-valid_length = sum(finite_xy) / 500;    % seconds of valid samples
-if valid_length > 0
-    binned_rate = binned_time / valid_length;
-else
-    binned_rate = binned_time;
-end
-
-smoothed_data_pixels = imgaussfilt(binned_rate, smoothing_factor);
-
-freq = [];
-freq.powspctrm(1,:,:) = squeeze(smoothed_data_pixels');
-freq.time       = x_grid_pixels(2:end);
-freq.freq       = y_grid_pixels(2:end);
-freq.label      = {'et'};
-freq.dimord     = 'chan_freq_time';
-dataOut = freq;
 end
 
 function trialinfo_vec = align_trialinfo_to_trials(trialinfo, n_trials, subj_label)

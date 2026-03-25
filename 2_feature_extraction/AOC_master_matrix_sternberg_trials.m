@@ -10,7 +10,8 @@
 clear
 clc
 close all
-featPath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
+startup
+[~, featPath, ~, ~] = setup('AOC', 0);
 
 %% Load data
 % Demographics from methlab_vp
@@ -19,13 +20,13 @@ demog_data_sternberg = demog_data_sternberg(:, {'ID', 'Gender', 'Alter', 'H_ndig
 demog_data_sternberg = table2struct(demog_data_sternberg(1:120, :));
 
 % Behavioral
-load(fullfile(featPath, 'behavioral_matrix_sternberg_trials.mat'));
+load(fullfile(featPath, 'AOC_behavioral_matrix_sternberg_trials.mat'));
 
 % Gaze
-load(fullfile(featPath, 'gaze_matrix_sternberg_trials.mat'));
+load(fullfile(featPath, 'AOC_gaze_matrix_sternberg_trials.mat'));
 
 % EEG
-load(fullfile(featPath, 'eeg_matrix_sternberg_trials.mat'));
+load(fullfile(featPath, 'AOC_eeg_matrix_sternberg_trials.mat'));
 
 %% Merge structures
 %  based on global trial IDs
@@ -139,7 +140,7 @@ newOrder = [ ...
 merged_data_sternberg_trials = merged_data_sternberg_trials(:, newOrder);
 
 %% Save as .mat
-save(fullfile(featPath, 'merged_data_sternberg_trials.mat'), 'merged_data_sternberg_trials');
+save(fullfile(featPath, 'AOC_merged_data_sternberg_trials.mat'), 'merged_data_sternberg_trials');
 
 %% Save as .csv
-writetable(merged_data_sternberg_trials, fullfile(featPath, 'merged_data_sternberg_trials.csv'));
+writetable(merged_data_sternberg_trials, fullfile(featPath, 'AOC_merged_data_sternberg_trials.csv'));

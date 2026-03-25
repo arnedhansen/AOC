@@ -8,7 +8,7 @@
 startup
 [subjects, path, ~, ~] = setup('AOC');
 load('/Volumes/g_psyplafor_methlab$/Students/Arne/MA/headmodel/layANThead.mat') % FieldTrip layout
-load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/merged_data_sternberg_trials.mat')
+load(fullfile(path, 'AOC_merged_data_sternberg_trials.mat'))
 
 colors = color_def('AOC');
 fontSize = 36;

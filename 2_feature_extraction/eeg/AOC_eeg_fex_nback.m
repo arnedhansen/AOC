@@ -232,9 +232,9 @@ for subj = 1:length(subjects)
     end
 end
 if ispc == 1
-    save W:\Students\Arne\AOC\data\features\eeg_matrix_nback eeg_data_nback
+    save W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_nback eeg_data_nback
 else
-    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/eeg_matrix_nback eeg_data_nback
+    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_nback eeg_data_nback
 end
 
 %% POWER TRIAL-BY-TRIAL

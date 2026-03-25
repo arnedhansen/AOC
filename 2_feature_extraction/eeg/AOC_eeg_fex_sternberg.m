@@ -10,7 +10,8 @@
 %% POWSPCTRM (Retention)
 % Setup
 startup
-[subjects, path, ~ , ~] = setup('AOC');
+[subjects, paths, ~ , ~] = setup('AOC');
+path = paths.features;
 
 % Setup logging
 logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
@@ -66,7 +67,8 @@ end
 %% ALPHA POWER, IAF and LATERALIZATION INDEX
 % Setup
 startup
-[subjects, path, ~ , ~] = setup('AOC');
+[subjects, paths, ~ , ~] = setup('AOC');
+path = paths.features;
 
 % Define channels
 subj = 1;

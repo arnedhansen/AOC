@@ -7,8 +7,10 @@
 %% Setup
 startup
 clear
-[~, ~, ~ , ~] = setup('AOC');
-path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
+[~, paths, ~ , ~] = setup('AOC', 0);
+path = paths.features;
+rasterDir = fullfile(paths.figures, 'gaze', 'microsaccades');
+if ~isfolder(rasterDir), mkdir(rasterDir); end
 
 dirs     = dir(path);
 folders  = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
@@ -51,4 +53,4 @@ title('Sternberg Microsaccade Time Series')
 set(gca,'FontSize',fontSize)
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/microsaccades/AOC_gaze_microsaccades_MSSeries_sternberg.png');
+saveas(gcf, fullfile(rasterDir, 'AOC_gaze_microsaccades_MSSeries_sternberg.png'));

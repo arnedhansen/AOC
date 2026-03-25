@@ -39,7 +39,8 @@ clear
 clc
 close all
 startup
-[~, featPath, ~, ~] = setup('AOC', 0);
+[~, paths, ~, ~] = setup('AOC', 0);
+featPath = paths.features;
 
 %% Load data
 % Demographics

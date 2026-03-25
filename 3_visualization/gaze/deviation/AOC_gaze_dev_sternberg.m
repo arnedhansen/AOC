@@ -6,7 +6,10 @@
 
 %% Setup
 startup
-[subjects, path, colors, ~] = setup('AOC');
+[subjects, paths, colors, ~] = setup('AOC');
+path = paths.features;
+figDir = fullfile(paths.figures, 'gaze', 'deviation');
+if ~isfolder(figDir), mkdir(figDir); end
 
 %% Compute gaze metrics
 numSubjects = length(subjects);
@@ -190,11 +193,7 @@ legend([eb_y{1}.mainLine, eb_y{2}.mainLine, eb_y{3}.mainLine], {'WM load 2', 'WM
 hold off;
 
 % Save
-if ispc == 1
-    saveas(gcf, fullfile('W:\Students\Arne\AOC\figures\gaze\deviation\AOC_dev_sternberg_all.png'));
-else
-    saveas(gcf, fullfile('/Volumes/methlab/Students/Arne/AOC/figures/gaze/deviation/AOC_dev_sternberg_all.png'));
-end
+saveas(gcf, fullfile(figDir, 'AOC_dev_sternberg_all.png'));
 
 %% INDIVIDUAL PLOTS
 for subj = 1:numSubjects
@@ -258,9 +257,5 @@ for subj = 1:numSubjects
     hold off;
 
     % Save
-    if ispc == 1
-        saveas(gcf, fullfile('W:\Students\Arne\AOC\figures\gaze\deviation\', ['AOC_dev_sternberg_subj' subjects{subj} '.png']));
-    else
-        saveas(gcf, fullfile('/Volumes/methlab/Students/Arne/AOC/figures/gaze/deviation/', ['AOC_dev_sternberg_subj' subjects{subj} '.png']));
-    end
+    saveas(gcf, fullfile(figDir, ['AOC_dev_sternberg_subj' subjects{subj} '.png']));
 end

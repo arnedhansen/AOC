@@ -16,7 +16,8 @@
 
 %% Setup
 startup
-[subjects, path, colors, ~] = setup('AOC');
+[subjects, paths, colors, ~] = setup('AOC');
+path = paths.features;
 
 screenW  = 800;
 screenH  = 600;
@@ -42,8 +43,8 @@ cellArea = dx * dy;  % area of each grid cell in px²
 prop_inner = 0.50;   % 50% iso-contour
 prop_outer = 0.90;   % 90% iso-contour
 
-figDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/convexHull/';
-mkdir(figDir);
+figDir = fullfile(paths.figures, 'gaze', 'convexHull');
+if ~isfolder(figDir), mkdir(figDir); end
 
 numSubjects = length(subjects);
 overallFontSize = 20;

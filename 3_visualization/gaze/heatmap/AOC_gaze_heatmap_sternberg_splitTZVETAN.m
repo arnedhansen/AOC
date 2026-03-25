@@ -6,7 +6,10 @@
 
 %% Setup
 startup
-[subjects, path, ~, ~] = setup('AOC');
+[subjects, paths, ~, ~] = setup('AOC');
+path = paths.features;
+figDir = fullfile(paths.figures, 'gaze', 'heatmap');
+if ~isfolder(figDir), mkdir(figDir); end
 
 %% Load data
 for subj = 1:length(subjects)
@@ -324,4 +327,4 @@ set(gca, 'FontSize', overallFontSize);
 title('WM load 6 LATE [1 3] Gaze Heatmap', 'FontSize', overallFontSize*1.25)
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_stats_OVERVIEW_TZVETAN_UNCORRECTED.png')
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_stats_OVERVIEW_TZVETAN_UNCORRECTED.png'))

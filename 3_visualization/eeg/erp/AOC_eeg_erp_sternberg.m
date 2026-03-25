@@ -6,7 +6,10 @@
 
 %% Setup
 startup
-[subjects, path, colors, headmodel] = setup('AOC');
+[subjects, paths, colors, headmodel] = setup('AOC');
+path = paths.features;
+figDir = fullfile(paths.figures, 'eeg', 'erp');
+if ~isfolder(figDir), mkdir(figDir); end
 
 %% Define channels
 subj = 1;
@@ -85,4 +88,4 @@ xline(0, '--')
 legend({'WM load 2', 'WM load 4', 'WM load 6'}, 'FontSize', 15)
 set(gca, "FontSize", 20)
 title('Sternberg GA ERPs', 'FontSize', 25)
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/eeg/erp/AOC_eeg_erp_sternberg.png')
+saveas(gcf, fullfile(figDir, 'AOC_eeg_erp_sternberg.png'))

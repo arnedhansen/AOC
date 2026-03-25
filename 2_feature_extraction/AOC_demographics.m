@@ -12,7 +12,8 @@ clear
 % histogram([demos.Alter])
 
 startup
-[~, featPath, ~, ~] = setup('AOC', 0);
+[~, paths, ~, ~] = setup('AOC', 0);
+featPath = paths.features;
 load(fullfile(featPath, 'AOC_merged_data_nback.mat'));
 dat = merged_data_nback;
 

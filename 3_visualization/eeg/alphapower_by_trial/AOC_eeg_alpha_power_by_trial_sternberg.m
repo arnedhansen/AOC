@@ -6,7 +6,12 @@
 
 %% Load data struct
 clear
-load('/Volumes/methlab/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg_trials.mat');
+startup
+[~, paths, ~, ~] = setup('AOC', 0);
+featPath = paths.features;
+load(fullfile(featPath, 'AOC_eeg_matrix_sternberg_trials.mat'));
+figDir = fullfile(paths.figures, 'eeg', 'alpha_over_trials');
+if ~isfolder(figDir), mkdir(figDir); end
 
 %% Plot trial-by-trial ALPHA POWER GRAND AVERAGE
 %% Grand-average α-power across subjects (trial-by-trial)
@@ -134,7 +139,7 @@ for s = 1:numel(subjIDs)
     legend(h, {'WM load 2','WM load 4','WM load 6'}, 'Location','northeast');
     
     % Save
-    saveas(gcf, ['/Volumes/methlab/Students/Arne/AOC/figures/eeg/alpha_over_trials/AOC_alpha_power_over_trials_sternberg_sub' subjectID '.png']);
+    saveas(gcf, fullfile(figDir, ['AOC_alpha_power_over_trials_sternberg_sub' subjectID '.png']));
     fprintf('Plot trial-by-trial ALPHA POWER for Subject %s done... \n', subjectID);
 end
 

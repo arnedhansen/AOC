@@ -7,7 +7,10 @@
 clear
 clc
 close all
-path = '/Volumes/methlab/Students/Arne/AOC/data/features/';
+[subjects, paths, ~, ~] = setup('AOC', 0);
+path = paths.features;
+figDir = fullfile(paths.figures, 'behavioral');
+if ~isfolder(figDir), mkdir(figDir); end
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
@@ -60,7 +63,7 @@ title('Sternberg Accuracy', 'FontName', 'Arial', 'FontSize', 25);
 hold off;
 
 % Save the plot
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/behavioral/AOC_acc_sternberg_boxplot.png');
+saveas(gcf, fullfile(figDir, 'AOC_acc_sternberg_boxplot.png'));
 
 % Stats
 means = mean(dataAcc, 'omitnan');
@@ -106,7 +109,7 @@ title('Sternberg Reaction Times', 'FontName', 'Arial', 'FontSize', 25);
 hold off;
 
 % Save the plot
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/behavioral/AOC_rt_sternberg_boxplot.png');
+saveas(gcf, fullfile(figDir, 'AOC_rt_sternberg_boxplot.png'));
 
 % Stats
 means = mean(dataRT, 'omitnan');
@@ -145,4 +148,4 @@ title('Sternberg Reaction Times vs. Accuracy', 'FontName', 'Arial', 'FontSize', 
 hold off;
 
 % Save the plot
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/figures/behavioral/AOC_sternberg_rt_vs_acc.png');
+saveas(gcf, fullfile(figDir, 'AOC_sternberg_rt_vs_acc.png'));

@@ -2,10 +2,7 @@ wel%% AOC Split Sternberg Alpha Loads
 % Stratifies participants by alpha power slope across WM load (2,4,6).
 % Alpha increase vs decrease subgroups; TFRs, power spectra, behavioral (RT, ACC),
 % optional gaze density. Uses 1-2 s retention window for alpha extraction.
-%
-% Dependencies: startup, setup('AOC'), FieldTrip, behavioral_matrix_sternberg.mat
-% Gaze: optional sterngaze.mat, sterngaze_norm.mat (from gaze density pipeline)
-%
+%%
 % Groups:
 %       Jensen: amplification of alpha over WM loads
 %       N-back: reduction of alpha over WM loads
@@ -13,7 +10,8 @@ wel%% AOC Split Sternberg Alpha Loads
 
 %% Setup
 startup
-[subjects, path, colors, headmodel] = setup('AOC');
+[subjects, paths, colors, headmodel] = setup('AOC');
+path = paths.features;
 
 if ispc
     base_data = 'W:\Students\Arne\AOC';
@@ -346,7 +344,7 @@ allGazeDiff = [ ...
     ga2nback_gaze.powspctrm(:); ...
     ga4nback_gaze.powspctrm(:); ...
     ga6nback_gaze.powspctrm(:) ];
-zlimAbs = max(abs(prctile(allGazeDiff, [1 97.5])));
+zlimAbs = max(abs(prctile(allGazeDiff, [1 99])));
 if ~isfinite(zlimAbs) || zlimAbs == 0
     zlimAbs = 3;
 end
@@ -429,7 +427,8 @@ c.FontSize = fontSize - 2;
 colormap(gcf, color_map);
 saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_subtractionBaseline.png'));
 
-%%
+%% Compute CBPT stats
+clc
 cbpt_file_gaze_taskVsBase = fullfile(stats_dir, 'AOC_split_AlphaLoads_CBPT_gaze_tasklate_minus_base.mat');
 if isfile(cbpt_file_gaze_taskVsBase)
     disp('Loading cached CBPT: gaze tasklate vs baseline...')
@@ -439,14 +438,14 @@ else
     cfg.spmversion       = 'spm12';
     cfg.method           = 'montecarlo';
     cfg.statistic        = 'ft_statfun_depsamplesT';  % paired: baseline vs task
-    cfg.clusterthreshold ='nonparametric_common';
+    cfg.clusterthreshold = 'nonparametric_common';
     cfg.correctm         = 'cluster';
     cfg.clusteralpha     = 0.05;
     cfg.clusterstatistic = 'maxsum';
     cfg.tail             = 0;
     cfg.clustertail      = 0;
     cfg.alpha            = 0.05;
-    cfg.numrandomization = 1000;
+    cfg.numrandomization = 100;
 
     cfg.neighbours=[];
     clear design
@@ -466,9 +465,9 @@ else
     cfg.ivar     = 2;
     cfg_cbpt_gaze_taskVsBase_jensen = cfg;
     design_cbpt_gaze_taskVsBase_jensen = design;
-    disp(upper('[stat_inc_2 JENSEN]')); [stat_inc_2] = ft_freqstatistics(cfg, allgazetasklate2{idx_jensen},allgazebase2{idx_jensen});
-    disp(upper('[stat_inc_4 JENSEN]')); [stat_inc_4] = ft_freqstatistics(cfg, allgazetasklate4{idx_jensen},allgazebase4{idx_jensen});
-    disp(upper('[stat_inc_6 JENSEN]')); [stat_inc_6] = ft_freqstatistics(cfg, allgazetasklate6{idx_jensen},allgazebase6{idx_jensen});
+    clc; disp(upper('[stat_inc_2 JENSEN]')); [stat_inc_2] = ft_freqstatistics(cfg, allgazetasklate2{idx_jensen},allgazebase2{idx_jensen});
+    clc; disp(upper('[stat_inc_4 JENSEN]')); [stat_inc_4] = ft_freqstatistics(cfg, allgazetasklate4{idx_jensen},allgazebase4{idx_jensen});
+    clc; disp(upper('[stat_inc_6 JENSEN]')); [stat_inc_6] = ft_freqstatistics(cfg, allgazetasklate6{idx_jensen},allgazebase6{idx_jensen});
 
     subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
     design = zeros(2,2*subj);
@@ -486,9 +485,9 @@ else
     cfg.ivar     = 2;
     cfg_cbpt_gaze_taskVsBase_nback = cfg;
     design_cbpt_gaze_taskVsBase_nback = design;
-    disp(upper('[stat_inc_n_2 N-back]')); [stat_inc_n_2] = ft_freqstatistics(cfg, allgazetasklate2{idx_nback},allgazebase2{idx_nback});
-    disp(upper('[stat_inc_n_4 N-back]')); [stat_inc_n_4] = ft_freqstatistics(cfg, allgazetasklate4{idx_nback},allgazebase4{idx_nback});
-    disp(upper('[stat_inc_n_6 N-back]')); [stat_inc_n_6] = ft_freqstatistics(cfg, allgazetasklate6{idx_nback},allgazebase6{idx_nback});
+    clc; disp(upper('[stat_inc_n_2 N-back]')); [stat_inc_n_2] = ft_freqstatistics(cfg, allgazetasklate2{idx_nback},allgazebase2{idx_nback});
+    clc; disp(upper('[stat_inc_n_4 N-back]')); [stat_inc_n_4] = ft_freqstatistics(cfg, allgazetasklate4{idx_nback},allgazebase4{idx_nback});
+    clc; disp(upper('[stat_inc_n_6 N-back]')); [stat_inc_n_6] = ft_freqstatistics(cfg, allgazetasklate6{idx_nback},allgazebase6{idx_nback});
 
     save(cbpt_file_gaze_taskVsBase, ...
         'stat_inc_2', 'stat_inc_4', 'stat_inc_6', ...
@@ -1557,7 +1556,7 @@ allgazebase6 = cell(1, n_subj); allgazetasklate6 = cell(1, n_subj);
 
 for subj = 1:n_subj
     clc
-    fprintf('Building sterngaze subject %d/%d (%s)\n', subj, n_subj, subjects{subj});
+    fprintf('Building dwell time for Subject %d/%d (%s)\n', subj, n_subj, subjects{subj});
     et_file = fullfile(base_path, subjects{subj}, 'gaze', 'dataET_sternberg.mat');
     if ~isfile(et_file)
         et_file = fullfile(base_path, subjects{subj}, 'gaze', 'dataET_sternberg');

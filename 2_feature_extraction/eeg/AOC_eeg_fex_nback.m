@@ -10,7 +10,8 @@
 %% POWER Spectrum
 % Setup
 startup
-[subjects, path, ~ , ~] = setup('AOC');
+[subjects, paths, ~ , ~] = setup('AOC');
+path = paths.features;
 
 % Setup logging
 logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
@@ -67,7 +68,8 @@ end
 %% ALPHA POWER, IAF and LATERALIZATION INDEX
 % Setup
 startup
-[subjects, path, ~ , ~] = setup('AOC');
+[subjects, paths, ~ , ~] = setup('AOC');
+path = paths.features;
 
 % Define channels
 datapath = strcat(path, subjects{1}, filesep, 'eeg');
@@ -240,7 +242,8 @@ end
 %% POWER TRIAL-BY-TRIAL
 % Setup
 startup
-[subjects, path, ~ , ~] = setup('AOC');
+[subjects, paths, ~ , ~] = setup('AOC');
+path = paths.features;
 
 for subj = 1:length(subjects)
     clc

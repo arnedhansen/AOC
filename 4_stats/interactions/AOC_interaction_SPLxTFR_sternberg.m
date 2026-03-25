@@ -6,7 +6,8 @@
 
 %% Setup
 startup
-[subjects, path, ~, ~] = setup('AOC');
+[subjects, paths, ~, ~] = setup('AOC');
+path = paths.features;
 %subjects = subjects(1:10)
 
 % Figure config
@@ -20,6 +21,9 @@ T = numel(time_series) - 1; % step series aligns to time_series(2:end)
 
 %% Load data
 load(fullfile(path, 'AOC_merged_data_sternberg_trials.mat'))
+
+figDir = fullfile(fileparts(fileparts(path)), 'figures', 'interactions');
+if ~isfolder(figDir), mkdir(figDir); end
 
 %% Preallocate holders for subject-level TFRs and SPL time-courses
 low_tfr_subs = cell(1, length(subjects)); % per-subject LOW-SPL TFR (avg over trials)
@@ -324,7 +328,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4); % 0–2 subj × 8–14 Hz
 set(gca, 'FontSize', fontSize);
 title('Sternberg TFR — LOW SPL trials');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_TFR_LOW_SPL_trials.png');
+saveas(gcf, fullfile(figDir, 'AOC_sternberg_TFR_LOW_SPL_trials.png'));
 
 % Plot HIGH-SPL TFR
 figure
@@ -338,7 +342,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4);
 set(gca, 'FontSize', fontSize);
 title('Sternberg TFR — HIGH SPL trials');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_TFR_HIGH_SPL_trials.png');
+saveas(gcf, fullfile(figDir, 'AOC_sternberg_TFR_HIGH_SPL_trials.png'));
 
 % Plot DIFF TFR
 gatfr_diff = gatfr_high;
@@ -356,7 +360,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 4);
 set(gca, 'FontSize', fontSize);
 title('Sternberg TFR — DIFF (HIGH SPL - LOW SPL trials)');
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_TFR_DIFF_SPL_trials.png');
+saveas(gcf, fullfile(figDir, 'AOC_sternberg_TFR_DIFF_SPL_trials.png'));
 
 %% SPL and Alpha Power over Time
 alpha_band = [8 14];
@@ -453,4 +457,4 @@ for k = 1:numel(on_sig)
 end
 uistack(h, 'top')
 
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/interactions/AOC_sternberg_SPLOxTFR_Subplots.png')
+saveas(gcf, fullfile(figDir, 'AOC_sternberg_SPLOxTFR_Subplots.png'))

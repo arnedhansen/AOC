@@ -24,7 +24,8 @@ clear; close all; clc
 
 %% Setup
 startup
-[subjects, path, ~, ~] = setup('AOC');
+[subjects, paths, ~, ~] = setup('AOC');
+path = paths.features;
 
 % Setup logging
 logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';

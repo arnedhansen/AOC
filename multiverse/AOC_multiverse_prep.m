@@ -25,7 +25,8 @@ try
         disp(upper('Startup run.'))
     end
     if exist('setup', 'file')
-        [subjects, path_preproc, ~, ~] = setup('AOC');
+        [subjects, paths, ~, ~] = setup('AOC');
+        path_preproc = paths.features;
         disp(upper(['Setup: ' num2str(length(subjects)) ' subjects, path_preproc = ' path_preproc]))
     end
 catch ME

@@ -7,13 +7,18 @@
 clear
 clc
 close all
+startup
+[~, paths, ~, ~] = setup('AOC', 0);
+featPath = paths.features;
 path = '/Volumes/methlab/Students/Arne/AOC/data/automagic_nohp';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
 %% Load data
-load('/Volumes/methlab/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg_trials.mat');
+load(fullfile(featPath, 'AOC_eeg_matrix_sternberg_trials.mat'));
+figDir = fullfile(paths.figures, 'eeg', 'lateralization');
+if ~isfolder(figDir), mkdir(figDir); end
 
 %% Visualize Lateralization
 for subs = 1:length(subjects)
@@ -32,5 +37,5 @@ for subs = 1:length(subjects)
     text(0.8, 275, 'RIGHT', 'FontSize', 40, 'FontWeight', 'bold')
     set(gca, 'FontSize', 25)
     title(['Subj ',  num2str(subNum), ' Sternberg Alpha Power Lateralization over Trials | Avg: ', num2str(round(nanmean([subDat.Lateralisation]), 3))], 'FontSize', 35)
-    saveas(gcf, ['/Volumes/methlab/Students/Arne/AOC/figures/eeg/lateralization/AOC_eeg_lateralization_by_trial_sternberg_subj_', num2str(subNum),'.png'])
+    saveas(gcf, fullfile(figDir, ['AOC_eeg_lateralization_by_trial_sternberg_subj_' num2str(subNum) '.png']))
 end

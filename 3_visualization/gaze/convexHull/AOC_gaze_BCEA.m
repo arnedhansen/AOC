@@ -17,7 +17,8 @@
 
 %% Setup
 startup
-[subjects, path, colors, ~] = setup('AOC');
+[subjects, paths, colors, ~] = setup('AOC');
+path = paths.features;
 
 screenW  = 800;
 screenH  = 600;
@@ -33,8 +34,8 @@ P_outer = 0.95;  % outer ellipse proportion
 k_inner = -log(1 - P_inner);
 k_outer = -log(1 - P_outer);
 
-figDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/convexHull/';
-mkdir(figDir);
+figDir = fullfile(paths.figures, 'gaze', 'convexHull');
+if ~isfolder(figDir), mkdir(figDir); end
 
 numSubjects = length(subjects);
 overallFontSize = 20;

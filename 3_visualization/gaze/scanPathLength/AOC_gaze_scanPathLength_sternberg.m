@@ -11,7 +11,10 @@ close all
 
 colors = color_def('AOC');   
 
-basepath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
+[~, paths, ~, ~] = setup('AOC', 0);
+basepath = paths.features;
+figDir = fullfile(paths.figures, 'gaze', 'scanPathLength');
+if ~isfolder(figDir), mkdir(figDir); end
 dirs = dir(basepath);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
@@ -129,7 +132,7 @@ set(gca, 'FontSize', 25)
 legend({'All-trials SEM','WM2','WM4','WM6','Grand mean'}, 'Location','northwest')
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/scanPathLength/AOC_gaze_scanPathLength_sternberg_overall.png')
+saveas(gcf, fullfile(figDir, 'AOC_gaze_scanPathLength_sternberg_overall.png'))
 
 %% Plot GRAND AVERAGE for each condition
 close all
@@ -155,4 +158,4 @@ set(gca, 'FontSize', 25)
 legend({'WM2','WM4','WM6'}, 'Location','northeast')
 
 % save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/scanPathLength/AOC_gaze_scanPathLength_sternberg_conds.png')
+saveas(gcf, fullfile(figDir, 'AOC_gaze_scanPathLength_sternberg_conds.png'))

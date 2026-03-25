@@ -24,7 +24,8 @@
 
 %% Setup
 startup
-[subjects, path, colors, ~] = setup('AOC');
+[subjects, paths, colors, ~] = setup('AOC');
+path = paths.features;
 
 %% Define occipital channels (from first subject)
 datapath = strcat(path, subjects{1}, filesep, 'eeg');

@@ -6,7 +6,10 @@
 
 %% Setup
 startup
-[subjects, path, ~, ~] = setup('AOC');
+[subjects, paths, ~, ~] = setup('AOC');
+path = paths.features;
+figDir = fullfile(paths.figures, 'gaze', 'heatmap');
+if ~isfolder(figDir), mkdir(figDir); end
 
 %% Load data
 for subj = 1:length(subjects)
@@ -157,7 +160,7 @@ title('Baseline Period [-0.75 -0.25] Gaze Heatmap', 'FontSize', 30)
 set(gca, "Clim", [0 max(datBaseGACOMB.powspctrm(:))])
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_BASELINE.png');
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_nback_BASELINE.png'));
 
 % Plot EARLY heatmap
 figure;
@@ -179,7 +182,7 @@ title('EARLY [0 1] Gaze Heatmap', 'FontSize', 30)
 set(gca, "Clim", [-maxval maxval])
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_EARLY.png');
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_nback_EARLY.png'));
 
 % Plot LATE heatmap
 figure;
@@ -201,7 +204,7 @@ title('LATE [1 2] Gaze Heatmap', 'FontSize', 30)
 set(gca, "Clim", [-maxval maxval])
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_LATE.png');
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_nback_LATE.png'));
 
 %% Set up stats
 cfg                    = [];
@@ -401,7 +404,7 @@ set(gca, 'FontSize', overallFontSize);
 title('3-back LATE [1 2] Gaze Heatmap', 'FontSize', overallFontSize*1.25)
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_nback_stats_OVERVIEW.png')
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_nback_stats_OVERVIEW.png'))
 
 %% Plot stats INDIVIDUAL figures
 plotGazeHeatmap(stat1early, '1-back EARLY [0 1] Gaze Heatmap', 'AOC_gaze_heatmap_nback_stats_early2');

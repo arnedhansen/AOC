@@ -6,7 +6,10 @@
 
 %% Setup
 startup
-[subjects, path, ~, ~] = setup('AOC');
+[subjects, paths, ~, ~] = setup('AOC');
+path = paths.features;
+figDir = fullfile(paths.figures, 'gaze', 'heatmap');
+if ~isfolder(figDir), mkdir(figDir); end
 
 %% Load data
 for subj = 1:length(subjects)
@@ -118,7 +121,7 @@ set(gca, 'FontSize', overallFontSize);
 title('WM load 2 Gaze Heatmap', 'FontSize', 30)
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_raw_WM2.png');
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_raw_WM2.png'));
 
 % Plot RAW heatmap WM4
 figure;
@@ -140,7 +143,7 @@ set(gca, 'FontSize', overallFontSize);
 title('WM load 4 Gaze Heatmap', 'FontSize', 30)
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_raw_WM4.png');
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_raw_WM4.png'));
 
 % Plot RAW heatmap WM6
 figure;
@@ -162,7 +165,7 @@ set(gca, 'FontSize', overallFontSize);
 title('WM load 6 Gaze Heatmap', 'FontSize', 30)
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_raw_WM6.png');
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_raw_WM6.png'));
 
 % Plot RAW heatmap DIFF (WM6-WM2)
 figure;
@@ -189,7 +192,7 @@ set(gca, 'FontSize', overallFontSize);
 title('')
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_raw_diff.png');
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_raw_diff.png'));
 
 %% Set up stats
 cfg                    = [];
@@ -326,7 +329,7 @@ set(gca, 'FontSize', overallFontSize);
 title('WM load 6 Gaze Heatmap', 'FontSize', overallFontSize*1.25)
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_stats_OVERVIEW_onlylate.png')
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_stats_OVERVIEW_onlylate.png'))
 
 %% DIFF STATS Heatmap
 close all
@@ -350,7 +353,7 @@ title(colB,'Effect size \itd', 'FontSize', overallFontSize*0.8)
 title('Statistical Difference Heatmap', 'FontSize', overallFontSize*1.25)
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_stats_DIFF_late6vs2.png')
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_stats_DIFF_late6vs2.png'))
 
 %% Plot stats INDIVIDUAL figures
 % plotGazeHeatmap(stat2early, 'WM load 2 EARLY [0 1] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_early2');

@@ -7,11 +7,11 @@
 
 %% Setup
 startup
-[subjects, path, ~, headmodel] = setup('AOC');
-if ispc
-    figpath = 'W:\Students\Arne\AOC\figures\eeg\tfr\';
-else
-    figpath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/tfr/';
+[subjects, paths, ~, headmodel] = setup('AOC');
+path = paths.features;
+figpath = fullfile(paths.figures, 'eeg', 'tfr');
+if ~isfolder(figpath)
+    mkdir(figpath);
 end
 
 %% ========================================================================

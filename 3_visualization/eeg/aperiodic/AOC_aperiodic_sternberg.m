@@ -12,9 +12,10 @@
 
 %% Setup
 startup
-[subjects, path, ~, ~] = setup('AOC');
+[subjects, paths, ~, ~] = setup('AOC');
+path = paths.features;
 
-fig_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/aperiodic';
+fig_dir = fullfile(paths.figures, 'eeg', 'aperiodic');
 if ~isfolder(fig_dir), mkdir(fig_dir); end
 
 %% Parameters

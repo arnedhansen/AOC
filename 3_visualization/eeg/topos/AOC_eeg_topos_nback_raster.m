@@ -6,7 +6,10 @@
 
 %% Setup
 startup
-[subjects, path, colors, headmodel] = setup('AOC');
+[subjects, paths, colors, headmodel] = setup('AOC');
+path = paths.features;
+rasterDir = fullfile(paths.figures, 'eeg', 'topos', 'raster');
+if ~isfolder(rasterDir), mkdir(rasterDir); end
 % Exclude subject 361 because of faulty data in electrode Cz
 subjects = setdiff(subjects, {'361'});
 
@@ -126,4 +129,4 @@ text(ax_label, 0.02, 0.17, 'Beta (14-30Hz)', 'FontSize', 16, 'FontWeight', 'bold
     'Rotation', 90, 'HorizontalAlignment', 'center', 'Units', 'normalized');
 
 % Save figure
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/topos/raster/AOC_eeg_topos_nback_raster.png');
+saveas(gcf, fullfile(rasterDir, 'AOC_eeg_topos_nback_raster.png'));

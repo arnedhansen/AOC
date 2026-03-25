@@ -6,7 +6,13 @@
 
 %% Setup
 startup
-[subjects, path, colors, ~] = setup('AOC');
+[subjects, paths, colors, ~] = setup('AOC');
+path = paths.features;
+
+fig_dir_pow = fullfile(paths.figures, 'eeg', 'powspctrm');
+fig_dir_ind = fullfile(paths.figures, 'eeg', 'alpha_power', 'powspctrm');
+if ~isfolder(fig_dir_pow), mkdir(fig_dir_pow); end
+if ~isfolder(fig_dir_ind), mkdir(fig_dir_ind); end
 
 %% Define channels
 subj = 1;
@@ -114,12 +120,12 @@ legend([eb2.mainLine, eb4.mainLine, eb6.mainLine], ...
 title('Sternberg Power Spectrum', 'FontSize', 30);
 
 % Save
-saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/powspctrm/AOC_powspctrm_sternberg_raw.png');
+saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_raw.png'));
 
 %% Plot INDIVIDUAL power spectra
 close all
-output_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
-load('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg.mat')
+output_dir = [fig_dir_ind filesep];
+load(fullfile(paths.features, 'AOC_eeg_matrix_sternberg.mat'))
 
 for subj = 1:length(subjects)
     close all;

@@ -9,7 +9,8 @@
 %% POWSPCTRM (Early, Late (= Registered Retention), Baseline Period) - TRIAL-BY-TRIAL
 % Setup
 startup
-[subjects, path, ~ , ~] = setup('AOC');
+[subjects, paths, ~ , ~] = setup('AOC');
+path = paths.features;
 
 for subj = 1:length(subjects)
     clc
@@ -148,7 +149,8 @@ end
 %% ALPHA POWER (trial-wise), IAF (subject-level) and LATERALIZATION INDEX (trial-wise)
 % Setup
 startup
-[subjects, path, ~ , ~] = setup('AOC');
+[subjects, paths, ~ , ~] = setup('AOC');
+path = paths.features;
 
 % Define channels (from one subject’s labels)
 subj = 1;

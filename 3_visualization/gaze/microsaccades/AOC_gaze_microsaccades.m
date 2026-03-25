@@ -19,14 +19,15 @@
 
 %% Setup
 startup
-setup('AOC');
+[~, paths, ~, ~] = setup('AOC', 0);
+featPath = paths.features;
 clear
 close all
 clc
 
-datapath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
-figpath  = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/microsaccades/';
-mkdir(figpath);
+datapath = featPath;
+figpath  = fullfile(paths.figures, 'gaze', 'microsaccades');
+if ~isfolder(figpath), mkdir(figpath); end
 
 dirs     = dir(datapath);
 folders  = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));

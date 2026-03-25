@@ -13,7 +13,8 @@
 
 %% Setup
 startup
-[subjects, path, colors, ~] = setup('AOC');
+[subjects, paths, colors, ~] = setup('AOC');
+path = paths.features;
 
 screenW  = 800;
 screenH  = 600;
@@ -25,8 +26,8 @@ bounds_y = [0 screenH];
 t_full   = [0 2];
 pctile_keep = 95;  % keep gaze samples within this percentile of centroid distance
 
-figDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/convexHull/';
-mkdir(figDir);
+figDir = fullfile(paths.figures, 'gaze', 'convexHull');
+if ~isfolder(figDir), mkdir(figDir); end
 
 numSubjects = length(subjects);
 overallFontSize = 20;

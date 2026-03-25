@@ -22,7 +22,8 @@
 
 %% Setup
 startup
-[subjects, pathAOC, colors, headmodel] = setup('AOC');
+[subjects, paths, colors, headmodel] = setup('AOC');
+pathAOC = paths.features;
 
 if ispc
     base_data = 'W:\Students\Arne\AOC';

@@ -166,7 +166,8 @@ fprintf('Increase (CI > 0):      %d\n', n_j);
 fprintf('Decrease (CI < 0):      %d\n', n_n);
 fprintf('Indeterminate (CI ~ 0): %d\n', n_f);
 if n_j == 0 || n_n == 0
-    warning('One directional subgroup is empty under CI-based classification; downstream subgroup comparisons may fail.');
+    error(['CI-based classification produced an empty increase/decrease subgroup. ' ...
+        'With the current data representation, downstream subgroup comparisons are not defined.']);
 end
 
 %% Grand averages per subgroup
@@ -1120,6 +1121,59 @@ fprintf('ACC delta=3: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
 fprintf('ACC delta=5: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
 [p1, p2, eq] = tost_welch(ACC_jensen, ACC_nback, 10);
 fprintf('ACC delta=10: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
+
+%% ================= MIXED-EFFECTS EQUIVALENCE (KEEP TOST ABOVE) =================
+fprintf('\n--- Mixed-effects equivalence (CI-in-bounds) ---\n')
+
+tbl_me = tbl;
+idx_finite = isfinite(tbl_me.RT) & isfinite(tbl_me.ACC);
+tbl_me = tbl_me(idx_finite, :);
+
+% RT model is fit on log scale to improve residual behavior and interpretability.
+idx_rt_valid = tbl_me.RT > 0;
+tbl_rt = tbl_me(idx_rt_valid, :);
+tbl_rt.logRT = log(tbl_rt.RT);
+
+[lme_rt_eq, rt_formula] = fitlme_with_random_slope_fallback(tbl_rt, 'logRT ~ Load * Group');
+[rt_est, rt_ci90, rt_group_term] = get_group_effect_ci(lme_rt_eq, 0.10);
+
+rt_bounds_ratio = [0.95, 1.05];
+rt_bounds_log = log(rt_bounds_ratio);
+rt_eq = ci_within_bounds(rt_ci90, rt_bounds_log);
+
+fprintf('RT model formula: %s\n', rt_formula);
+fprintf('RT group effect term: %s\n', rt_group_term);
+fprintf('RT log-scale estimate=%.4g, 90%% CI=[%.4g, %.4g], bounds=[%.4g, %.4g], equivalent=%d\n', ...
+    rt_est, rt_ci90(1), rt_ci90(2), rt_bounds_log(1), rt_bounds_log(2), rt_eq);
+fprintf('RT ratio estimate=%.4g, 90%% CI=[%.4g, %.4g], ratio bounds=[%.2f, %.2f]\n', ...
+    exp(rt_est), exp(rt_ci90(1)), exp(rt_ci90(2)), rt_bounds_ratio(1), rt_bounds_ratio(2));
+
+[lme_acc_eq, acc_formula] = fitlme_with_random_slope_fallback(tbl_me, 'ACC ~ Load * Group');
+[acc_est, acc_ci90, acc_group_term] = get_group_effect_ci(lme_acc_eq, 0.10);
+
+acc_bounds = [-5, 5];
+acc_eq = ci_within_bounds(acc_ci90, acc_bounds);
+
+fprintf('ACC model formula: %s\n', acc_formula);
+fprintf('ACC group effect term: %s\n', acc_group_term);
+fprintf('ACC estimate=%.4g, 90%% CI=[%.4g, %.4g], bounds=[%.4g, %.4g], equivalent=%d\n', ...
+    acc_est, acc_ci90(1), acc_ci90(2), acc_bounds(1), acc_bounds(2), acc_eq);
+
+fprintf('\n--- Mixed-effects RT sensitivity (ratio bounds) ---\n')
+rt_sens_ratio = [0.95 1.05; 0.90 1.10; 0.85 1.15];
+for ii = 1:size(rt_sens_ratio, 1)
+    b = log(rt_sens_ratio(ii, :));
+    eq = ci_within_bounds(rt_ci90, b);
+    fprintf('RT ratio bounds=[%.2f, %.2f]: equivalent=%d\n', rt_sens_ratio(ii,1), rt_sens_ratio(ii,2), eq);
+end
+
+fprintf('\n--- Mixed-effects ACC sensitivity (point bounds) ---\n')
+acc_sens = [3 5 10];
+for ii = 1:numel(acc_sens)
+    b = [-acc_sens(ii), acc_sens(ii)];
+    eq = ci_within_bounds(acc_ci90, b);
+    fprintf('ACC bounds=[%d, %d]: equivalent=%d\n', b(1), b(2), eq);
+end
 %% Helper functions
 function plot_tfr_matrix_panel(subplot_idx, ga_data, cfg_sel, clim, fsz)
 freq = ft_selectdata(cfg_sel, ga_data);
@@ -1151,21 +1205,33 @@ ylabel(c, 'dB');
 end
 
 function alpha_trials = extract_alpha_trials(tfr_in, channels, freq_win, time_win)
-% Returns trial-wise mean alpha power in selected channels/frequency/time.
+% Returns resampling units for alpha power within selected channel/frequency/time.
+% Priority:
+%   1) trial-level units when `rpt` dimension exists
+%   2) otherwise flattened channel/frequency/time samples as fallback units
 cfg = [];
 cfg.channel = channels;
 cfg.frequency = freq_win;
 cfg.latency = time_win;
-cfg.avgoverchan = 'yes';
-cfg.avgoverfreq = 'yes';
-cfg.avgovertime = 'yes';
 sel = ft_selectdata(cfg, tfr_in);
 vals = sel.powspctrm;
 if isempty(vals)
     alpha_trials = [];
     return
 end
-alpha_trials = vals(:);
+
+dimord = '';
+if isfield(sel, 'dimord') && ischar(sel.dimord)
+    dimord = sel.dimord;
+end
+
+if contains(dimord, 'rpt')
+    n_rpt = size(vals, 1);
+    vals2d = reshape(vals, n_rpt, []);
+    alpha_trials = mean(vals2d, 2, 'omitnan');
+else
+    alpha_trials = vals(:);
+end
 alpha_trials = alpha_trials(isfinite(alpha_trials));
 end
 
@@ -1589,4 +1655,37 @@ p1 = 1 - tcdf(t1, df);
 p2 = tcdf(t2, df);
 
 equivalent = (p1 < alpha) && (p2 < alpha);
+end
+
+function [lme, used_formula] = fitlme_with_random_slope_fallback(tbl_in, fixed_formula)
+formula_rs = sprintf('%s + (Load|Subject)', fixed_formula);
+formula_ri = sprintf('%s + (1|Subject)', fixed_formula);
+try
+    lme = fitlme(tbl_in, formula_rs);
+    used_formula = formula_rs;
+catch
+    lme = fitlme(tbl_in, formula_ri);
+    used_formula = formula_ri;
+end
+end
+
+function [est, ci, coeff_name] = get_group_effect_ci(lme, alpha_ci)
+if nargin < 2
+    alpha_ci = 0.10;
+end
+coef_names = lme.CoefficientNames;
+idx = startsWith(coef_names, 'Group_');
+if ~any(idx)
+    error('No Group main-effect coefficient found in model.');
+end
+coeff_name = coef_names{find(idx, 1, 'first')};
+
+fe = fixedEffects(lme);
+est = fe(coeff_name);
+ci_tbl = coefCI(lme, alpha_ci);
+ci = ci_tbl(strcmp(lme.CoefficientNames, coeff_name), :);
+end
+
+function tf = ci_within_bounds(ci, bounds)
+tf = ci(1) >= bounds(1) && ci(2) <= bounds(2);
 end

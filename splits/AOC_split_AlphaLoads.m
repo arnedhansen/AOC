@@ -125,9 +125,17 @@ n_f = sum(idx_flat);
 close all
 figure('Position', fig_pos, 'Color', 'w');
 hold on
-histogram(slope(idx_jensen), 20, 'FaceColor', [0.8 0 0], 'FaceAlpha', 0.6);
-histogram(slope(idx_nback),  20, 'FaceColor', [0 0 0.8], 'FaceAlpha', 0.6);
-histogram(slope(idx_flat),   11, 'FaceColor', [0.5 0.5 0.5], 'FaceAlpha', 0.6);
+% Use one shared, constant bin width and align edges with tertile thresholds.
+n_bins_middle = 8;
+bin_w = (t2 - t1) / n_bins_middle;
+min_s = min(slope);
+max_s = max(slope);
+k_left = ceil((t1 - min_s) / bin_w);
+k_right = ceil((max_s - t1) / bin_w);
+bin_edges = t1 + (-k_left:k_right) * bin_w;
+histogram(slope(idx_jensen), 'BinEdges', bin_edges, 'FaceColor', [0.8 0 0], 'FaceAlpha', 0.6);
+histogram(slope(idx_nback),  'BinEdges', bin_edges, 'FaceColor', [0 0 0.8], 'FaceAlpha', 0.6);
+histogram(slope(idx_flat),   'BinEdges', bin_edges, 'FaceColor', [0.5 0.5 0.5], 'FaceAlpha', 0.6);
 xline(t1, 'k--', 'LineWidth', 2);
 xline(t2, 'k--', 'LineWidth', 2);
 xlabel('Alpha power slope')
@@ -574,7 +582,14 @@ cfg         = [];
 cfg.parameter = 'stat';
 cfg.maskparameter = 'mask';
 cfg.maskstyle        = 'outline';
-cfg.zlim = 'maxabs';
+allStatVals = [stat_inc_2.stat(:); stat_inc_4.stat(:); stat_inc_6.stat(:); ...
+               stat_inc_n_2.stat(:); stat_inc_n_4.stat(:); stat_inc_n_6.stat(:)];
+allStatVals = allStatVals(isfinite(allStatVals));
+zlimAbs = max(abs(allStatVals));
+if isempty(allStatVals) || ~isfinite(zlimAbs) || zlimAbs <= 0
+    zlimAbs = 1;
+end
+cfg.zlim = [-zlimAbs zlimAbs];
 cfg.figure = 'gcf';
 
 figure('Position', fig_pos, 'Color', 'w');

@@ -98,19 +98,44 @@ alpha2 = val2.powspctrm;
 alpha4 = val4.powspctrm;
 alpha6 = val6.powspctrm;
 
-%% Use regression to identify slopes
-for subj = 1:length(alpha2)
-    y = [alpha2(subj), alpha4(subj), alpha6(subj)];
-    Xmat = [ones(3,1), [2;4;6]];
-    b = Xmat \ y';
-    slope(subj) = b(2);
+%% Use bootstrap regression to identify slope uncertainty per subject
+nSubj = length(subjects);
+n_boot = 2000;
+rng(1, 'twister'); % reproducible bootstrap labels
+
+slope = nan(nSubj, 1);
+slope_ci_low = nan(nSubj, 1);
+slope_ci_high = nan(nSubj, 1);
+ci_valid = false(nSubj, 1);
+
+for subj = 1:nSubj
+    a2_trials = extract_alpha_trials(load2{subj}, channels, [8 14], [1 2]);
+    a4_trials = extract_alpha_trials(load4{subj}, channels, [8 14], [1 2]);
+    a6_trials = extract_alpha_trials(load6{subj}, channels, [8 14], [1 2]);
+
+    if isempty(a2_trials) || isempty(a4_trials) || isempty(a6_trials)
+        continue
+    end
+
+    y_obs = [mean(a2_trials, 'omitnan'), mean(a4_trials, 'omitnan'), mean(a6_trials, 'omitnan')];
+    b_obs = [ones(3,1), [2;4;6]] \ y_obs';
+    slope(subj) = b_obs(2);
+
+    boot_slopes = bootstrap_alpha_slope(a2_trials, a4_trials, a6_trials, n_boot);
+    boot_slopes = boot_slopes(isfinite(boot_slopes));
+    if isempty(boot_slopes)
+        continue
+    end
+    ci = prctile(boot_slopes, [2.5 97.5]);
+    slope_ci_low(subj) = ci(1);
+    slope_ci_high(subj) = ci(2);
+    ci_valid(subj) = true;
 end
 
 %% Split and Plot slope distribution (inclusion)
-thr = 0.01;
-idx_jensen = slope > thr;
-idx_nback  = slope < -thr;
-idx_flat   = abs(slope) <= thr;
+idx_jensen = ci_valid & (slope_ci_low > 0);
+idx_nback  = ci_valid & (slope_ci_high < 0);
+idx_flat   = ~(idx_jensen | idx_nback);
 
 % counts
 n_j = sum(idx_jensen);
@@ -124,18 +149,25 @@ hold on
 histogram(slope(idx_jensen), 20, 'FaceColor', [0.8 0 0], 'FaceAlpha', 0.6);
 histogram(slope(idx_nback),  20, 'FaceColor', [0 0 0.8], 'FaceAlpha', 0.6);
 histogram(slope(idx_flat),   11, 'FaceColor', [0.5 0.5 0.5], 'FaceAlpha', 0.6);
-xline(thr,  'k--', 'LineWidth', 2);
-xline(-thr, 'k--', 'LineWidth', 2);
+xline(0, 'k--', 'LineWidth', 2);
 xlabel('Alpha power slope')
 ylabel('Participants')
 title('Linear Slope of Alpha Power across WM Load (2, 4, 6 items)', 'FontSize', 20)
 legend({sprintf('Alpha increase with load (N=%d)', n_j), ...
     sprintf('Alpha decrease with load (N=%d)', n_n), ...
     sprintf('intermediate (N=%d)', n_f), ...
-    'threshold'}, 'Box', 'off')
+    'zero-slope boundary'}, 'Box', 'off')
 box on
 set(gca, 'FontSize', 15)
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_histogram_inclusion.png'));
+
+fprintf('\nBootstrap slope classification summary (95%% CI rule):\n');
+fprintf('Increase (CI > 0):      %d\n', n_j);
+fprintf('Decrease (CI < 0):      %d\n', n_n);
+fprintf('Indeterminate (CI ~ 0): %d\n', n_f);
+if n_j == 0 || n_n == 0
+    warning('One directional subgroup is empty under CI-based classification; downstream subgroup comparisons may fail.');
+end
 
 %% Grand averages per subgroup
 cfg = [];
@@ -989,8 +1021,7 @@ for i = 1:nSubj
 end
 
 %% ================= GROUPING =================
-idx_jensen = slope > thr;
-idx_nback  = slope < -thr;
+% Group labels are already defined above using bootstrap slope CIs.
 
 %% ================= BUILD TABLE =================
 Subject = [];
@@ -1104,6 +1135,47 @@ c.LineWidth = 1;
 c.FontSize = fsz - 2;
 c.Ticks = clim;
 ylabel(c, 'dB');
+end
+
+function alpha_trials = extract_alpha_trials(tfr_in, channels, freq_win, time_win)
+% Returns trial-wise mean alpha power in selected channels/frequency/time.
+cfg = [];
+cfg.channel = channels;
+cfg.frequency = freq_win;
+cfg.latency = time_win;
+cfg.avgoverchan = 'yes';
+cfg.avgoverfreq = 'yes';
+cfg.avgovertime = 'yes';
+sel = ft_selectdata(cfg, tfr_in);
+vals = sel.powspctrm;
+if isempty(vals)
+    alpha_trials = [];
+    return
+end
+alpha_trials = vals(:);
+alpha_trials = alpha_trials(isfinite(alpha_trials));
+end
+
+function boot_slopes = bootstrap_alpha_slope(a2_trials, a4_trials, a6_trials, n_boot)
+% Bootstraps slope estimates by resampling trials per load with replacement.
+boot_slopes = nan(n_boot, 1);
+Xmat = [ones(3,1), [2;4;6]];
+n2 = numel(a2_trials);
+n4 = numel(a4_trials);
+n6 = numel(a6_trials);
+if min([n2 n4 n6]) < 2
+    return
+end
+for bb = 1:n_boot
+    m2 = mean(a2_trials(randi(n2, n2, 1)), 'omitnan');
+    m4 = mean(a4_trials(randi(n4, n4, 1)), 'omitnan');
+    m6 = mean(a6_trials(randi(n6, n6, 1)), 'omitnan');
+    if any(~isfinite([m2 m4 m6]))
+        continue
+    end
+    b = Xmat \ [m2; m4; m6];
+    boot_slopes(bb) = b(2);
+end
 end
 
 function sig_label = getSigLabel(p)

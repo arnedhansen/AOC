@@ -102,6 +102,9 @@ alpha6 = val6.powspctrm;
 trial_alpha_tbl = load_trial_alpha_table(feat_dir);
 nSubj = length(subjects);
 n_boot = 2000;
+mad_thresh = 3.0;      % remove trials beyond median +/- mad_thresh * 1.4826*MAD
+winsor_pct = 0.10;     % 10% winsorization per tail for robust central tendency
+min_trials_per_load = 5;
 rng(1, 'twister'); % reproducible bootstrap labels
 
 slope = nan(nSubj, 1);
@@ -115,19 +118,21 @@ for subj = 1:nSubj
     a2_trials = trial_alpha_tbl.AlphaPowerLateBL(idx_subj & trial_alpha_tbl.Condition == 2);
     a4_trials = trial_alpha_tbl.AlphaPowerLateBL(idx_subj & trial_alpha_tbl.Condition == 4);
     a6_trials = trial_alpha_tbl.AlphaPowerLateBL(idx_subj & trial_alpha_tbl.Condition == 6);
-    a2_trials = a2_trials(isfinite(a2_trials));
-    a4_trials = a4_trials(isfinite(a4_trials));
-    a6_trials = a6_trials(isfinite(a6_trials));
+    a2_trials = preprocess_trials_mad(a2_trials, mad_thresh);
+    a4_trials = preprocess_trials_mad(a4_trials, mad_thresh);
+    a6_trials = preprocess_trials_mad(a6_trials, mad_thresh);
 
-    if isempty(a2_trials) || isempty(a4_trials) || isempty(a6_trials)
+    if numel(a2_trials) < min_trials_per_load || numel(a4_trials) < min_trials_per_load || numel(a6_trials) < min_trials_per_load
         continue
     end
 
-    y_obs = [mean(a2_trials, 'omitnan'), mean(a4_trials, 'omitnan'), mean(a6_trials, 'omitnan')];
+    y_obs = [winsorized_mean(a2_trials, winsor_pct), ...
+        winsorized_mean(a4_trials, winsor_pct), ...
+        winsorized_mean(a6_trials, winsor_pct)];
     b_obs = [ones(3,1), [2;4;6]] \ y_obs';
     slope(subj) = b_obs(2);
 
-    boot_slopes = bootstrap_alpha_slope(a2_trials, a4_trials, a6_trials, n_boot);
+    boot_slopes = bootstrap_alpha_slope(a2_trials, a4_trials, a6_trials, n_boot, winsor_pct);
     boot_slopes = boot_slopes(isfinite(boot_slopes));
     if isempty(boot_slopes)
         continue
@@ -1270,7 +1275,7 @@ c.Ticks = clim;
 ylabel(c, 'dB');
 end
 
-function boot_slopes = bootstrap_alpha_slope(a2_trials, a4_trials, a6_trials, n_boot)
+function boot_slopes = bootstrap_alpha_slope(a2_trials, a4_trials, a6_trials, n_boot, winsor_pct)
 % Bootstraps slope estimates by resampling trials per load with replacement.
 boot_slopes = nan(n_boot, 1);
 Xmat = [ones(3,1), [2;4;6]];
@@ -1281,15 +1286,51 @@ if min([n2 n4 n6]) < 2
     return
 end
 for bb = 1:n_boot
-    m2 = mean(a2_trials(randi(n2, n2, 1)), 'omitnan');
-    m4 = mean(a4_trials(randi(n4, n4, 1)), 'omitnan');
-    m6 = mean(a6_trials(randi(n6, n6, 1)), 'omitnan');
+    m2 = winsorized_mean(a2_trials(randi(n2, n2, 1)), winsor_pct);
+    m4 = winsorized_mean(a4_trials(randi(n4, n4, 1)), winsor_pct);
+    m6 = winsorized_mean(a6_trials(randi(n6, n6, 1)), winsor_pct);
     if any(~isfinite([m2 m4 m6]))
         continue
     end
     b = Xmat \ [m2; m4; m6];
     boot_slopes(bb) = b(2);
 end
+end
+
+function x = preprocess_trials_mad(x, mad_thresh)
+% Removes extreme trials using robust MAD distance from the median.
+x = x(isfinite(x));
+if isempty(x)
+    return
+end
+m = median(x);
+madv = mad(x, 1);
+robust_sigma = 1.4826 * madv;
+if robust_sigma <= 0 || ~isfinite(robust_sigma)
+    return
+end
+keep = abs(x - m) <= (mad_thresh * robust_sigma);
+if sum(keep) >= 2
+    x = x(keep);
+end
+end
+
+function m = winsorized_mean(x, winsor_pct)
+% Winsorizes both tails by winsor_pct and returns the mean.
+x = x(isfinite(x));
+if isempty(x)
+    m = NaN;
+    return
+end
+if winsor_pct <= 0
+    m = mean(x, 'omitnan');
+    return
+end
+lo = prctile(x, 100 * winsor_pct);
+hi = prctile(x, 100 * (1 - winsor_pct));
+x(x < lo) = lo;
+x(x > hi) = hi;
+m = mean(x, 'omitnan');
 end
 
 function trial_tbl = load_trial_alpha_table(feat_dir)

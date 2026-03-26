@@ -98,7 +98,8 @@ alpha2 = val2.powspctrm;
 alpha4 = val4.powspctrm;
 alpha6 = val6.powspctrm;
 
-%% Use bootstrap regression to identify slope uncertainty per subject
+%% Use trial-level bootstrap regression to identify slope uncertainty per subject
+trial_alpha_tbl = load_trial_alpha_table(feat_dir);
 nSubj = length(subjects);
 n_boot = 2000;
 rng(1, 'twister'); % reproducible bootstrap labels
@@ -109,9 +110,14 @@ slope_ci_high = nan(nSubj, 1);
 ci_valid = false(nSubj, 1);
 
 for subj = 1:nSubj
-    a2_trials = extract_alpha_trials(load2{subj}, channels, [8 14], [1 2]);
-    a4_trials = extract_alpha_trials(load4{subj}, channels, [8 14], [1 2]);
-    a6_trials = extract_alpha_trials(load6{subj}, channels, [8 14], [1 2]);
+    subj_id = str2double(subjects{subj});
+    idx_subj = trial_alpha_tbl.ID == subj_id;
+    a2_trials = trial_alpha_tbl.AlphaPowerLateBL(idx_subj & trial_alpha_tbl.Condition == 2);
+    a4_trials = trial_alpha_tbl.AlphaPowerLateBL(idx_subj & trial_alpha_tbl.Condition == 4);
+    a6_trials = trial_alpha_tbl.AlphaPowerLateBL(idx_subj & trial_alpha_tbl.Condition == 6);
+    a2_trials = a2_trials(isfinite(a2_trials));
+    a4_trials = a4_trials(isfinite(a4_trials));
+    a6_trials = a6_trials(isfinite(a6_trials));
 
     if isempty(a2_trials) || isempty(a4_trials) || isempty(a6_trials)
         continue
@@ -167,7 +173,7 @@ fprintf('Decrease (CI < 0):      %d\n', n_n);
 fprintf('Indeterminate (CI ~ 0): %d\n', n_f);
 if n_j == 0 || n_n == 0
     error(['CI-based classification produced an empty increase/decrease subgroup. ' ...
-        'With the current data representation, downstream subgroup comparisons are not defined.']);
+        'This indicates insufficient directional evidence with the selected CI rule.']);
 end
 
 %% Grand averages per subgroup
@@ -1264,37 +1270,6 @@ c.Ticks = clim;
 ylabel(c, 'dB');
 end
 
-function alpha_trials = extract_alpha_trials(tfr_in, channels, freq_win, time_win)
-% Returns resampling units for alpha power within selected channel/frequency/time.
-% Priority:
-%   1) trial-level units when `rpt` dimension exists
-%   2) otherwise flattened channel/frequency/time samples as fallback units
-cfg = [];
-cfg.channel = channels;
-cfg.frequency = freq_win;
-cfg.latency = time_win;
-sel = ft_selectdata(cfg, tfr_in);
-vals = sel.powspctrm;
-if isempty(vals)
-    alpha_trials = [];
-    return
-end
-
-dimord = '';
-if isfield(sel, 'dimord') && ischar(sel.dimord)
-    dimord = sel.dimord;
-end
-
-if contains(dimord, 'rpt')
-    n_rpt = size(vals, 1);
-    vals2d = reshape(vals, n_rpt, []);
-    alpha_trials = mean(vals2d, 2, 'omitnan');
-else
-    alpha_trials = vals(:);
-end
-alpha_trials = alpha_trials(isfinite(alpha_trials));
-end
-
 function boot_slopes = bootstrap_alpha_slope(a2_trials, a4_trials, a6_trials, n_boot)
 % Bootstraps slope estimates by resampling trials per load with replacement.
 boot_slopes = nan(n_boot, 1);
@@ -1314,6 +1289,59 @@ for bb = 1:n_boot
     end
     b = Xmat \ [m2; m4; m6];
     boot_slopes(bb) = b(2);
+end
+end
+
+function trial_tbl = load_trial_alpha_table(feat_dir)
+% Loads trial-level Sternberg table and validates required columns.
+required_vars = {'ID', 'Condition', 'AlphaPowerLateBL'};
+
+trial_mat = fullfile(feat_dir, 'AOC_merged_data_sternberg_trials.mat');
+trial_csv = fullfile(feat_dir, 'AOC_merged_data_sternberg_trials.csv');
+trial_tbl = table();
+
+if isfile(trial_mat)
+    tmp = load(trial_mat);
+    fn = fieldnames(tmp);
+    for ii = 1:numel(fn)
+        candidate = tmp.(fn{ii});
+        if istable(candidate) && all(ismember(required_vars, candidate.Properties.VariableNames))
+            trial_tbl = candidate;
+            break
+        end
+    end
+end
+
+if isempty(trial_tbl) && isfile(trial_csv)
+    trial_tbl = readtable(trial_csv);
+end
+
+if isempty(trial_tbl)
+    error('Missing usable trial-level table in: %s', feat_dir);
+end
+if ~all(ismember(required_vars, trial_tbl.Properties.VariableNames))
+    error('Trial-level table must include variables: %s', strjoin(required_vars, ', '));
+end
+
+trial_tbl = trial_tbl(:, required_vars);
+trial_tbl.ID = make_numeric_column(trial_tbl.ID);
+trial_tbl.Condition = make_numeric_column(trial_tbl.Condition);
+trial_tbl.AlphaPowerLateBL = make_numeric_column(trial_tbl.AlphaPowerLateBL);
+
+trial_tbl = trial_tbl(isfinite(trial_tbl.ID) & isfinite(trial_tbl.Condition), :);
+end
+
+function x = make_numeric_column(x)
+if isnumeric(x)
+    x = double(x);
+elseif islogical(x)
+    x = double(x);
+elseif iscell(x)
+    x = str2double(string(x));
+elseif isstring(x) || ischar(x) || iscategorical(x)
+    x = str2double(string(x));
+else
+    error('Unsupported column type for numeric conversion.');
 end
 end
 

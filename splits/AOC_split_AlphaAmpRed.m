@@ -998,27 +998,36 @@ for m = 1:size(metric_defs, 1)
 end
 end
 
-function draw_one_cloud(yvals, xpos, col, box_w, dot_size, dot_alpha)
+function draw_one_cloud(yvals, xpos, col, box_w, dot_size, dot_alpha, density_offset, box_offset, dot_jitter_halfwidth)
 y = yvals(isfinite(yvals));
 if numel(y) < 3
     return
 end
 [f, xi] = ksdensity(y, 'NumPoints', 120);
-f = f / max(f) * 0.35;
-fill([xpos - f, fliplr(repmat(xpos, 1, numel(f)))], [xi, fliplr(xi)], col, ...
+if nargin < 7 || isempty(density_offset), density_offset = 0.08; end
+if nargin < 8 || isempty(box_offset), box_offset = 0.03; end
+if nargin < 9 || isempty(dot_jitter_halfwidth), dot_jitter_halfwidth = box_w / 2; end
+if max(f) > 0
+    f = f / max(f) * 0.35;
+else
+    f = zeros(size(f));
+end
+x_den = xpos - density_offset;
+x_box = xpos + box_offset;
+fill([x_den - f, fliplr(repmat(x_den, 1, numel(f)))], [xi, fliplr(xi)], col, ...
     'FaceAlpha', 0.30, 'EdgeColor', col, 'LineWidth', 1);
 q1 = prctile(y, 25);
 q3 = prctile(y, 75);
 med = median(y);
 p5 = prctile(y, 5);
 p95 = prctile(y, 95);
-plot([xpos xpos], [p5 q1], '-k', 'LineWidth', 1.2);
-plot([xpos xpos], [q3 p95], '-k', 'LineWidth', 1.2);
-rectangle('Position', [xpos-box_w/2, q1, box_w, q3-q1], ...
+plot([x_box x_box], [p5 q1], '-k', 'LineWidth', 1.2);
+plot([x_box x_box], [q3 p95], '-k', 'LineWidth', 1.2);
+rectangle('Position', [x_box-box_w/2, q1, box_w, q3-q1], ...
     'FaceColor', [col 0.08], 'EdgeColor', 'k', 'LineWidth', 1.2);
-plot(xpos + [-box_w/2 box_w/2], [med med], '-k', 'LineWidth', 2);
-jit = 0.10*(rand(numel(y),1)-0.5);
-scatter(xpos + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, ...
+plot(x_box + [-box_w/2 box_w/2], [med med], '-k', 'LineWidth', 2);
+jit = dot_jitter_halfwidth * 2 * (rand(numel(y),1)-0.5);
+scatter(x_box + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, ...
     'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
 end
 

@@ -201,7 +201,7 @@ drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_histogram_inclusion
 fprintf('\nZero-centered symmetric-tail classification summary:\n');
 fprintf('Increase (positive tail):     %d\n', n_j);
 fprintf('Decrease (negative tail):     %d\n', n_n);
-fprintf('Intermediate (remainder):     %d\n', n_f);
+fprintf('Intermediate:     %d\n', n_f);
 
 %% Grand averages per subgroup
 cfg = [];
@@ -218,30 +218,37 @@ close all
 cfg = [];
 cfg.figure = 'gcf';
 cfg.ylim = [5 30];
-cfg.xlim = [-.5 2];
+cfg.xlim = [-.5 3];
 cfg.zlim = [-.25 .25];
+cb_ticks = -0.25:0.05:0.25;
 cfg.channel = channels;
 cfg.layout = headmodel.layANThead;
 figure('Position', fig_pos, 'Color', 'w');
 subplot(3,2,1); ft_singleplotTFR(cfg, ga2jensen); title('Increase: WM load 2', 'FontSize', fontSize);
+hold on; rectangle('Position', [1 8 1 6], 'EdgeColor', 'k', 'LineWidth', 1.5);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 subplot(3,2,3); ft_singleplotTFR(cfg, ga4jensen); title('Increase: WM load 4', 'FontSize', fontSize);
+hold on; rectangle('Position', [1 8 1 6], 'EdgeColor', 'k', 'LineWidth', 1.5);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 subplot(3,2,5); ft_singleplotTFR(cfg, ga6jensen); title('Increase: WM load 6', 'FontSize', fontSize);
+hold on; rectangle('Position', [1 8 1 6], 'EdgeColor', 'k', 'LineWidth', 1.5);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 
 subplot(3,2,2); ft_singleplotTFR(cfg, ga2nback); title('Decrease: WM load 2', 'FontSize', fontSize);
+hold on; rectangle('Position', [1 8 1 6], 'EdgeColor', 'k', 'LineWidth', 1.5);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 subplot(3,2,4); ft_singleplotTFR(cfg, ga4nback); title('Decrease: WM load 4', 'FontSize', fontSize);
+hold on; rectangle('Position', [1 8 1 6], 'EdgeColor', 'k', 'LineWidth', 1.5);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 subplot(3,2,6); ft_singleplotTFR(cfg, ga6nback); title('Decrease: WM load 6', 'FontSize', fontSize);
+hold on; rectangle('Position', [1 8 1 6], 'EdgeColor', 'k', 'LineWidth', 1.5);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 colormap(gcf, color_map);
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_TFR_OVERVIEW.png'));
 
@@ -259,6 +266,7 @@ tfr_filenames = {'AOC_split_AlphaLoads_TFR_Increase2.png', ...
 for ii = 1:numel(tfr_data)
     figure('Position', fig_pos, 'Color', 'w');
     ft_singleplotTFR(cfg, tfr_data{ii});
+    hold on; rectangle('Position', [1 8 1 6], 'EdgeColor', 'k', 'LineWidth', 1.5);
     title(tfr_titles{ii}, 'FontSize', fontSize);
     ax = gca;
     c = colorbar;
@@ -266,6 +274,7 @@ for ii = 1:numel(tfr_data)
     ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
     set(ax, 'FontSize', fontSize);
     c.FontSize = fontSize - 2;
+    c.Ticks = cb_ticks;
     c.Label.String = 'Power [dB]';
     c.Label.FontSize = fontSize;
     colormap(gcf, color_map);
@@ -321,7 +330,8 @@ end
 xlim([2 30]);
 xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
 yline(0, '--')
-ylim([-0.075 0.225])
+% ylim([-0.075 0.225])
+ylim([-0.25 0.25])
 ylabel('Power [dB]', 'FontSize', fontSize);
 title('Amplification', 'FontSize', fontSize);
 % Legend with colored patch boxes
@@ -353,7 +363,8 @@ end
 xlim([2 30]);
 xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
 yline(0, '--')
-ylim([-0.075 0.225])
+% ylim([-0.075 0.225])
+ylim([-0.25 0.25])
 ylabel('Power [dB]', 'FontSize', fontSize);
 title('Reduction', 'FontSize', fontSize);
 % Legend with colored patch boxes

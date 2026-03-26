@@ -37,6 +37,9 @@ fprintf('Command window log file: %s\n', cmdlog_file);
 fig_pos = [0 0 1512 982];
 fontSize = 15;
 color_map = customcolormap_preset('red-white-blue');
+winsor_cfg = struct();
+winsor_cfg.enable = true;
+winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
 
 %% Loop over subjects - load EEG TFR (specParam, baselined)
 clc
@@ -82,6 +85,11 @@ cfg.keepindividual = 'yes';
 ga2 = ft_freqgrandaverage(cfg, load2{:});
 ga4 = ft_freqgrandaverage(cfg, load4{:});
 ga6 = ft_freqgrandaverage(cfg, load6{:});
+if winsor_cfg.enable
+    ga2 = winsorize_freq_subjects(ga2, winsor_cfg.prctile);
+    ga4 = winsorize_freq_subjects(ga4, winsor_cfg.prctile);
+    ga6 = winsorize_freq_subjects(ga6, winsor_cfg.prctile);
+end
 
 %% Select alpha power (retention 1-3 s)
 cfg = [];
@@ -212,6 +220,14 @@ ga6jensen = ft_freqgrandaverage(cfg,load6{idx_jensen});
 ga2nback = ft_freqgrandaverage(cfg,load2{idx_nback});
 ga4nback = ft_freqgrandaverage(cfg,load4{idx_nback});
 ga6nback = ft_freqgrandaverage(cfg,load6{idx_nback});
+if winsor_cfg.enable
+    ga2jensen = winsorize_freq_subjects(ga2jensen, winsor_cfg.prctile);
+    ga4jensen = winsorize_freq_subjects(ga4jensen, winsor_cfg.prctile);
+    ga6jensen = winsorize_freq_subjects(ga6jensen, winsor_cfg.prctile);
+    ga2nback = winsorize_freq_subjects(ga2nback, winsor_cfg.prctile);
+    ga4nback = winsorize_freq_subjects(ga4nback, winsor_cfg.prctile);
+    ga6nback = winsorize_freq_subjects(ga6nback, winsor_cfg.prctile);
+end
 
 %% TFR
 close all
@@ -397,7 +413,7 @@ allgazetasklate6 = gaze_dwell_time.allgazetasklate6;
 
 % Keep full-resolution maps for visualization.
 % Use downsampled copies only for permutation stats to avoid OOM.
-gaze_cbpt_bins = 500;
+gaze_cbpt_bins = 200;
 allgazebase2_cbpt = downsample_gaze_cells_powspctrm(allgazebase2, gaze_cbpt_bins);
 allgazebase4_cbpt = downsample_gaze_cells_powspctrm(allgazebase4, gaze_cbpt_bins);
 allgazebase6_cbpt = downsample_gaze_cells_powspctrm(allgazebase6, gaze_cbpt_bins);
@@ -1716,6 +1732,26 @@ for ii = 1:numel(cells_out)
         cells_out{ii}.time = linspace(min(cells_out{ii}.time), max(cells_out{ii}.time), target_bins);
     end
 end
+end
+
+function freq_out = winsorize_freq_subjects(freq_in, prct_bounds)
+freq_out = freq_in;
+if ~isfield(freq_in, 'powspctrm') || isempty(freq_in.powspctrm)
+    return
+end
+
+P = freq_in.powspctrm;
+if size(P, 1) < 3
+    % Too few subjects for stable percentile clipping.
+    return
+end
+
+P_size = size(P);
+P_2d = reshape(P, P_size(1), []);
+lo = prctile(P_2d, prct_bounds(1), 1);
+hi = prctile(P_2d, prct_bounds(2), 1);
+P_2d = min(max(P_2d, lo), hi);
+freq_out.powspctrm = reshape(P_2d, P_size);
 end
 
 %% ================= TOST FUNCTION =================

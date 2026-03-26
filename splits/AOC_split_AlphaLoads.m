@@ -62,7 +62,7 @@ for subj = 1:length(subjects)
         load6{subj} = ft_freqbaseline(cfg_bl, datTFR.tfr6_fooof);
     end
 end
-disp('LOADING FINISHED')
+clc; disp('LOADING FINISHED')
 
 %% Determine occipital channels
 % Occipital channels
@@ -109,25 +109,74 @@ for subj = 1:nSubj
 end
 
 %% Split and Plot slope distribution (inclusion)
-tertiles = prctile(slope, [100/3, 200/3]);
-t1 = tertiles(1);
-t2 = tertiles(2);
-idx_nback  = slope <= t1;
-idx_jensen = slope >= t2;
-idx_flat   = slope > t1 & slope < t2;
+% Zero-centered symmetric tails:
+% - amplification: largest positive slopes
+% - reduction: most negative slopes
+% - intermediate: remaining participants
+nSubj = numel(slope);
+k = floor(nSubj/3); % requested equal tail size
+if k < 1
+    error('Not enough subjects for a zero-centered tail split.');
+end
+
+pos_idx = find(slope > 0);
+[~, ord_pos] = sort(slope(pos_idx), 'descend');
+pos_sel = pos_idx(ord_pos(1:min(k, numel(pos_idx))));
+
+neg_idx = find(slope < 0);
+[~, ord_neg] = sort(slope(neg_idx), 'ascend');
+neg_sel = neg_idx(ord_neg(1:min(k, numel(neg_idx))));
+
+% Enforce equal N in both tails; handle sign-imbalanced cohorts gracefully.
+k_eff = min(numel(pos_sel), numel(neg_sel));
+if k_eff < k
+    warning('Only %d participants per tail possible (requested %d).', k_eff, k);
+end
+pos_sel = pos_sel(1:k_eff);
+neg_sel = neg_sel(1:k_eff);
+
+idx_jensen = false(nSubj,1); % amplification
+idx_nback  = false(nSubj,1); % reduction
+idx_flat   = true(nSubj,1);  % intermediate
+idx_jensen(pos_sel) = true;
+idx_nback(neg_sel)  = true;
+idx_flat(idx_jensen | idx_nback) = false;
 
 % counts
 n_j = sum(idx_jensen);
 n_n = sum(idx_nback);
 n_f = sum(idx_flat);
 
+% Group-defining cutoffs (for visualization only)
+if any(idx_nback)
+    t1 = max(slope(idx_nback));
+else
+    t1 = NaN;
+end
+if any(idx_jensen)
+    t2 = min(slope(idx_jensen));
+else
+    t2 = NaN;
+end
+
 % Plot
 close all
 figure('Position', fig_pos, 'Color', 'w');
 hold on
-% Use one shared, constant bin width and align edges with tertile thresholds.
+% Use one shared, constant bin width and align edges with group cutoffs.
 n_bins_middle = 8;
 bin_w = (t2 - t1) / n_bins_middle;
+if ~isfinite(bin_w) || bin_w <= 0
+    all_s = slope(isfinite(slope));
+    if isempty(all_s)
+        bin_w = 1;
+    else
+        bin_w = (max(all_s) - min(all_s)) / 12;
+        if ~isfinite(bin_w) || bin_w <= 0
+            bin_w = 1e-3;
+        end
+    end
+end
 min_s = min(slope);
 max_s = max(slope);
 k_left = ceil((t1 - min_s) / bin_w);
@@ -144,15 +193,15 @@ title('Linear Slope of Alpha Power across WM Load (2, 4, 6 items)', 'FontSize', 
 legend({sprintf('Alpha increase with load (N=%d)', n_j), ...
     sprintf('Alpha decrease with load (N=%d)', n_n), ...
     sprintf('intermediate (N=%d)', n_f), ...
-    'tertile boundaries'}, 'Box', 'off')
+    'symmetric-tail cutoffs'}, 'Box', 'off')
 box on
 set(gca, 'FontSize', 15)
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_histogram_inclusion.png'));
 
-fprintf('\nSlope tertile classification summary:\n');
-fprintf('Increase (upper third):      %d\n', n_j);
-fprintf('Decrease (lower third):      %d\n', n_n);
-fprintf('Indeterminate (middle third): %d\n', n_f);
+fprintf('\nZero-centered symmetric-tail classification summary:\n');
+fprintf('Increase (positive tail):     %d\n', n_j);
+fprintf('Decrease (negative tail):     %d\n', n_n);
+fprintf('Intermediate (remainder):     %d\n', n_f);
 
 %% Grand averages per subgroup
 cfg = [];
@@ -274,7 +323,7 @@ xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
 yline(0, '--')
 ylim([-0.075 0.225])
 ylabel('Power [dB]', 'FontSize', fontSize);
-title('Increase group', 'FontSize', fontSize);
+title('Amplification', 'FontSize', fontSize);
 % Legend with colored patch boxes
 leg_p_j = gobjects(1, 3);
 for c = 1:3
@@ -306,7 +355,7 @@ xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
 yline(0, '--')
 ylim([-0.075 0.225])
 ylabel('Power [dB]', 'FontSize', fontSize);
-title('Decrease group', 'FontSize', fontSize);
+title('Reduction', 'FontSize', fontSize);
 % Legend with colored patch boxes
 leg_p_n = gobjects(1, 3);
 for c = 1:3

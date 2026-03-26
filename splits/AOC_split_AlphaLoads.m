@@ -615,6 +615,10 @@ alpha_cbpt_taskVsBase = family_alpha / n_cbpt_tests_taskVsBase;
     clc; disp(upper('[stat_inc_2 JENSEN]')); [stat_inc_2] = ft_freqstatistics(cfg, allgazetasklate2_cbpt{idx_jensen},allgazebase2_cbpt{idx_jensen});
     clc; disp(upper('[stat_inc_4 JENSEN]')); [stat_inc_4] = ft_freqstatistics(cfg, allgazetasklate4_cbpt{idx_jensen},allgazebase4_cbpt{idx_jensen});
     clc; disp(upper('[stat_inc_6 JENSEN]')); [stat_inc_6] = ft_freqstatistics(cfg, allgazetasklate6_cbpt{idx_jensen},allgazebase6_cbpt{idx_jensen});
+    % Convert paired t-statistics to effect size Cohen's d (dependent samples).
+    stat_inc_2.stat = stat_inc_2.stat ./ sqrt(subj);
+    stat_inc_4.stat = stat_inc_4.stat ./ sqrt(subj);
+    stat_inc_6.stat = stat_inc_6.stat ./ sqrt(subj);
     % Hide non-significant pixels in visualization
     stat_inc_2.stat(stat_inc_2.mask==0) = NaN;
     stat_inc_4.stat(stat_inc_4.mask==0) = NaN;
@@ -639,6 +643,10 @@ alpha_cbpt_taskVsBase = family_alpha / n_cbpt_tests_taskVsBase;
     clc; disp(upper('[stat_inc_n_2 N-back]')); [stat_inc_n_2] = ft_freqstatistics(cfg, allgazetasklate2_cbpt{idx_nback},allgazebase2_cbpt{idx_nback});
     clc; disp(upper('[stat_inc_n_4 N-back]')); [stat_inc_n_4] = ft_freqstatistics(cfg, allgazetasklate4_cbpt{idx_nback},allgazebase4_cbpt{idx_nback});
     clc; disp(upper('[stat_inc_n_6 N-back]')); [stat_inc_n_6] = ft_freqstatistics(cfg, allgazetasklate6_cbpt{idx_nback},allgazebase6_cbpt{idx_nback});
+    % Convert paired t-statistics to effect size Cohen's d (dependent samples).
+    stat_inc_n_2.stat = stat_inc_n_2.stat ./ sqrt(subj);
+    stat_inc_n_4.stat = stat_inc_n_4.stat ./ sqrt(subj);
+    stat_inc_n_6.stat = stat_inc_n_6.stat ./ sqrt(subj);
     % Hide non-significant pixels in visualization
     stat_inc_n_2.stat(stat_inc_n_2.mask==0) = NaN;
     stat_inc_n_4.stat(stat_inc_n_4.mask==0) = NaN;
@@ -695,7 +703,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 't-value';
+c.Label.String = 'Effect size d';
 c.Label.FontSize = 18;   % optional
 title('Amplification: WM Load 2', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -717,7 +725,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 't-value';
+c.Label.String = 'Effect size d';
 c.Label.FontSize = 18;   % optional
 title('Amplification: WM Load 4', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -739,7 +747,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 't-value';
+c.Label.String = 'Effect size d';
 c.Label.FontSize = 18;   % optional
 title('Amplification: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -762,7 +770,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 't-value';
+c.Label.String = 'Effect size d';
 c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 2', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -784,7 +792,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 't-value';
+c.Label.String = 'Effect size d';
 c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 4', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -806,7 +814,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 't-value';
+c.Label.String = 'Effect size d';
 c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
 colormap(customcolormap_preset('red-white-blue'));
@@ -921,6 +929,7 @@ drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statF_omni
 addpath(fileparts(mfilename('fullpath')));
 
 % ---------------- Linear load trend ----------------
+disp(upper('Computing linear load trend...'))
 cfg                  = [];
 cfg.method           = 'montecarlo';
 % Contrast weights for ft_statfun_loadtrend are [-1 0 1] for loads [2 4 6].
@@ -984,6 +993,7 @@ drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadTrend.
 close(gcf);
 
 % ---------------- Quadratic load trend ----------------
+disp(upper('Computing quadratic load trend...'))
 cfg                  = [];
 cfg.method           = 'montecarlo';
 % Contrast weights for ft_statfun_loadquadratic are [1 -2 1] for loads [2 4 6].

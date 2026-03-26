@@ -443,6 +443,12 @@ cbpt_file_gaze_taskVsBase = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_t
 %     disp('Loading cached CBPT: gaze tasklate vs baseline...')
 %     load(cbpt_file_gaze_taskVsBase);
 % else
+    % Six CBPT maps are tested here (3 loads x 2 groups).
+    % Use a family-wise corrected alpha across this test family.
+    family_alpha = 0.05;
+    n_cbpt_tests_taskVsBase = 6;
+    alpha_cbpt_taskVsBase = family_alpha / n_cbpt_tests_taskVsBase;
+
     cfg                  = [];
     cfg.spmversion       = 'spm12';
     cfg.method           = 'montecarlo';
@@ -453,7 +459,7 @@ cbpt_file_gaze_taskVsBase = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_t
     cfg.clusterstatistic = 'maxsum';
     cfg.tail             = 0;
     cfg.clustertail      = 0;
-    cfg.alpha            = 0.05;
+    cfg.alpha            = alpha_cbpt_taskVsBase;
     cfg.correcttail      = 'alpha';
     cfg.numrandomization = 1000;
 
@@ -1281,8 +1287,6 @@ for i = 1:nSubj
 end
 
 %% ================= GROUPING =================
-thr = 0.015;
-
 idx_jensen = slope > thr;
 idx_nback  = slope < -thr;
 
@@ -1322,6 +1326,8 @@ tbl.Group   = categorical(tbl.Group);
 
 %% ================= LME ANALYSIS =================
 disp('--- RT model ---')
+% Treat Load as categorical for a full 3-level repeated-measures effect.
+tbl.Load = categorical(tbl.Load);
 lme_RT = fitlme(tbl, 'RT ~ Load * Group + (1|Subject)');
 disp(anova(lme_RT))
 
@@ -1334,11 +1340,12 @@ disp(anova(lme_ACC))
 delta_RT = 0.05;   % 50 ms
 delta_ACC = 5;     % 5%
 
-RT_jensen = [RT2(idx_jensen); RT4(idx_jensen); RT6(idx_jensen)];
-RT_nback  = [RT2(idx_nback);  RT4(idx_nback);  RT6(idx_nback)];
+% Use one independent value per subject (mean across loads) for between-group TOST.
+RT_jensen = mean([RT2(idx_jensen), RT4(idx_jensen), RT6(idx_jensen)], 2, 'omitnan');
+RT_nback  = mean([RT2(idx_nback),  RT4(idx_nback),  RT6(idx_nback)], 2, 'omitnan');
 
-ACC_jensen = [ACC2(idx_jensen); ACC4(idx_jensen); ACC6(idx_jensen)];
-ACC_nback  = [ACC2(idx_nback);  ACC4(idx_nback);  ACC6(idx_nback)];
+ACC_jensen = mean([ACC2(idx_jensen), ACC4(idx_jensen), ACC6(idx_jensen)], 2, 'omitnan');
+ACC_nback  = mean([ACC2(idx_nback),  ACC4(idx_nback),  ACC6(idx_nback)], 2, 'omitnan');
 
 fprintf('\n--- TOST (strict) ---\n')
 
@@ -1351,16 +1358,22 @@ fprintf('ACC equivalence: p1=%.4f, p2=%.4f, equivalent=%d\n', p1, p2, eq_ACC);
 %% ================= RT SENSITIVITY =================
 fprintf('\n--- RT equivalence sensitivity ---\n')
 
-tost_welch(RT_jensen, RT_nback, 0.05)
-tost_welch(RT_jensen, RT_nback, 0.1)
-tost_welch(RT_jensen, RT_nback, 0.15)
+[p1, p2, eq] = tost_welch(RT_jensen, RT_nback, 0.05);
+fprintf('RT delta=0.05: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
+[p1, p2, eq] = tost_welch(RT_jensen, RT_nback, 0.1);
+fprintf('RT delta=0.10: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
+[p1, p2, eq] = tost_welch(RT_jensen, RT_nback, 0.15);
+fprintf('RT delta=0.15: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
 
 %% ================= ACC ROBUSTNESS (optional) =================
 fprintf('\n--- ACC robustness ---\n')
 
-tost_welch(ACC_jensen, ACC_nback, 3)
-tost_welch(ACC_jensen, ACC_nback, 5)
-tost_welch(ACC_jensen, ACC_nback, 10)
+[p1, p2, eq] = tost_welch(ACC_jensen, ACC_nback, 3);
+fprintf('ACC delta=3: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
+[p1, p2, eq] = tost_welch(ACC_jensen, ACC_nback, 5);
+fprintf('ACC delta=5: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
+[p1, p2, eq] = tost_welch(ACC_jensen, ACC_nback, 10);
+fprintf('ACC delta=10: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
 %% Helper functions
 function plot_tfr_matrix_panel(subplot_idx, ga_data, cfg_sel, clim, fsz)
 freq = ft_selectdata(cfg_sel, ga_data);

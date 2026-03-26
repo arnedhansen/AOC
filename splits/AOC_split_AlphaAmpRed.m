@@ -54,6 +54,9 @@ fontSize = 20;
 % rng(42);
 alpha_zero_pct = 5; % Exclude near-zero alpha within this % of robust |alpha| reference
 alpha_ref_percentile = 95; % Use this percentile of |alpha| for reference (outlier-resistant)
+tfr_winsor_cfg = struct();
+tfr_winsor_cfg.enable = true;
+tfr_winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
 
 %% Load subject-level merged data and define alpha split
 fprintf('\n=== Loading merged data ===\n');
@@ -384,7 +387,7 @@ color_map_tfr = interp1(linspace(0,1,5), ...
     linspace(0,1,64));
 
 plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, ...
-    color_map_tfr, fig_dir, fig_pos, fontSize);
+    color_map_tfr, fig_dir, fig_pos, fontSize, tfr_winsor_cfg);
 
 %% Topoplots per condition (both groups + differences)
 fprintf('\n=== Plotting topoplots ===\n');
@@ -816,17 +819,27 @@ saveas(gcf, out_file);
 close(gcf);
 end
 
-function plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, color_map, fig_dir, fig_pos, fsz)
+function plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, color_map, fig_dir, fig_pos, fsz, winsor_cfg)
 if any(cellfun(@isempty, tfr_red)) || any(cellfun(@isempty, tfr_amp))
     warning('Skipping TFR plot (incomplete condition data).');
     return
 end
 
+if nargin < 11 || isempty(winsor_cfg)
+    winsor_cfg = struct('enable', false, 'prctile', [2 98]);
+end
+
 ga_red = cell(1, 3);
 ga_amp = cell(1, 3);
 for c = 1:3
-    ga_red{c} = ft_freqgrandaverage([], tfr_red{c}{:});
-    ga_amp{c} = ft_freqgrandaverage([], tfr_amp{c}{:});
+    cfg = [];
+    cfg.keepindividual = 'yes';
+    ga_red{c} = ft_freqgrandaverage(cfg, tfr_red{c}{:});
+    ga_amp{c} = ft_freqgrandaverage(cfg, tfr_amp{c}{:});
+    if winsor_cfg.enable
+        ga_red{c} = winsorize_freq_subjects(ga_red{c}, winsor_cfg.prctile);
+        ga_amp{c} = winsorize_freq_subjects(ga_amp{c}, winsor_cfg.prctile);
+    end
 end
 
 % Shared clim for Reduction and Amplification
@@ -897,6 +910,26 @@ for c = 1:3
 end
 saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_tfr_all.png'));
 close(gcf);
+end
+
+function freq_out = winsorize_freq_subjects(freq_in, prct_bounds)
+freq_out = freq_in;
+if ~isfield(freq_in, 'powspctrm') || isempty(freq_in.powspctrm)
+    return
+end
+
+P = freq_in.powspctrm;
+if size(P, 1) < 3
+    % Too few subjects for stable percentile clipping.
+    return
+end
+
+P_size = size(P);
+P_2d = reshape(P, P_size(1), []);
+lo = prctile(P_2d, prct_bounds(1), 1);
+hi = prctile(P_2d, prct_bounds(2), 1);
+P_2d = min(max(P_2d, lo), hi);
+freq_out.powspctrm = reshape(P_2d, P_size);
 end
 
 function plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, fig_dir, fig_pos, fsz)

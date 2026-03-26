@@ -36,7 +36,7 @@ fprintf('Command window log file: %s\n', cmdlog_file);
 %% Figure setup
 fig_pos = [0 0 1512 982];
 fontSize = 15;
-color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
+color_map = customcolormap_preset('red-white-blue');
 
 %% Loop over subjects - load EEG TFR (specParam, baselined)
 clc
@@ -347,15 +347,15 @@ allgazetasklate2 = gaze_dwell_time.allgazetasklate2;
 allgazetasklate4 = gaze_dwell_time.allgazetasklate4;
 allgazetasklate6 = gaze_dwell_time.allgazetasklate6;
 
-% Keep canonical computeGazeHeatmap units as in the Sternberg heatmap script.
-% Reduce gaze map resolution for permutation stats to avoid OOM on servers.
-gaze_cbpt_bins = 200;
-allgazebase2 = downsample_gaze_cells_powspctrm(allgazebase2, gaze_cbpt_bins);
-allgazebase4 = downsample_gaze_cells_powspctrm(allgazebase4, gaze_cbpt_bins);
-allgazebase6 = downsample_gaze_cells_powspctrm(allgazebase6, gaze_cbpt_bins);
-allgazetasklate2 = downsample_gaze_cells_powspctrm(allgazetasklate2, gaze_cbpt_bins);
-allgazetasklate4 = downsample_gaze_cells_powspctrm(allgazetasklate4, gaze_cbpt_bins);
-allgazetasklate6 = downsample_gaze_cells_powspctrm(allgazetasklate6, gaze_cbpt_bins);
+% Keep full-resolution maps for visualization.
+% Use downsampled copies only for permutation stats to avoid OOM.
+gaze_cbpt_bins = 500;
+allgazebase2_cbpt = downsample_gaze_cells_powspctrm(allgazebase2, gaze_cbpt_bins);
+allgazebase4_cbpt = downsample_gaze_cells_powspctrm(allgazebase4, gaze_cbpt_bins);
+allgazebase6_cbpt = downsample_gaze_cells_powspctrm(allgazebase6, gaze_cbpt_bins);
+allgazetasklate2_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate2, gaze_cbpt_bins);
+allgazetasklate4_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate4, gaze_cbpt_bins);
+allgazetasklate6_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate6, gaze_cbpt_bins);
 
 %% Baseline (subtraction: tasklate - baseline)
 disp('BASELINING GAZE DATA (SUBTRACTION)')
@@ -370,6 +370,9 @@ for subj = 1:length(allgazebase6)
     load4_gaze{subj}.powspctrm = allgazetasklate4{subj}.powspctrm - allgazebase4{subj}.powspctrm;
     load6_gaze{subj}.powspctrm = allgazetasklate6{subj}.powspctrm - allgazebase6{subj}.powspctrm;
 end
+load2_gaze_cbpt = downsample_gaze_cells_powspctrm(load2_gaze, gaze_cbpt_bins);
+load4_gaze_cbpt = downsample_gaze_cells_powspctrm(load4_gaze, gaze_cbpt_bins);
+load6_gaze_cbpt = downsample_gaze_cells_powspctrm(load6_gaze, gaze_cbpt_bins);
 
 %% Compute gaze grand average
 cfg = [];
@@ -385,7 +388,7 @@ ga6nback_gaze = ft_freqgrandaverage(cfg, load6_gaze{idx_nback});
 close all
 cfg = [];
 cfg.figure = 'gcf';
-% Robust symmetric z-limits for subtraction baseline maps
+% Strict symmetric max-abs z-limits for subtraction baseline maps
 allGazeDiff = [ ...
     ga2jensen_gaze.powspctrm(:); ...
     ga4jensen_gaze.powspctrm(:); ...
@@ -393,7 +396,8 @@ allGazeDiff = [ ...
     ga2nback_gaze.powspctrm(:); ...
     ga4nback_gaze.powspctrm(:); ...
     ga6nback_gaze.powspctrm(:) ];
-zlimAbs = max(abs(prctile(allGazeDiff, [1 99])));
+allGazeDiff = allGazeDiff(isfinite(allGazeDiff));
+zlimAbs = max(abs(allGazeDiff));
 if ~isfinite(zlimAbs) || zlimAbs == 0
     zlimAbs = 3;
 end
@@ -405,9 +409,13 @@ subplot(3,2,1);
 ft_singleplotTFR(cfg, ga2jensen_gaze);
 title('Amplification: WM Load 2', 'FontSize', fontSize);
 ax = gca;
+xlim(ax, [0 800]);
+ylim(ax, [0 600]);
 xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
 ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 set(ax, 'FontSize', fontSize);
+hold(ax, 'on');
+plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar(ax);
 c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = fontSize - 2;
@@ -417,9 +425,13 @@ subplot(3,2,3);
 ft_singleplotTFR(cfg, ga4jensen_gaze);
 title('Amplification: WM Load 4', 'FontSize', fontSize);
 ax = gca;
+xlim(ax, [0 800]);
+ylim(ax, [0 600]);
 xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
 ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 set(ax, 'FontSize', fontSize);
+hold(ax, 'on');
+plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar(ax);
 c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = fontSize - 2;
@@ -429,9 +441,13 @@ subplot(3,2,5);
 ft_singleplotTFR(cfg, ga6jensen_gaze);
 title('Amplification: WM Load 6', 'FontSize', fontSize);
 ax = gca;
+xlim(ax, [0 800]);
+ylim(ax, [0 600]);
 xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
 ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 set(ax, 'FontSize', fontSize);
+hold(ax, 'on');
+plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar(ax);
 c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = fontSize - 2;
@@ -441,9 +457,13 @@ subplot(3,2,2);
 ft_singleplotTFR(cfg, ga2nback_gaze);
 title('Reduction: WM Load 2', 'FontSize', fontSize);
 ax = gca;
+xlim(ax, [0 800]);
+ylim(ax, [0 600]);
 xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
 ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 set(ax, 'FontSize', fontSize);
+hold(ax, 'on');
+plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar(ax);
 c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = fontSize - 2;
@@ -453,9 +473,13 @@ subplot(3,2,4);
 ft_singleplotTFR(cfg, ga4nback_gaze);
 title('Reduction: WM Load 4', 'FontSize', fontSize);
 ax = gca;
+xlim(ax, [0 800]);
+ylim(ax, [0 600]);
 xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
 ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 set(ax, 'FontSize', fontSize);
+hold(ax, 'on');
+plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar(ax);
 c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = fontSize - 2;
@@ -465,16 +489,20 @@ subplot(3,2,6);
 ft_singleplotTFR(cfg, ga6nback_gaze);
 title('Reduction: WM Load 6', 'FontSize', fontSize);
 ax = gca;
+xlim(ax, [0 800]);
+ylim(ax, [0 600]);
 xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
 ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 set(ax, 'FontSize', fontSize);
+hold(ax, 'on');
+plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar(ax);
 c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = fontSize - 2;
 c.FontSize = fontSize - 2;
 
 colormap(gcf, color_map);
-drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_subtractionBaseline.png'));
+drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR.png'));
 
 %% Compute CBPT stats: paired baseline-vs-task tests separately for each load (2/4/6) and each subgroup (increase vs decrease)
 clc
@@ -516,9 +544,9 @@ alpha_cbpt_taskVsBase = family_alpha / n_cbpt_tests_taskVsBase;
     cfg.ivar     = 2;
     cfg_cbpt_gaze_taskVsBase_jensen = cfg;
     design_cbpt_gaze_taskVsBase_jensen = design;
-    clc; disp(upper('[stat_inc_2 JENSEN]')); [stat_inc_2] = ft_freqstatistics(cfg, allgazetasklate2{idx_jensen},allgazebase2{idx_jensen});
-    clc; disp(upper('[stat_inc_4 JENSEN]')); [stat_inc_4] = ft_freqstatistics(cfg, allgazetasklate4{idx_jensen},allgazebase4{idx_jensen});
-    clc; disp(upper('[stat_inc_6 JENSEN]')); [stat_inc_6] = ft_freqstatistics(cfg, allgazetasklate6{idx_jensen},allgazebase6{idx_jensen});
+    clc; disp(upper('[stat_inc_2 JENSEN]')); [stat_inc_2] = ft_freqstatistics(cfg, allgazetasklate2_cbpt{idx_jensen},allgazebase2_cbpt{idx_jensen});
+    clc; disp(upper('[stat_inc_4 JENSEN]')); [stat_inc_4] = ft_freqstatistics(cfg, allgazetasklate4_cbpt{idx_jensen},allgazebase4_cbpt{idx_jensen});
+    clc; disp(upper('[stat_inc_6 JENSEN]')); [stat_inc_6] = ft_freqstatistics(cfg, allgazetasklate6_cbpt{idx_jensen},allgazebase6_cbpt{idx_jensen});
     % Hide non-significant pixels in visualization
     stat_inc_2.stat(stat_inc_2.mask==0) = NaN;
     stat_inc_4.stat(stat_inc_4.mask==0) = NaN;
@@ -540,9 +568,9 @@ alpha_cbpt_taskVsBase = family_alpha / n_cbpt_tests_taskVsBase;
     cfg.ivar     = 2;
     cfg_cbpt_gaze_taskVsBase_nback = cfg;
     design_cbpt_gaze_taskVsBase_nback = design;
-    clc; disp(upper('[stat_inc_n_2 N-back]')); [stat_inc_n_2] = ft_freqstatistics(cfg, allgazetasklate2{idx_nback},allgazebase2{idx_nback});
-    clc; disp(upper('[stat_inc_n_4 N-back]')); [stat_inc_n_4] = ft_freqstatistics(cfg, allgazetasklate4{idx_nback},allgazebase4{idx_nback});
-    clc; disp(upper('[stat_inc_n_6 N-back]')); [stat_inc_n_6] = ft_freqstatistics(cfg, allgazetasklate6{idx_nback},allgazebase6{idx_nback});
+    clc; disp(upper('[stat_inc_n_2 N-back]')); [stat_inc_n_2] = ft_freqstatistics(cfg, allgazetasklate2_cbpt{idx_nback},allgazebase2_cbpt{idx_nback});
+    clc; disp(upper('[stat_inc_n_4 N-back]')); [stat_inc_n_4] = ft_freqstatistics(cfg, allgazetasklate4_cbpt{idx_nback},allgazebase4_cbpt{idx_nback});
+    clc; disp(upper('[stat_inc_n_6 N-back]')); [stat_inc_n_6] = ft_freqstatistics(cfg, allgazetasklate6_cbpt{idx_nback},allgazebase6_cbpt{idx_nback});
     % Hide non-significant pixels in visualization
     stat_inc_n_2.stat(stat_inc_n_2.mask==0) = NaN;
     stat_inc_n_4.stat(stat_inc_n_4.mask==0) = NaN;
@@ -583,8 +611,12 @@ end
 set(gca, 'Color', [1 1 1]);
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
+xlim([0 800]);
+ylim([0 600]);
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
+hold on
+plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -601,8 +633,12 @@ end
 set(gca, 'Color', [1 1 1]);
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
+xlim([0 800]);
+ylim([0 600]);
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
+hold on
+plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -619,8 +655,12 @@ end
 set(gca, 'Color', [1 1 1]);
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
+xlim([0 800]);
+ylim([0 600]);
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
+hold on
+plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -638,8 +678,12 @@ end
 set(gca, 'Color', [1 1 1]);
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
+xlim([0 800]);
+ylim([0 600]);
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
+hold on
+plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -656,8 +700,12 @@ end
 set(gca, 'Color', [1 1 1]);
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
+xlim([0 800]);
+ylim([0 600]);
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
+hold on
+plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
@@ -674,15 +722,19 @@ end
 set(gca, 'Color', [1 1 1]);
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
+xlim([0 800]);
+ylim([0 600]);
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
+hold on
+plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
 c.Label.String = 't-value';
 c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
-colormap(color_map);
+colormap(customcolormap_preset('red-white-blue'));
 
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statInc.png'));
 
@@ -708,7 +760,7 @@ cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
 cfg_cbpt_gaze_omnibus_jensen = cfg;
-[statF_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
+[statF_gaze] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_jensen}, load4_gaze_cbpt{idx_jensen}, load6_gaze_cbpt{idx_jensen});
 statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
 
     cfg                  = [];
@@ -735,7 +787,7 @@ statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
     cfg.ivar                  = 1;
     cfg.uvar                  = 2;
 cfg_cbpt_gaze_omnibus_nback = cfg;
-[statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
+[statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_nback}, load4_gaze_cbpt{idx_nback}, load6_gaze_cbpt{idx_nback});
 statF_gaze_n.stat(statF_gaze_n.mask==0)=0;% set everything not relevant to zero
 
 %% Plot F-stats
@@ -754,10 +806,18 @@ figure('Position', [0 0 1512*0.5 982], 'Color', 'w');
 ax1 = subplot(2,1,1);
 ft_singleplotTFR(cfg, statF_gaze);
 title('Amplification: Omnibus Load Effect', 'FontSize', fontSize, 'Interpreter', 'none');
+xlim(ax1, [0 800]);
+ylim(ax1, [0 600]);
+hold(ax1, 'on');
+plot(ax1, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 
 ax2 = subplot(2,1,2);
 ft_singleplotTFR(cfg, statF_gaze_n);
 title('Reduction: Omnibus Load Effect', 'FontSize', fontSize, 'Interpreter', 'none');
+xlim(ax2, [0 800]);
+ylim(ax2, [0 600]);
+hold(ax2, 'on');
+plot(ax2, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 
 % fix colormaps
 cmap = colormap(ax1);
@@ -805,7 +865,7 @@ cfg.design(2,:)           = [1:subj, 1:subj, 1:subj];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
 cfg_cbpt_gaze_loadtrend_jensen = cfg;
-[statT_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
+[statT_gaze] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_jensen}, load4_gaze_cbpt{idx_jensen}, load6_gaze_cbpt{idx_jensen});
 statT_gaze.stat(statT_gaze.mask==0)=0;
 
 cfg                  = [];
@@ -826,7 +886,7 @@ cfg.design(2,:)           = [1:subj, 1:subj, 1:subj];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
 cfg_cbpt_gaze_loadtrend_nback = cfg;
-[statT_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
+[statT_gaze_n] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_nback}, load4_gaze_cbpt{idx_nback}, load6_gaze_cbpt{idx_nback});
 statT_gaze_n.stat(statT_gaze_n.mask==0)=0;
 
 cfg         = [];
@@ -839,11 +899,11 @@ cfg.ylim = [0 600];
 cfg.figure = 'gcf';
 figure('Position', [0 0 1512 982], 'Color', 'w');
 subplot(1,2,1); ft_singleplotTFR(cfg,statT_gaze); title('Amplification: Linear Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
-ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
+ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]); hold(ax, 'on'); plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k'); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 
 subplot(1,2,2); ft_singleplotTFR(cfg,statT_gaze_n); title('Reduction: Linear Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
-ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
+ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]); hold(ax, 'on'); plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k'); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadTrend.png'));
 close(gcf);
@@ -868,7 +928,7 @@ cfg.design(2,:)           = [1:subj, 1:subj, 1:subj];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
 cfg_cbpt_gaze_loadquadratic_jensen = cfg;
-[statT_gaze_quad] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
+[statT_gaze_quad] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_jensen}, load4_gaze_cbpt{idx_jensen}, load6_gaze_cbpt{idx_jensen});
 statT_gaze_quad.stat(statT_gaze_quad.mask==0)=0;
 
 cfg                  = [];
@@ -890,17 +950,17 @@ cfg.design(2,:)           = [1:subj, 1:subj, 1:subj];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
 cfg_cbpt_gaze_loadquadratic_nback = cfg;
-[statT_gaze_quad_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
+[statT_gaze_quad_n] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_nback}, load4_gaze_cbpt{idx_nback}, load6_gaze_cbpt{idx_nback});
 statT_gaze_quad_n.stat(statT_gaze_quad_n.mask==0)=0;
 
 cfg = []; cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline'; cfg.zlim = [-5 5]; cfg.xlim = [0 800]; cfg.ylim = [0 600]; cfg.figure = 'gcf';
 figure('Position', [0 0 1512 982], 'Color', 'w');
 subplot(1,2,1); ft_singleplotTFR(cfg,statT_gaze_quad); title('Amplification: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
-ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
+ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]); hold(ax, 'on'); plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k'); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 
 subplot(1,2,2); ft_singleplotTFR(cfg,statT_gaze_quad_n); title('Reduction: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
-ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
+ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]); hold(ax, 'on'); plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k'); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadQuadratic.png'));
 

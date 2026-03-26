@@ -20,6 +20,18 @@ else
 end
 feat_dir = fullfile(base_data, 'data', 'features');
 fig_dir = fullfile(base_data, 'figures', 'splits', 'SplitAlphaLoads');
+if ~isfolder(fig_dir)
+    mkdir(fig_dir);
+end
+log_dir = fullfile(base_data, 'results', 'logs');
+if ~isfolder(log_dir)
+    mkdir(log_dir);
+end
+cmdlog_file = fullfile(log_dir, sprintf('AOC_split_AlphaLoads_commandwindow_%s.log', datestr(now,'yyyymmdd_HHMMSS')));
+diary('off');
+diary(cmdlog_file);
+cleanup_diary = onCleanup(@() diary('off')); %#ok<NASGU>
+fprintf('Command window log file: %s\n', cmdlog_file);
 
 %% Figure setup
 fig_pos = [0 0 1512 982];
@@ -120,7 +132,7 @@ title('Linear Slope of Alpha Power across WM Load (2, 4, 6 items)', 'FontSize', 
 legend({sprintf('Alpha increase with load (N=%d)', n_j), ...
     sprintf('Alpha decrease with load (N=%d)', n_n), ...
     sprintf('intermediate (N=%d)', n_f), ...
-    'threshold'})
+    'threshold'}, 'Box', 'off')
 box on
 set(gca, 'FontSize', 15)
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_histogram_inclusion.png'));
@@ -765,338 +777,150 @@ c.Ticks = [0 10]; c.Label.String = 'F-value'; c.Label.FontSize = fontSize-2;
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statF_omnibus.png'));
 
 %% Test linear (and quadratic) trends across WM load
-funcs_paths = {fullfile(fileparts(mfilename('fullpath')), '..', 'funcs'), '/Volumes/Homestore/OCC/arne/funcs'};
-has_loadtrend = false;
-has_loadquadratic = false;
-for pp = 1:numel(funcs_paths)
-    if isfolder(funcs_paths{pp})
-        addpath(funcs_paths{pp});
-        if exist('ft_statfun_loadtrend', 'file')
-            has_loadtrend = true;
-        end
-        if exist('ft_statfun_loadquadratic', 'file')
-            has_loadquadratic = true;
-        end
-        if has_loadtrend && has_loadquadratic
-            break;
-        end
-    end
-end
+addpath(fileparts(mfilename('fullpath')));
 
 % ---------------- Linear load trend ----------------
 cbpt_file_gaze_loadtrend = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_linearLoadTrend.mat');
-do_plot_loadtrend = false;
-if isfile(cbpt_file_gaze_loadtrend)
-    disp('Loading cached CBPT: gaze linear load trend...')
-    load(cbpt_file_gaze_loadtrend);
-    do_plot_loadtrend = true;
-elseif has_loadtrend
-    cfg                  = [];
-    cfg.method           = 'montecarlo';
-    cfg.statistic        = 'ft_statfun_loadtrend'; % positive gaze increase with load at that location, negative gaze decrease with load at that location
-    cfg.correctm         = 'cluster';
-    cfg.clusteralpha     = 0.05;
+cfg                  = [];
+cfg.method           = 'montecarlo';
+% Contrast weights for ft_statfun_loadtrend are [-1 0 1] for loads [2 4 6].
+% Positive t means increase from low to high load; negative t means decrease.
+cfg.statistic        = 'ft_statfun_loadtrend';
+cfg.correctm         = 'cluster';
+cfg.clusteralpha     = 0.05;
+cfg.clusterstatistic = 'maxsum';
+cfg.tail             = 0;
+cfg.clustertail      = cfg.tail;
+cfg.alpha            = 0.05;
+cfg.numrandomization = 1000;
 
-    cfg.clusterstatistic = 'maxsum';
+subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
+cfg.design(1,:)           = [ones(1,subj), ones(1,subj)*2, ones(1,subj)*3];
+cfg.design(2,:)           = [1:subj, 1:subj, 1:subj];
+cfg.ivar                  = 1;
+cfg.uvar                  = 2;
+cfg_cbpt_gaze_loadtrend_jensen = cfg;
+[statT_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
+statT_gaze.stat(statT_gaze.mask==0)=0;
 
-    cfg.tail             = 0;
-    cfg.clustertail      = cfg.tail;
-    cfg.alpha            = 0.05;
-    cfg.numrandomization = 1000;
+cfg                  = [];
+cfg.method           = 'montecarlo';
+% Contrast weights for ft_statfun_loadtrend are [-1 0 1] for loads [2 4 6].
+% Positive t means increase from low to high load; negative t means decrease.
+cfg.statistic        = 'ft_statfun_loadtrend';
+cfg.correctm         = 'cluster';
+cfg.clusteralpha     = 0.05;
+cfg.clusterstatistic = 'maxsum';
+cfg.tail             = 0;
+cfg.clustertail      = cfg.tail;
+cfg.alpha            = 0.05;
+cfg.numrandomization = 1000;
+subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
+cfg.design(1,:)           = [ones(1,subj), ones(1,subj)*2, ones(1,subj)*3];
+cfg.design(2,:)           = [1:subj, 1:subj, 1:subj];
+cfg.ivar                  = 1;
+cfg.uvar                  = 2;
+cfg_cbpt_gaze_loadtrend_nback = cfg;
+[statT_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
+statT_gaze_n.stat(statT_gaze_n.mask==0)=0;
+save(cbpt_file_gaze_loadtrend, 'statT_gaze', 'statT_gaze_n', ...
+    'cfg_cbpt_gaze_loadtrend_jensen', 'cfg_cbpt_gaze_loadtrend_nback', '-v7.3');
 
-    subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
-    n_2  = subj;
-    n_4  = subj;
-    n_6 =  subj;
+cfg         = [];
+cfg.parameter = 'stat';
+cfg.maskparameter = 'mask';
+cfg.maskstyle = 'outline';
+cfg.zlim = [-5 5];
+cfg.figure = 'gcf';
+figure('Position', [0 0 1512 982], 'Color', 'w');
+subplot(3,2,1); ft_singleplotTFR(cfg,statT_gaze); title('Amplification: Linear Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
+ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
+c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 
-    cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
-    cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
-    cfg.ivar                  = 1;
-    cfg.uvar                  = 2;
-    cfg_cbpt_gaze_loadtrend_jensen = cfg;
-    [statF_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
-    statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
+subplot(3,2,2); ft_singleplotTFR(cfg,statT_gaze_n); title('Reduction: Linear Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
+ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
+c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 
+cfg = []; cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline'; cfg.zlim = [-5 5]; cfg.xlim =[300 500]; cfg.ylim =[200 400]; cfg.figure = 'gcf';
+subplot(3,2,3); ft_singleplotTFR(cfg,statT_gaze); title('Amplification: Linear Load Trend (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
+ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
+c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 
-    cfg                  = [];
-    cfg.method           = 'montecarlo';
-    cfg.statistic        = 'ft_statfun_loadtrend'; % positive gaze increase with load at that location, negative gaze decrease with load at that location
-    % cfg.statistic        = 'ft_statfun_loadquadratic'; % positive U shape lowest at the middle load, negative inverted U shape peaks at middle load
-
-    cfg.correctm         = 'cluster';
-    cfg.clusteralpha     = 0.05;
-
-    cfg.clusterstatistic = 'maxsum';
-
-    cfg.tail             = 0;
-    cfg.clustertail      = cfg.tail;
-    cfg.alpha            = 0.05;
-    cfg.numrandomization = 1000;
-    subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
-    n_2  = subj;
-    n_4  = subj;
-    n_6 =  subj;
-
-    cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
-    cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
-    cfg.ivar                  = 1;
-    cfg.uvar                  = 2;
-    cfg_cbpt_gaze_loadtrend_nback = cfg;
-    [statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
-    statF_gaze_n.stat(statF_gaze_n.mask==0)=0;% set everything not relevant to zero
-    save(cbpt_file_gaze_loadtrend, ...
-        'statF_gaze', 'statF_gaze_n', ...
-        'cfg_cbpt_gaze_loadtrend_jensen', 'cfg_cbpt_gaze_loadtrend_nback', '-v7.3');
-    do_plot_loadtrend = true;
-end
-
-if do_plot_loadtrend
-    %%
-    cfg         = [];
-    cfg.parameter = 'stat';
-    cfg.maskparameter = 'mask';
-    cfg.maskstyle        = 'outline';
-    cfg.zlim = 'maxabs';
-    % cfg.colormap = 'YlOrRd';
-    cfg.zlim = [-5 5];
-    % cfg.xlim =[300 500];
-    % cfg.ylim =[200 400];
-    cfg.figure = 'gcf';
-    figure('Position', [0 0 1512 982], 'Color', 'w');
-    subplot(3,2,1);
-    ft_singleplotTFR(cfg,statF_gaze);
-    title('Amplification: Linear Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
-
-    ax = gca;
-    set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
-    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-    c = colorbar(ax);
-    c.LineWidth = 1;
-    c.FontSize = fontSize - 2;
-    c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-    c.Label.String = 't-value';
-    c.Label.FontSize = fontSize - 2;
-
-    subplot(3,2,2);
-    ft_singleplotTFR(cfg,statF_gaze_n);
-    title('Reduction: Linear Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
-
-    ax = gca;
-    set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
-    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-    c = colorbar(ax);
-    c.LineWidth = 1;
-    c.FontSize = fontSize - 2;
-    c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-    c.Label.String = 't-value';
-    c.Label.FontSize = fontSize - 2;
-    %% zoom
-    cfg         = [];
-    cfg.parameter = 'stat';
-    cfg.maskparameter = 'mask';
-    cfg.maskstyle        = 'outline';
-    cfg.zlim = 'maxabs';
-    % cfg.colormap = 'YlOrRd';
-    cfg.zlim = [-5 5];
-    cfg.xlim =[300 500];
-    cfg.ylim =[200 400];
-    cfg.figure = 'gcf';
-
-    subplot(3,2,3);
-    ft_singleplotTFR(cfg,statF_gaze);
-    title('Amplification: Linear Load Trend (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
-
-    ax = gca;
-    set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
-    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-    c = colorbar(ax);
-    c.LineWidth = 1;
-    c.FontSize = fontSize - 2;
-    c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-    c.Label.String = 't-value';
-    c.Label.FontSize = fontSize - 2;
-
-    subplot(3,2,4);
-    ft_singleplotTFR(cfg,statF_gaze_n);
-    title('Reduction: Linear Load Trend (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
-
-    ax = gca;
-    set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
-    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-    c = colorbar(ax);
-    c.LineWidth = 1;
-    c.FontSize = fontSize - 2;
-    c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-    c.Label.String = 't-value';
-    c.Label.FontSize = fontSize - 2;
-    drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadTrend.png'));
-    close(gcf);
-end
-
-if ~has_loadtrend
-    fprintf('Skipping linear trend: ft_statfun_loadtrend not found.\n');
-end
+subplot(3,2,4); ft_singleplotTFR(cfg,statT_gaze_n); title('Reduction: Linear Load Trend (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
+ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
+c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
+drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadTrend.png'));
+close(gcf);
 
 % ---------------- Quadratic load trend ----------------
 cbpt_file_gaze_loadquadratic = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_quadraticLoadTrend.mat');
-do_plot_loadquadratic = false;
-if isfile(cbpt_file_gaze_loadquadratic)
-    disp('Loading cached CBPT: gaze quadratic load trend...')
-    load(cbpt_file_gaze_loadquadratic);
-    do_plot_loadquadratic = true;
-elseif has_loadquadratic
-    cfg                  = [];
-    cfg.method           = 'montecarlo';
-    cfg.statistic        = 'ft_statfun_loadquadratic'; % positive U-shape lowest at mid load, negative inverted U-shape peaks at mid load
+cfg                  = [];
+cfg.method           = 'montecarlo';
+% Contrast weights for ft_statfun_loadquadratic are [1 -2 1] for loads [2 4 6].
+% Positive t means U-shape; negative t means inverted U-shape.
+cfg.statistic        = 'ft_statfun_loadquadratic';
+cfg.correctm         = 'cluster';
+cfg.clusteralpha     = 0.05;
+cfg.clusterstatistic = 'maxsum';
+cfg.tail             = 0;
+cfg.clustertail      = cfg.tail;
+cfg.alpha            = 0.05;
+cfg.numrandomization = 1000;
 
-    cfg.correctm         = 'cluster';
-    cfg.clusteralpha     = 0.05;
+subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
+cfg.design(1,:)           = [ones(1,subj), ones(1,subj)*2, ones(1,subj)*3];
+cfg.design(2,:)           = [1:subj, 1:subj, 1:subj];
+cfg.ivar                  = 1;
+cfg.uvar                  = 2;
+cfg_cbpt_gaze_loadquadratic_jensen = cfg;
+[statT_gaze_quad] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
+statT_gaze_quad.stat(statT_gaze_quad.mask==0)=0;
 
-    cfg.clusterstatistic = 'maxsum';
+cfg                  = [];
+cfg.method           = 'montecarlo';
+% Contrast weights for ft_statfun_loadquadratic are [1 -2 1] for loads [2 4 6].
+% Positive t means U-shape; negative t means inverted U-shape.
+cfg.statistic        = 'ft_statfun_loadquadratic';
+cfg.correctm         = 'cluster';
+cfg.clusteralpha     = 0.05;
+cfg.clusterstatistic = 'maxsum';
+cfg.tail             = 0;
+cfg.clustertail      = cfg.tail;
+cfg.alpha            = 0.05;
+cfg.numrandomization = 1000;
 
-    cfg.tail             = 0;
-    cfg.clustertail      = cfg.tail;
-    cfg.alpha            = 0.05;
-    cfg.numrandomization = 1000;
+subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
+cfg.design(1,:)           = [ones(1,subj), ones(1,subj)*2, ones(1,subj)*3];
+cfg.design(2,:)           = [1:subj, 1:subj, 1:subj];
+cfg.ivar                  = 1;
+cfg.uvar                  = 2;
+cfg_cbpt_gaze_loadquadratic_nback = cfg;
+[statT_gaze_quad_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
+statT_gaze_quad_n.stat(statT_gaze_quad_n.mask==0)=0;
+save(cbpt_file_gaze_loadquadratic, 'statT_gaze_quad', 'statT_gaze_quad_n', ...
+    'cfg_cbpt_gaze_loadquadratic_jensen', 'cfg_cbpt_gaze_loadquadratic_nback', '-v7.3');
 
-    subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
-    n_2  = subj;
-    n_4  = subj;
-    n_6  =  subj;
+cfg = []; cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline'; cfg.zlim = [-5 5]; cfg.figure = 'gcf';
+figure('Position', [0 0 1512 982], 'Color', 'w');
+subplot(3,2,1); ft_singleplotTFR(cfg,statT_gaze_quad); title('Amplification: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
+ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
+c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 
-    cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2, ones(1,n_6)*3];
-    cfg.design(2,:)           = [1:n_2, 1:n_4, 1:n_6];
-    cfg.ivar                  = 1;
-    cfg.uvar                  = 2;
-    cfg_cbpt_gaze_loadquadratic_jensen = cfg;
-    [statF_gaze_quad] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
-    statF_gaze_quad.stat(statF_gaze_quad.mask==0)=0; % set everything not relevant to zero
+subplot(3,2,2); ft_singleplotTFR(cfg,statT_gaze_quad_n); title('Reduction: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
+ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
+c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 
-    cfg                  = [];
-    cfg.method           = 'montecarlo';
-    cfg.statistic        = 'ft_statfun_loadquadratic';
+cfg = []; cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline'; cfg.zlim = [-5 5]; cfg.xlim =[300 500]; cfg.ylim =[200 400]; cfg.figure = 'gcf';
+subplot(3,2,3); ft_singleplotTFR(cfg,statT_gaze_quad); title('Amplification: Quadratic Load Trend (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
+ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
+c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 
-    cfg.correctm         = 'cluster';
-    cfg.clusteralpha     = 0.05;
+subplot(3,2,4); ft_singleplotTFR(cfg,statT_gaze_quad_n); title('Reduction: Quadratic Load Trend (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
+ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
+c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
+drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadQuadratic.png'));
 
-    cfg.clusterstatistic = 'maxsum';
-
-    cfg.tail             = 0;
-    cfg.clustertail      = cfg.tail;
-    cfg.alpha            = 0.05;
-    cfg.numrandomization = 1000;
-
-    subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
-    n_2  = subj;
-    n_4  = subj;
-    n_6  = subj;
-
-    cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2, ones(1,n_6)*3];
-    cfg.design(2,:)           = [1:n_2, 1:n_4, 1:n_6];
-    cfg.ivar                  = 1;
-    cfg.uvar                  = 2;
-    cfg_cbpt_gaze_loadquadratic_nback = cfg;
-    [statF_gaze_quad_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
-    statF_gaze_quad_n.stat(statF_gaze_quad_n.mask==0)=0; % set everything not relevant to zero
-
-    save(cbpt_file_gaze_loadquadratic, ...
-        'statF_gaze_quad', 'statF_gaze_quad_n', ...
-        'cfg_cbpt_gaze_loadquadratic_jensen', 'cfg_cbpt_gaze_loadquadratic_nback', '-v7.3');
-    do_plot_loadquadratic = true;
-else
-    fprintf('Skipping quadratic trend: ft_statfun_loadquadratic not found.\n');
-end
-
-if do_plot_loadquadratic
-    cfg         = [];
-    cfg.parameter = 'stat';
-    cfg.maskparameter = 'mask';
-    cfg.maskstyle        = 'outline';
-    cfg.zlim = 'maxabs';
-    cfg.zlim = [-5 5];
-    cfg.figure = 'gcf';
-
-    figure('Position', [0 0 1512 982], 'Color', 'w');
-
-    subplot(3,2,1);
-    ft_singleplotTFR(cfg,statF_gaze_quad);
-    title('Amplification: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
-
-    ax = gca;
-    set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
-    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-    c = colorbar(ax);
-    c.LineWidth = 1;
-    c.FontSize = fontSize - 2;
-    c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-    c.Label.String = 't-value';
-    c.Label.FontSize = fontSize - 2;
-
-    subplot(3,2,2);
-    ft_singleplotTFR(cfg,statF_gaze_quad_n);
-    title('Reduction: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
-
-    ax = gca;
-    set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
-    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-    c = colorbar(ax);
-    c.LineWidth = 1;
-    c.FontSize = fontSize - 2;
-    c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-    c.Label.String = 't-value';
-    c.Label.FontSize = fontSize - 2;
-
-    % ---------------- zoom ----------------
-    cfg         = [];
-    cfg.parameter = 'stat';
-    cfg.maskparameter = 'mask';
-    cfg.maskstyle        = 'outline';
-    cfg.zlim = 'maxabs';
-    cfg.zlim = [-5 5];
-    cfg.xlim =[300 500];
-    cfg.ylim =[200 400];
-    cfg.figure = 'gcf';
-
-    subplot(3,2,3);
-    ft_singleplotTFR(cfg,statF_gaze_quad);
-    title('Amplification: Quadratic Load Trend (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
-
-    ax = gca;
-    set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
-    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-    c = colorbar(ax);
-    c.LineWidth = 1;
-    c.FontSize = fontSize - 2;
-    c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-    c.Label.String = 't-value';
-    c.Label.FontSize = fontSize - 2;
-
-    subplot(3,2,4);
-    ft_singleplotTFR(cfg,statF_gaze_quad_n);
-    title('Reduction: Quadratic Load Trend (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
-
-    ax = gca;
-    set(ax, 'FontSize', fontSize);
-    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
-    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-    c = colorbar(ax);
-    c.LineWidth = 1;
-    c.FontSize = fontSize - 2;
-    c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-    c.Label.String = 't-value';
-    c.Label.FontSize = fontSize - 2;
-
-    drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadQuadratic.png'));
-end
-
-clear statF_gaze_quad statF_gaze_quad_n
+clear statT_gaze_quad statT_gaze_quad_n
 
 %% Behavioral data
 behav_file = fullfile(feat_dir, 'AOC_behavioral_matrix_sternberg.mat');
@@ -1140,51 +964,27 @@ nb2 = RT4(idx_nback);
 nb3 = RT6(idx_nback);
 
 %%
-figure('Position', fig_pos, 'Color', 'w');
+figure('Position', [0 0 1512 982], 'Color', 'w');
 clf;
 
 positions = [.3, .6, .9];
-jitter = 0.05;
+box_w = 0.05;
+density_scale = 0.045;
+density_offset = 0.06;
+box_offset = 0.03;
+cond_cols = [0 0 0; 0 0 1; 1 0 0];
 
 % LEFT: alpha increase group
-subplot(2,2,1); hold on
-
-[f,x] = ksdensity(sb2); fill(positions(1)+f*0.05,x,'k','FaceAlpha',0.5);
-[f,x] = ksdensity(sb4); fill(positions(2)+f*0.05,x,'b','FaceAlpha',0.5);
-[f,x] = ksdensity(sb6); fill(positions(3)+f*0.05,x,'r','FaceAlpha',0.5);
-
-boxplot([sb2(:), sb4(:), sb6(:)], ...
-    'Labels', {'load 2','load 4','load 6'}, ...
-    'Positions', positions, 'Widths', 0.05);
-
-scatter(positions(1)+(rand(size(sb2))-0.5)*jitter, sb2, 'k.');
-scatter(positions(2)+(rand(size(sb4))-0.5)*jitter, sb4, 'b.');
-scatter(positions(3)+(rand(size(sb6))-0.5)*jitter, sb6, 'r.');
-
-ylabel('Reaction Time [s]')
-title(sprintf('Alpha increase with load (N=%d)', sum(idx_jensen)))
-set(gca,'FontSize',18); box on;
-ylim([0 1.5])
+subplot(2,2,1);
+plot_split_raincloud_triplet({sb2, sb4, sb6}, positions, cond_cols, [0 1.5], ...
+    'Reaction Time [s]', sprintf('Alpha increase with load (N=%d)', sum(idx_jensen)), ...
+    18, density_scale, density_offset, box_offset, box_w);
 
 % RIGHT: alpha decrease group
-subplot(2,2,2); hold on
-
-[f,x] = ksdensity(nb1); fill(positions(1)+f*0.03,x,'k','FaceAlpha',0.5);
-[f,x] = ksdensity(nb2); fill(positions(2)+f*0.03,x,'b','FaceAlpha',0.5);
-[f,x] = ksdensity(nb3); fill(positions(3)+f*0.03,x,'r','FaceAlpha',0.5);
-
-boxplot([nb1(:), nb2(:), nb3(:)], ...
-    'Labels', {'load 2','load 4','load 6'}, ...
-    'Positions', positions, 'Widths', 0.05);
-
-scatter(positions(1)+(rand(size(nb1))-0.5)*jitter, nb1, 'k.');
-scatter(positions(2)+(rand(size(nb2))-0.5)*jitter, nb2, 'b.');
-scatter(positions(3)+(rand(size(nb3))-0.5)*jitter, nb3, 'r.');
-
-ylabel('Reaction Time [s]')
-title(sprintf('Alpha decrease with load (N=%d)', sum(idx_nback)))
-set(gca,'FontSize',18); box on;
-ylim([0 1.5])
+subplot(2,2,2);
+plot_split_raincloud_triplet({nb1, nb2, nb3}, positions, cond_cols, [0 1.5], ...
+    'Reaction Time [s]', sprintf('Alpha decrease with load (N=%d)', sum(idx_nback)), ...
+    18, density_scale, density_offset, box_offset, box_w);
 set(gcf,'color','w');
 
 %% Accuracy example
@@ -1201,53 +1001,17 @@ sb2 = sb2(~isnan(sb2)); sb4 = sb4(~isnan(sb4)); sb6 = sb6(~isnan(sb6));
 nb1 = nb1(~isnan(nb1)); nb2 = nb2(~isnan(nb2)); nb3 = nb3(~isnan(nb3));
 
 %%
-% figure(31); clf;
-
-positions = [.3, .6, .9];
-jitter = 0.05;
-
 % ================= LEFT: alpha increase =================
-subplot(2,2,3); hold on
-
-[f,x] = ksdensity(sb2); fill(positions(1)+f*3,x,'k','FaceAlpha',0.5);
-[f,x] = ksdensity(sb4); fill(positions(2)+f*2,x,'b','FaceAlpha',0.5);
-[f,x] = ksdensity(sb6); fill(positions(3)+f*2,x,'r','FaceAlpha',0.5);
-
-boxplot([sb2(:), sb4(:), sb6(:)], ...
-    'Labels', {'load 2','load 4','load 6'}, ...
-    'Positions', positions, 'Widths', 0.05);
-
-scatter(positions(1)+(rand(size(sb2))-0.5)*jitter, sb2, 'k.');
-scatter(positions(2)+(rand(size(sb4))-0.5)*jitter, sb4, 'b.');
-scatter(positions(3)+(rand(size(sb6))-0.5)*jitter, sb6, 'r.');
-
-ylabel('Accuracy [%]')
-title(sprintf('Alpha increase with load (N=%d)', sum(idx_jensen)))
-set(gca,'FontSize',18); box on;
-
-ylim([50 110])   % adjust if needed
-
+subplot(2,2,3);
+plot_split_raincloud_triplet({sb2, sb4, sb6}, positions, cond_cols, [50 110], ...
+    'Accuracy [%]', sprintf('Alpha increase with load (N=%d)', sum(idx_jensen)), ...
+    18, density_scale, density_offset, box_offset, box_w);
 
 % ================= RIGHT: alpha decrease =================
-subplot(2,2,4); hold on
-
-[f,x] = ksdensity(nb1); fill(positions(1)+f*3,x,'k','FaceAlpha',0.5);
-[f,x] = ksdensity(nb2); fill(positions(2)+f*3,x,'b','FaceAlpha',0.5);
-[f,x] = ksdensity(nb3); fill(positions(3)+f*3,x,'r','FaceAlpha',0.5);
-
-boxplot([nb1(:), nb2(:), nb3(:)], ...
-    'Labels', {'load 2','load 4','load 6'}, ...
-    'Positions', positions, 'Widths', 0.05);
-
-scatter(positions(1)+(rand(size(nb1))-0.5)*jitter, nb1, 'k.');
-scatter(positions(2)+(rand(size(nb2))-0.5)*jitter, nb2, 'b.');
-scatter(positions(3)+(rand(size(nb3))-0.5)*jitter, nb3, 'r.');
-
-ylabel('Accuracy [%]')
-title(sprintf('Alpha decrease with load (N=%d)', sum(idx_nback)))
-set(gca,'FontSize',18); box on;
-
-ylim([50 110])   % same scale for comparison
+subplot(2,2,4);
+plot_split_raincloud_triplet({nb1, nb2, nb3}, positions, cond_cols, [50 110], ...
+    'Accuracy [%]', sprintf('Alpha decrease with load (N=%d)', sum(idx_nback)), ...
+    18, density_scale, density_offset, box_offset, box_w);
 
 set(gcf,'color','w');
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_RT_ACC.png'));
@@ -1414,6 +1178,54 @@ elseif p < 0.05
 else
     sig_label = '';
 end
+end
+
+function plot_split_raincloud_triplet(data_cells, positions, cond_cols, y_limits, y_lab, ttl, fsz, density_scale, density_offset, box_offset, box_w)
+hold on
+for cc = 1:3
+    y = data_cells{cc};
+    y = y(isfinite(y));
+    if numel(y) < 3
+        continue
+    end
+
+    [f, xi] = ksdensity(y, 'NumPoints', 120);
+    if max(f) > 0
+        f = (f ./ max(f)) * density_scale;
+    else
+        f = zeros(size(f));
+    end
+
+    x_den = positions(cc) - density_offset;
+    x_box = positions(cc) + box_offset;
+
+    fill([x_den - f, fliplr(repmat(x_den, 1, numel(f)))], [xi, fliplr(xi)], cond_cols(cc, :), ...
+        'FaceAlpha', 0.30, 'EdgeColor', cond_cols(cc, :), 'LineWidth', 1);
+
+    q1 = prctile(y, 25);
+    q3 = prctile(y, 75);
+    med = median(y);
+    p5 = prctile(y, 5);
+    p95 = prctile(y, 95);
+
+    plot([x_box x_box], [p5 q1], '-k', 'LineWidth', 1.2);
+    plot([x_box x_box], [q3 p95], '-k', 'LineWidth', 1.2);
+    rectangle('Position', [x_box-box_w/2, q1, box_w, q3-q1], ...
+        'FaceColor', [cond_cols(cc, :) 0.08], 'EdgeColor', 'k', 'LineWidth', 1.2);
+    plot(x_box + [-box_w/2 box_w/2], [med med], '-k', 'LineWidth', 2);
+
+    jit = box_w * (rand(numel(y),1)-0.5);
+    scatter(x_box + jit, y, 24, cond_cols(cc,:), 'filled', 'MarkerFaceAlpha', 0.50, ...
+        'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
+end
+
+ylabel(y_lab);
+title(ttl);
+set(gca, 'FontSize', fsz);
+set(gca, 'XTick', positions, 'XTickLabel', {'load 2','load 4','load 6'});
+ylim(y_limits);
+xlim([positions(1)-0.12 positions(end)+0.12]);
+box on
 end
 function [p1, p2, equivalent] = tost(x1, x2, delta, alpha)
 

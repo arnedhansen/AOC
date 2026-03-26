@@ -215,18 +215,7 @@ ga6nback = ft_freqgrandaverage(cfg,load6{idx_nback});
 
 %% TFR
 close all
-all_tfr_vals = [ ...
-    ga2jensen.powspctrm(:); ga4jensen.powspctrm(:); ga6jensen.powspctrm(:); ...
-    ga2nback.powspctrm(:); ga4nback.powspctrm(:); ga6nback.powspctrm(:)];
-all_tfr_vals = all_tfr_vals(isfinite(all_tfr_vals));
-if isempty(all_tfr_vals)
-    mx_tfr = 0.25;
-else
-    mx_tfr = max(abs(all_tfr_vals));
-    if ~isfinite(mx_tfr) || mx_tfr <= 0
-        mx_tfr = 0.25;
-    end
-end
+mx_tfr = 0.25;
 target_ticks = 11;
 tick_step = 0.05 * ceil(((2 * mx_tfr) / max(target_ticks - 1, 1)) / 0.05);
 tick_step = max(tick_step, 0.05);
@@ -347,7 +336,6 @@ end
 xlim([2 30]);
 xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
 yline(0, '--')
-% ylim([-0.075 0.225])
 ylim([-0.25 0.25])
 ylabel('Power [dB]', 'FontSize', fontSize);
 title('Amplification', 'FontSize', fontSize);
@@ -380,7 +368,6 @@ end
 xlim([2 30]);
 xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
 yline(0, '--')
-% ylim([-0.075 0.225])
 ylim([-0.25 0.25])
 ylabel('Power [dB]', 'FontSize', fontSize);
 title('Reduction', 'FontSize', fontSize);
@@ -1571,13 +1558,6 @@ for subj = 1:n_subj
         trial_tmin(tr) = tt(1);
         trial_tmax(tr) = tt(end);
     end
-    has_3s = sum(trial_tmax >= 3);
-    fprintf('ET coverage %s: %d/%d trials reach 3 s (tmax median=%.3f s, min=%.3f s)\n', ...
-        subjects{subj}, has_3s, n_trials, median(trial_tmax, 'omitnan'), min(trial_tmax, [], 'omitnan'));
-    if any(isfinite(trial_tmin))
-        fprintf('ET time onset %s: tmin median=%.3f s\n', subjects{subj}, median(trial_tmin, 'omitnan'));
-    end
-
     allgazetasklate2{subj} = extract_gaze_window(et, idx2, [1 3], x_grid, y_grid, fsample, smoothing);
     allgazetasklate4{subj} = extract_gaze_window(et, idx4, [1 3], x_grid, y_grid, fsample, smoothing);
     allgazetasklate6{subj} = extract_gaze_window(et, idx6, [1 3], x_grid, y_grid, fsample, smoothing);

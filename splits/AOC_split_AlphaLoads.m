@@ -229,8 +229,9 @@ if winsor_cfg.enable
     ga6nback = winsorize_freq_subjects(ga6nback, winsor_cfg.prctile);
 end
 
-%% TFR
+%% TFR EEG
 close all
+disp(upper('Plotting EEG TFRs...'))
 mx_tfr = 0.25;
 target_ticks = 11;
 tick_step = 0.05 * ceil(((2 * mx_tfr) / max(target_ticks - 1, 1)) / 0.05);
@@ -352,7 +353,7 @@ end
 xlim([2 30]);
 xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
 yline(0, '--')
-ylim([-0.25 0.25])
+ylim([-0.2 0.2])
 ylabel('Power [dB]', 'FontSize', fontSize);
 title('Amplification', 'FontSize', fontSize);
 % Legend with colored patch boxes
@@ -361,7 +362,7 @@ for c = 1:3
     leg_p_j(c) = patch(NaN, NaN, colors(c, :), 'EdgeColor', 'none');
 end
 legend(leg_p_j, {'WM load 2', 'WM load 4', 'WM load 6'}, ...
-    'Location', 'best', 'Box', 'off', 'FontSize', fontSize - 2);
+    'Location', 'northeast', 'Box', 'off', 'FontSize', fontSize - 2);
 set(gca, 'FontSize', fontSize);
 box on
 
@@ -439,6 +440,7 @@ load4_gaze_cbpt = downsample_gaze_cells_powspctrm(load4_gaze, gaze_cbpt_bins);
 load6_gaze_cbpt = downsample_gaze_cells_powspctrm(load6_gaze, gaze_cbpt_bins);
 
 %% Compute gaze grand average
+disp(upper('Computing gaze grand average...'))
 cfg = [];
 cfg.keepindividual = 'yes';
 ga2jensen_gaze = ft_freqgrandaverage(cfg, load2_gaze{idx_jensen});
@@ -450,6 +452,8 @@ ga6nback_gaze = ft_freqgrandaverage(cfg, load6_gaze{idx_nback});
 
 %% Plot Gaze TFRs
 close all
+clc
+disp(upper('Plotting Gaze TFRs...'))
 cfg = [];
 cfg.figure = 'gcf';
 % Strict symmetric max-abs z-limits for subtraction baseline maps
@@ -461,7 +465,7 @@ allGazeDiff = [ ...
     ga4nback_gaze.powspctrm(:); ...
     ga6nback_gaze.powspctrm(:) ];
 allGazeDiff = allGazeDiff(isfinite(allGazeDiff));
-zlimAbs = max(abs(allGazeDiff));
+zlimAbs = prctile(abs(allGazeDiff), 99);
 if ~isfinite(zlimAbs) || zlimAbs == 0
     zlimAbs = 3;
 end

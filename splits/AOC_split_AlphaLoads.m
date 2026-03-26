@@ -1618,36 +1618,29 @@ freq_raw = compute_gaze_heatmap(sel, x_grid, y_grid, fsample, smoothing);
 end
 
 function freq_raw = compute_gaze_heatmap(data, x_grid, y_grid, fsample, smoothing)
-% Prefer canonical computeGazeHeatmap, but guard against all-zero outputs.
+% Always use canonical computeGazeHeatmap from /functions.
+if exist('computeGazeHeatmap', 'file') ~= 2
+    error('computeGazeHeatmap.m not found on MATLAB path.');
+end
+
+n_bins = numel(x_grid) - 1;
+
 if isempty(data.trial)
-    pos_cells = {};
-    pos = zeros(2, 0);
-else
-    pos_cells = data.trial;
-    pos = horzcat(data.trial{:});
+    freq_raw = struct();
+    freq_raw.powspctrm = zeros(1, n_bins, n_bins);
+    freq_raw.time = x_grid(2:end);
+    freq_raw.freq = y_grid(2:end);
+    freq_raw.label = {'et'};
+    freq_raw.dimord = 'chan_freq_time';
+    return
 end
 
-use_fallback = true;
-if exist('computeGazeHeatmap', 'file') == 2
-    data3 = [pos; zeros(1, size(pos, 2))]; % canonical function expects >= 3 rows
-    freq_try = computeGazeHeatmap(data3, numel(x_grid) - 1, smoothing);
+pos = horzcat(data.trial{:});
+data3 = [pos; zeros(1, size(pos, 2))]; % canonical function expects >= 3 rows
+freq_raw = computeGazeHeatmap(data3, n_bins, smoothing);
 
-    has_pow = isstruct(freq_try) && isfield(freq_try, 'powspctrm') && ~isempty(freq_try.powspctrm);
-    if has_pow
-        p = freq_try.powspctrm;
-        if any(isfinite(p(:))) && any(abs(p(:)) > 0)
-            freq_raw = freq_try;
-            use_fallback = false;
-        end
-    end
-end
-
-if use_fallback
-    n_samples = size(pos, 2);
-    fprintf('[GAZE HEATMAP FALLBACK] Using internal builder (samples=%d, bins=%d, smoothing=%g).\n', ...
-        n_samples, numel(x_grid) - 1, smoothing);
-    freq_raw = computeGazeHeatmapFromPosCells(pos_cells, x_grid, y_grid, fsample, smoothing);
-end
+% Match the desired orientation for downstream plotting.
+freq_raw.powspctrm(1, :, :) = flipud(squeeze(freq_raw.powspctrm(1, :, :)));
 end
 
 function trialinfo_vec = align_trialinfo_to_trials(trialinfo, n_trials, subj_label)

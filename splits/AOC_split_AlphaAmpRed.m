@@ -156,7 +156,7 @@ metrics_raw.Vel = nan(nSubj, 3);          % velocity [% change], computed below
 
 % Time courses per subject x condition (full resolution, pre-outlier exclusion)
 fs = 500;
-t_full = -0.5:1/fs:2;
+t_full = -0.5:1/fs:3;
 t_plot = t_full(2:end);
 Tf = numel(t_plot);
 spl_tc_raw = nan(nSubj, 3, Tf);
@@ -246,6 +246,19 @@ for s = 1:nSubj
         continue
     end
 
+    % ET coverage diagnostic for the requested 1-3 s window (per subject).
+    if isfield(G, 'time') && ~isempty(G.time)
+        tmax_trials = nan(1, numel(G.time));
+        for tr = 1:numel(G.time)
+            tt_cov = G.time{tr};
+            if isempty(tt_cov), continue, end
+            tmax_trials(tr) = tt_cov(end);
+        end
+        n_reach_3s = sum(tmax_trials >= 3, 'omitnan');
+        fprintf('ET coverage %s: %d/%d trials reach 3 s (tmax median=%.3f s, min=%.3f s)\n', ...
+            sid_str, n_reach_3s, numel(tmax_trials), median(tmax_trials, 'omitnan'), min(tmax_trials, [], 'omitnan'));
+    end
+
     % SPL time course from ScanPathSeries
     if isfield(G, 'ScanPathSeries') && isfield(G, 'ScanPathSeriesT')
         for c = 1:3
@@ -295,7 +308,14 @@ for s = 1:nSubj
                     continue
                 end
 
-                tt = linspace(-0.5, 2, numel(x));
+                if isfield(G, 'time') && numel(G.time) >= tr && ~isempty(G.time{tr})
+                    tt = double(G.time{tr});
+                    if numel(tt) ~= numel(x)
+                        tt = linspace(tt(1), tt(end), numel(x));
+                    end
+                else
+                    tt = linspace(-0.5, 3, numel(x));
+                end
                 dev = sqrt((x - 400).^2 + (y - 300).^2);
                 [vx, vy] = compute_velocity_sg(x, y, fs, 3);
                 [vx, vy] = clean_velocity_components(vx, vy);
@@ -308,7 +328,7 @@ for s = 1:nSubj
                 catch
                 end
 
-                idx_full = tt >= 0 & tt <= 2;
+                idx_full = tt >= 0 & tt <= 3;
                 idx_bl = tt >= -0.5 & tt <= -0.25;
                 v_full = mean(vel(idx_full), 'omitnan');
                 v_bl = mean(vel(idx_bl), 'omitnan');
@@ -377,7 +397,7 @@ plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fi
 %% EEG and Gaze time courses with effect-size
 close all
 Tf = size(spl_tc, 3);
-t_full_eeg = linspace(-0.5, 2, Tf);
+t_full_eeg = linspace(-0.5, 3, Tf);
 addEEG_TC = false;
 eeg_tc = [];
 if addEEG_TC
@@ -387,7 +407,7 @@ end
 
 % Baselined time courses: gaze in dB (baseline -0.5 to -0.25 s); EEG stays in dB
 fprintf('\n=== Computing baselined time courses ===\n');
-t_vec = linspace(-0.5, 2, Tf);
+t_vec = linspace(-0.5, 3, Tf);
 bl_idx = (t_vec >= -0.5) & (t_vec <= -0.25);
 
 dev_bl = mean(dev_tc(:, :, bl_idx), 3, 'omitnan');
@@ -812,7 +832,7 @@ end
 % Shared clim for Reduction and Amplification
 [~, ch_idx] = ismember(channels, ga_red{1}.label);
 freq_idx = ga_red{1}.freq >= 5 & ga_red{1}.freq <= 30;
-time_idx = ga_red{1}.time >= -0.5 & ga_red{1}.time <= 2;
+time_idx = ga_red{1}.time >= -0.5 & ga_red{1}.time <= 3;
 mx = 0;
 for c = 1:3
     Ared = squeeze(mean(ga_red{c}.powspctrm(ch_idx, :, :), 1, 'omitnan'));
@@ -820,18 +840,27 @@ for c = 1:3
     mx = max(mx, max(abs(Ared(freq_idx, time_idx)), [], 'all'));
     mx = max(mx, max(abs(Aamp(freq_idx, time_idx)), [], 'all'));
 end
+if ~isfinite(mx) || mx <= 0
+    mx = 0.25;
+end
 clim_abs = [-mx mx];
 
 cfg = [];
 cfg.channel = channels;
-cfg.colorbar = 'yes';
+cfg.colorbar = 'no';
 cfg.zlim = 'maxabs';
-cfg.xlim = [-.5 2];
+cfg.xlim = [-.5 3];
 cfg.ylim = [5 30];
 cfg.layout = headmodel.layANThead;
 
 % Single 3x2 figure: column 1 = Reduction, column 2 = Amplification
 fsz_tfr = round(fsz * 0.8);  % ~20% reduction
+target_ticks = 11;
+tick_step = 0.05 * ceil(((2 * mx) / max(target_ticks - 1, 1)) / 0.05);
+tick_step = max(tick_step, 0.05);
+tick_max = tick_step * ceil(mx / tick_step);
+cb_ticks = -tick_max:tick_step:tick_max;
+clim_abs = [-tick_max tick_max];
 figure('Position', fig_pos, 'Color', 'w');
 for c = 1:3
     % Column 1: Reduction (rows 1–3)
@@ -840,10 +869,14 @@ for c = 1:3
     ft_singleplotTFR(cfg, ga_red{c});
     colormap(ax, color_map);
     set(ax, 'CLim', clim_abs);
-    colorbar(ax);
+    cbar = colorbar(ax);
     xlabel(ax, 'Time [s]', 'FontSize', fsz_tfr);
     ylabel(ax, 'Frequency [Hz]', 'FontSize', fsz_tfr);
     set(ax, 'FontSize', fsz_tfr);
+    cbar.FontSize = fsz_tfr - 4;
+    cbar.Ticks = cb_ticks;
+    cbar.Label.String = 'Power [dB]';
+    cbar.Label.FontSize = fsz_tfr;
     title(ax, sprintf('Reduction - %s', cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
 
     % Column 2: Amplification (rows 1–3)
@@ -852,10 +885,14 @@ for c = 1:3
     ft_singleplotTFR(cfg, ga_amp{c});
     colormap(ax, color_map);
     set(ax, 'CLim', clim_abs);
-    colorbar(ax);
+    cbar = colorbar(ax);
     xlabel(ax, 'Time [s]', 'FontSize', fsz_tfr);
     ylabel(ax, 'Frequency [Hz]', 'FontSize', fsz_tfr);
     set(ax, 'FontSize', fsz_tfr);
+    cbar.FontSize = fsz_tfr - 4;
+    cbar.Ticks = cb_ticks;
+    cbar.Label.String = 'Power [dB]';
+    cbar.Label.FontSize = fsz_tfr;
     title(ax, sprintf('Amplification - %s', cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
 end
 saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_tfr_all.png'));
@@ -1038,7 +1075,7 @@ if nargin < 13, addEEG_TC = ~isempty(eeg_tc); end
 if nargin < 14, eeg_ylab = 'Alpha Power [dB]'; end
 dt = 1 / fs;
 nT = size(tc, 3);
-t_plot = linspace(-0.5 + dt, 2, nT);
+t_plot = linspace(-0.5 + dt, 3, nT);
 tc(~isfinite(tc)) = NaN;
 Rall = squeeze(mean(tc(is_red, :, :), 2, 'omitnan'));
 Aall = squeeze(mean(tc(is_amp, :, :), 2, 'omitnan'));
@@ -1073,7 +1110,7 @@ set(e1.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.25);
 set(e2.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.25);
 xline(0, '--k');
 ylabel(ylab);
-xlim([-0.5 2]);
+xlim([-0.5 3]);
 box on
 set(gca, 'FontSize', fsz-4);
 % Legend with colored patch boxes (clearer than thin lines)
@@ -1185,7 +1222,7 @@ yline(0, '--');
 xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Cohen''s d');
-xlim([-0.5 2]);
+xlim([-0.5 3]);
 if strcmp(save_tag, 'gaze_deviation_dB')
     yticks([-0.5, -0.25, 0, 0.25, 0.5])
 end
@@ -1232,7 +1269,7 @@ if has_eeg
     ax_eeg = gca;
     ylabel(eeg_ylab);
     xlabel('Time [s]');
-    xlim([-0.5 2]);
+    xlim([-0.5 3]);
     box on
     set(gca, 'FontSize', fsz-4);
     leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
@@ -1263,7 +1300,7 @@ function [clusters, tvals, thr, maxMassNull, maxExtentNull] = ft_cluster_permuta
 %   tail      - 'onetail_pos' (H1: group1 > group2, i.e. t > 0; use for Red > Amp)
 %               'onetail_neg' (H1: group1 < group2, i.e. t < 0)
 %               or 'twotail' (H1: group1 ~= group2)
-%   t_plot_ds - (optional) 1 x nT actual time vector. If provided, uses cfg.latency=[0 2]
+%   t_plot_ds - (optional) 1 x nT actual time vector. If provided, uses cfg.latency=[0 3]
 %               to restrict clustering to post-stimulus only (avoids baseline clusters).
 %
 % Outputs (compatible with previous cluster_permutation_2sample_1d):
@@ -1339,7 +1376,7 @@ cfg.minnbchan = 0;
 cfg.neighbours = cfg_neigh;
 cfg.numrandomization = nPerm;
 if ~isempty(t_plot_ds) && numel(t_plot_ds) == nT
-    cfg.latency = [0 2];  % restrict to post-stimulus only
+    cfg.latency = [0 3];  % restrict to post-stimulus only
 else
     cfg.latency = 'all';
 end
@@ -1370,7 +1407,7 @@ stat = ft_timelockstatistics(cfg, tl1, tl2);
 % Extract t-values (stat is chan x time)
 tvals = stat.stat(1, :);
 
-% When we used cfg.latency=[0 2], stat has fewer time points; map back to full range
+% When we used cfg.latency=[0 3], stat has fewer time points; map back to full range
 post_idx = [];
 if ~isempty(t_plot_ds) && numel(t_plot_ds) == nT
     post_idx = find(t_plot_ds >= 0);

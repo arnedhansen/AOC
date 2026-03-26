@@ -98,55 +98,23 @@ alpha2 = val2.powspctrm;
 alpha4 = val4.powspctrm;
 alpha6 = val6.powspctrm;
 
-%% Use trial-level bootstrap regression to identify slope uncertainty per subject
-trial_alpha_tbl = load_trial_alpha_table(feat_dir);
+%% Use subject-level regression to identify slopes
 nSubj = length(subjects);
-n_boot = 2000;
-mad_thresh = 3.0;      % remove trials beyond median +/- mad_thresh * 1.4826*MAD
-winsor_pct = 0.10;     % 10% winsorization per tail for robust central tendency
-min_trials_per_load = 5;
-rng(1, 'twister'); % reproducible bootstrap labels
-
-slope = nan(nSubj, 1);
-slope_ci_low = nan(nSubj, 1);
-slope_ci_high = nan(nSubj, 1);
-ci_valid = false(nSubj, 1);
 
 for subj = 1:nSubj
-    subj_id = str2double(subjects{subj});
-    idx_subj = trial_alpha_tbl.ID == subj_id;
-    a2_trials = trial_alpha_tbl.AlphaPowerLateBL(idx_subj & trial_alpha_tbl.Condition == 2);
-    a4_trials = trial_alpha_tbl.AlphaPowerLateBL(idx_subj & trial_alpha_tbl.Condition == 4);
-    a6_trials = trial_alpha_tbl.AlphaPowerLateBL(idx_subj & trial_alpha_tbl.Condition == 6);
-    a2_trials = preprocess_trials_mad(a2_trials, mad_thresh);
-    a4_trials = preprocess_trials_mad(a4_trials, mad_thresh);
-    a6_trials = preprocess_trials_mad(a6_trials, mad_thresh);
-
-    if numel(a2_trials) < min_trials_per_load || numel(a4_trials) < min_trials_per_load || numel(a6_trials) < min_trials_per_load
-        continue
-    end
-
-    y_obs = [winsorized_mean(a2_trials, winsor_pct), ...
-        winsorized_mean(a4_trials, winsor_pct), ...
-        winsorized_mean(a6_trials, winsor_pct)];
-    b_obs = [ones(3,1), [2;4;6]] \ y_obs';
-    slope(subj) = b_obs(2);
-
-    boot_slopes = bootstrap_alpha_slope(a2_trials, a4_trials, a6_trials, n_boot, winsor_pct);
-    boot_slopes = boot_slopes(isfinite(boot_slopes));
-    if isempty(boot_slopes)
-        continue
-    end
-    ci = prctile(boot_slopes, [2.5 97.5]);
-    slope_ci_low(subj) = ci(1);
-    slope_ci_high(subj) = ci(2);
-    ci_valid(subj) = true;
+    y = [alpha2(subj), alpha4(subj), alpha6(subj)];
+    Xmat = [ones(3,1), [2;4;6]];
+    b = Xmat \ y';
+    slope(subj,1) = b(2);
 end
 
 %% Split and Plot slope distribution (inclusion)
-idx_jensen = ci_valid & (slope_ci_low > 0);
-idx_nback  = ci_valid & (slope_ci_high < 0);
-idx_flat   = ~(idx_jensen | idx_nback);
+tertiles = prctile(slope, [100/3, 200/3]);
+t1 = tertiles(1);
+t2 = tertiles(2);
+idx_nback  = slope <= t1;
+idx_jensen = slope >= t2;
+idx_flat   = slope > t1 & slope < t2;
 
 % counts
 n_j = sum(idx_jensen);
@@ -160,26 +128,23 @@ hold on
 histogram(slope(idx_jensen), 20, 'FaceColor', [0.8 0 0], 'FaceAlpha', 0.6);
 histogram(slope(idx_nback),  20, 'FaceColor', [0 0 0.8], 'FaceAlpha', 0.6);
 histogram(slope(idx_flat),   11, 'FaceColor', [0.5 0.5 0.5], 'FaceAlpha', 0.6);
-xline(0, 'k--', 'LineWidth', 2);
+xline(t1, 'k--', 'LineWidth', 2);
+xline(t2, 'k--', 'LineWidth', 2);
 xlabel('Alpha power slope')
 ylabel('Participants')
 title('Linear Slope of Alpha Power across WM Load (2, 4, 6 items)', 'FontSize', 20)
 legend({sprintf('Alpha increase with load (N=%d)', n_j), ...
     sprintf('Alpha decrease with load (N=%d)', n_n), ...
     sprintf('intermediate (N=%d)', n_f), ...
-    'zero-slope boundary'}, 'Box', 'off')
+    'tertile boundaries'}, 'Box', 'off')
 box on
 set(gca, 'FontSize', 15)
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_histogram_inclusion.png'));
 
-fprintf('\nBootstrap slope classification summary (95%% CI rule):\n');
-fprintf('Increase (CI > 0):      %d\n', n_j);
-fprintf('Decrease (CI < 0):      %d\n', n_n);
-fprintf('Indeterminate (CI ~ 0): %d\n', n_f);
-if n_j == 0 || n_n == 0
-    error(['CI-based classification produced an empty increase/decrease subgroup. ' ...
-        'This indicates insufficient directional evidence with the selected CI rule.']);
-end
+fprintf('\nSlope tertile classification summary:\n');
+fprintf('Increase (upper third):      %d\n', n_j);
+fprintf('Decrease (lower third):      %d\n', n_n);
+fprintf('Indeterminate (middle third): %d\n', n_f);
 
 %% Grand averages per subgroup
 cfg = [];
@@ -1273,117 +1238,6 @@ c.LineWidth = 1;
 c.FontSize = fsz - 2;
 c.Ticks = clim;
 ylabel(c, 'dB');
-end
-
-function boot_slopes = bootstrap_alpha_slope(a2_trials, a4_trials, a6_trials, n_boot, winsor_pct)
-% Bootstraps slope estimates by resampling trials per load with replacement.
-boot_slopes = nan(n_boot, 1);
-Xmat = [ones(3,1), [2;4;6]];
-n2 = numel(a2_trials);
-n4 = numel(a4_trials);
-n6 = numel(a6_trials);
-if min([n2 n4 n6]) < 2
-    return
-end
-for bb = 1:n_boot
-    m2 = winsorized_mean(a2_trials(randi(n2, n2, 1)), winsor_pct);
-    m4 = winsorized_mean(a4_trials(randi(n4, n4, 1)), winsor_pct);
-    m6 = winsorized_mean(a6_trials(randi(n6, n6, 1)), winsor_pct);
-    if any(~isfinite([m2 m4 m6]))
-        continue
-    end
-    b = Xmat \ [m2; m4; m6];
-    boot_slopes(bb) = b(2);
-end
-end
-
-function x = preprocess_trials_mad(x, mad_thresh)
-% Removes extreme trials using robust MAD distance from the median.
-x = x(isfinite(x));
-if isempty(x)
-    return
-end
-m = median(x);
-madv = mad(x, 1);
-robust_sigma = 1.4826 * madv;
-if robust_sigma <= 0 || ~isfinite(robust_sigma)
-    return
-end
-keep = abs(x - m) <= (mad_thresh * robust_sigma);
-if sum(keep) >= 2
-    x = x(keep);
-end
-end
-
-function m = winsorized_mean(x, winsor_pct)
-% Winsorizes both tails by winsor_pct and returns the mean.
-x = x(isfinite(x));
-if isempty(x)
-    m = NaN;
-    return
-end
-if winsor_pct <= 0
-    m = mean(x, 'omitnan');
-    return
-end
-lo = prctile(x, 100 * winsor_pct);
-hi = prctile(x, 100 * (1 - winsor_pct));
-x(x < lo) = lo;
-x(x > hi) = hi;
-m = mean(x, 'omitnan');
-end
-
-function trial_tbl = load_trial_alpha_table(feat_dir)
-% Loads trial-level Sternberg table and validates required columns.
-required_vars = {'ID', 'Condition', 'AlphaPowerLateBL'};
-
-trial_mat = fullfile(feat_dir, 'AOC_merged_data_sternberg_trials.mat');
-trial_csv = fullfile(feat_dir, 'AOC_merged_data_sternberg_trials.csv');
-trial_tbl = table();
-
-if isfile(trial_mat)
-    tmp = load(trial_mat);
-    fn = fieldnames(tmp);
-    for ii = 1:numel(fn)
-        candidate = tmp.(fn{ii});
-        if istable(candidate) && all(ismember(required_vars, candidate.Properties.VariableNames))
-            trial_tbl = candidate;
-            break
-        end
-    end
-end
-
-if isempty(trial_tbl) && isfile(trial_csv)
-    trial_tbl = readtable(trial_csv);
-end
-
-if isempty(trial_tbl)
-    error('Missing usable trial-level table in: %s', feat_dir);
-end
-if ~all(ismember(required_vars, trial_tbl.Properties.VariableNames))
-    error('Trial-level table must include variables: %s', strjoin(required_vars, ', '));
-end
-
-trial_tbl = trial_tbl(:, required_vars);
-trial_tbl.ID = make_numeric_column(trial_tbl.ID);
-trial_tbl.Condition = make_numeric_column(trial_tbl.Condition);
-trial_tbl.AlphaPowerLateBL = make_numeric_column(trial_tbl.AlphaPowerLateBL);
-
-trial_tbl = trial_tbl(isfinite(trial_tbl.ID) & isfinite(trial_tbl.Condition), :);
-end
-
-function x = make_numeric_column(x)
-if isnumeric(x)
-    x = double(x);
-elseif islogical(x)
-    x = double(x);
-elseif iscell(x)
-    x = str2double(string(x));
-elseif isstring(x) || ischar(x) || iscategorical(x)
-    x = str2double(string(x));
-else
-    error('Unsupported column type for numeric conversion.');
-end
 end
 
 function sig_label = getSigLabel(p)

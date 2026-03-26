@@ -1112,7 +1112,7 @@ fprintf('RT delta=0.10: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
 [p1, p2, eq] = tost_welch(RT_jensen, RT_nback, 0.15);
 fprintf('RT delta=0.15: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
 
-%% ================= ACC ROBUSTNESS (optional) =================
+%% ================= ACC ROBUSTNESS =================
 fprintf('\n--- ACC robustness ---\n')
 
 [p1, p2, eq] = tost_welch(ACC_jensen, ACC_nback, 3);
@@ -1122,7 +1122,7 @@ fprintf('ACC delta=5: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
 [p1, p2, eq] = tost_welch(ACC_jensen, ACC_nback, 10);
 fprintf('ACC delta=10: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
 
-%% ================= MIXED-EFFECTS EQUIVALENCE (KEEP TOST ABOVE) =================
+%% ================= MIXED-EFFECTS EQUIVALENCE =================
 fprintf('\n--- Mixed-effects equivalence (CI-in-bounds) ---\n')
 
 tbl_me = tbl;
@@ -1680,8 +1680,12 @@ if ~any(idx)
 end
 coeff_name = coef_names{find(idx, 1, 'first')};
 
-fe = fixedEffects(lme);
-est = fe(coeff_name);
+[fe, fe_names] = fixedEffects(lme);
+fe_idx = strcmp(fe_names, coeff_name);
+if ~any(fe_idx)
+    error('Group coefficient not found in fixed effects output.');
+end
+est = fe(fe_idx);
 ci_tbl = coefCI(lme, alpha_ci);
 ci = ci_tbl(strcmp(lme.CoefficientNames, coeff_name), :);
 end

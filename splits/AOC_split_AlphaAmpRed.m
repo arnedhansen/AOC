@@ -382,9 +382,7 @@ plot_group_power_spectrum_combined(pow_red, pow_amp, channels, colors, cond_labe
 
 %% TFRs per condition (both groups + diff, 3x3)
 fprintf('\n=== Plotting TFRs ===\n');
-color_map_tfr = interp1(linspace(0,1,5), ...
-    [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], ...
-    linspace(0,1,64));
+color_map_tfr = customcolormap_preset('red-white-blue');
 
 plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, ...
     color_map_tfr, fig_dir, fig_pos, fontSize, tfr_winsor_cfg);
@@ -844,19 +842,21 @@ end
 
 % Shared clim for Reduction and Amplification
 [~, ch_idx] = ismember(channels, ga_red{1}.label);
+ch_idx = ch_idx(ch_idx > 0);
+if isempty(ch_idx)
+    warning('Skipping TFR plot (none of the requested channels found in TFR labels).');
+    return
+end
 freq_idx = ga_red{1}.freq >= 5 & ga_red{1}.freq <= 30;
 time_idx = ga_red{1}.time >= -0.5 & ga_red{1}.time <= 3;
 mx = 0;
 for c = 1:3
-    Ared = squeeze(mean(ga_red{c}.powspctrm(ch_idx, :, :), 1, 'omitnan'));
-    Aamp = squeeze(mean(ga_amp{c}.powspctrm(ch_idx, :, :), 1, 'omitnan'));
+    Ared = mean_over_channels_tfr(ga_red{c}, ch_idx);
+    Aamp = mean_over_channels_tfr(ga_amp{c}, ch_idx);
     mx = max(mx, max(abs(Ared(freq_idx, time_idx)), [], 'all'));
     mx = max(mx, max(abs(Aamp(freq_idx, time_idx)), [], 'all'));
 end
-if ~isfinite(mx) || mx <= 0
-    mx = 0.25;
-end
-clim_abs = [-mx mx];
+clim_abs = [-mx*0.9 mx*0.9]
 
 cfg = [];
 cfg.channel = channels;
@@ -868,12 +868,12 @@ cfg.layout = headmodel.layANThead;
 
 % Single 3x2 figure: column 1 = Reduction, column 2 = Amplification
 fsz_tfr = round(fsz * 0.8);  % ~20% reduction
-target_ticks = 11;
-tick_step = 0.05 * ceil(((2 * mx) / max(target_ticks - 1, 1)) / 0.05);
-tick_step = max(tick_step, 0.05);
-tick_max = tick_step * ceil(mx / tick_step);
-cb_ticks = -tick_max:tick_step:tick_max;
-clim_abs = [-tick_max tick_max];
+% target_ticks = 9;
+% tick_step = 0.05 * ceil(((2 * mx) / max(target_ticks - 1, 1)) / 0.05);
+% tick_step = max(tick_step, 0.05);
+% tick_max = tick_step * ceil(mx / tick_step);
+% cb_ticks = -tick_max:tick_step:tick_max;
+% clim_abs = [-tick_max tick_max];
 figure('Position', fig_pos, 'Color', 'w');
 for c = 1:3
     % Column 1: Reduction (rows 1–3)
@@ -887,7 +887,7 @@ for c = 1:3
     ylabel(ax, 'Frequency [Hz]', 'FontSize', fsz_tfr);
     set(ax, 'FontSize', fsz_tfr);
     cbar.FontSize = fsz_tfr - 4;
-    cbar.Ticks = cb_ticks;
+    %cbar.Ticks = cb_ticks;
     cbar.Label.String = 'Power [dB]';
     cbar.Label.FontSize = fsz_tfr;
     title(ax, sprintf('Reduction - %s', cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
@@ -903,13 +903,59 @@ for c = 1:3
     ylabel(ax, 'Frequency [Hz]', 'FontSize', fsz_tfr);
     set(ax, 'FontSize', fsz_tfr);
     cbar.FontSize = fsz_tfr - 4;
-    cbar.Ticks = cb_ticks;
+    %cbar.Ticks = cb_ticks;
     cbar.Label.String = 'Power [dB]';
     cbar.Label.FontSize = fsz_tfr;
     title(ax, sprintf('Amplification - %s', cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
 end
 saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_tfr_all.png'));
 close(gcf);
+end
+
+function A = mean_over_channels_tfr(T, ch_idx)
+% Return freq x time map averaged across selected channels and subjects (if present).
+P = T.powspctrm;
+if isempty(P)
+    A = nan(numel(T.freq), numel(T.time));
+    return
+end
+
+Psize = size(P);
+chan_dim = find(Psize == numel(T.label), 1, 'first');
+if isempty(chan_dim)
+    if ndims(P) >= 2
+        chan_dim = 2; % Common FieldTrip keepindividual layout: rpt x chan x freq x time
+    else
+        chan_dim = 1;
+    end
+end
+
+switch ndims(P)
+    case 4
+        if chan_dim == 1
+            A = squeeze(mean(P(ch_idx, :, :, :), 1, 'omitnan')); % rpt x freq x time
+        elseif chan_dim == 2
+            A = squeeze(mean(P(:, ch_idx, :, :), 2, 'omitnan')); % rpt x freq x time
+        else
+            error('Unsupported channel dimension in 4D TFR data.');
+        end
+        if ndims(A) == 3
+            A = squeeze(mean(A, 1, 'omitnan')); % freq x time
+        end
+    case 3
+        if chan_dim == 1
+            A = squeeze(mean(P(ch_idx, :, :), 1, 'omitnan')); % freq x time
+        elseif chan_dim == 2
+            A = squeeze(mean(P(:, ch_idx, :), 2, 'omitnan'));
+            if ndims(A) == 2 && size(A, 1) == numel(T.time)
+                A = A'; % enforce freq x time
+            end
+        else
+            error('Unsupported channel dimension in 3D TFR data.');
+        end
+    otherwise
+        error('Unsupported TFR powspctrm dimensionality.');
+end
 end
 
 function freq_out = winsorize_freq_subjects(freq_in, prct_bounds)

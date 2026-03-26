@@ -274,60 +274,26 @@ box on
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_powspctrm.png'));
 
 %% Gaze density
-gaze_ready = false;
-gaze_cache_file = fullfile(feat_dir, 'sternberg_split_alphaLoads_gaze.mat');
+disp(upper('Building gaze heatmaps from raw ET (no cache)...'))
+gaze_dwell_time = build_sternberg_split_alphaLoads_gaze_from_raw_et(subjects, path);
 
-if ~isfile(gaze_cache_file)
-    fprintf('Gaze cache missing. Building gaze heatmaps from dataET_sternberg and saving to %s.\n', gaze_cache_file);
-    gaze_dwell_time = build_sternberg_split_alphaLoads_gaze_from_raw_et(subjects, path);
-    save(gaze_cache_file, 'gaze_dwell_time', 'subjects', '-v7.3');
-end
+% Unpack raw
+allgazebase2 = gaze_dwell_time.allgazebase2;
+allgazebase4 = gaze_dwell_time.allgazebase4;
+allgazebase6 = gaze_dwell_time.allgazebase6;
+allgazetasklate2 = gaze_dwell_time.allgazetasklate2;
+allgazetasklate4 = gaze_dwell_time.allgazetasklate4;
+allgazetasklate6 = gaze_dwell_time.allgazetasklate6;
 
-if isfile(gaze_cache_file)
-    tic
-    disp(upper('Loading gaze cache...'))
-    S = load(gaze_cache_file, 'gaze_dwell_time');
-    toc
-    if ~isfield(S, 'gaze_dwell_time')
-        error('Gaze cache found at %s but does not contain `gaze_dwell_time`.', gaze_cache_file);
-    end
-    gaze_dwell_time = S.gaze_dwell_time;
-
-    % Unpack raw
-    allgazebase2 = gaze_dwell_time.allgazebase2;
-    allgazebase4 = gaze_dwell_time.allgazebase4;
-    allgazebase6 = gaze_dwell_time.allgazebase6;
-    allgazetasklate2 = gaze_dwell_time.allgazetasklate2;
-    allgazetasklate4 = gaze_dwell_time.allgazetasklate4;
-    allgazetasklate6 = gaze_dwell_time.allgazetasklate6;
-
-    % Convert from dwell proportion (computeGazeHeatmap output) to rough dwell time [s/bin]
-    % NOTE: computeGazeHeatmap normalizes by window duration; multiplying by the nominal
-    % window length yields an approximate dwell-time map (still smoothed).
-    t_base_len = 0.25; % [-0.5 -0.25]
-    t_late_len = 1.0;  % [1 2]
-
-    allgazebase2 = scale_gaze_cells_powspctrm(allgazebase2, t_base_len);
-    allgazebase4 = scale_gaze_cells_powspctrm(allgazebase4, t_base_len);
-    allgazebase6 = scale_gaze_cells_powspctrm(allgazebase6, t_base_len);
-
-    allgazetasklate2 = scale_gaze_cells_powspctrm(allgazetasklate2, t_late_len);
-    allgazetasklate4 = scale_gaze_cells_powspctrm(allgazetasklate4, t_late_len);
-    allgazetasklate6 = scale_gaze_cells_powspctrm(allgazetasklate6, t_late_len);
-
-    % Reduce gaze map resolution for permutation stats to avoid OOM on servers.
-    gaze_cbpt_bins = 200;
-    allgazebase2 = downsample_gaze_cells_powspctrm(allgazebase2, gaze_cbpt_bins);
-    allgazebase4 = downsample_gaze_cells_powspctrm(allgazebase4, gaze_cbpt_bins);
-    allgazebase6 = downsample_gaze_cells_powspctrm(allgazebase6, gaze_cbpt_bins);
-    allgazetasklate2 = downsample_gaze_cells_powspctrm(allgazetasklate2, gaze_cbpt_bins);
-    allgazetasklate4 = downsample_gaze_cells_powspctrm(allgazetasklate4, gaze_cbpt_bins);
-    allgazetasklate6 = downsample_gaze_cells_powspctrm(allgazetasklate6, gaze_cbpt_bins);
-
-    gaze_ready = true;
-else
-    fprintf('Skipping gaze density: %s not found.\n', gaze_cache_file);
-end
+% Keep canonical computeGazeHeatmap units as in the Sternberg heatmap script.
+% Reduce gaze map resolution for permutation stats to avoid OOM on servers.
+gaze_cbpt_bins = 200;
+allgazebase2 = downsample_gaze_cells_powspctrm(allgazebase2, gaze_cbpt_bins);
+allgazebase4 = downsample_gaze_cells_powspctrm(allgazebase4, gaze_cbpt_bins);
+allgazebase6 = downsample_gaze_cells_powspctrm(allgazebase6, gaze_cbpt_bins);
+allgazetasklate2 = downsample_gaze_cells_powspctrm(allgazetasklate2, gaze_cbpt_bins);
+allgazetasklate4 = downsample_gaze_cells_powspctrm(allgazetasklate4, gaze_cbpt_bins);
+allgazetasklate6 = downsample_gaze_cells_powspctrm(allgazetasklate6, gaze_cbpt_bins);
 
 %% Baseline (subtraction: tasklate - baseline)
 disp('BASELINING GAZE DATA (SUBTRACTION)')
@@ -450,16 +416,11 @@ drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_subtractio
 
 %% Compute CBPT stats: paired baseline-vs-task tests separately for each load (2/4/6) and each subgroup (increase vs decrease)
 clc
-cbpt_file_gaze_taskVsBase = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_tasklate_minus_base.mat');
-% if isfile(cbpt_file_gaze_taskVsBase)
-%     disp('Loading cached CBPT: gaze tasklate vs baseline...')
-%     load(cbpt_file_gaze_taskVsBase);
-% else
-    % Six CBPT maps are tested here (3 loads x 2 groups).
-    % Use a family-wise corrected alpha across this test family.
-    family_alpha = 0.05;
-    n_cbpt_tests_taskVsBase = 6;
-    alpha_cbpt_taskVsBase = family_alpha / n_cbpt_tests_taskVsBase;
+% Six CBPT maps are tested here (3 loads x 2 groups).
+% Use a family-wise corrected alpha across this test family.
+family_alpha = 0.05;
+n_cbpt_tests_taskVsBase = 6;
+alpha_cbpt_taskVsBase = family_alpha / n_cbpt_tests_taskVsBase;
 
     cfg                  = [];
     cfg.spmversion       = 'spm12';
@@ -525,12 +486,6 @@ cbpt_file_gaze_taskVsBase = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_t
     stat_inc_n_4.stat(stat_inc_n_4.mask==0) = NaN;
     stat_inc_n_6.stat(stat_inc_n_6.mask==0) = NaN;
 
-    save(cbpt_file_gaze_taskVsBase, ...
-        'stat_inc_2', 'stat_inc_4', 'stat_inc_6', ...
-        'stat_inc_n_2', 'stat_inc_n_4', 'stat_inc_n_6', ...
-        'cfg_cbpt_gaze_taskVsBase_jensen', 'design_cbpt_gaze_taskVsBase_jensen', ...
-        'cfg_cbpt_gaze_taskVsBase_nback', 'design_cbpt_gaze_taskVsBase_nback', '-v7.3');
-% end
 
 % cohensd=((stat_inc_2.stat)./sqrt(subj));
 % stat_inc_2.stat=cohensd;
@@ -690,15 +645,9 @@ cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
 cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
-cbpt_file_gaze_omnibus = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_omnibus_loadEffect.mat');
-
-% if isfile(cbpt_file_gaze_omnibus)
-%     disp('Loading cached CBPT: gaze omnibus load effect...')
-%     load(cbpt_file_gaze_omnibus);
-% else
-    cfg_cbpt_gaze_omnibus_jensen = cfg;
-    [statF_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
-    statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
+cfg_cbpt_gaze_omnibus_jensen = cfg;
+[statF_gaze] = ft_freqstatistics(cfg, load2_gaze{idx_jensen}, load4_gaze{idx_jensen}, load6_gaze{idx_jensen});
+statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
 
     cfg                  = [];
     cfg.method           = 'montecarlo';
@@ -723,14 +672,9 @@ cbpt_file_gaze_omnibus = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_omni
     cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
     cfg.ivar                  = 1;
     cfg.uvar                  = 2;
-    cfg_cbpt_gaze_omnibus_nback = cfg;
-    [statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
-    statF_gaze_n.stat(statF_gaze_n.mask==0)=0;% set everything not relevant to zero
-
-    save(cbpt_file_gaze_omnibus, ...
-        'statF_gaze', 'statF_gaze_n', ...
-        'cfg_cbpt_gaze_omnibus_jensen', 'cfg_cbpt_gaze_omnibus_nback', '-v7.3');
-%end
+cfg_cbpt_gaze_omnibus_nback = cfg;
+[statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
+statF_gaze_n.stat(statF_gaze_n.mask==0)=0;% set everything not relevant to zero
 
 %% Plot F-stats
 close all
@@ -780,7 +724,6 @@ drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statF_omni
 addpath(fileparts(mfilename('fullpath')));
 
 % ---------------- Linear load trend ----------------
-cbpt_file_gaze_loadtrend = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_linearLoadTrend.mat');
 cfg                  = [];
 cfg.method           = 'montecarlo';
 % Contrast weights for ft_statfun_loadtrend are [-1 0 1] for loads [2 4 6].
@@ -823,8 +766,6 @@ cfg.uvar                  = 2;
 cfg_cbpt_gaze_loadtrend_nback = cfg;
 [statT_gaze_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
 statT_gaze_n.stat(statT_gaze_n.mask==0)=0;
-save(cbpt_file_gaze_loadtrend, 'statT_gaze', 'statT_gaze_n', ...
-    'cfg_cbpt_gaze_loadtrend_jensen', 'cfg_cbpt_gaze_loadtrend_nback', '-v7.3');
 
 cfg         = [];
 cfg.parameter = 'stat';
@@ -853,7 +794,6 @@ drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadTrend.
 close(gcf);
 
 % ---------------- Quadratic load trend ----------------
-cbpt_file_gaze_loadquadratic = fullfile(feat_dir, 'AOC_split_AlphaLoads_CBPT_gaze_quadraticLoadTrend.mat');
 cfg                  = [];
 cfg.method           = 'montecarlo';
 % Contrast weights for ft_statfun_loadquadratic are [1 -2 1] for loads [2 4 6].
@@ -897,8 +837,6 @@ cfg.uvar                  = 2;
 cfg_cbpt_gaze_loadquadratic_nback = cfg;
 [statT_gaze_quad_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
 statT_gaze_quad_n.stat(statT_gaze_quad_n.mask==0)=0;
-save(cbpt_file_gaze_loadquadratic, 'statT_gaze_quad', 'statT_gaze_quad_n', ...
-    'cfg_cbpt_gaze_loadquadratic_jensen', 'cfg_cbpt_gaze_loadquadratic_nback', '-v7.3');
 
 cfg = []; cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline'; cfg.zlim = [-5 5]; cfg.figure = 'gcf';
 figure('Position', [0 0 1512 982], 'Color', 'w');
@@ -1361,7 +1299,7 @@ function gaze_dwell_time = build_sternberg_split_alphaLoads_gaze_from_raw_et(sub
 
 n_subj = length(subjects);
 num_bins = 1000;
-smoothing = 10;
+smoothing = 5;
 fsample = 500;
 x_grid = linspace(0, 800, num_bins + 1);
 y_grid = linspace(0, 600, num_bins + 1);
@@ -1444,7 +1382,7 @@ else
     pos = horzcat(data.trial{:});
 end
 data3 = [pos; zeros(1, size(pos, 2))]; % computeGazeHeatmap expects at least 3 rows
-freq_raw = computeGazeHeatmap(data3, numel(x_grid), smoothing);
+freq_raw = computeGazeHeatmap(data3, numel(x_grid) - 1, smoothing);
 end
 
 function trialinfo_vec = align_trialinfo_to_trials(trialinfo, n_trials, subj_label)
@@ -1501,16 +1439,6 @@ n_common = min(n_trials, n_ti);
 trialinfo_vec = trialinfo_vec(1:n_common);
 fprintf('Warning: trial/trialinfo length mismatch for subject %s (trial=%d, trialinfo=%d). Truncating to %d.\n', ...
     subj_label, n_trials, n_ti, n_common);
-end
-
-function cells_out = scale_gaze_cells_powspctrm(cells_in, scale_factor)
-cells_out = cells_in;
-for ii = 1:numel(cells_out)
-    if isempty(cells_out{ii}) || ~isfield(cells_out{ii}, 'powspctrm')
-        continue
-    end
-    cells_out{ii}.powspctrm = cells_out{ii}.powspctrm .* scale_factor;
-end
 end
 
 function cells_out = downsample_gaze_cells_powspctrm(cells_in, target_bins)

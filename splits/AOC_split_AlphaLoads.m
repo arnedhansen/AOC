@@ -1,7 +1,7 @@
 %% AOC Split Sternberg Alpha Loads
 % Stratifies participants by alpha power slope across WM load (2,4,6).
 % Alpha increase vs decrease subgroups; TFRs, power spectra, behavioral (RT, ACC),
-% optional gaze density. Uses 1-2 s retention window for alpha extraction.
+% optional gaze density. Uses 1-3 s retention window for alpha extraction.
 %%
 % Groups:
 %       Jensen: amplification of alpha over WM loads
@@ -83,10 +83,10 @@ ga2 = ft_freqgrandaverage(cfg, load2{:});
 ga4 = ft_freqgrandaverage(cfg, load4{:});
 ga6 = ft_freqgrandaverage(cfg, load6{:});
 
-%% Select alpha power (retention 1-2 s)
+%% Select alpha power (retention 1-3 s)
 cfg = [];
 cfg.frequency = [8 14];
-cfg.latency = [1 2];
+cfg.latency = [1 3];
 cfg.channel = channels;
 cfg.avgoverfreq = 'yes';
 cfg.avgovertime = 'yes';
@@ -215,40 +215,57 @@ ga6nback = ft_freqgrandaverage(cfg,load6{idx_nback});
 
 %% TFR
 close all
+all_tfr_vals = [ ...
+    ga2jensen.powspctrm(:); ga4jensen.powspctrm(:); ga6jensen.powspctrm(:); ...
+    ga2nback.powspctrm(:); ga4nback.powspctrm(:); ga6nback.powspctrm(:)];
+all_tfr_vals = all_tfr_vals(isfinite(all_tfr_vals));
+if isempty(all_tfr_vals)
+    mx_tfr = 0.25;
+else
+    mx_tfr = max(abs(all_tfr_vals));
+    if ~isfinite(mx_tfr) || mx_tfr <= 0
+        mx_tfr = 0.25;
+    end
+end
+target_ticks = 11;
+tick_step = 0.05 * ceil(((2 * mx_tfr) / max(target_ticks - 1, 1)) / 0.05);
+tick_step = max(tick_step, 0.05);
+tick_max = tick_step * ceil(mx_tfr / tick_step);
+cb_ticks = -tick_max:tick_step:tick_max;
+
 cfg = [];
 cfg.figure = 'gcf';
 cfg.ylim = [5 30];
 cfg.xlim = [-.5 3];
-cfg.zlim = [-.25 .25];
-cb_ticks = -0.25:0.05:0.25;
+cfg.zlim = [-tick_max tick_max];
 cfg.channel = channels;
 cfg.layout = headmodel.layANThead;
 figure('Position', fig_pos, 'Color', 'w');
 subplot(3,2,1); ft_singleplotTFR(cfg, ga2jensen); title('Increase: WM load 2', 'FontSize', fontSize);
-hold on; rectangle('Position', [1 8 1 6], 'EdgeColor', 'k', 'LineWidth', 1.5);
+hold on; rectangle('Position', [1 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 4; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 subplot(3,2,3); ft_singleplotTFR(cfg, ga4jensen); title('Increase: WM load 4', 'FontSize', fontSize);
-hold on; rectangle('Position', [1 8 1 6], 'EdgeColor', 'k', 'LineWidth', 1.5);
+hold on; rectangle('Position', [1 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 4; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 subplot(3,2,5); ft_singleplotTFR(cfg, ga6jensen); title('Increase: WM load 6', 'FontSize', fontSize);
-hold on; rectangle('Position', [1 8 1 6], 'EdgeColor', 'k', 'LineWidth', 1.5);
+hold on; rectangle('Position', [1 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 4; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 
 subplot(3,2,2); ft_singleplotTFR(cfg, ga2nback); title('Decrease: WM load 2', 'FontSize', fontSize);
-hold on; rectangle('Position', [1 8 1 6], 'EdgeColor', 'k', 'LineWidth', 1.5);
+hold on; rectangle('Position', [1 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 4; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 subplot(3,2,4); ft_singleplotTFR(cfg, ga4nback); title('Decrease: WM load 4', 'FontSize', fontSize);
-hold on; rectangle('Position', [1 8 1 6], 'EdgeColor', 'k', 'LineWidth', 1.5);
+hold on; rectangle('Position', [1 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 4; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 subplot(3,2,6); ft_singleplotTFR(cfg, ga6nback); title('Decrease: WM load 6', 'FontSize', fontSize);
-hold on; rectangle('Position', [1 8 1 6], 'EdgeColor', 'k', 'LineWidth', 1.5);
+hold on; rectangle('Position', [1 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
-set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
+set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 4; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 colormap(gcf, color_map);
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_TFR_OVERVIEW.png'));
 
@@ -266,14 +283,14 @@ tfr_filenames = {'AOC_split_AlphaLoads_TFR_Increase2.png', ...
 for ii = 1:numel(tfr_data)
     figure('Position', fig_pos, 'Color', 'w');
     ft_singleplotTFR(cfg, tfr_data{ii});
-    hold on; rectangle('Position', [1 8 1 6], 'EdgeColor', 'k', 'LineWidth', 1.5);
+    hold on; rectangle('Position', [1 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
     title(tfr_titles{ii}, 'FontSize', fontSize);
     ax = gca;
     c = colorbar;
     xlabel(ax, 'Time [s]', 'FontSize', fontSize);
     ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
     set(ax, 'FontSize', fontSize);
-    c.FontSize = fontSize - 2;
+    c.FontSize = fontSize - 4;
     c.Ticks = cb_ticks;
     c.Label.String = 'Power [dB]';
     c.Label.FontSize = fontSize;
@@ -283,9 +300,9 @@ for ii = 1:numel(tfr_data)
     close(gcf);
 end
 
-%% Select powspctrm (retention 1-2 s)
+%% Select powspctrm (retention 1-3 s)
 cfg = [];
-cfg.latency = [1 2];
+cfg.latency = [1 3];
 cfg.avgovertime = 'yes';
 ga2jensen_powspctrm = ft_selectdata(cfg,ga2jensen);
 ga2jensen_powspctrm = rmfield(ga2jensen_powspctrm,'time');
@@ -1544,9 +1561,26 @@ for subj = 1:n_subj
     allgazebase4{subj} = extract_gaze_window(et, idx4, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
     allgazebase6{subj} = extract_gaze_window(et, idx6, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
 
-    allgazetasklate2{subj} = extract_gaze_window(et, idx2, [1 2], x_grid, y_grid, fsample, smoothing);
-    allgazetasklate4{subj} = extract_gaze_window(et, idx4, [1 2], x_grid, y_grid, fsample, smoothing);
-    allgazetasklate6{subj} = extract_gaze_window(et, idx6, [1 2], x_grid, y_grid, fsample, smoothing);
+    trial_tmin = nan(1, n_trials);
+    trial_tmax = nan(1, n_trials);
+    for tr = 1:n_trials
+        tt = et.time{tr};
+        if isempty(tt)
+            continue
+        end
+        trial_tmin(tr) = tt(1);
+        trial_tmax(tr) = tt(end);
+    end
+    has_3s = sum(trial_tmax >= 3);
+    fprintf('ET coverage %s: %d/%d trials reach 3 s (tmax median=%.3f s, min=%.3f s)\n', ...
+        subjects{subj}, has_3s, n_trials, median(trial_tmax, 'omitnan'), min(trial_tmax, [], 'omitnan'));
+    if any(isfinite(trial_tmin))
+        fprintf('ET time onset %s: tmin median=%.3f s\n', subjects{subj}, median(trial_tmin, 'omitnan'));
+    end
+
+    allgazetasklate2{subj} = extract_gaze_window(et, idx2, [1 3], x_grid, y_grid, fsample, smoothing);
+    allgazetasklate4{subj} = extract_gaze_window(et, idx4, [1 3], x_grid, y_grid, fsample, smoothing);
+    allgazetasklate6{subj} = extract_gaze_window(et, idx6, [1 3], x_grid, y_grid, fsample, smoothing);
 end
 
 gaze_dwell_time = struct();
@@ -1584,14 +1618,36 @@ freq_raw = compute_gaze_heatmap(sel, x_grid, y_grid, fsample, smoothing);
 end
 
 function freq_raw = compute_gaze_heatmap(data, x_grid, y_grid, fsample, smoothing)
-% RAW: use the canonical `computeGazeHeatmap` from the functions repo.
+% Prefer canonical computeGazeHeatmap, but guard against all-zero outputs.
 if isempty(data.trial)
+    pos_cells = {};
     pos = zeros(2, 0);
 else
+    pos_cells = data.trial;
     pos = horzcat(data.trial{:});
 end
-data3 = [pos; zeros(1, size(pos, 2))]; % computeGazeHeatmap expects at least 3 rows
-freq_raw = computeGazeHeatmap(data3, numel(x_grid) - 1, smoothing);
+
+use_fallback = true;
+if exist('computeGazeHeatmap', 'file') == 2
+    data3 = [pos; zeros(1, size(pos, 2))]; % canonical function expects >= 3 rows
+    freq_try = computeGazeHeatmap(data3, numel(x_grid) - 1, smoothing);
+
+    has_pow = isstruct(freq_try) && isfield(freq_try, 'powspctrm') && ~isempty(freq_try.powspctrm);
+    if has_pow
+        p = freq_try.powspctrm;
+        if any(isfinite(p(:))) && any(abs(p(:)) > 0)
+            freq_raw = freq_try;
+            use_fallback = false;
+        end
+    end
+end
+
+if use_fallback
+    n_samples = size(pos, 2);
+    fprintf('[GAZE HEATMAP FALLBACK] Using internal builder (samples=%d, bins=%d, smoothing=%g).\n', ...
+        n_samples, numel(x_grid) - 1, smoothing);
+    freq_raw = computeGazeHeatmapFromPosCells(pos_cells, x_grid, y_grid, fsample, smoothing);
+end
 end
 
 function trialinfo_vec = align_trialinfo_to_trials(trialinfo, n_trials, subj_label)

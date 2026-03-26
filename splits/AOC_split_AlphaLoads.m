@@ -209,7 +209,36 @@ subplot(3,2,6); ft_singleplotTFR(cfg, ga6nback); title('Decrease: WM load 6', 'F
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
 set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 2; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 colormap(gcf, color_map);
-drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_TFR.png'));
+drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_TFR_OVERVIEW.png'));
+
+% Save each EEG TFR panel as an individual figure
+tfr_data = {ga2jensen, ga4jensen, ga6jensen, ga2nback, ga4nback, ga6nback};
+tfr_titles = {'Increase: WM load 2', 'Increase: WM load 4', 'Increase: WM load 6', ...
+    'Decrease: WM load 2', 'Decrease: WM load 4', 'Decrease: WM load 6'};
+tfr_filenames = {'AOC_split_AlphaLoads_TFR_Increase2.png', ...
+    'AOC_split_AlphaLoads_TFR_Increase4.png', ...
+    'AOC_split_AlphaLoads_TFR_Increase6.png', ...
+    'AOC_split_AlphaLoads_TFR_Decrease2.png', ...
+    'AOC_split_AlphaLoads_TFR_Decrease4.png', ...
+    'AOC_split_AlphaLoads_TFR_Decrease6.png'};
+
+for ii = 1:numel(tfr_data)
+    figure('Position', fig_pos, 'Color', 'w');
+    ft_singleplotTFR(cfg, tfr_data{ii});
+    title(tfr_titles{ii}, 'FontSize', fontSize);
+    ax = gca;
+    c = colorbar;
+    xlabel(ax, 'Time [s]', 'FontSize', fontSize);
+    ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
+    set(ax, 'FontSize', fontSize);
+    c.FontSize = fontSize - 2;
+    c.Label.String = 'Power [dB]';
+    c.Label.FontSize = fontSize;
+    colormap(gcf, color_map);
+    drawnow;
+    saveas(gcf, fullfile(fig_dir, tfr_filenames{ii}));
+    close(gcf);
+end
 
 %% Select powspctrm (retention 1-2 s)
 cfg = [];
@@ -804,22 +833,15 @@ cfg.parameter = 'stat';
 cfg.maskparameter = 'mask';
 cfg.maskstyle = 'outline';
 cfg.zlim = [-5 5];
+cfg.xlim = [0 800];
+cfg.ylim = [0 600];
 cfg.figure = 'gcf';
 figure('Position', [0 0 1512 982], 'Color', 'w');
-subplot(3,2,1); ft_singleplotTFR(cfg,statT_gaze); title('Amplification: Linear Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
+subplot(1,2,1); ft_singleplotTFR(cfg,statT_gaze); title('Amplification: Linear Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
 ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 
-subplot(3,2,2); ft_singleplotTFR(cfg,statT_gaze_n); title('Reduction: Linear Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
-ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
-
-cfg = []; cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline'; cfg.zlim = [-5 5]; cfg.xlim =[300 500]; cfg.ylim =[200 400]; cfg.figure = 'gcf';
-subplot(3,2,3); ft_singleplotTFR(cfg,statT_gaze); title('Amplification: Linear Load Trend (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
-ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
-
-subplot(3,2,4); ft_singleplotTFR(cfg,statT_gaze_n); title('Reduction: Linear Load Trend (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
+subplot(1,2,2); ft_singleplotTFR(cfg,statT_gaze_n); title('Reduction: Linear Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
 ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadTrend.png'));
@@ -870,22 +892,13 @@ cfg_cbpt_gaze_loadquadratic_nback = cfg;
 [statT_gaze_quad_n] = ft_freqstatistics(cfg, load2_gaze{idx_nback}, load4_gaze{idx_nback}, load6_gaze{idx_nback});
 statT_gaze_quad_n.stat(statT_gaze_quad_n.mask==0)=0;
 
-cfg = []; cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline'; cfg.zlim = [-5 5]; cfg.figure = 'gcf';
+cfg = []; cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline'; cfg.zlim = [-5 5]; cfg.xlim = [0 800]; cfg.ylim = [0 600]; cfg.figure = 'gcf';
 figure('Position', [0 0 1512 982], 'Color', 'w');
-subplot(3,2,1); ft_singleplotTFR(cfg,statT_gaze_quad); title('Amplification: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
+subplot(1,2,1); ft_singleplotTFR(cfg,statT_gaze_quad); title('Amplification: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
 ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 
-subplot(3,2,2); ft_singleplotTFR(cfg,statT_gaze_quad_n); title('Reduction: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
-ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
-
-cfg = []; cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline'; cfg.zlim = [-5 5]; cfg.xlim =[300 500]; cfg.ylim =[200 400]; cfg.figure = 'gcf';
-subplot(3,2,3); ft_singleplotTFR(cfg,statT_gaze_quad); title('Amplification: Quadratic Load Trend (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
-ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
-
-subplot(3,2,4); ft_singleplotTFR(cfg,statT_gaze_quad_n); title('Reduction: Quadratic Load Trend (Zoom)', 'FontSize', fontSize, 'Interpreter', 'none');
+subplot(1,2,2); ft_singleplotTFR(cfg,statT_gaze_quad_n); title('Reduction: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
 ax = gca; set(ax, 'FontSize', fontSize); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadQuadratic.png'));

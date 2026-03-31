@@ -41,6 +41,13 @@ winsor_cfg = struct();
 winsor_cfg.enable = true;
 winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
 
+% Gaze heatmap color limits (diverging maps): robust scale for sparse, heavy-tailed fields
+gaze_zlim_cfg = struct();
+gaze_zlim_cfg.min_abs = 1e-18;   % values with |x| <= this treated as empty-bin zeros for scaling
+gaze_zlim_cfg.prctile = 95;      % percentile of |x| (above min_abs); lower -> more contrast
+gaze_zlim_cfg.k_mad = 4;         % symmetric MAD fence: median(|x|)+k*MAD(|x|)
+gaze_zlim_cfg.fallback_abs = 3;  % if scale degenerates (same as previous hard-coded floor)
+
 %% Loop over subjects - load EEG TFR (specParam, baselined)
 clc
 cfg_bl = [];
@@ -480,10 +487,7 @@ allGazeDiff = [ ...
     ga4nback_gaze.powspctrm(:); ...
     ga6nback_gaze.powspctrm(:) ];
 allGazeDiff = allGazeDiff(isfinite(allGazeDiff));
-zlimAbs = prctile(abs(allGazeDiff), 99);
-if ~isfinite(zlimAbs) || zlimAbs == 0
-    zlimAbs = 3;
-end
+zlimAbs = robust_diverging_zlim_abs(allGazeDiff, gaze_zlim_cfg);
 cfg.zlim = [-zlimAbs zlimAbs];
 figure('Position', fig_pos, 'Color', 'w');
 
@@ -668,10 +672,7 @@ cfg.maskstyle        = 'outline';
 allStatVals = [stat_inc_2.stat(:); stat_inc_4.stat(:); stat_inc_6.stat(:); ...
     stat_inc_n_2.stat(:); stat_inc_n_4.stat(:); stat_inc_n_6.stat(:)];
 allStatVals = allStatVals(isfinite(allStatVals));
-zlimAbs = prctile(abs(allStatVals), 99);
-if isempty(allStatVals) || ~isfinite(zlimAbs) || zlimAbs <= 0
-    zlimAbs = 1;
-end
+zlimAbs = robust_diverging_zlim_abs(allStatVals, gaze_zlim_cfg);
 cfg.zlim = [-zlimAbs zlimAbs];
 cfg.figure = 'gcf';
 
@@ -1313,6 +1314,29 @@ for ii = 1:numel(acc_sens)
     fprintf('ACC bounds=[%d, %d]: equivalent=%d\n', b(1), b(2), eq);
 end
 %% Helper functions
+function zlimAbs = robust_diverging_zlim_abs(v, cfg)
+% Symmetric z-limit for diverging maps: min( prctile(|x|,p), median(|x|)+k*MAD(|x|) )
+% on values above cfg.min_abs (sparse gaze grids: most bins ~0). Reduces inflation
+% from rare extreme pixels vs a single high global percentile.
+a = abs(v(isfinite(v)));
+a_pos = a(a > cfg.min_abs);
+if ~isempty(a_pos)
+    a = a_pos;
+end
+if isempty(a)
+    zlimAbs = cfg.fallback_abs;
+    return
+end
+p_lim = prctile(a, cfg.prctile);
+med_a = median(a);
+% Default mad(): median abs deviation from median, scaled (~sigma for Gaussian)
+mad_lim = med_a + cfg.k_mad * mad(a);
+zlimAbs = min(p_lim, mad_lim);
+if ~isfinite(zlimAbs) || zlimAbs <= 0
+    zlimAbs = cfg.fallback_abs;
+end
+end
+
 function plot_tfr_matrix_panel(subplot_idx, ga_data, cfg_sel, clim, fsz)
 freq = ft_selectdata(cfg_sel, ga_data);
 meanpow = squeeze(mean(freq.powspctrm, 1));
@@ -1849,7 +1873,10 @@ if nargin < 2
     alpha_ci = 0.10;
 end
 coef_names = lme.CoefficientNames;
-idx = startsWith(coef_names, 'Group_');
+% Main effect only: interaction terms are named Group_*:Load_* or Load_*:Group_*;
+% fixedEffects names may reorder Load:Group, so the first "Group_" match can be an
+% interaction and fail strcmp — or pick the wrong term for equivalence.
+idx = startsWith(coef_names, 'Group_') & cellfun(@(s) isempty(strfind(s, ':')), coef_names);
 if ~any(idx)
     error('No Group main-effect coefficient found in model.');
 end

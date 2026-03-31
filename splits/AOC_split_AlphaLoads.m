@@ -668,7 +668,7 @@ cfg.maskstyle        = 'outline';
 allStatVals = [stat_inc_2.stat(:); stat_inc_4.stat(:); stat_inc_6.stat(:); ...
     stat_inc_n_2.stat(:); stat_inc_n_4.stat(:); stat_inc_n_6.stat(:)];
 allStatVals = allStatVals(isfinite(allStatVals));
-zlimAbs = max(abs(allStatVals));
+zlimAbs = prctile(abs(allStatVals), 99);
 if isempty(allStatVals) || ~isfinite(zlimAbs) || zlimAbs <= 0
     zlimAbs = 1;
 end
@@ -694,7 +694,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 'Mean difference [a.u.]';
+c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
 title('Amplification: WM Load 2', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -716,7 +716,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 'Mean difference [a.u.]';
+c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
 title('Amplification: WM Load 4', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -738,7 +738,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 'Mean difference [a.u.]';
+c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
 title('Amplification: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -761,7 +761,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 'Mean difference [a.u.]';
+c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 2', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -783,7 +783,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 'Mean difference [a.u.]';
+c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 4', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -805,7 +805,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 'Mean difference [a.u.]';
+c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
 colormap(customcolormap_preset('red-white-blue'));

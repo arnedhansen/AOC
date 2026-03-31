@@ -4,9 +4,9 @@
 % optional gaze density. Uses 1-3 s retention window for alpha extraction.
 %%
 % Groups:
-%       Jensen: amplification of alpha over WM loads
-%       N-back: reduction of alpha over WM loads
-%       Flat: flat slope
+%       inc: positive alpha–load slope (increasing alpha across WM loads)
+%       dec: negative alpha–load slope (decreasing alpha across WM loads)
+%       flat: near-zero slope
 
 %% Setup
 startup
@@ -150,26 +150,26 @@ end
 pos_sel = pos_sel(1:k_eff);
 neg_sel = neg_sel(1:k_eff);
 
-idx_jensen = false(nSubj,1); % amplification
-idx_nback  = false(nSubj,1); % reduction
+idx_inc = false(nSubj,1); % amplification
+idx_dec  = false(nSubj,1); % reduction
 idx_flat   = true(nSubj,1);  % intermediate
-idx_jensen(pos_sel) = true;
-idx_nback(neg_sel)  = true;
-idx_flat(idx_jensen | idx_nback) = false;
+idx_inc(pos_sel) = true;
+idx_dec(neg_sel)  = true;
+idx_flat(idx_inc | idx_dec) = false;
 
 % counts
-n_j = sum(idx_jensen);
-n_n = sum(idx_nback);
+n_inc = sum(idx_inc);
+n_dec = sum(idx_dec);
 n_f = sum(idx_flat);
 
 % Group-defining cutoffs (for visualization only)
-if any(idx_nback)
-    t1 = max(slope(idx_nback));
+if any(idx_dec)
+    t1 = max(slope(idx_dec));
 else
     t1 = NaN;
 end
-if any(idx_jensen)
-    t2 = min(slope(idx_jensen));
+if any(idx_inc)
+    t2 = min(slope(idx_inc));
 else
     t2 = NaN;
 end
@@ -197,16 +197,16 @@ max_s = max(slope);
 k_left = ceil((t1 - min_s) / bin_w);
 k_right = ceil((max_s - t1) / bin_w);
 bin_edges = t1 + (-k_left:k_right) * bin_w;
-histogram(slope(idx_jensen), 'BinEdges', bin_edges, 'FaceColor', [0.8 0 0], 'FaceAlpha', 0.6);
-histogram(slope(idx_nback),  'BinEdges', bin_edges, 'FaceColor', [0 0 0.8], 'FaceAlpha', 0.6);
+histogram(slope(idx_inc), 'BinEdges', bin_edges, 'FaceColor', [0.8 0 0], 'FaceAlpha', 0.6);
+histogram(slope(idx_dec),  'BinEdges', bin_edges, 'FaceColor', [0 0 0.8], 'FaceAlpha', 0.6);
 histogram(slope(idx_flat),   'BinEdges', bin_edges, 'FaceColor', [0.5 0.5 0.5], 'FaceAlpha', 0.6);
 xline(t1, 'k--', 'LineWidth', 2);
 xline(t2, 'k--', 'LineWidth', 2);
 xlabel('Alpha power slope')
 ylabel('Participants')
 title('Linear Slope of Alpha Power across WM Load (2, 4, 6 items)', 'FontSize', 20)
-legend({sprintf('Increase (N=%d)', n_j), ...
-    sprintf('Decrease (N=%d)', n_n), ...
+legend({sprintf('Increase (N=%d)', n_inc), ...
+    sprintf('Decrease (N=%d)', n_dec), ...
     sprintf('intermediate (N=%d)', n_f), ...
     'symmetric-tail cutoffs'}, 'Box', 'off')
 box on
@@ -214,26 +214,26 @@ set(gca, 'FontSize', 15)
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_inclusion.png'));
 
 fprintf('\nZero-centered symmetric-tail classification summary:\n');
-fprintf('Increase (positive tail):     %d\n', n_j);
-fprintf('Decrease (negative tail):     %d\n', n_n);
+fprintf('Increase (positive tail):     %d\n', n_inc);
+fprintf('Decrease (negative tail):     %d\n', n_dec);
 fprintf('Intermediate:     %d\n', n_f);
 
 %% Grand averages per subgroup
 cfg = [];
 cfg.keepindividual = 'yes';
-ga2jensen = ft_freqgrandaverage(cfg,load2{idx_jensen});
-ga4jensen = ft_freqgrandaverage(cfg,load4{idx_jensen});
-ga6jensen = ft_freqgrandaverage(cfg,load6{idx_jensen});
-ga2nback = ft_freqgrandaverage(cfg,load2{idx_nback});
-ga4nback = ft_freqgrandaverage(cfg,load4{idx_nback});
-ga6nback = ft_freqgrandaverage(cfg,load6{idx_nback});
+ga2_inc = ft_freqgrandaverage(cfg,load2{idx_inc});
+ga4_inc = ft_freqgrandaverage(cfg,load4{idx_inc});
+ga6_inc = ft_freqgrandaverage(cfg,load6{idx_inc});
+ga2_dec = ft_freqgrandaverage(cfg,load2{idx_dec});
+ga4_dec = ft_freqgrandaverage(cfg,load4{idx_dec});
+ga6_dec = ft_freqgrandaverage(cfg,load6{idx_dec});
 if winsor_cfg.enable
-    ga2jensen = winsorize_freq_subjects(ga2jensen, winsor_cfg.prctile);
-    ga4jensen = winsorize_freq_subjects(ga4jensen, winsor_cfg.prctile);
-    ga6jensen = winsorize_freq_subjects(ga6jensen, winsor_cfg.prctile);
-    ga2nback = winsorize_freq_subjects(ga2nback, winsor_cfg.prctile);
-    ga4nback = winsorize_freq_subjects(ga4nback, winsor_cfg.prctile);
-    ga6nback = winsorize_freq_subjects(ga6nback, winsor_cfg.prctile);
+    ga2_inc = winsorize_freq_subjects(ga2_inc, winsor_cfg.prctile);
+    ga4_inc = winsorize_freq_subjects(ga4_inc, winsor_cfg.prctile);
+    ga6_inc = winsorize_freq_subjects(ga6_inc, winsor_cfg.prctile);
+    ga2_dec = winsorize_freq_subjects(ga2_dec, winsor_cfg.prctile);
+    ga4_dec = winsorize_freq_subjects(ga4_dec, winsor_cfg.prctile);
+    ga6_dec = winsorize_freq_subjects(ga6_dec, winsor_cfg.prctile);
 end
 
 %% TFR EEG
@@ -254,28 +254,28 @@ cfg.zlim = [-tick_max tick_max];
 cfg.channel = channels;
 cfg.layout = headmodel.layANThead;
 figure('Position', fig_pos, 'Color', 'w');
-subplot(3,2,1); ft_singleplotTFR(cfg, ga2jensen); title('Increase: WM load 2', 'FontSize', fontSize);
+subplot(3,2,1); ft_singleplotTFR(cfg, ga2_inc); title('Increase: WM load 2', 'FontSize', fontSize);
 hold on; rectangle('Position', [1 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
 set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 4; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
-subplot(3,2,3); ft_singleplotTFR(cfg, ga4jensen); title('Increase: WM load 4', 'FontSize', fontSize);
+subplot(3,2,3); ft_singleplotTFR(cfg, ga4_inc); title('Increase: WM load 4', 'FontSize', fontSize);
 hold on; rectangle('Position', [1 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
 set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 4; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
-subplot(3,2,5); ft_singleplotTFR(cfg, ga6jensen); title('Increase: WM load 6', 'FontSize', fontSize);
+subplot(3,2,5); ft_singleplotTFR(cfg, ga6_inc); title('Increase: WM load 6', 'FontSize', fontSize);
 hold on; rectangle('Position', [1 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
 set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 4; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
 
-subplot(3,2,2); ft_singleplotTFR(cfg, ga2nback); title('Decrease: WM load 2', 'FontSize', fontSize);
+subplot(3,2,2); ft_singleplotTFR(cfg, ga2_dec); title('Decrease: WM load 2', 'FontSize', fontSize);
 hold on; rectangle('Position', [1 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
 set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 4; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
-subplot(3,2,4); ft_singleplotTFR(cfg, ga4nback); title('Decrease: WM load 4', 'FontSize', fontSize);
+subplot(3,2,4); ft_singleplotTFR(cfg, ga4_dec); title('Decrease: WM load 4', 'FontSize', fontSize);
 hold on; rectangle('Position', [1 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
 set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 4; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
-subplot(3,2,6); ft_singleplotTFR(cfg, ga6nback); title('Decrease: WM load 6', 'FontSize', fontSize);
+subplot(3,2,6); ft_singleplotTFR(cfg, ga6_dec); title('Decrease: WM load 6', 'FontSize', fontSize);
 hold on; rectangle('Position', [1 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
 ax = gca; c = colorbar; xlabel(ax, 'Time [s]', 'FontSize', fontSize); ylabel(ax, 'Frequency [Hz]', 'FontSize', fontSize-4);
 set(ax, 'FontSize', fontSize); c.FontSize = fontSize - 4; c.Ticks = cb_ticks; c.Label.String = 'Power [dB]'; c.Label.FontSize = fontSize;
@@ -283,7 +283,7 @@ colormap(gcf, color_map);
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_TFR_OVERVIEW.png'));
 
 % Save each EEG TFR panel as an individual figure
-tfr_data = {ga2jensen, ga4jensen, ga6jensen, ga2nback, ga4nback, ga6nback};
+tfr_data = {ga2_inc, ga4_inc, ga6_inc, ga2_dec, ga4_dec, ga6_dec};
 tfr_titles = {'Increase: WM load 2', 'Increase: WM load 4', 'Increase: WM load 6', ...
     'Decrease: WM load 2', 'Decrease: WM load 4', 'Decrease: WM load 6'};
 tfr_filenames = {'AOC_split_AlphaLoads_TFR_Increase2.png', ...
@@ -317,90 +317,90 @@ end
 cfg = [];
 cfg.latency = [1 3];
 cfg.avgovertime = 'yes';
-ga2jensen_powspctrm = ft_selectdata(cfg,ga2jensen);
-ga2jensen_powspctrm = rmfield(ga2jensen_powspctrm,'time');
+ga2_inc_powspctrm = ft_selectdata(cfg,ga2_inc);
+ga2_inc_powspctrm = rmfield(ga2_inc_powspctrm,'time');
 
-ga4jensen_powspctrm = ft_selectdata(cfg,ga4jensen);
-ga4jensen_powspctrm = rmfield(ga4jensen_powspctrm,'time');
+ga4_inc_powspctrm = ft_selectdata(cfg,ga4_inc);
+ga4_inc_powspctrm = rmfield(ga4_inc_powspctrm,'time');
 
-ga6jensen_powspctrm = ft_selectdata(cfg,ga6jensen);
-ga6jensen_powspctrm = rmfield(ga6jensen_powspctrm,'time');
+ga6_inc_powspctrm = ft_selectdata(cfg,ga6_inc);
+ga6_inc_powspctrm = rmfield(ga6_inc_powspctrm,'time');
 
-ga2nback_powspctrm = ft_selectdata(cfg,ga2nback);
-ga2nback_powspctrm = rmfield(ga2nback_powspctrm,'time');
+ga2_dec_powspctrm = ft_selectdata(cfg,ga2_dec);
+ga2_dec_powspctrm = rmfield(ga2_dec_powspctrm,'time');
 
-ga4nback_powspctrm = ft_selectdata(cfg,ga4nback);
-ga4nback_powspctrm = rmfield(ga4nback_powspctrm,'time');
+ga4_dec_powspctrm = ft_selectdata(cfg,ga4_dec);
+ga4_dec_powspctrm = rmfield(ga4_dec_powspctrm,'time');
 
-ga6nback_powspctrm = ft_selectdata(cfg,ga6nback);
-ga6nback_powspctrm = rmfield(ga6nback_powspctrm,'time');
+ga6_dec_powspctrm = ft_selectdata(cfg,ga6_dec);
+ga6_dec_powspctrm = rmfield(ga6_dec_powspctrm,'time');
 
 %% Plot Powerspectra
 close all
 figure('Position', fig_pos, 'Color', 'w');
 tiledlayout(1, 2, 'TileSpacing', 'compact');
 
-[~, ch_idx_j] = ismember(channels, ga2jensen_powspctrm.label);
-ch_idx_j = ch_idx_j(ch_idx_j > 0);
-freqs_j = ga2jensen_powspctrm.freq;
+[~, ch_idx_inc] = ismember(channels, ga2_inc_powspctrm.label);
+ch_idx_inc = ch_idx_inc(ch_idx_inc > 0);
+freqs_inc = ga2_inc_powspctrm.freq;
 
 addpath('W:\Students\Arne\toolboxes\shadedErrorBar\')
 nexttile; hold on
-ga_j = {ga2jensen_powspctrm, ga4jensen_powspctrm, ga6jensen_powspctrm};
+ga_inc = {ga2_inc_powspctrm, ga4_inc_powspctrm, ga6_inc_powspctrm};
 for c = 1:3
-    subj_spec = squeeze(mean(ga_j{c}.powspctrm(:, ch_idx_j, :), 2, 'omitnan'));
+    subj_spec = squeeze(mean(ga_inc{c}.powspctrm(:, ch_idx_inc, :), 2, 'omitnan'));
     m = mean(subj_spec, 1, 'omitnan');
     se = std(subj_spec, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(subj_spec), 1)), 1);
-    eb_j(c) = shadedErrorBar(freqs_j, m, se, 'lineProps', {'-'}, 'transparent', true); %#ok<AGROW>
-    set(eb_j(c).mainLine, 'Color', colors(c, :), 'LineWidth', 3);
-    set(eb_j(c).patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
-    set(eb_j(c).edge(1), 'Color', colors(c, :));
-    set(eb_j(c).edge(2), 'Color', colors(c, :));
+    eb_inc(c) = shadedErrorBar(freqs_inc, m, se, 'lineProps', {'-'}, 'transparent', true); %#ok<AGROW>
+    set(eb_inc(c).mainLine, 'Color', colors(c, :), 'LineWidth', 3);
+    set(eb_inc(c).patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
+    set(eb_inc(c).edge(1), 'Color', colors(c, :));
+    set(eb_inc(c).edge(2), 'Color', colors(c, :));
 end
 xlim([2 30]);
 xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
 yline(0, '--')
 ylim([-0.2 0.2])
 ylabel('Power [dB]', 'FontSize', fontSize);
-title('Amplification', 'FontSize', fontSize);
+title('Increasing slope', 'FontSize', fontSize);
 % Legend with colored patch boxes
-leg_p_j = gobjects(1, 3);
+leg_p_inc = gobjects(1, 3);
 for c = 1:3
-    leg_p_j(c) = patch(NaN, NaN, colors(c, :), 'EdgeColor', 'none');
+    leg_p_inc(c) = patch(NaN, NaN, colors(c, :), 'EdgeColor', 'none');
 end
-legend(leg_p_j, {'WM load 2', 'WM load 4', 'WM load 6'}, ...
+legend(leg_p_inc, {'WM load 2', 'WM load 4', 'WM load 6'}, ...
     'Location', 'northeast', 'Box', 'off', 'FontSize', fontSize - 2);
 set(gca, 'FontSize', fontSize);
 box on
 
-[~, ch_idx_n] = ismember(channels, ga2nback_powspctrm.label);
-ch_idx_n = ch_idx_n(ch_idx_n > 0);
-freqs_n = ga2nback_powspctrm.freq;
+[~, ch_idx_dec] = ismember(channels, ga2_dec_powspctrm.label);
+ch_idx_dec = ch_idx_dec(ch_idx_dec > 0);
+freqs_dec = ga2_dec_powspctrm.freq;
 
 nexttile; hold on
-ga_n = {ga2nback_powspctrm, ga4nback_powspctrm, ga6nback_powspctrm};
+ga_dec = {ga2_dec_powspctrm, ga4_dec_powspctrm, ga6_dec_powspctrm};
 for c = 1:3
-    subj_spec = squeeze(mean(ga_n{c}.powspctrm(:, ch_idx_n, :), 2, 'omitnan'));
+    subj_spec = squeeze(mean(ga_dec{c}.powspctrm(:, ch_idx_dec, :), 2, 'omitnan'));
     m = mean(subj_spec, 1, 'omitnan');
     se = std(subj_spec, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(subj_spec), 1)), 1);
-    eb_n(c) = shadedErrorBar(freqs_n, m, se, 'lineProps', {'-'}, 'transparent', true); %#ok<AGROW>
-    set(eb_n(c).mainLine, 'Color', colors(c, :), 'LineWidth', 3);
-    set(eb_n(c).patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
-    set(eb_n(c).edge(1), 'Color', colors(c, :));
-    set(eb_n(c).edge(2), 'Color', colors(c, :));
+    eb_dec(c) = shadedErrorBar(freqs_dec, m, se, 'lineProps', {'-'}, 'transparent', true); %#ok<AGROW>
+    set(eb_dec(c).mainLine, 'Color', colors(c, :), 'LineWidth', 3);
+    set(eb_dec(c).patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
+    set(eb_dec(c).edge(1), 'Color', colors(c, :));
+    set(eb_dec(c).edge(2), 'Color', colors(c, :));
 end
 xlim([2 30]);
 xlabel('Frequency [Hz]', 'FontSize', fontSize-4);
 yline(0, '--')
 ylim([-0.25 0.25])
 ylabel('Power [dB]', 'FontSize', fontSize);
-title('Reduction', 'FontSize', fontSize);
+title('Decreasing slope', 'FontSize', fontSize);
 % Legend with colored patch boxes
-leg_p_n = gobjects(1, 3);
+leg_p_dec = gobjects(1, 3);
 for c = 1:3
-    leg_p_n(c) = patch(NaN, NaN, colors(c, :), 'EdgeColor', 'none');
+    leg_p_dec(c) = patch(NaN, NaN, colors(c, :), 'EdgeColor', 'none');
 end
-legend(leg_p_n, {'WM load 2', 'WM load 4', 'WM load 6'}, ...
+legend(leg_p_dec, {'WM load 2', 'WM load 4', 'WM load 6'}, ...
     'Location', 'best', 'Box', 'off', 'FontSize', fontSize - 2);
 set(gca, 'FontSize', fontSize);
 box on
@@ -420,7 +420,7 @@ allgazetasklate4 = gaze_dwell_time.allgazetasklate4;
 allgazetasklate6 = gaze_dwell_time.allgazetasklate6;
 
 % CBPT inputs spatially downsample (memory issues on server)
-cbpt_gaze_downsample = true;
+cbpt_gaze_downsample = false;
 gaze_cbpt_bins = 500;
 if cbpt_gaze_downsample
     allgazebase2_cbpt = downsample_gaze_cells_powspctrm(allgazebase2, gaze_cbpt_bins);
@@ -465,12 +465,12 @@ end
 disp(upper('Computing gaze grand average...'))
 cfg = [];
 cfg.keepindividual = 'yes';
-ga2jensen_gaze = ft_freqgrandaverage(cfg, load2_gaze{idx_jensen});
-ga4jensen_gaze = ft_freqgrandaverage(cfg, load4_gaze{idx_jensen});
-ga6jensen_gaze = ft_freqgrandaverage(cfg, load6_gaze{idx_jensen});
-ga2nback_gaze = ft_freqgrandaverage(cfg, load2_gaze{idx_nback});
-ga4nback_gaze = ft_freqgrandaverage(cfg, load4_gaze{idx_nback});
-ga6nback_gaze = ft_freqgrandaverage(cfg, load6_gaze{idx_nback});
+ga2_inc_gaze = ft_freqgrandaverage(cfg, load2_gaze{idx_inc});
+ga4_inc_gaze = ft_freqgrandaverage(cfg, load4_gaze{idx_inc});
+ga6_inc_gaze = ft_freqgrandaverage(cfg, load6_gaze{idx_inc});
+ga2_dec_gaze = ft_freqgrandaverage(cfg, load2_gaze{idx_dec});
+ga4_dec_gaze = ft_freqgrandaverage(cfg, load4_gaze{idx_dec});
+ga6_dec_gaze = ft_freqgrandaverage(cfg, load6_gaze{idx_dec});
 
 %% Plot Gaze TFRs
 close all
@@ -480,12 +480,12 @@ cfg = [];
 cfg.figure = 'gcf';
 % Strict symmetric max-abs z-limits for subtraction baseline maps
 allGazeDiff = [ ...
-    ga2jensen_gaze.powspctrm(:); ...
-    ga4jensen_gaze.powspctrm(:); ...
-    ga6jensen_gaze.powspctrm(:); ...
-    ga2nback_gaze.powspctrm(:); ...
-    ga4nback_gaze.powspctrm(:); ...
-    ga6nback_gaze.powspctrm(:) ];
+    ga2_inc_gaze.powspctrm(:); ...
+    ga4_inc_gaze.powspctrm(:); ...
+    ga6_inc_gaze.powspctrm(:); ...
+    ga2_dec_gaze.powspctrm(:); ...
+    ga4_dec_gaze.powspctrm(:); ...
+    ga6_dec_gaze.powspctrm(:) ];
 allGazeDiff = allGazeDiff(isfinite(allGazeDiff));
 zlimAbs = robust_diverging_zlim_abs(allGazeDiff, gaze_zlim_cfg);
 cfg.zlim = [-zlimAbs zlimAbs];
@@ -493,8 +493,8 @@ figure('Position', fig_pos, 'Color', 'w');
 
 % Gaze density relative to baseline (subtraction; tasklate - baseline)
 subplot(3,2,1);
-ft_singleplotTFR(cfg, ga2jensen_gaze);
-title('Amplification: WM Load 2', 'FontSize', fontSize);
+ft_singleplotTFR(cfg, ga2_inc_gaze);
+title('Increasing slope: WM load 2', 'FontSize', fontSize);
 ax = gca;
 xlim(ax, [0 800]);
 ylim(ax, [0 600]);
@@ -509,8 +509,8 @@ c.Label.FontSize = fontSize - 2;
 c.FontSize = fontSize - 2;
 
 subplot(3,2,3);
-ft_singleplotTFR(cfg, ga4jensen_gaze);
-title('Amplification: WM Load 4', 'FontSize', fontSize);
+ft_singleplotTFR(cfg, ga4_inc_gaze);
+title('Increasing slope: WM load 4', 'FontSize', fontSize);
 ax = gca;
 xlim(ax, [0 800]);
 ylim(ax, [0 600]);
@@ -525,8 +525,8 @@ c.Label.FontSize = fontSize - 2;
 c.FontSize = fontSize - 2;
 
 subplot(3,2,5);
-ft_singleplotTFR(cfg, ga6jensen_gaze);
-title('Amplification: WM Load 6', 'FontSize', fontSize);
+ft_singleplotTFR(cfg, ga6_inc_gaze);
+title('Increasing slope: WM load 6', 'FontSize', fontSize);
 ax = gca;
 xlim(ax, [0 800]);
 ylim(ax, [0 600]);
@@ -541,8 +541,8 @@ c.Label.FontSize = fontSize - 2;
 c.FontSize = fontSize - 2;
 
 subplot(3,2,2);
-ft_singleplotTFR(cfg, ga2nback_gaze);
-title('Reduction: WM Load 2', 'FontSize', fontSize);
+ft_singleplotTFR(cfg, ga2_dec_gaze);
+title('Decreasing slope: WM load 2', 'FontSize', fontSize);
 ax = gca;
 xlim(ax, [0 800]);
 ylim(ax, [0 600]);
@@ -557,8 +557,8 @@ c.Label.FontSize = fontSize - 2;
 c.FontSize = fontSize - 2;
 
 subplot(3,2,4);
-ft_singleplotTFR(cfg, ga4nback_gaze);
-title('Reduction: WM Load 4', 'FontSize', fontSize);
+ft_singleplotTFR(cfg, ga4_dec_gaze);
+title('Decreasing slope: WM load 4', 'FontSize', fontSize);
 ax = gca;
 xlim(ax, [0 800]);
 ylim(ax, [0 600]);
@@ -573,8 +573,8 @@ c.Label.FontSize = fontSize - 2;
 c.FontSize = fontSize - 2;
 
 subplot(3,2,6);
-ft_singleplotTFR(cfg, ga6nback_gaze);
-title('Reduction: WM Load 6', 'FontSize', fontSize);
+ft_singleplotTFR(cfg, ga6_dec_gaze);
+title('Decreasing slope: WM load 6', 'FontSize', fontSize);
 ax = gca;
 xlim(ax, [0 800]);
 ylim(ax, [0 600]);
@@ -612,7 +612,7 @@ cfg.numrandomization = 1000;
 
 cfg.neighbours=[];
 clear design
-subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
+subj = numel(ga2_inc_gaze.powspctrm(:,1,1,1));
 design = zeros(2,2*subj);
 for i = 1:subj
     design(1,i) = i;
@@ -626,17 +626,17 @@ design(2,subj+1:2*subj) = 2;
 cfg.design   = design;
 cfg.uvar     = 1;
 cfg.ivar     = 2;
-cfg_cbpt_gaze_taskVsBase_jensen = cfg;
-design_cbpt_gaze_taskVsBase_jensen = design;
-clc; disp(upper('[stat_inc_2 JENSEN]')); [stat_inc_2] = ft_freqstatistics(cfg, allgazetasklate2_cbpt{idx_jensen},allgazebase2_cbpt{idx_jensen});
-clc; disp(upper('[stat_inc_4 JENSEN]')); [stat_inc_4] = ft_freqstatistics(cfg, allgazetasklate4_cbpt{idx_jensen},allgazebase4_cbpt{idx_jensen});
-clc; disp(upper('[stat_inc_6 JENSEN]')); [stat_inc_6] = ft_freqstatistics(cfg, allgazetasklate6_cbpt{idx_jensen},allgazebase6_cbpt{idx_jensen});
+cfg_cbpt_gaze_taskVsBase_inc = cfg;
+design_cbpt_gaze_taskVsBase_inc = design;
+clc; disp(upper('[stat_inc_2 INC]')); [stat_inc_2] = ft_freqstatistics(cfg, allgazetasklate2_cbpt{idx_inc},allgazebase2_cbpt{idx_inc});
+clc; disp(upper('[stat_inc_4 INC]')); [stat_inc_4] = ft_freqstatistics(cfg, allgazetasklate4_cbpt{idx_inc},allgazebase4_cbpt{idx_inc});
+clc; disp(upper('[stat_inc_6 INC]')); [stat_inc_6] = ft_freqstatistics(cfg, allgazetasklate6_cbpt{idx_inc},allgazebase6_cbpt{idx_inc});
 % Hide non-significant pixels in visualization
 stat_inc_2.stat(stat_inc_2.mask==0) = NaN;
 stat_inc_4.stat(stat_inc_4.mask==0) = NaN;
 stat_inc_6.stat(stat_inc_6.mask==0) = NaN;
 
-subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
+subj = numel(ga2_dec_gaze.powspctrm(:,1,1,1));
 design = zeros(2,2*subj);
 for i = 1:subj
     design(1,i) = i;
@@ -650,27 +650,27 @@ design(2,subj+1:2*subj) = 2;
 cfg.design   = design;
 cfg.uvar     = 1;
 cfg.ivar     = 2;
-cfg_cbpt_gaze_taskVsBase_nback = cfg;
-design_cbpt_gaze_taskVsBase_nback = design;
-clc; disp(upper('[stat_inc_n_2 N-back]')); [stat_inc_n_2] = ft_freqstatistics(cfg, allgazetasklate2_cbpt{idx_nback},allgazebase2_cbpt{idx_nback});
-clc; disp(upper('[stat_inc_n_4 N-back]')); [stat_inc_n_4] = ft_freqstatistics(cfg, allgazetasklate4_cbpt{idx_nback},allgazebase4_cbpt{idx_nback});
-clc; disp(upper('[stat_inc_n_6 N-back]')); [stat_inc_n_6] = ft_freqstatistics(cfg, allgazetasklate6_cbpt{idx_nback},allgazebase6_cbpt{idx_nback});
+cfg_cbpt_gaze_taskVsBase_dec = cfg;
+design_cbpt_gaze_taskVsBase_dec = design;
+clc; disp(upper('[stat_dec_2 DEC]')); [stat_dec_2] = ft_freqstatistics(cfg, allgazetasklate2_cbpt{idx_dec},allgazebase2_cbpt{idx_dec});
+clc; disp(upper('[stat_dec_4 DEC]')); [stat_dec_4] = ft_freqstatistics(cfg, allgazetasklate4_cbpt{idx_dec},allgazebase4_cbpt{idx_dec});
+clc; disp(upper('[stat_dec_6 DEC]')); [stat_dec_6] = ft_freqstatistics(cfg, allgazetasklate6_cbpt{idx_dec},allgazebase6_cbpt{idx_dec});
 % Hide non-significant pixels in visualization
-stat_inc_n_2.stat(stat_inc_n_2.mask==0) = NaN;
-stat_inc_n_4.stat(stat_inc_n_4.mask==0) = NaN;
-stat_inc_n_6.stat(stat_inc_n_6.mask==0) = NaN;
+stat_dec_2.stat(stat_dec_2.mask==0) = NaN;
+stat_dec_4.stat(stat_dec_4.mask==0) = NaN;
+stat_dec_6.stat(stat_dec_6.mask==0) = NaN;
 
 %% Plot CBPT Raw Stats
-stat_inc_n_2.cfg=[];
-stat_inc_n_4.cfg=[];
-stat_inc_n_6.cfg=[];
+stat_dec_2.cfg=[];
+stat_dec_4.cfg=[];
+stat_dec_6.cfg=[];
 close all
 cfg         = [];
 cfg.parameter = 'stat';
 cfg.maskparameter = 'mask';
 cfg.maskstyle        = 'outline';
 allStatVals = [stat_inc_2.stat(:); stat_inc_4.stat(:); stat_inc_6.stat(:); ...
-    stat_inc_n_2.stat(:); stat_inc_n_4.stat(:); stat_inc_n_6.stat(:)];
+    stat_dec_2.stat(:); stat_dec_4.stat(:); stat_dec_6.stat(:)];
 allStatVals = allStatVals(isfinite(allStatVals));
 zlimAbs = robust_diverging_zlim_abs(allStatVals, gaze_zlim_cfg);
 cfg.zlim = [-zlimAbs zlimAbs];
@@ -697,7 +697,7 @@ c.LineWidth = 1;
 c.FontSize = 18;
 c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
-title('Amplification: WM Load 2', 'FontSize', fontSize, 'Interpreter', 'none')
+title('Increasing slope: WM load 2', 'FontSize', fontSize, 'Interpreter', 'none')
 
 subplot(3,2,3);
 ft_singleplotTFR(cfg,stat_inc_4);
@@ -719,7 +719,7 @@ c.LineWidth = 1;
 c.FontSize = 18;
 c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
-title('Amplification: WM Load 4', 'FontSize', fontSize, 'Interpreter', 'none')
+title('Increasing slope: WM load 4', 'FontSize', fontSize, 'Interpreter', 'none')
 
 subplot(3,2,5);
 ft_singleplotTFR(cfg,stat_inc_6);
@@ -741,11 +741,11 @@ c.LineWidth = 1;
 c.FontSize = 18;
 c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
-title('Amplification: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
+title('Increasing slope: WM load 6', 'FontSize', fontSize, 'Interpreter', 'none')
 
-% plot decreaseing
+% plot decreasing-slope group
 subplot(3,2,2);
-ft_singleplotTFR(cfg,stat_inc_n_2);
+ft_singleplotTFR(cfg,stat_dec_2);
 img = findobj(gca, 'Type', 'image');
 if ~isempty(img) && isprop(img(1), 'CData')
     set(img(1), 'AlphaData', ~isnan(img(1).CData));
@@ -764,10 +764,10 @@ c.LineWidth = 1;
 c.FontSize = 18;
 c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
-title('Reduction: WM Load 2', 'FontSize', fontSize, 'Interpreter', 'none')
+title('Decreasing slope: WM load 2', 'FontSize', fontSize, 'Interpreter', 'none')
 
 subplot(3,2,4);
-ft_singleplotTFR(cfg,stat_inc_n_4);
+ft_singleplotTFR(cfg,stat_dec_4);
 img = findobj(gca, 'Type', 'image');
 if ~isempty(img) && isprop(img(1), 'CData')
     set(img(1), 'AlphaData', ~isnan(img(1).CData));
@@ -786,10 +786,10 @@ c.LineWidth = 1;
 c.FontSize = 18;
 c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
-title('Reduction: WM Load 4', 'FontSize', fontSize, 'Interpreter', 'none')
+title('Decreasing slope: WM load 4', 'FontSize', fontSize, 'Interpreter', 'none')
 
 subplot(3,2,6);
-ft_singleplotTFR(cfg,stat_inc_n_6);
+ft_singleplotTFR(cfg,stat_dec_6);
 img = findobj(gca, 'Type', 'image');
 if ~isempty(img) && isprop(img(1), 'CData')
     set(img(1), 'AlphaData', ~isnan(img(1).CData));
@@ -808,10 +808,10 @@ c.LineWidth = 1;
 c.FontSize = 18;
 c.Label.String = 'Gaze Density [a.u.]';
 c.Label.FontSize = 18;   % optional
-title('Reduction: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
+title('Decreasing slope: WM load 6', 'FontSize', fontSize, 'Interpreter', 'none')
 colormap(customcolormap_preset('red-white-blue'));
 
-drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statInc.png'));
+drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_cbpt_taskVsBase_incDec.png'));
 
 %% CBPT Stats: repeated-measures (dependent-samples) F test across the three loads
 cfg                  = [];
@@ -825,7 +825,7 @@ cfg.clustertail      = cfg.tail;
 cfg.alpha            = 0.05;
 cfg.numrandomization = 1000;
 
-subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
+subj = numel(ga2_inc_gaze.powspctrm(:,1,1,1));
 n_2  = subj;
 n_4  = subj;
 n_6 =  subj;
@@ -834,9 +834,9 @@ cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
 cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
-cfg_cbpt_gaze_omnibus_jensen = cfg;
-[statF_gaze] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_jensen}, load4_gaze_cbpt{idx_jensen}, load6_gaze_cbpt{idx_jensen});
-statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
+cfg_cbpt_gaze_omnibus_inc = cfg;
+[statF_gaze_inc] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_inc}, load4_gaze_cbpt{idx_inc}, load6_gaze_cbpt{idx_inc});
+statF_gaze_inc.stat(statF_gaze_inc.mask==0)=0;% set everything not relevant to zero
 
 cfg                  = [];
 cfg.method           = 'montecarlo';
@@ -852,7 +852,7 @@ cfg.clustertail      = cfg.tail;
 cfg.alpha            = 0.05;
 cfg.numrandomization = 1000;
 
-subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
+subj = numel(ga2_dec_gaze.powspctrm(:,1,1,1));
 n_2  = subj;
 n_4  = subj;
 n_6 =  subj;
@@ -861,9 +861,9 @@ cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
 cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
-cfg_cbpt_gaze_omnibus_nback = cfg;
-[statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_nback}, load4_gaze_cbpt{idx_nback}, load6_gaze_cbpt{idx_nback});
-statF_gaze_n.stat(statF_gaze_n.mask==0)=0;% set everything not relevant to zero
+cfg_cbpt_gaze_omnibus_dec = cfg;
+[statF_gaze_dec] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_dec}, load4_gaze_cbpt{idx_dec}, load6_gaze_cbpt{idx_dec});
+statF_gaze_dec.stat(statF_gaze_dec.mask==0)=0;% set everything not relevant to zero
 
 %% Plot F-stats
 close all
@@ -879,16 +879,16 @@ figure('Position', [0 0 1512*0.5 982], 'Color', 'w');
 
 % plot
 ax1 = subplot(2,1,1);
-ft_singleplotTFR(cfg, statF_gaze);
-title('Amplification: Omnibus Load Effect', 'FontSize', fontSize, 'Interpreter', 'none');
+ft_singleplotTFR(cfg, statF_gaze_inc);
+title('Increasing slope: Omnibus load effect', 'FontSize', fontSize, 'Interpreter', 'none');
 xlim(ax1, [0 800]);
 ylim(ax1, [0 600]);
 hold(ax1, 'on');
 plot(ax1, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 
 ax2 = subplot(2,1,2);
-ft_singleplotTFR(cfg, statF_gaze_n);
-title('Reduction: Omnibus Load Effect', 'FontSize', fontSize, 'Interpreter', 'none');
+ft_singleplotTFR(cfg, statF_gaze_dec);
+title('Decreasing slope: Omnibus load effect', 'FontSize', fontSize, 'Interpreter', 'none');
 xlim(ax2, [0 800]);
 ylim(ax2, [0 600]);
 hold(ax2, 'on');
@@ -935,14 +935,14 @@ cfg.clustertail      = cfg.tail;
 cfg.alpha            = 0.05;
 cfg.numrandomization = 1000;
 
-subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
+subj = numel(ga2_inc_gaze.powspctrm(:,1,1,1));
 cfg.design(1,:)           = [ones(1,subj), ones(1,subj)*2, ones(1,subj)*3];
 cfg.design(2,:)           = [1:subj, 1:subj, 1:subj];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
-cfg_cbpt_gaze_loadtrend_jensen = cfg;
-[statT_gaze] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_jensen}, load4_gaze_cbpt{idx_jensen}, load6_gaze_cbpt{idx_jensen});
-statT_gaze.stat(statT_gaze.mask==0)=0;
+cfg_cbpt_gaze_loadtrend_inc = cfg;
+[statT_gaze_inc] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_inc}, load4_gaze_cbpt{idx_inc}, load6_gaze_cbpt{idx_inc});
+statT_gaze_inc.stat(statT_gaze_inc.mask==0)=0;
 
 cfg                  = [];
 cfg.method           = 'montecarlo';
@@ -956,14 +956,14 @@ cfg.tail             = 0;
 cfg.clustertail      = cfg.tail;
 cfg.alpha            = 0.05;
 cfg.numrandomization = 1000;
-subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
+subj = numel(ga2_dec_gaze.powspctrm(:,1,1,1));
 cfg.design(1,:)           = [ones(1,subj), ones(1,subj)*2, ones(1,subj)*3];
 cfg.design(2,:)           = [1:subj, 1:subj, 1:subj];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
-cfg_cbpt_gaze_loadtrend_nback = cfg;
-[statT_gaze_n] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_nback}, load4_gaze_cbpt{idx_nback}, load6_gaze_cbpt{idx_nback});
-statT_gaze_n.stat(statT_gaze_n.mask==0)=0;
+cfg_cbpt_gaze_loadtrend_dec = cfg;
+[statT_gaze_dec] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_dec}, load4_gaze_cbpt{idx_dec}, load6_gaze_cbpt{idx_dec});
+statT_gaze_dec.stat(statT_gaze_dec.mask==0)=0;
 %%
 cfg         = [];
 cfg.parameter = 'stat';
@@ -974,11 +974,11 @@ cfg.xlim = [0 800];
 cfg.ylim = [0 600];
 cfg.figure = 'gcf';
 figure('Position', [0 0 1512/2 982], 'Color', 'w');
-subplot(2,1,1); ft_singleplotTFR(cfg,statT_gaze); title('Amplification: Linear Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
+subplot(2,1,1); ft_singleplotTFR(cfg,statT_gaze_inc); title('Increasing slope: Linear load trend', 'FontSize', fontSize, 'Interpreter', 'none');
 ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]); hold(ax, 'on'); plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k'); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 
-subplot(2,1,2); ft_singleplotTFR(cfg,statT_gaze_n); title('Reduction: Linear Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
+subplot(2,1,2); ft_singleplotTFR(cfg,statT_gaze_dec); title('Decreasing slope: Linear load trend', 'FontSize', fontSize, 'Interpreter', 'none');
 ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]); hold(ax, 'on'); plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k'); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 colormap(gcf, color_map); drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadTrend.png'));
@@ -998,14 +998,14 @@ cfg.clustertail      = cfg.tail;
 cfg.alpha            = 0.05;
 cfg.numrandomization = 1000;
 
-subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
+subj = numel(ga2_inc_gaze.powspctrm(:,1,1,1));
 cfg.design(1,:)           = [ones(1,subj), ones(1,subj)*2, ones(1,subj)*3];
 cfg.design(2,:)           = [1:subj, 1:subj, 1:subj];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
-cfg_cbpt_gaze_loadquadratic_jensen = cfg;
-[statT_gaze_quad] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_jensen}, load4_gaze_cbpt{idx_jensen}, load6_gaze_cbpt{idx_jensen});
-statT_gaze_quad.stat(statT_gaze_quad.mask==0)=0;
+cfg_cbpt_gaze_loadquadratic_inc = cfg;
+[statT_gaze_quad_inc] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_inc}, load4_gaze_cbpt{idx_inc}, load6_gaze_cbpt{idx_inc});
+statT_gaze_quad_inc.stat(statT_gaze_quad_inc.mask==0)=0;
 
 cfg                  = [];
 cfg.method           = 'montecarlo';
@@ -1020,14 +1020,14 @@ cfg.clustertail      = cfg.tail;
 cfg.alpha            = 0.05;
 cfg.numrandomization = 1000;
 
-subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
+subj = numel(ga2_dec_gaze.powspctrm(:,1,1,1));
 cfg.design(1,:)           = [ones(1,subj), ones(1,subj)*2, ones(1,subj)*3];
 cfg.design(2,:)           = [1:subj, 1:subj, 1:subj];
 cfg.ivar                  = 1;
 cfg.uvar                  = 2;
-cfg_cbpt_gaze_loadquadratic_nback = cfg;
-[statT_gaze_quad_n] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_nback}, load4_gaze_cbpt{idx_nback}, load6_gaze_cbpt{idx_nback});
-statT_gaze_quad_n.stat(statT_gaze_quad_n.mask==0)=0;
+cfg_cbpt_gaze_loadquadratic_dec = cfg;
+[statT_gaze_quad_dec] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_dec}, load4_gaze_cbpt{idx_dec}, load6_gaze_cbpt{idx_dec});
+statT_gaze_quad_dec.stat(statT_gaze_quad_dec.mask==0)=0;
 %% plot
 cfg = [];
 cfg.zlim = [-0.5 0.5];
@@ -1036,11 +1036,11 @@ cfg.xlim = [0 800];
 cfg.ylim = [0 600];
 cfg.figure = 'gcf';
 figure('Position', [0 0 1512/2 982], 'Color', 'w');
-subplot(2,1,1); ft_singleplotTFR(cfg,statT_gaze_quad); title('Amplification: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
+subplot(2,1,1); ft_singleplotTFR(cfg,statT_gaze_quad_inc); title('Increasing slope: Quadratic load trend', 'FontSize', fontSize, 'Interpreter', 'none');
 ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]); hold(ax, 'on'); plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k'); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 
-subplot(2,1,2); ft_singleplotTFR(cfg,statT_gaze_quad_n); title('Reduction: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
+subplot(2,1,2); ft_singleplotTFR(cfg,statT_gaze_quad_dec); title('Decreasing slope: Quadratic load trend', 'FontSize', fontSize, 'Interpreter', 'none');
 ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]); hold(ax, 'on'); plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k'); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 colormap(gcf, color_map); drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadQuadratic.png'));
@@ -1078,13 +1078,13 @@ for i = 1:nSubj
 end
 %%
 % Reaction Time example
-sb2 = RT2(idx_jensen);
-sb4 = RT4(idx_jensen);
-sb6 = RT6(idx_jensen);
+rt_inc_2 = RT2(idx_inc);
+rt_inc_4 = RT4(idx_inc);
+rt_inc_6 = RT6(idx_inc);
 
-nb1 = RT2(idx_nback);
-nb2 = RT4(idx_nback);
-nb3 = RT6(idx_nback);
+rt_dec_2 = RT2(idx_dec);
+rt_dec_4 = RT4(idx_dec);
+rt_dec_6 = RT6(idx_dec);
 
 %%
 figure('Position', [0 0 1512 982], 'Color', 'w');
@@ -1099,41 +1099,41 @@ cond_cols = [0 0 0; 0 0 1; 1 0 0];
 
 % LEFT: alpha increase group
 subplot(2,2,1);
-plot_split_raincloud_triplet({sb2, sb4, sb6}, positions, cond_cols, [0 1.5], ...
-    'Reaction Time [s]', sprintf('Increase (N=%d)', sum(idx_jensen)), ...
+plot_split_raincloud_triplet({rt_inc_2, rt_inc_4, rt_inc_6}, positions, cond_cols, [0 1.5], ...
+    'Reaction Time [s]', sprintf('Increase (N=%d)', sum(idx_inc)), ...
     18, density_scale, density_offset, box_offset, box_w);
 
 % RIGHT: alpha decrease group
 subplot(2,2,2);
-plot_split_raincloud_triplet({nb1, nb2, nb3}, positions, cond_cols, [0 1.5], ...
-    'Reaction Time [s]', sprintf('Decrease (N=%d)', sum(idx_nback)), ...
+plot_split_raincloud_triplet({rt_dec_2, rt_dec_4, rt_dec_6}, positions, cond_cols, [0 1.5], ...
+    'Reaction Time [s]', sprintf('Decrease (N=%d)', sum(idx_dec)), ...
     18, density_scale, density_offset, box_offset, box_w);
 set(gcf,'color','w');
 
 %% Accuracy example
-sb2 = ACC2(idx_jensen);
-sb4 = ACC4(idx_jensen);
-sb6 = ACC6(idx_jensen);
+acc_inc_2 = ACC2(idx_inc);
+acc_inc_4 = ACC4(idx_inc);
+acc_inc_6 = ACC6(idx_inc);
 
-nb1 = ACC2(idx_nback);
-nb2 = ACC4(idx_nback);
-nb3 = ACC6(idx_nback);
+acc_dec_2 = ACC2(idx_dec);
+acc_dec_4 = ACC4(idx_dec);
+acc_dec_6 = ACC6(idx_dec);
 
 % remove NaNs (important!)
-sb2 = sb2(~isnan(sb2)); sb4 = sb4(~isnan(sb4)); sb6 = sb6(~isnan(sb6));
-nb1 = nb1(~isnan(nb1)); nb2 = nb2(~isnan(nb2)); nb3 = nb3(~isnan(nb3));
+acc_inc_2 = acc_inc_2(~isnan(acc_inc_2)); acc_inc_4 = acc_inc_4(~isnan(acc_inc_4)); acc_inc_6 = acc_inc_6(~isnan(acc_inc_6));
+acc_dec_2 = acc_dec_2(~isnan(acc_dec_2)); acc_dec_4 = acc_dec_4(~isnan(acc_dec_4)); acc_dec_6 = acc_dec_6(~isnan(acc_dec_6));
 
 %%
 % ================= LEFT: alpha increase =================
 subplot(2,2,3);
-plot_split_raincloud_triplet({sb2, sb4, sb6}, positions, cond_cols, [50 110], ...
-    'Accuracy [%]', sprintf('Increase (N=%d)', sum(idx_jensen)), ...
+plot_split_raincloud_triplet({acc_inc_2, acc_inc_4, acc_inc_6}, positions, cond_cols, [50 110], ...
+    'Accuracy [%]', sprintf('Increase (N=%d)', sum(idx_inc)), ...
     18, density_scale, density_offset, box_offset, box_w);
 
 % ================= RIGHT: alpha decrease =================
 subplot(2,2,4);
-plot_split_raincloud_triplet({nb1, nb2, nb3}, positions, cond_cols, [50 110], ...
-    'Accuracy [%]', sprintf('Decrease (N=%d)', sum(idx_nback)), ...
+plot_split_raincloud_triplet({acc_dec_2, acc_dec_4, acc_dec_6}, positions, cond_cols, [50 110], ...
+    'Accuracy [%]', sprintf('Decrease (N=%d)', sum(idx_dec)), ...
     18, density_scale, density_offset, box_offset, box_w);
 
 set(gcf,'color','w');
@@ -1182,9 +1182,9 @@ ACC = [];
 
 for i = 1:nSubj
 
-    if idx_jensen(i)
+    if idx_inc(i)
         g = 1;
-    elseif idx_nback(i)
+    elseif idx_dec(i)
         g = -1;
     else
         continue
@@ -1205,7 +1205,7 @@ end
 tbl = table(Subject, Load, Group, RT, ACC);
 
 tbl.Subject = categorical(tbl.Subject);
-tbl.Group   = categorical(tbl.Group);
+tbl.Group   = categorical(tbl.Group, [1 -1], {'inc' 'dec'});
 
 %% ================= LME ANALYSIS =================
 disp('--- RT model ---')
@@ -1224,38 +1224,38 @@ delta_RT = 0.05;   % 50 ms
 delta_ACC = 5;     % 5%
 
 % Use one independent value per subject (mean across loads) for between-group TOST.
-RT_jensen = mean([RT2(idx_jensen), RT4(idx_jensen), RT6(idx_jensen)], 2, 'omitnan');
-RT_nback  = mean([RT2(idx_nback),  RT4(idx_nback),  RT6(idx_nback)], 2, 'omitnan');
+RT_inc = mean([RT2(idx_inc), RT4(idx_inc), RT6(idx_inc)], 2, 'omitnan');
+RT_dec  = mean([RT2(idx_dec),  RT4(idx_dec),  RT6(idx_dec)], 2, 'omitnan');
 
-ACC_jensen = mean([ACC2(idx_jensen), ACC4(idx_jensen), ACC6(idx_jensen)], 2, 'omitnan');
-ACC_nback  = mean([ACC2(idx_nback),  ACC4(idx_nback),  ACC6(idx_nback)], 2, 'omitnan');
+ACC_inc = mean([ACC2(idx_inc), ACC4(idx_inc), ACC6(idx_inc)], 2, 'omitnan');
+ACC_dec  = mean([ACC2(idx_dec),  ACC4(idx_dec),  ACC6(idx_dec)], 2, 'omitnan');
 
 fprintf('\n--- TOST (strict) ---\n')
 
-[p1, p2, eq_RT] = tost_welch(RT_jensen, RT_nback, delta_RT);
+[p1, p2, eq_RT] = tost_welch(RT_inc, RT_dec, delta_RT);
 fprintf('RT equivalence: p1=%.4f, p2=%.4f, equivalent=%d\n', p1, p2, eq_RT);
 
-[p1, p2, eq_ACC] = tost_welch(ACC_jensen, ACC_nback, delta_ACC);
+[p1, p2, eq_ACC] = tost_welch(ACC_inc, ACC_dec, delta_ACC);
 fprintf('ACC equivalence: p1=%.4f, p2=%.4f, equivalent=%d\n', p1, p2, eq_ACC);
 
 %% ================= RT SENSITIVITY =================
 fprintf('\n--- RT equivalence sensitivity ---\n')
 
-[p1, p2, eq] = tost_welch(RT_jensen, RT_nback, 0.05);
+[p1, p2, eq] = tost_welch(RT_inc, RT_dec, 0.05);
 fprintf('RT delta=0.05: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
-[p1, p2, eq] = tost_welch(RT_jensen, RT_nback, 0.1);
+[p1, p2, eq] = tost_welch(RT_inc, RT_dec, 0.1);
 fprintf('RT delta=0.10: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
-[p1, p2, eq] = tost_welch(RT_jensen, RT_nback, 0.15);
+[p1, p2, eq] = tost_welch(RT_inc, RT_dec, 0.15);
 fprintf('RT delta=0.15: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
 
 %% ================= ACC ROBUSTNESS =================
 fprintf('\n--- ACC robustness ---\n')
 
-[p1, p2, eq] = tost_welch(ACC_jensen, ACC_nback, 3);
+[p1, p2, eq] = tost_welch(ACC_inc, ACC_dec, 3);
 fprintf('ACC delta=3: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
-[p1, p2, eq] = tost_welch(ACC_jensen, ACC_nback, 5);
+[p1, p2, eq] = tost_welch(ACC_inc, ACC_dec, 5);
 fprintf('ACC delta=5: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
-[p1, p2, eq] = tost_welch(ACC_jensen, ACC_nback, 10);
+[p1, p2, eq] = tost_welch(ACC_inc, ACC_dec, 10);
 fprintf('ACC delta=10: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
 
 %% ================= MIXED-EFFECTS EQUIVALENCE =================

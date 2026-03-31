@@ -412,15 +412,24 @@ allgazetasklate2 = gaze_dwell_time.allgazetasklate2;
 allgazetasklate4 = gaze_dwell_time.allgazetasklate4;
 allgazetasklate6 = gaze_dwell_time.allgazetasklate6;
 
-% Keep full-resolution maps for visualization.
-% Use downsampled copies only for permutation stats to avoid OOM.
-gaze_cbpt_bins = 200;
-allgazebase2_cbpt = downsample_gaze_cells_powspctrm(allgazebase2, gaze_cbpt_bins);
-allgazebase4_cbpt = downsample_gaze_cells_powspctrm(allgazebase4, gaze_cbpt_bins);
-allgazebase6_cbpt = downsample_gaze_cells_powspctrm(allgazebase6, gaze_cbpt_bins);
-allgazetasklate2_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate2, gaze_cbpt_bins);
-allgazetasklate4_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate4, gaze_cbpt_bins);
-allgazetasklate6_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate6, gaze_cbpt_bins);
+% CBPT inputs only: true = spatially downsample (default; less memory/time); false = full bin grid like descriptive maps.
+cbpt_gaze_downsample = true;
+gaze_cbpt_bins = 500;
+if cbpt_gaze_downsample
+    allgazebase2_cbpt = downsample_gaze_cells_powspctrm(allgazebase2, gaze_cbpt_bins);
+    allgazebase4_cbpt = downsample_gaze_cells_powspctrm(allgazebase4, gaze_cbpt_bins);
+    allgazebase6_cbpt = downsample_gaze_cells_powspctrm(allgazebase6, gaze_cbpt_bins);
+    allgazetasklate2_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate2, gaze_cbpt_bins);
+    allgazetasklate4_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate4, gaze_cbpt_bins);
+    allgazetasklate6_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate6, gaze_cbpt_bins);
+else
+    allgazebase2_cbpt = allgazebase2;
+    allgazebase4_cbpt = allgazebase4;
+    allgazebase6_cbpt = allgazebase6;
+    allgazetasklate2_cbpt = allgazetasklate2;
+    allgazetasklate4_cbpt = allgazetasklate4;
+    allgazetasklate6_cbpt = allgazetasklate6;
+end
 
 %% Baseline (subtraction: tasklate - baseline)
 disp('BASELINING GAZE DATA (SUBTRACTION)')
@@ -435,9 +444,15 @@ for subj = 1:length(allgazebase6)
     load4_gaze{subj}.powspctrm = allgazetasklate4{subj}.powspctrm - allgazebase4{subj}.powspctrm;
     load6_gaze{subj}.powspctrm = allgazetasklate6{subj}.powspctrm - allgazebase6{subj}.powspctrm;
 end
-load2_gaze_cbpt = downsample_gaze_cells_powspctrm(load2_gaze, gaze_cbpt_bins);
-load4_gaze_cbpt = downsample_gaze_cells_powspctrm(load4_gaze, gaze_cbpt_bins);
-load6_gaze_cbpt = downsample_gaze_cells_powspctrm(load6_gaze, gaze_cbpt_bins);
+if cbpt_gaze_downsample
+    load2_gaze_cbpt = downsample_gaze_cells_powspctrm(load2_gaze, gaze_cbpt_bins);
+    load4_gaze_cbpt = downsample_gaze_cells_powspctrm(load4_gaze, gaze_cbpt_bins);
+    load6_gaze_cbpt = downsample_gaze_cells_powspctrm(load6_gaze, gaze_cbpt_bins);
+else
+    load2_gaze_cbpt = load2_gaze;
+    load4_gaze_cbpt = load4_gaze;
+    load6_gaze_cbpt = load6_gaze;
+end
 
 %% Compute gaze grand average
 disp(upper('Computing gaze grand average...'))
@@ -574,16 +589,13 @@ drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR.png'));
 
 %% Compute CBPT stats: paired baseline-vs-task tests separately for each load (2/4/6) and each subgroup (increase vs decrease)
 clc
-% Six CBPT maps are tested here (3 loads x 2 groups).
-% Use a family-wise corrected alpha across this test family.
-family_alpha = 0.05;
-n_cbpt_tests_taskVsBase = 6;
-alpha_cbpt_taskVsBase = family_alpha / n_cbpt_tests_taskVsBase;
+% Six CBPT maps (3 loads x 2 groups); alpha = 0.05 per map (same as occ_split_stern_up_down_with_load.m).
+alpha_cbpt_taskVsBase = 0.05;
 
 cfg                  = [];
 cfg.spmversion       = 'spm12';
 cfg.method           = 'montecarlo';
-cfg.statistic        = 'ft_statfun_depsamplesT';  % paired: baseline vs task
+cfg.statistic        = 'ft_statfun_diff';  % paired mean difference, task vs baseline (same as supervisor script)
 cfg.clusterthreshold = 'nonparametric_common';
 cfg.correctm         = 'cluster';
 cfg.clusteralpha     = 0.05;
@@ -615,10 +627,6 @@ design_cbpt_gaze_taskVsBase_jensen = design;
 clc; disp(upper('[stat_inc_2 JENSEN]')); [stat_inc_2] = ft_freqstatistics(cfg, allgazetasklate2_cbpt{idx_jensen},allgazebase2_cbpt{idx_jensen});
 clc; disp(upper('[stat_inc_4 JENSEN]')); [stat_inc_4] = ft_freqstatistics(cfg, allgazetasklate4_cbpt{idx_jensen},allgazebase4_cbpt{idx_jensen});
 clc; disp(upper('[stat_inc_6 JENSEN]')); [stat_inc_6] = ft_freqstatistics(cfg, allgazetasklate6_cbpt{idx_jensen},allgazebase6_cbpt{idx_jensen});
-% Convert paired t-statistics to effect size Cohen's d (dependent samples).
-stat_inc_2.stat = stat_inc_2.stat ./ sqrt(subj);
-stat_inc_4.stat = stat_inc_4.stat ./ sqrt(subj);
-stat_inc_6.stat = stat_inc_6.stat ./ sqrt(subj);
 % Hide non-significant pixels in visualization
 stat_inc_2.stat(stat_inc_2.mask==0) = NaN;
 stat_inc_4.stat(stat_inc_4.mask==0) = NaN;
@@ -643,10 +651,6 @@ design_cbpt_gaze_taskVsBase_nback = design;
 clc; disp(upper('[stat_inc_n_2 N-back]')); [stat_inc_n_2] = ft_freqstatistics(cfg, allgazetasklate2_cbpt{idx_nback},allgazebase2_cbpt{idx_nback});
 clc; disp(upper('[stat_inc_n_4 N-back]')); [stat_inc_n_4] = ft_freqstatistics(cfg, allgazetasklate4_cbpt{idx_nback},allgazebase4_cbpt{idx_nback});
 clc; disp(upper('[stat_inc_n_6 N-back]')); [stat_inc_n_6] = ft_freqstatistics(cfg, allgazetasklate6_cbpt{idx_nback},allgazebase6_cbpt{idx_nback});
-% Convert paired t-statistics to effect size Cohen's d (dependent samples).
-stat_inc_n_2.stat = stat_inc_n_2.stat ./ sqrt(subj);
-stat_inc_n_4.stat = stat_inc_n_4.stat ./ sqrt(subj);
-stat_inc_n_6.stat = stat_inc_n_6.stat ./ sqrt(subj);
 % Hide non-significant pixels in visualization
 stat_inc_n_2.stat(stat_inc_n_2.mask==0) = NaN;
 stat_inc_n_4.stat(stat_inc_n_4.mask==0) = NaN;
@@ -668,7 +672,6 @@ zlimAbs = max(abs(allStatVals));
 if isempty(allStatVals) || ~isfinite(zlimAbs) || zlimAbs <= 0
     zlimAbs = 1;
 end
-zlimAbs = 0.1
 cfg.zlim = [-zlimAbs zlimAbs];
 cfg.figure = 'gcf';
 
@@ -691,7 +694,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 'Effect size d';
+c.Label.String = 'Mean difference [a.u.]';
 c.Label.FontSize = 18;   % optional
 title('Amplification: WM Load 2', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -713,7 +716,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 'Effect size d';
+c.Label.String = 'Mean difference [a.u.]';
 c.Label.FontSize = 18;   % optional
 title('Amplification: WM Load 4', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -735,7 +738,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 'Effect size d';
+c.Label.String = 'Mean difference [a.u.]';
 c.Label.FontSize = 18;   % optional
 title('Amplification: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -758,7 +761,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 'Effect size d';
+c.Label.String = 'Mean difference [a.u.]';
 c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 2', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -780,7 +783,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 'Effect size d';
+c.Label.String = 'Mean difference [a.u.]';
 c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 4', 'FontSize', fontSize, 'Interpreter', 'none')
 
@@ -802,7 +805,7 @@ plot(400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 c = colorbar;
 c.LineWidth = 1;
 c.FontSize = 18;
-c.Label.String = 'Effect size d';
+c.Label.String = 'Mean difference [a.u.]';
 c.Label.FontSize = 18;   % optional
 title('Reduction: WM Load 6', 'FontSize', fontSize, 'Interpreter', 'none')
 colormap(customcolormap_preset('red-white-blue'));
@@ -1614,7 +1617,52 @@ cfg.channel = {'L-GAZE-X', 'L-GAZE-Y'};
 cfg.latency = latency;
 cfg.trials = trial_idx;
 sel = ft_selectdata(cfg, et);
+sel = preprocess_et_trials_remove_blinks(sel);
 freq_raw = compute_gaze_heatmap(sel, x_grid, y_grid, fsample, smoothing);
+end
+
+function sel = preprocess_et_trials_remove_blinks(sel)
+% Same blink pipeline as AOC_gaze_fex_sternberg.m: in-screen mask, Y inversion (600 - y),
+% then remove_blinks (100 ms window = 50 samples at 500 Hz). Column count is preserved.
+if isempty(sel.trial)
+    return
+end
+if exist('remove_blinks', 'file') ~= 2
+    error('remove_blinks.m not found on MATLAB path (add /functions).');
+end
+win_size = 50;
+for i = 1:numel(sel.trial)
+    data = sel.trial{i};
+    if isempty(data)
+        continue
+    end
+    data = data(1:2, :);
+    nS = size(data, 2);
+    if isfield(sel, 'time') && numel(sel.time) >= i && ~isempty(sel.time{i})
+        t = sel.time{i}(:)';
+    else
+        t = 1:nS;
+    end
+    if numel(t) ~= nS
+        L = min(nS, numel(t));
+        data = data(:, 1:L);
+        t = t(1:L);
+        nS = L;
+    end
+    valid = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
+    data = data(:, valid);
+    t = t(valid);
+    if isempty(data)
+        sel.trial{i} = zeros(2, 0);
+        sel.time{i} = zeros(1, 0);
+        continue
+    end
+    data(2, :) = 600 - data(2, :);
+    data3 = [data; zeros(1, size(data, 2))];
+    data3 = remove_blinks(data3, win_size);
+    sel.trial{i} = data3(1:2, :);
+    sel.time{i} = t;
+end
 end
 
 function freq_raw = compute_gaze_heatmap(data, x_grid, y_grid, fsample, smoothing)

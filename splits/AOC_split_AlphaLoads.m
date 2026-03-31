@@ -412,7 +412,7 @@ allgazetasklate2 = gaze_dwell_time.allgazetasklate2;
 allgazetasklate4 = gaze_dwell_time.allgazetasklate4;
 allgazetasklate6 = gaze_dwell_time.allgazetasklate6;
 
-% CBPT inputs only: true = spatially downsample (default; less memory/time); false = full bin grid like descriptive maps.
+% CBPT inputs spatially downsample (memory issues on server)
 cbpt_gaze_downsample = true;
 gaze_cbpt_bins = 500;
 if cbpt_gaze_downsample
@@ -1029,7 +1029,7 @@ cfg_cbpt_gaze_loadquadratic_nback = cfg;
 statT_gaze_quad_n.stat(statT_gaze_quad_n.mask==0)=0;
 %% plot
 cfg = [];
-cfg.zlim = [-0.05 0.05];
+cfg.zlim = [-0.5 0.5];
 cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline';
 cfg.xlim = [0 800];
 cfg.ylim = [0 600];
@@ -1171,9 +1171,6 @@ for i = 1:nSubj
     ACC4(i) = ACC(cond==4);
     ACC6(i) = ACC(cond==6);
 end
-
-%% ================= GROUPING =================
-% Group labels are already defined above using bootstrap slope CIs.
 
 %% ================= BUILD TABLE =================
 Subject = [];

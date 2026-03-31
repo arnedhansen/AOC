@@ -23,7 +23,7 @@ fig_dir = fullfile(base_data, 'figures', 'splits', 'SplitAlphaLoads');
 if ~isfolder(fig_dir)
     mkdir(fig_dir);
 end
-log_dir = fullfile(base_data, 'results', 'logs');
+log_dir = fullfile(base_data, 'data', 'controls', 'logs');
 if ~isfolder(log_dir)
     mkdir(log_dir);
 end
@@ -580,90 +580,77 @@ family_alpha = 0.05;
 n_cbpt_tests_taskVsBase = 6;
 alpha_cbpt_taskVsBase = family_alpha / n_cbpt_tests_taskVsBase;
 
-    cfg                  = [];
-    cfg.spmversion       = 'spm12';
-    cfg.method           = 'montecarlo';
-    cfg.statistic        = 'ft_statfun_depsamplesT';  % paired: baseline vs task
-    cfg.clusterthreshold = 'nonparametric_common';
-    cfg.correctm         = 'cluster';
-    cfg.clusteralpha     = 0.05;
-    cfg.clusterstatistic = 'maxsum';
-    cfg.tail             = 0;
-    cfg.clustertail      = 0;
-    cfg.alpha            = alpha_cbpt_taskVsBase;
-    cfg.correcttail      = 'alpha';
-    cfg.numrandomization = 1000;
+cfg                  = [];
+cfg.spmversion       = 'spm12';
+cfg.method           = 'montecarlo';
+cfg.statistic        = 'ft_statfun_depsamplesT';  % paired: baseline vs task
+cfg.clusterthreshold = 'nonparametric_common';
+cfg.correctm         = 'cluster';
+cfg.clusteralpha     = 0.05;
+cfg.clusterstatistic = 'maxsum';
+cfg.tail             = 0;
+cfg.clustertail      = 0;
+cfg.alpha            = alpha_cbpt_taskVsBase;
+cfg.correcttail      = 'alpha';
+cfg.numrandomization = 1000;
 
-    cfg.neighbours=[];
-    clear design
-    subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
-    design = zeros(2,2*subj);
-    for i = 1:subj
-        design(1,i) = i;
-    end
-    for i = 1:subj
-        design(1,subj+i) = i;
-    end
-    design(2,1:subj)        = 1;
-    design(2,subj+1:2*subj) = 2;
+cfg.neighbours=[];
+clear design
+subj = numel(ga2jensen_gaze.powspctrm(:,1,1,1));
+design = zeros(2,2*subj);
+for i = 1:subj
+    design(1,i) = i;
+end
+for i = 1:subj
+    design(1,subj+i) = i;
+end
+design(2,1:subj)        = 1;
+design(2,subj+1:2*subj) = 2;
 
-    cfg.design   = design;
-    cfg.uvar     = 1;
-    cfg.ivar     = 2;
-    cfg_cbpt_gaze_taskVsBase_jensen = cfg;
-    design_cbpt_gaze_taskVsBase_jensen = design;
-    clc; disp(upper('[stat_inc_2 JENSEN]')); [stat_inc_2] = ft_freqstatistics(cfg, allgazetasklate2_cbpt{idx_jensen},allgazebase2_cbpt{idx_jensen});
-    clc; disp(upper('[stat_inc_4 JENSEN]')); [stat_inc_4] = ft_freqstatistics(cfg, allgazetasklate4_cbpt{idx_jensen},allgazebase4_cbpt{idx_jensen});
-    clc; disp(upper('[stat_inc_6 JENSEN]')); [stat_inc_6] = ft_freqstatistics(cfg, allgazetasklate6_cbpt{idx_jensen},allgazebase6_cbpt{idx_jensen});
-    % Convert paired t-statistics to effect size Cohen's d (dependent samples).
-    stat_inc_2.stat = stat_inc_2.stat ./ sqrt(subj);
-    stat_inc_4.stat = stat_inc_4.stat ./ sqrt(subj);
-    stat_inc_6.stat = stat_inc_6.stat ./ sqrt(subj);
-    % Hide non-significant pixels in visualization
-    stat_inc_2.stat(stat_inc_2.mask==0) = NaN;
-    stat_inc_4.stat(stat_inc_4.mask==0) = NaN;
-    stat_inc_6.stat(stat_inc_6.mask==0) = NaN;
+cfg.design   = design;
+cfg.uvar     = 1;
+cfg.ivar     = 2;
+cfg_cbpt_gaze_taskVsBase_jensen = cfg;
+design_cbpt_gaze_taskVsBase_jensen = design;
+clc; disp(upper('[stat_inc_2 JENSEN]')); [stat_inc_2] = ft_freqstatistics(cfg, allgazetasklate2_cbpt{idx_jensen},allgazebase2_cbpt{idx_jensen});
+clc; disp(upper('[stat_inc_4 JENSEN]')); [stat_inc_4] = ft_freqstatistics(cfg, allgazetasklate4_cbpt{idx_jensen},allgazebase4_cbpt{idx_jensen});
+clc; disp(upper('[stat_inc_6 JENSEN]')); [stat_inc_6] = ft_freqstatistics(cfg, allgazetasklate6_cbpt{idx_jensen},allgazebase6_cbpt{idx_jensen});
+% Convert paired t-statistics to effect size Cohen's d (dependent samples).
+stat_inc_2.stat = stat_inc_2.stat ./ sqrt(subj);
+stat_inc_4.stat = stat_inc_4.stat ./ sqrt(subj);
+stat_inc_6.stat = stat_inc_6.stat ./ sqrt(subj);
+% Hide non-significant pixels in visualization
+stat_inc_2.stat(stat_inc_2.mask==0) = NaN;
+stat_inc_4.stat(stat_inc_4.mask==0) = NaN;
+stat_inc_6.stat(stat_inc_6.mask==0) = NaN;
 
-    subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
-    design = zeros(2,2*subj);
-    for i = 1:subj
-        design(1,i) = i;
-    end
-    for i = 1:subj
-        design(1,subj+i) = i;
-    end
-    design(2,1:subj)        = 1;
-    design(2,subj+1:2*subj) = 2;
+subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
+design = zeros(2,2*subj);
+for i = 1:subj
+    design(1,i) = i;
+end
+for i = 1:subj
+    design(1,subj+i) = i;
+end
+design(2,1:subj)        = 1;
+design(2,subj+1:2*subj) = 2;
 
-    cfg.design   = design;
-    cfg.uvar     = 1;
-    cfg.ivar     = 2;
-    cfg_cbpt_gaze_taskVsBase_nback = cfg;
-    design_cbpt_gaze_taskVsBase_nback = design;
-    clc; disp(upper('[stat_inc_n_2 N-back]')); [stat_inc_n_2] = ft_freqstatistics(cfg, allgazetasklate2_cbpt{idx_nback},allgazebase2_cbpt{idx_nback});
-    clc; disp(upper('[stat_inc_n_4 N-back]')); [stat_inc_n_4] = ft_freqstatistics(cfg, allgazetasklate4_cbpt{idx_nback},allgazebase4_cbpt{idx_nback});
-    clc; disp(upper('[stat_inc_n_6 N-back]')); [stat_inc_n_6] = ft_freqstatistics(cfg, allgazetasklate6_cbpt{idx_nback},allgazebase6_cbpt{idx_nback});
-    % Convert paired t-statistics to effect size Cohen's d (dependent samples).
-    stat_inc_n_2.stat = stat_inc_n_2.stat ./ sqrt(subj);
-    stat_inc_n_4.stat = stat_inc_n_4.stat ./ sqrt(subj);
-    stat_inc_n_6.stat = stat_inc_n_6.stat ./ sqrt(subj);
-    % Hide non-significant pixels in visualization
-    stat_inc_n_2.stat(stat_inc_n_2.mask==0) = NaN;
-    stat_inc_n_4.stat(stat_inc_n_4.mask==0) = NaN;
-    stat_inc_n_6.stat(stat_inc_n_6.mask==0) = NaN;
-
-
-% cohensd=((stat_inc_2.stat)./sqrt(subj));
-% stat_inc_2.stat=cohensd;
-% stat_inc_2.stat(stat_inc_2.mask==0)=0;% set everything not relevant to zero
-%
-% cohensd=((stat_inc_4.stat)./sqrt(subj));
-% stat_inc_4.stat=cohensd;
-% stat_inc_4.stat(stat_inc_4.mask==0)=0;% set everything not relevant to zero
-%
-% cohensd=((stat_inc_6.stat)./sqrt(subj));
-% stat_inc_6.stat=cohensd;
-% stat_inc_6.stat(stat_inc_6.mask==0)=0;% set everything not relevant to zero
+cfg.design   = design;
+cfg.uvar     = 1;
+cfg.ivar     = 2;
+cfg_cbpt_gaze_taskVsBase_nback = cfg;
+design_cbpt_gaze_taskVsBase_nback = design;
+clc; disp(upper('[stat_inc_n_2 N-back]')); [stat_inc_n_2] = ft_freqstatistics(cfg, allgazetasklate2_cbpt{idx_nback},allgazebase2_cbpt{idx_nback});
+clc; disp(upper('[stat_inc_n_4 N-back]')); [stat_inc_n_4] = ft_freqstatistics(cfg, allgazetasklate4_cbpt{idx_nback},allgazebase4_cbpt{idx_nback});
+clc; disp(upper('[stat_inc_n_6 N-back]')); [stat_inc_n_6] = ft_freqstatistics(cfg, allgazetasklate6_cbpt{idx_nback},allgazebase6_cbpt{idx_nback});
+% Convert paired t-statistics to effect size Cohen's d (dependent samples).
+stat_inc_n_2.stat = stat_inc_n_2.stat ./ sqrt(subj);
+stat_inc_n_4.stat = stat_inc_n_4.stat ./ sqrt(subj);
+stat_inc_n_6.stat = stat_inc_n_6.stat ./ sqrt(subj);
+% Hide non-significant pixels in visualization
+stat_inc_n_2.stat(stat_inc_n_2.mask==0) = NaN;
+stat_inc_n_4.stat(stat_inc_n_4.mask==0) = NaN;
+stat_inc_n_6.stat(stat_inc_n_6.mask==0) = NaN;
 
 %% Plot CBPT Raw Stats
 stat_inc_n_2.cfg=[];
@@ -675,12 +662,13 @@ cfg.parameter = 'stat';
 cfg.maskparameter = 'mask';
 cfg.maskstyle        = 'outline';
 allStatVals = [stat_inc_2.stat(:); stat_inc_4.stat(:); stat_inc_6.stat(:); ...
-               stat_inc_n_2.stat(:); stat_inc_n_4.stat(:); stat_inc_n_6.stat(:)];
+    stat_inc_n_2.stat(:); stat_inc_n_4.stat(:); stat_inc_n_6.stat(:)];
 allStatVals = allStatVals(isfinite(allStatVals));
 zlimAbs = max(abs(allStatVals));
 if isempty(allStatVals) || ~isfinite(zlimAbs) || zlimAbs <= 0
     zlimAbs = 1;
 end
+zlimAbs = 0.1
 cfg.zlim = [-zlimAbs zlimAbs];
 cfg.figure = 'gcf';
 
@@ -846,29 +834,29 @@ cfg_cbpt_gaze_omnibus_jensen = cfg;
 [statF_gaze] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_jensen}, load4_gaze_cbpt{idx_jensen}, load6_gaze_cbpt{idx_jensen});
 statF_gaze.stat(statF_gaze.mask==0)=0;% set everything not relevant to zero
 
-    cfg                  = [];
-    cfg.method           = 'montecarlo';
-    cfg.statistic        = 'ft_statfun_depsamplesFunivariate';
+cfg                  = [];
+cfg.method           = 'montecarlo';
+cfg.statistic        = 'ft_statfun_depsamplesFunivariate';
 
-    cfg.correctm         = 'cluster';
-    cfg.clusteralpha     = 0.05;
+cfg.correctm         = 'cluster';
+cfg.clusteralpha     = 0.05;
 
-    cfg.clusterstatistic = 'maxsum';
+cfg.clusterstatistic = 'maxsum';
 
-    cfg.tail             = 1;
-    cfg.clustertail      = cfg.tail;
-    cfg.alpha            = 0.05;
-    cfg.numrandomization = 1000;
+cfg.tail             = 1;
+cfg.clustertail      = cfg.tail;
+cfg.alpha            = 0.05;
+cfg.numrandomization = 1000;
 
-    subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
-    n_2  = subj;
-    n_4  = subj;
-    n_6 =  subj;
+subj = numel(ga2nback_gaze.powspctrm(:,1,1,1));
+n_2  = subj;
+n_4  = subj;
+n_6 =  subj;
 
-    cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
-    cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
-    cfg.ivar                  = 1;
-    cfg.uvar                  = 2;
+cfg.design(1,:)           = [ones(1,n_2), ones(1,n_4)*2,ones(1,n_6)*3];
+cfg.design(2,:)           = [1:n_2,1:n_4, 1:n_6];
+cfg.ivar                  = 1;
+cfg.uvar                  = 2;
 cfg_cbpt_gaze_omnibus_nback = cfg;
 [statF_gaze_n] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_nback}, load4_gaze_cbpt{idx_nback}, load6_gaze_cbpt{idx_nback});
 statF_gaze_n.stat(statF_gaze_n.mask==0)=0;% set everything not relevant to zero
@@ -991,7 +979,6 @@ ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]); h
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 colormap(gcf, color_map); drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadTrend.png'));
 
-
 %% ---------------- Quadratic load trend ----------------
 disp(upper('Computing quadratic load trend...'))
 cfg                  = [];
@@ -1038,18 +1025,21 @@ cfg_cbpt_gaze_loadquadratic_nback = cfg;
 [statT_gaze_quad_n] = ft_freqstatistics(cfg, load2_gaze_cbpt{idx_nback}, load4_gaze_cbpt{idx_nback}, load6_gaze_cbpt{idx_nback});
 statT_gaze_quad_n.stat(statT_gaze_quad_n.mask==0)=0;
 %% plot
-cfg = []; cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline'; cfg.zlim = [-5 5]; cfg.xlim = [0 800]; cfg.ylim = [0 600]; cfg.figure = 'gcf';
+cfg = [];
+cfg.zlim = [-0.05 0.05];
+cfg.parameter = 'stat'; cfg.maskparameter = 'mask'; cfg.maskstyle = 'outline';
+cfg.xlim = [0 800];
+cfg.ylim = [0 600];
+cfg.figure = 'gcf';
 figure('Position', [0 0 1512/2 982], 'Color', 'w');
-subplot(1,2,1); ft_singleplotTFR(cfg,statT_gaze_quad); title('Amplification: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
+subplot(2,1,1); ft_singleplotTFR(cfg,statT_gaze_quad); title('Amplification: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
 ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]); hold(ax, 'on'); plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k'); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 
-subplot(1,2,2); ft_singleplotTFR(cfg,statT_gaze_quad_n); title('Reduction: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
+subplot(2,1,2); ft_singleplotTFR(cfg,statT_gaze_quad_n); title('Reduction: Quadratic Load Trend', 'FontSize', fontSize, 'Interpreter', 'none');
 ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]); hold(ax, 'on'); plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k'); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 colormap(gcf, color_map); drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadQuadratic.png'));
-
-clear statT_gaze_quad statT_gaze_quad_n
 
 %% Behavioral data
 behav_file = fullfile(feat_dir, 'AOC_behavioral_matrix_sternberg.mat');

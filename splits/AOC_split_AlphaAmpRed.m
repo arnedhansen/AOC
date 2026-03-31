@@ -387,9 +387,18 @@ color_map_tfr = customcolormap_preset('red-white-blue');
 plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, ...
     color_map_tfr, fig_dir, fig_pos, fontSize, tfr_winsor_cfg);
 
+%% TFRs collapsed over conditions (both groups)
+fprintf('\n=== Plotting collapsed TFRs (across conditions) ===\n');
+plot_group_tfrs_collapsed(tfr_red, tfr_amp, channels, headmodel, color_map_tfr, ...
+    fig_dir, fig_pos, fontSize, tfr_winsor_cfg);
+
 %% Topoplots per condition (both groups + differences)
 fprintf('\n=== Plotting topoplots ===\n');
 plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, fig_dir, fig_pos, fontSize);
+
+%% Topoplots collapsed over conditions (both groups)
+fprintf('\n=== Plotting collapsed topoplots (across conditions) ===\n');
+plot_group_topos_collapsed(pow_red, pow_amp, channels, headmodel, fig_dir, fig_pos, fontSize);
 
 %% Rainclouds
 fprintf('\n=== Plotting rainclouds ===\n');
@@ -1046,6 +1055,163 @@ for c = 1:3
     title(ax, sprintf('Amplification - %s', cond_labels{c}), 'Interpreter', 'none');
 end
 saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_topo_all.png'));
+close(gcf);
+end
+
+function plot_group_tfrs_collapsed(tfr_red, tfr_amp, channels, headmodel, color_map, fig_dir, fig_pos, fsz, winsor_cfg)
+if any(cellfun(@isempty, tfr_red)) || any(cellfun(@isempty, tfr_amp))
+    warning('Skipping collapsed TFR plot (incomplete condition data).');
+    return
+end
+
+if nargin < 9 || isempty(winsor_cfg)
+    winsor_cfg = struct('enable', false, 'prctile', [2 98]);
+end
+
+% Pool all subject-level TFRs across conditions within each group.
+tfr_red_all = [tfr_red{1}, tfr_red{2}, tfr_red{3}];
+tfr_amp_all = [tfr_amp{1}, tfr_amp{2}, tfr_amp{3}];
+if isempty(tfr_red_all) || isempty(tfr_amp_all)
+    warning('Skipping collapsed TFR plot (no pooled TFR data).');
+    return
+end
+
+cfg = [];
+cfg.keepindividual = 'yes';
+ga_red = ft_freqgrandaverage(cfg, tfr_red_all{:});
+ga_amp = ft_freqgrandaverage(cfg, tfr_amp_all{:});
+if winsor_cfg.enable
+    ga_red = winsorize_freq_subjects(ga_red, winsor_cfg.prctile);
+    ga_amp = winsorize_freq_subjects(ga_amp, winsor_cfg.prctile);
+end
+
+[~, ch_idx] = ismember(channels, ga_red.label);
+ch_idx = ch_idx(ch_idx > 0);
+if isempty(ch_idx)
+    warning('Skipping collapsed TFR plot (none of requested channels found).');
+    return
+end
+freq_idx = ga_red.freq >= 5 & ga_red.freq <= 30;
+time_idx = ga_red.time >= -0.5 & ga_red.time <= 3;
+Ared = mean_over_channels_tfr(ga_red, ch_idx);
+Aamp = mean_over_channels_tfr(ga_amp, ch_idx);
+mx = max([max(abs(Ared(freq_idx, time_idx)), [], 'all'), max(abs(Aamp(freq_idx, time_idx)), [], 'all')]);
+if ~isfinite(mx) || mx <= 0
+    mx = 0.1;
+end
+clim_abs = [-0.9 * mx, 0.9 * mx];
+
+cfg = [];
+cfg.channel = channels;
+cfg.colorbar = 'no';
+cfg.zlim = 'maxabs';
+cfg.xlim = [-0.5 3];
+cfg.ylim = [5 30];
+cfg.layout = headmodel.layANThead;
+
+fsz_tfr = round(fsz * 0.8);
+figure('Position', fig_pos, 'Color', 'w');
+ax = subplot(1, 2, 1);
+cfg.figure = ax;
+ft_singleplotTFR(cfg, ga_red);
+colormap(ax, color_map);
+set(ax, 'CLim', clim_abs);
+cbar = colorbar(ax);
+xlabel(ax, 'Time [s]', 'FontSize', fsz_tfr);
+ylabel(ax, 'Frequency [Hz]', 'FontSize', fsz_tfr);
+set(ax, 'FontSize', fsz_tfr);
+cbar.FontSize = fsz_tfr - 4;
+cbar.Label.String = 'Power [dB]';
+cbar.Label.FontSize = fsz_tfr;
+title(ax, 'Reduction - collapsed over conditions', 'FontSize', fsz_tfr, 'Interpreter', 'none');
+
+ax = subplot(1, 2, 2);
+cfg.figure = ax;
+ft_singleplotTFR(cfg, ga_amp);
+colormap(ax, color_map);
+set(ax, 'CLim', clim_abs);
+cbar = colorbar(ax);
+xlabel(ax, 'Time [s]', 'FontSize', fsz_tfr);
+ylabel(ax, 'Frequency [Hz]', 'FontSize', fsz_tfr);
+set(ax, 'FontSize', fsz_tfr);
+cbar.FontSize = fsz_tfr - 4;
+cbar.Label.String = 'Power [dB]';
+cbar.Label.FontSize = fsz_tfr;
+title(ax, 'Amplification - collapsed over conditions', 'FontSize', fsz_tfr, 'Interpreter', 'none');
+
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_tfr_collapsedConditions.png'));
+close(gcf);
+end
+
+function plot_group_topos_collapsed(pow_red, pow_amp, channels, headmodel, fig_dir, fig_pos, fsz)
+if any(cellfun(@isempty, pow_red)) || any(cellfun(@isempty, pow_amp))
+    warning('Skipping collapsed topoplots (missing power data).');
+    return
+end
+
+% Pool all subject-level power spectra across conditions within each group.
+pow_red_all = [pow_red{1}, pow_red{2}, pow_red{3}];
+pow_amp_all = [pow_amp{1}, pow_amp{2}, pow_amp{3}];
+if isempty(pow_red_all) || isempty(pow_amp_all)
+    warning('Skipping collapsed topoplots (no pooled power data).');
+    return
+end
+
+ga_red = ft_freqgrandaverage([], pow_red_all{:});
+ga_amp = ft_freqgrandaverage([], pow_amp_all{:});
+
+cfg = [];
+cfg.layout = headmodel.layANThead;
+allch = cfg.layout.label;
+cfg.channel = allch(1:end-2);
+cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M1'));
+cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M2'));
+cfg.marker = 'off';
+cfg.highlight = 'on';
+cfg.highlightchannel = channels;
+cfg.highlightsymbol = '.';
+cfg.highlightsize = 10;
+cfg.figure = 'gcf';
+cfg.gridscale = 300;
+cfg.comment = 'no';
+cfg.xlim = [8 14];
+cfg.colormap = rdbu_cmap(64);
+
+freq_idx = ga_red.freq >= 8 & ga_red.freq <= 14;
+Ared = mean(ga_red.powspctrm(:, freq_idx), 2, 'omitnan');
+Aamp = mean(ga_amp.powspctrm(:, freq_idx), 2, 'omitnan');
+all_alpha = [Ared(:); Aamp(:)];
+all_alpha = all_alpha(isfinite(all_alpha));
+if isempty(all_alpha)
+    cfg.zlim = 'maxabs';
+else
+    mx = prctile(abs(all_alpha), 95);
+    if mx <= 0
+        mx = max(abs(all_alpha));
+    end
+    if ~isfinite(mx) || mx <= 0
+        cfg.zlim = 'maxabs';
+    else
+        cfg.zlim = [-mx mx];
+    end
+end
+
+figure('Position', fig_pos, 'Color', 'w');
+ax = subplot(1, 2, 1);
+cfg.figure = ax;
+ft_topoplotER(cfg, ga_red);
+colorbar(ax);
+set(ax, 'FontSize', fsz);
+title(ax, 'Reduction - collapsed over conditions', 'Interpreter', 'none');
+
+ax = subplot(1, 2, 2);
+cfg.figure = ax;
+ft_topoplotER(cfg, ga_amp);
+colorbar(ax);
+set(ax, 'FontSize', fsz);
+title(ax, 'Amplification - collapsed over conditions', 'Interpreter', 'none');
+
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_topo_collapsedConditions.png'));
 close(gcf);
 end
 

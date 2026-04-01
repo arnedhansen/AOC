@@ -421,23 +421,13 @@ allgazetasklate6 = gaze_dwell_time.allgazetasklate6;
 
 % CBPT inputs spatially downsample (memory issues on server)
 % gaze_cbpt_bins: scalar N → N×N; or [width height] screen px (e.g. [800 600]) → freq×time = [height width].
-cbpt_gaze_downsample = false;
 gaze_cbpt_bins = [200, 150];
-if cbpt_gaze_downsample
-    allgazebase2_cbpt = downsample_gaze_cells_powspctrm(allgazebase2, gaze_cbpt_bins);
-    allgazebase4_cbpt = downsample_gaze_cells_powspctrm(allgazebase4, gaze_cbpt_bins);
-    allgazebase6_cbpt = downsample_gaze_cells_powspctrm(allgazebase6, gaze_cbpt_bins);
-    allgazetasklate2_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate2, gaze_cbpt_bins);
-    allgazetasklate4_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate4, gaze_cbpt_bins);
-    allgazetasklate6_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate6, gaze_cbpt_bins);
-else
-    allgazebase2_cbpt = allgazebase2;
-    allgazebase4_cbpt = allgazebase4;
-    allgazebase6_cbpt = allgazebase6;
-    allgazetasklate2_cbpt = allgazetasklate2;
-    allgazetasklate4_cbpt = allgazetasklate4;
-    allgazetasklate6_cbpt = allgazetasklate6;
-end
+allgazebase2_cbpt = downsample_gaze_cells_powspctrm(allgazebase2, gaze_cbpt_bins);
+allgazebase4_cbpt = downsample_gaze_cells_powspctrm(allgazebase4, gaze_cbpt_bins);
+allgazebase6_cbpt = downsample_gaze_cells_powspctrm(allgazebase6, gaze_cbpt_bins);
+allgazetasklate2_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate2, gaze_cbpt_bins);
+allgazetasklate4_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate4, gaze_cbpt_bins);
+allgazetasklate6_cbpt = downsample_gaze_cells_powspctrm(allgazetasklate6, gaze_cbpt_bins);
 
 %% Baseline (subtraction: tasklate - baseline)
 disp('BASELINING GAZE DATA (SUBTRACTION)')
@@ -452,15 +442,9 @@ for subj = 1:length(allgazebase6)
     load4_gaze{subj}.powspctrm = allgazetasklate4{subj}.powspctrm - allgazebase4{subj}.powspctrm;
     load6_gaze{subj}.powspctrm = allgazetasklate6{subj}.powspctrm - allgazebase6{subj}.powspctrm;
 end
-if cbpt_gaze_downsample
-    load2_gaze_cbpt = downsample_gaze_cells_powspctrm(load2_gaze, gaze_cbpt_bins);
-    load4_gaze_cbpt = downsample_gaze_cells_powspctrm(load4_gaze, gaze_cbpt_bins);
-    load6_gaze_cbpt = downsample_gaze_cells_powspctrm(load6_gaze, gaze_cbpt_bins);
-else
-    load2_gaze_cbpt = load2_gaze;
-    load4_gaze_cbpt = load4_gaze;
-    load6_gaze_cbpt = load6_gaze;
-end
+load2_gaze_cbpt = downsample_gaze_cells_powspctrm(load2_gaze, gaze_cbpt_bins);
+load4_gaze_cbpt = downsample_gaze_cells_powspctrm(load4_gaze, gaze_cbpt_bins);
+load6_gaze_cbpt = downsample_gaze_cells_powspctrm(load6_gaze, gaze_cbpt_bins);
 
 %% Compute gaze grand average
 disp(upper('Computing gaze grand average...'))

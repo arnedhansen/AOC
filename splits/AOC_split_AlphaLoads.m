@@ -1401,15 +1401,17 @@ ylabel(axAlpha, 'Participants', 'FontSize', fontSize - 1);
 title(axAlpha, 'Alpha power slope across WM load', 'FontSize', fontSize - 1, 'Interpreter', 'none');
 set(axAlpha, 'FontSize', fontSize - 2);
 
-% Bottom right: one bar per participant, color by alpha increase vs decrease
+% Bottom right: one bar per participant at x = gaze deviation slope (sorted); uniform bar height; color = alpha split
 axGaze = subplot(2, 2, 4);
 idx_g = find(mask_couple_fig);
 gv_raw = gaze_dev_slope(idx_g);
-[gv_sorted, ord] = sort(gv_raw);
-n_b = numel(idx_g);
+[~, ord] = sort(gv_raw);
+idx_ord = idx_g(ord);
+gv_sorted = gv_raw(ord);
+n_b = numel(idx_ord);
 C_b = zeros(n_b, 3);
 for k = 1:n_b
-    ii = idx_g(ord(k));
+    ii = idx_ord(k);
     if idx_inc(ii)
         C_b(k, :) = col_inc;
     else
@@ -1417,14 +1419,17 @@ for k = 1:n_b
     end
 end
 if n_b >= 1
-    b = bar(axGaze, 1:n_b, gv_sorted, 'BarWidth', 1, 'EdgeColor', 'none');
+    h_bar = ones(n_b, 1);
+    b = bar(axGaze, gv_sorted, h_bar, 'BarWidth', 0.92, 'EdgeColor', 'none');
     b.FaceColor = 'flat';
     b.CData = C_b;
-    yline(axGaze, 0, 'k-', 'LineWidth', 1);
-    mg = max(abs(gv_sorted));
+    xline(axGaze, 0, 'k-', 'LineWidth', 1);
+    mg = max(abs(gv_sorted(isfinite(gv_sorted))));
     if isfinite(mg) && mg > 0
-        ylim(axGaze, [-mg mg] * 1.05);
+        xlim(axGaze, [-mg mg] * 1.05);
     end
+    ylim(axGaze, [0 1.12]);
+    set(axGaze, 'YTick', []);
     hold(axGaze, 'on');
     plot(axGaze, NaN, NaN, 's', 'MarkerFaceColor', col_inc, 'MarkerEdgeColor', col_inc * 0.35, 'MarkerSize', 9);
     plot(axGaze, NaN, NaN, 's', 'MarkerFaceColor', col_dec, 'MarkerEdgeColor', col_dec * 0.35, 'MarkerSize', 9);
@@ -1432,8 +1437,8 @@ if n_b >= 1
         'Box', 'off', 'FontSize', fontSize - 4, 'Interpreter', 'none');
     hold(axGaze, 'off');
 end
-xlabel(axGaze, 'Participant', 'FontSize', fontSize - 1);
-ylabel(axGaze, 'Gaze deviation slope', 'FontSize', fontSize - 1);
+xlabel(axGaze, 'Gaze deviation slope (a.u. per item)', 'FontSize', fontSize - 1);
+ylabel(axGaze, '', 'FontSize', fontSize - 1);
 title(axGaze, 'Gaze deviation slopes', 'FontSize', fontSize - 1, 'Interpreter', 'none');
 set(axGaze, 'FontSize', fontSize - 2);
 

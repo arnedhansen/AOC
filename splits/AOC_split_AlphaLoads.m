@@ -1341,11 +1341,13 @@ xlim(axS, [-1 1] * sx_sc * 1.05);
 ylim(axS, [-1 1] * sy_sc * 1.05);
 xlabel(axS, 'Alpha power slope (a.u. per item)', 'FontSize', fontSize - 1);
 ylabel(axS, 'Gaze deviation slope (a.u. per item)', 'FontSize', fontSize - 1);
+title(axS, ' ', 'FontSize', fontSize, 'Interpreter', 'tex');
 set(axS, 'FontSize', fontSize - 2);
 legend(axS, [h1, h2], {'Alpha increase', 'Alpha decrease'}, ...
     'Location', 'best', 'Box', 'off', 'Interpreter', 'tex', 'FontSize', fontSize - 3);
+txt = {};
 if n_inc_fig >= 3
-    txt = sprintf(['Alpha increase (N=%d): Pearson \\it r\\rm = %.3f, \\it p\\rm = %.4g; ', ...
+    txt{end+1} = sprintf(['Alpha increase (N=%d): Pearson \\it r\\rm = %.3f, \\it p\\rm = %.4g; ', ...
         'H_1: \\rho < 0: \\it p\\rm = %.4g; Spearman \\rho = %.3f, \\it p\\rm = %.4g'], ...
         n_inc_fig, r_p_inc, p_p_inc, p_pearson_inv_inc, r_s_inc, p_s_inc);
 else

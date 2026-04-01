@@ -420,8 +420,9 @@ allgazetasklate4 = gaze_dwell_time.allgazetasklate4;
 allgazetasklate6 = gaze_dwell_time.allgazetasklate6;
 
 % CBPT inputs spatially downsample (memory issues on server)
+% gaze_cbpt_bins: scalar N → N×N; or [width height] screen px (e.g. [800 600]) → freq×time = [height width].
 cbpt_gaze_downsample = false;
-gaze_cbpt_bins = 500;
+gaze_cbpt_bins = [800, 600];
 if cbpt_gaze_downsample
     allgazebase2_cbpt = downsample_gaze_cells_powspctrm(allgazebase2, gaze_cbpt_bins);
     allgazebase4_cbpt = downsample_gaze_cells_powspctrm(allgazebase4, gaze_cbpt_bins);
@@ -1769,7 +1770,16 @@ fprintf('Warning: trial/trialinfo length mismatch for subject %s (trial=%d, tria
 end
 
 function cells_out = downsample_gaze_cells_powspctrm(cells_in, target_bins)
+% target_bins: scalar N → output N×N; or [screen_width, screen_height] in pixels.
+% Gaze powspctrm is 1×freq×time with freq = vertical (y), time = horizontal (x); see compute_gaze_heatmap.
 cells_out = cells_in;
+if isscalar(target_bins)
+    sz_ft = [target_bins, target_bins];
+elseif numel(target_bins) == 2
+    sz_ft = [target_bins(2), target_bins(1)]; % [nFreq, nTime] = [height, width]
+else
+    error('target_bins must be a scalar or a two-element [width height] vector.');
+end
 for ii = 1:numel(cells_out)
     if isempty(cells_out{ii}) || ~isfield(cells_out{ii}, 'powspctrm')
         continue
@@ -1786,16 +1796,16 @@ for ii = 1:numel(cells_out)
     end
 
     P2 = squeeze(P(1, :, :));
-    if ~isequal(size(P2), [target_bins, target_bins])
-        P2 = imresize(P2, [target_bins, target_bins], 'bilinear');
+    if ~isequal(size(P2), sz_ft)
+        P2 = imresize(P2, sz_ft, 'bilinear');
     end
-    cells_out{ii}.powspctrm = reshape(P2, [1, target_bins, target_bins]);
+    cells_out{ii}.powspctrm = reshape(P2, [1, sz_ft(1), sz_ft(2)]);
 
     if isfield(cells_out{ii}, 'freq') && ~isempty(cells_out{ii}.freq)
-        cells_out{ii}.freq = linspace(min(cells_out{ii}.freq), max(cells_out{ii}.freq), target_bins);
+        cells_out{ii}.freq = linspace(min(cells_out{ii}.freq), max(cells_out{ii}.freq), sz_ft(1));
     end
     if isfield(cells_out{ii}, 'time') && ~isempty(cells_out{ii}.time)
-        cells_out{ii}.time = linspace(min(cells_out{ii}.time), max(cells_out{ii}.time), target_bins);
+        cells_out{ii}.time = linspace(min(cells_out{ii}.time), max(cells_out{ii}.time), sz_ft(2));
     end
 end
 end

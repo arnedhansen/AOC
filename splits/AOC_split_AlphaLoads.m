@@ -1059,101 +1059,6 @@ ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]); h
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 colormap(gcf, color_map); drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadQuadratic.png'));
 
-%% Best-practice model: continuous alpha-slope -> gaze linear-trend magnitude
-% Uses all valid subjects (no dichotomization) and tests where alpha slope predicts gaze load trend.
-disp(upper('Computing continuous alpha-slope to gaze-trend regression...'))
-
-% Build subject-level gaze linear-trend maps: [-1 0 1] contrast over loads [2 4 6] -> (load6 - load2).
-gaze_lintrend_maps = cell(size(subjects));
-for subj = 1:numel(subjects)
-    if isempty(load2_gaze_cbpt{subj}) || isempty(load6_gaze_cbpt{subj})
-        continue
-    end
-    tmp = load6_gaze_cbpt{subj};
-    tmp.powspctrm = load6_gaze_cbpt{subj}.powspctrm - load2_gaze_cbpt{subj}.powspctrm;
-    gaze_lintrend_maps{subj} = tmp;
-end
-
-% Keep only subjects with finite alpha slope and valid gaze trend maps.
-valid_idx = find(isfinite(slope(:))' & ~cellfun(@isempty, gaze_lintrend_maps));
-if numel(valid_idx) < 6
-    warning('Too few valid subjects (%d) for reliable regression CBPT.', numel(valid_idx));
-else
-    reg_data = gaze_lintrend_maps(valid_idx);
-    reg_pred = slope(valid_idx)';
-    if exist('ft_statfun_indepsamplesregrT', 'file') ~= 2
-        error(['FieldTrip statfun ft_statfun_indepsamplesregrT not found on path. ' ...
-            'Add FieldTrip with this statfun to run continuous regression CBPT.']);
-    end
-
-    cfg = [];
-    cfg.method           = 'montecarlo';
-    cfg.statistic        = 'ft_statfun_indepsamplesregrT';
-    cfg.correctm         = 'cluster';
-    cfg.clusteralpha     = 0.05;
-    cfg.clusterstatistic = 'maxsum';
-    cfg.tail             = 0;
-    cfg.clustertail      = 0;
-    cfg.alpha            = 0.05;
-    cfg.numrandomization = 5000;
-    cfg.design           = reg_pred;
-    cfg.ivar             = 1;
-    cfg_cbpt_gaze_alphaSlopeRegr = cfg;
-
-    statT_gaze_alphaSlopeRegr = ft_freqstatistics(cfg, reg_data{:});
-    statT_gaze_alphaSlopeRegr.stat(statT_gaze_alphaSlopeRegr.mask==0) = 0;
-    % Compact command-window summary.
-    n_valid = numel(valid_idx);
-    alpha_min = min(reg_pred);
-    alpha_max = max(reg_pred);
-    n_sig_pos = 0;
-    n_sig_neg = 0;
-    if isfield(statT_gaze_alphaSlopeRegr, 'posclusters') && ~isempty(statT_gaze_alphaSlopeRegr.posclusters)
-        pos_probs = [statT_gaze_alphaSlopeRegr.posclusters.prob];
-        n_sig_pos = sum(pos_probs < cfg.alpha);
-    end
-    if isfield(statT_gaze_alphaSlopeRegr, 'negclusters') && ~isempty(statT_gaze_alphaSlopeRegr.negclusters)
-        neg_probs = [statT_gaze_alphaSlopeRegr.negclusters.prob];
-        n_sig_neg = sum(neg_probs < cfg.alpha);
-    end
-    if any(statT_gaze_alphaSlopeRegr.mask(:))
-        t_inmask = statT_gaze_alphaSlopeRegr.stat(statT_gaze_alphaSlopeRegr.mask==1);
-        t_min = min(t_inmask);
-        t_max = max(t_inmask);
-    else
-        t_min = NaN;
-        t_max = NaN;
-    end
-    fprintf('\nAlpha-slope -> gaze linear-trend regression (CBPT):\n');
-    fprintf('  Valid subjects: %d\n', n_valid);
-    fprintf('  Alpha slope range: [%.4f, %.4f]\n', alpha_min, alpha_max);
-    fprintf('  Significant clusters (p < %.3f): pos=%d, neg=%d\n', cfg.alpha, n_sig_pos, n_sig_neg);
-    fprintf('  Masked t-value range: [%.3f, %.3f]\n', t_min, t_max);
-
-    % Plot regression t-map (positive t: more positive gaze load trend with larger alpha slope).
-    cfg = [];
-    cfg.parameter = 'stat';
-    cfg.maskparameter = 'mask';
-    cfg.maskstyle = 'outline';
-    cfg.zlim = [-4 4];
-    cfg.xlim = [0 800];
-    cfg.ylim = [0 600];
-    cfg.figure = 'gcf';
-    figure('Position', [0 0 1512 982], 'Color', 'w');
-    ft_singleplotTFR(cfg, statT_gaze_alphaSlopeRegr);
-    title('Continuous model: alpha slope predicts gaze linear load trend', 'FontSize', fontSize, 'Interpreter', 'none');
-    ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]);
-    hold(ax, 'on'); plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
-    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
-    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
-    c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2;
-    c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
-    c.Label.String = 't-value';
-    c.Label.FontSize = fontSize - 2;
-    colormap(gcf, color_map);
-    drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_alphaSlopeRegression.png'));
-end
-
 %% Behavioral data
 behav_file = fullfile(feat_dir, 'AOC_behavioral_matrix_sternberg.mat');
 if ~isfile(behav_file)
@@ -1265,6 +1170,305 @@ dev_inc = [DEV2(idx_inc), DEV4(idx_inc), DEV6(idx_inc)];
 dev_dec = [DEV2(idx_dec), DEV4(idx_dec), DEV6(idx_dec)];
 plot_gaze_deviation_raincloud_split(dev_inc, dev_dec, cond_labels, colors, ...
     sum(idx_inc), sum(idx_dec), fig_dir, fig_pos, fontSize);
+
+%% Subject-level alpha–gaze coupling over WM load (scalar + LME; no spatial CBPT)
+% Tests whether alpha power vs load (slope) covaries inversely with gaze deviation vs load
+% on the same [2,4,6] design. Complements voxel-wise regression CBPT above.
+disp(upper('Alpha–gaze coupling over WM load (subject-level models)...'))
+
+gaze_dev_slope = nan(nSubj, 1);
+for ii = 1:nSubj
+    ydev = [DEV2(ii), DEV4(ii), DEV6(ii)];
+    if all(isfinite(ydev))
+        Xmat = [ones(3, 1), [2; 4; 6]];
+        b = Xmat \ ydev(:);
+        gaze_dev_slope(ii) = b(2);
+    end
+end
+
+mask_couple = isfinite(slope(:)) & isfinite(gaze_dev_slope(:));
+n_couple = sum(mask_couple);
+r_p = NaN; p_p = NaN; r_s = NaN; p_s = NaN; p_pearson_inv = NaN;
+
+fprintf('\n========== SUBJECT-LEVEL ALPHA–GAZE COUPLING (WM LOAD 2–6) ==========\n');
+fprintf('Gaze deviation slope: OLS of GazeDeviationFullBL on load [2,4,6] (slope = b_load).\n');
+fprintf('Alpha slope: same regression on occipital alpha power (same loads).\n');
+
+mask_gaze_fin = isfinite(gaze_dev_slope);
+n_gaze_fin = sum(mask_gaze_fin);
+fprintf('\n--- Descriptive statistics ---\n');
+fprintf('N with finite gaze deviation slope: %d\n', n_gaze_fin);
+if n_gaze_fin > 0
+    gs_all = gaze_dev_slope(mask_gaze_fin);
+    fprintf('  Gaze dev slope: min=%.5g, max=%.5g, mean=%.5g, SD=%.5g, median=%.5g\n', ...
+        min(gs_all), max(gs_all), mean(gs_all), std(gs_all), median(gs_all));
+end
+fprintf('N with finite alpha slope and gaze dev slope (primary inference sample): %d\n', n_couple);
+if n_couple > 0
+    sa_d = slope(mask_couple);
+    sg_d = gaze_dev_slope(mask_couple);
+    fprintf('  Alpha slope (this N): min=%.5g, max=%.5g, mean=%.5g, SD=%.5g\n', ...
+        min(sa_d), max(sa_d), mean(sa_d), std(sa_d));
+    fprintf('  Gaze dev slope (this N): min=%.5g, max=%.5g, mean=%.5g, SD=%.5g\n', ...
+        min(sg_d), max(sg_d), mean(sg_d), std(sg_d));
+    n_inc_c = sum(mask_couple & idx_inc);
+    n_dec_c = sum(mask_couple & idx_dec);
+    n_flat_c = sum(mask_couple & idx_flat);
+    fprintf('  Symmetric-tail counts in this sample: alpha inc=%d, alpha dec=%d, intermediate=%d\n', ...
+        n_inc_c, n_dec_c, n_flat_c);
+end
+
+fprintf('\n--- Correlation (alpha slope vs gaze dev slope), pairwise complete ---\n');
+if n_couple >= 5
+    sa = slope(mask_couple);
+    sg = gaze_dev_slope(mask_couple);
+    [r_p, p_p] = corr(sa, sg, 'Type', 'Pearson', 'rows', 'complete');
+    [r_s, p_s] = corr(sa, sg, 'Type', 'Spearman', 'rows', 'complete');
+    % One-sided test for inverse link: H1 is rho < 0 (Pearson).
+    df_r = n_couple - 2;
+    if df_r > 0 && abs(r_p) < 1 - eps
+        t_r = r_p * sqrt(df_r / max(eps, 1 - r_p^2));
+        p_pearson_inv = tcdf(t_r, df_r);
+    else
+        t_r = NaN;
+        p_pearson_inv = NaN;
+    end
+    fprintf('df (Pearson) = n-2 = %d\n', df_r);
+    fprintf('Pearson r = %.5f, two-sided p = %.6g\n', r_p, p_p);
+    if isfinite(t_r)
+        fprintf('  t(%d) = %.4f (test of H0: rho=0)\n', df_r, t_r);
+    end
+    fprintf('  one-sided p (H1: inverse coupling, rho < 0) = %.6g\n', p_pearson_inv);
+    fprintf('Spearman rho = %.5f, two-sided p = %.6g\n', r_s, p_s);
+    % OLS: gaze_dev_slope ~ 1 + alpha_slope (same sample; for reporting).
+    if n_couple >= 3
+        p_ols = polyfit(sa, sg, 1);
+        fprintf('OLS (univariate): gaze_dev_slope = %.5g + %.5g * alpha_slope (line in scatter plot)\n', ...
+            p_ols(2), p_ols(1));
+    end
+elseif n_couple >= 3 && n_couple < 5
+    sa = slope(mask_couple);
+    sg = gaze_dev_slope(mask_couple);
+    [r_p, p_p] = corr(sa, sg, 'Type', 'Pearson', 'rows', 'complete');
+    [r_s, p_s] = corr(sa, sg, 'Type', 'Spearman', 'rows', 'complete');
+    fprintf('N=%d: correlation computed but interpret with caution (N < 5).\n', n_couple);
+    fprintf('Pearson r = %.5f, two-sided p = %.6g\n', r_p, p_p);
+    fprintf('Spearman rho = %.5f, two-sided p = %.6g\n', r_s, p_s);
+    df_r = n_couple - 2;
+    if df_r > 0 && abs(r_p) < 1 - eps
+        t_r = r_p * sqrt(df_r / max(eps, 1 - r_p^2));
+        p_pearson_inv = tcdf(t_r, df_r);
+        fprintf('  one-sided p (H1: rho < 0) = %.6g\n', p_pearson_inv);
+    end
+else
+    fprintf('Too few subjects (N=%d) for stable correlation; need N >= 3 for bivariate stats.\n', n_couple);
+end
+
+% --- Figures: gaze slope distribution, alpha vs gaze scatter, means by alpha tail ---
+% (mask_gaze_fin / n_gaze_fin defined in descriptive block above)
+col_inc = [0.8 0 0];
+col_dec = [0 0 0.8];
+col_flat = [0.45 0.45 0.45];
+fprintf('\n--- Building alpha–gaze coupling figures ---\n');
+figure('Position', fig_pos, 'Color', 'w');
+tl = tiledlayout(2, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
+
+axH = nexttile(tl, [1 2]);
+histogram(axH, gaze_dev_slope(mask_gaze_fin), 18, 'FaceColor', [0.38 0.52 0.72], ...
+    'EdgeColor', 'w', 'FaceAlpha', 0.85);
+hold(axH, 'on');
+xline(axH, 0, 'k--', 'LineWidth', 1.3);
+hold(axH, 'off');
+title(axH, { 'Distribution of gaze deviation slopes across WM load (2 \rightarrow 6)'; ...
+    sprintf('N = %d with valid gaze slopes', n_gaze_fin) }, 'FontSize', fontSize, 'Interpreter', 'tex');
+xlabel(axH, 'Gaze deviation slope (a.u. per item)', 'FontSize', fontSize - 1);
+ylabel(axH, 'Participants', 'FontSize', fontSize - 1);
+grid(axH, 'on');
+set(axH, 'FontSize', fontSize - 2);
+
+axS = nexttile(tl);
+hold(axS, 'on');
+h1 = scatter(axS, NaN, NaN, 40, col_inc, 'filled', 'MarkerEdgeColor', col_inc * 0.35);
+h2 = scatter(axS, NaN, NaN, 40, col_dec, 'filled', 'MarkerEdgeColor', col_dec * 0.35);
+h3 = scatter(axS, NaN, NaN, 40, col_flat, '^', 'filled', 'MarkerEdgeColor', col_flat * 0.35);
+idx_plot = find(mask_couple);
+for ii = idx_plot(:)'
+    if idx_inc(ii)
+        scatter(axS, slope(ii), gaze_dev_slope(ii), 36, col_inc, 'filled', 'MarkerFaceAlpha', 0.78, ...
+            'MarkerEdgeColor', col_inc * 0.35, 'LineWidth', 0.45);
+    elseif idx_dec(ii)
+        scatter(axS, slope(ii), gaze_dev_slope(ii), 36, col_dec, 'filled', 'MarkerFaceAlpha', 0.78, ...
+            'MarkerEdgeColor', col_dec * 0.35, 'LineWidth', 0.45);
+    else
+        scatter(axS, slope(ii), gaze_dev_slope(ii), 40, col_flat, '^', 'filled', 'MarkerFaceAlpha', 0.78, ...
+            'MarkerEdgeColor', col_flat * 0.35, 'LineWidth', 0.45);
+    end
+end
+if n_couple >= 3
+    sa_all = slope(mask_couple);
+    p1 = polyfit(sa_all, gaze_dev_slope(mask_couple), 1);
+    xl = [min(sa_all), max(sa_all)];
+    pad = 0.05 * max(abs(diff(xl)), eps);
+    xl = [xl(1) - pad, xl(2) + pad];
+    plot(axS, xl, polyval(p1, xl), 'k-', 'LineWidth', 1.65);
+end
+xline(axS, 0, ':', 'Color', [0.55 0.55 0.55], 'LineWidth', 1);
+yline(axS, 0, ':', 'Color', [0.55 0.55 0.55], 'LineWidth', 1);
+hold(axS, 'off');
+xlabel(axS, 'Alpha power slope (a.u. per item)', 'FontSize', fontSize - 1);
+ylabel(axS, 'Gaze deviation slope (a.u. per item)', 'FontSize', fontSize - 1);
+title(axS, 'Alpha vs gaze load slopes (symmetric \alpha tails)', 'FontSize', fontSize, 'Interpreter', 'tex');
+grid(axS, 'on');
+set(axS, 'FontSize', fontSize - 2);
+legend(axS, [h1, h2, h3], {'\alpha increase tail', '\alpha decrease tail', 'intermediate'}, ...
+    'Location', 'best', 'Box', 'off', 'Interpreter', 'tex', 'FontSize', fontSize - 3);
+if n_couple >= 5 && all(isfinite([r_p, p_p, p_pearson_inv, r_s, p_s]))
+    txt = { sprintf('Pearson r = %.3f, p = %.4g', r_p, p_p); ...
+        sprintf('H_1: \\rho < 0: p = %.4g', p_pearson_inv); ...
+        sprintf('Spearman \\rho = %.3f, p = %.4g', r_s, p_s); ...
+        sprintf('N = %d', n_couple) };
+    text(axS, 0.03, 0.97, txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
+        'FontSize', fontSize - 3, 'Interpreter', 'tex');
+end
+
+axB = nexttile(tl);
+grp_names = {'\alpha inc. tail', '\alpha dec. tail', 'intermediate'};
+mu_gs = nan(1, 3);
+sem_gs = nan(1, 3);
+n_gs = zeros(1, 3);
+for gi = 1:3
+    if gi == 1
+        gmask = mask_couple & idx_inc;
+    elseif gi == 2
+        gmask = mask_couple & idx_dec;
+    else
+        gmask = mask_couple & idx_flat;
+    end
+    vals = gaze_dev_slope(gmask);
+    vals = vals(isfinite(vals));
+    n_gs(gi) = numel(vals);
+    if n_gs(gi) >= 1
+        mu_gs(gi) = mean(vals);
+        if n_gs(gi) >= 2
+            sem_gs(gi) = std(vals) / sqrt(n_gs(gi));
+        else
+            sem_gs(gi) = 0;
+        end
+    end
+end
+fprintf('\n--- Gaze deviation slope by symmetric alpha tail (same sample as scatter: mask_couple) ---\n');
+fprintf('  tail                 n    mean(gaze slope)       SEM\n');
+tail_lbl = {'alpha inc. tail', 'alpha dec. tail', 'intermediate'};
+for gi = 1:3
+    if n_gs(gi) < 1
+        fprintf('  %-20s   --          --              --\n', tail_lbl{gi});
+    else
+        fprintf('  %-20s  %3d  %18.5g  %12.5g\n', tail_lbl{gi}, n_gs(gi), mu_gs(gi), sem_gs(gi));
+    end
+end
+
+hold(axB, 'on');
+xpos = 1:3;
+bar_colors = [col_inc; col_dec; col_flat];
+for gi = 1:3
+    if n_gs(gi) < 1
+        continue
+    end
+    bar(axB, xpos(gi), mu_gs(gi), 0.62, 'FaceColor', bar_colors(gi, :), 'EdgeColor', 'none', 'FaceAlpha', 0.88);
+    if n_gs(gi) >= 2 && sem_gs(gi) > 0
+        errorbar(axB, xpos(gi), mu_gs(gi), sem_gs(gi), 'k', 'LineStyle', 'none', 'LineWidth', 1.2);
+    end
+end
+yline(axB, 0, 'k--', 'LineWidth', 1);
+hold(axB, 'off');
+set(axB, 'XTick', xpos, 'XTickLabel', grp_names, 'XTickLabelRotation', 0);
+ylabel(axB, 'Mean gaze deviation slope', 'FontSize', fontSize - 1);
+title(axB, 'Gaze load slope by \alpha tail (mean \pm SEM)', 'FontSize', fontSize, 'Interpreter', 'tex');
+grid(axB, 'on');
+set(axB, 'FontSize', fontSize - 3);
+ylb = ylim(axB);
+dyb = diff(ylb);
+for gi = 1:3
+    if n_gs(gi) < 1
+        continue
+    end
+    ytop = mu_gs(gi);
+    if n_gs(gi) >= 2 && sem_gs(gi) > 0
+        ytop = mu_gs(gi) + sem_gs(gi);
+    end
+    text(axB, xpos(gi), ytop + 0.04 * dyb, sprintf('n=%d', n_gs(gi)), ...
+        'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom', ...
+        'FontSize', fontSize - 4, 'Interpreter', 'none');
+end
+
+title(tl, 'Subject-level \alpha–gaze coupling over WM load', 'FontSize', fontSize + 2, ...
+    'FontWeight', 'bold', 'Interpreter', 'tex');
+drawnow;
+fig_coupling_path = fullfile(fig_dir, 'AOC_split_AlphaLoads_alpha_gaze_slope_coupling.png');
+saveas(gcf, fig_coupling_path);
+fprintf('Saved figure: %s\n', fig_coupling_path);
+
+% Mixed model: does the within-subject gaze~load slope depend on alpha slope?
+Subject_ag = [];
+Load_ag = [];
+Dev_ag = [];
+Alpha_ag = [];
+idx_ag = find(all(isfinite([DEV2, DEV4, DEV6]), 2));
+mu_alpha = mean(slope(idx_ag));
+for k = 1:numel(idx_ag)
+    ii = idx_ag(k);
+    dev_vals = [DEV2(ii), DEV4(ii), DEV6(ii)];
+    for c = 1:3
+        Subject_ag = [Subject_ag; ii];
+        Load_ag = [Load_ag; cond_vals(c)];
+        Dev_ag = [Dev_ag; dev_vals(c)];
+        Alpha_ag = [Alpha_ag; slope(ii) - mu_alpha];
+    end
+end
+tbl_ag = table(Subject_ag, Load_ag, Dev_ag, Alpha_ag, ...
+    'VariableNames', {'Subject', 'Load', 'Dev', 'AlphaSlope_c'});
+tbl_ag.Subject = categorical(tbl_ag.Subject);
+tbl_ag.Load = (tbl_ag.Load - 4) / 2;
+
+disp('--- LME: Dev ~ Load * AlphaSlope (between-subject) + (Load|Subject) ---')
+fprintf('Load coded as in gaze linear-trend block (0 = load 4; +1 = load 6).\n');
+fprintf('AlphaSlope_c is mean-centered across subjects with complete gaze (3 loads / subject).\n');
+try
+    n_subj_ag = numel(categories(categorical(tbl_ag.Subject)));
+    n_obs_ag = height(tbl_ag);
+    fprintf('LME data: %d subjects with complete gaze deviation at loads 2/4/6, %d rows total.\n', ...
+        n_subj_ag, n_obs_ag);
+    fprintf('Grand mean alpha slope (subtracted as AlphaSlope_c): %.6g\n', mu_alpha);
+
+    [lme_ag, lme_ag_formula] = fitlme_with_random_slope_fallback(tbl_ag, 'Dev ~ Load * AlphaSlope_c');
+    fprintf('Fitted formula: %s\n', lme_ag_formula);
+    fprintf('\nANOVA (marginal tests):\n');
+    disp(anova(lme_ag))
+
+    fprintf('Fixed-effects coefficients:\n');
+    disp(lme_ag.Coefficients)
+
+    coef_ag = lme_ag.Coefficients;
+    idx_int = contains(coef_ag.Name, ':') & (contains(coef_ag.Name, 'Load') & contains(coef_ag.Name, 'AlphaSlope'));
+    ix_int = find(idx_int, 1, 'first');
+    if ~isempty(ix_int)
+        row = coef_ag(ix_int, :);
+        fprintf('Primary test (Load:AlphaSlope_c): inverse coupling if estimate < 0.\n');
+        fprintf('  Estimate=%.6g, SE=%.6g, t=%.4g, DF=%.4g, p=%.6g\n', ...
+            row.Estimate(1), row.SE(1), row.tStat(1), row.DF(1), row.pValue(1));
+    else
+        fprintf('Note: Load:AlphaSlope interaction row not found in coefficient table (check names).\n');
+    end
+    try
+        fprintf('\n95%% CI for fixed effects (coefCI):\n');
+        disp(coefCI(lme_ag));
+    catch %#ok<CTCH>
+    end
+    fprintf('\n========== END SUBJECT-LEVEL ALPHA–GAZE COUPLING OUTPUT ==========\n\n');
+catch ME
+    warning('Alpha–gaze LME failed: %s', ME.message);
+    fprintf('========== END SUBJECT-LEVEL ALPHA–GAZE COUPLING OUTPUT (LME FAILED) ==========\n\n');
+end
 
 %% LME / TOST (test effects)
 nSubj = length(subjects);
@@ -1465,58 +1669,6 @@ fprintf('ACC delta=5: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
 [p1, p2, eq] = tost_welch(ACC_inc, ACC_dec, 10);
 fprintf('ACC delta=10: p1=%.4g, p2=%.4g, equivalent=%d\n', p1, p2, eq);
 
-%% ================= MIXED-EFFECTS EQUIVALENCE =================
-fprintf('\n--- Mixed-effects equivalence (CI-in-bounds) ---\n')
-
-tbl_me = tbl;
-idx_finite = isfinite(tbl_me.RT) & isfinite(tbl_me.ACC);
-tbl_me = tbl_me(idx_finite, :);
-
-% RT model is fit on log scale to improve residual behavior and interpretability.
-idx_rt_valid = tbl_me.RT > 0;
-tbl_rt = tbl_me(idx_rt_valid, :);
-tbl_rt.logRT = log(tbl_rt.RT);
-
-[lme_rt_eq, rt_formula] = fitlme_with_random_slope_fallback(tbl_rt, 'logRT ~ Load * Group');
-[rt_est, rt_ci90, rt_group_term] = get_group_effect_ci(lme_rt_eq, 0.10);
-
-rt_bounds_ratio = [0.95, 1.05];
-rt_bounds_log = log(rt_bounds_ratio);
-rt_eq = ci_within_bounds(rt_ci90, rt_bounds_log);
-
-fprintf('RT model formula: %s\n', rt_formula);
-fprintf('RT group effect term: %s\n', rt_group_term);
-fprintf('RT log-scale estimate=%.4g, 90%% CI=[%.4g, %.4g], bounds=[%.4g, %.4g], equivalent=%d\n', ...
-    rt_est, rt_ci90(1), rt_ci90(2), rt_bounds_log(1), rt_bounds_log(2), rt_eq);
-fprintf('RT ratio estimate=%.4g, 90%% CI=[%.4g, %.4g], ratio bounds=[%.2f, %.2f]\n', ...
-    exp(rt_est), exp(rt_ci90(1)), exp(rt_ci90(2)), rt_bounds_ratio(1), rt_bounds_ratio(2));
-
-[lme_acc_eq, acc_formula] = fitlme_with_random_slope_fallback(tbl_me, 'ACC ~ Load * Group');
-[acc_est, acc_ci90, acc_group_term] = get_group_effect_ci(lme_acc_eq, 0.10);
-
-acc_bounds = [-5, 5];
-acc_eq = ci_within_bounds(acc_ci90, acc_bounds);
-
-fprintf('ACC model formula: %s\n', acc_formula);
-fprintf('ACC group effect term: %s\n', acc_group_term);
-fprintf('ACC estimate=%.4g, 90%% CI=[%.4g, %.4g], bounds=[%.4g, %.4g], equivalent=%d\n', ...
-    acc_est, acc_ci90(1), acc_ci90(2), acc_bounds(1), acc_bounds(2), acc_eq);
-
-fprintf('\n--- Mixed-effects RT sensitivity (ratio bounds) ---\n')
-rt_sens_ratio = [0.95 1.05; 0.90 1.10; 0.85 1.15];
-for ii = 1:size(rt_sens_ratio, 1)
-    b = log(rt_sens_ratio(ii, :));
-    eq = ci_within_bounds(rt_ci90, b);
-    fprintf('RT ratio bounds=[%.2f, %.2f]: equivalent=%d\n', rt_sens_ratio(ii,1), rt_sens_ratio(ii,2), eq);
-end
-
-fprintf('\n--- Mixed-effects ACC sensitivity (point bounds) ---\n')
-acc_sens = [3 5 10];
-for ii = 1:numel(acc_sens)
-    b = [-acc_sens(ii), acc_sens(ii)];
-    eq = ci_within_bounds(acc_ci90, b);
-    fprintf('ACC bounds=[%d, %d]: equivalent=%d\n', b(1), b(2), eq);
-end
 %% Helper functions
 function zlimAbs = robust_diverging_zlim_abs(v, cfg)
 % Symmetric z-limit for diverging maps: min( prctile(|x|,p), median(|x|)+k*MAD(|x|) )

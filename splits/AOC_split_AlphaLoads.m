@@ -1341,13 +1341,11 @@ xlim(axS, [-1 1] * sx_sc * 1.05);
 ylim(axS, [-1 1] * sy_sc * 1.05);
 xlabel(axS, 'Alpha power slope (a.u. per item)', 'FontSize', fontSize - 1);
 ylabel(axS, 'Gaze deviation slope (a.u. per item)', 'FontSize', fontSize - 1);
-title(axS, 'Alpha vs gaze load slopes', 'FontSize', fontSize, 'Interpreter', 'tex');
 set(axS, 'FontSize', fontSize - 2);
 legend(axS, [h1, h2], {'Alpha increase', 'Alpha decrease'}, ...
     'Location', 'best', 'Box', 'off', 'Interpreter', 'tex', 'FontSize', fontSize - 3);
-txt = { 'Within-group correlations (alpha vs gaze slope):' };
 if n_inc_fig >= 3
-    txt{end+1} = sprintf(['Alpha increase (N=%d): Pearson \\it r\\rm = %.3f, \\it p\\rm = %.4g; ', ...
+    txt = sprintf(['Alpha increase (N=%d): Pearson \\it r\\rm = %.3f, \\it p\\rm = %.4g; ', ...
         'H_1: \\rho < 0: \\it p\\rm = %.4g; Spearman \\rho = %.3f, \\it p\\rm = %.4g'], ...
         n_inc_fig, r_p_inc, p_p_inc, p_pearson_inv_inc, r_s_inc, p_s_inc);
 else
@@ -1360,9 +1358,6 @@ if n_dec_fig >= 3
 else
     txt{end+1} = sprintf('Alpha decrease: N = %d (correlation requires N \\geq 3)', n_dec_fig);
 end
-txt{end+1} = sprintf(['Mean gaze slope \\pm SEM: increase %.4g \\pm %.4g (n=%d); ', ...
-    'decrease %.4g \\pm %.4g (n=%d)'], ...
-    mu_gs(1), sem_gs(1), n_gs(1), mu_gs(2), sem_gs(2), n_gs(2));
 text(axS, 0.02, 0.98, txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
     'FontSize', fontSize - 4, 'Interpreter', 'tex');
 
@@ -1435,9 +1430,9 @@ if n_b >= 1
         'Box', 'off', 'FontSize', fontSize - 4, 'Interpreter', 'none');
     hold(axGaze, 'off');
 end
-xlabel(axGaze, 'Participant (sorted by gaze deviation slope)', 'FontSize', fontSize - 1);
-ylabel(axGaze, 'Gaze deviation slope (a.u. per item)', 'FontSize', fontSize - 1);
-title(axGaze, 'Gaze deviation slopes (one bar per participant)', 'FontSize', fontSize - 1, 'Interpreter', 'none');
+xlabel(axGaze, 'Participant', 'FontSize', fontSize - 1);
+ylabel(axGaze, 'Gaze deviation slope', 'FontSize', fontSize - 1);
+title(axGaze, 'Gaze deviation slopes', 'FontSize', fontSize - 1, 'Interpreter', 'none');
 set(axGaze, 'FontSize', fontSize - 2);
 
 sgtitle('Subject-level Alpha–gaze coupling over WM load', 'FontSize', fontSize + 2, ...

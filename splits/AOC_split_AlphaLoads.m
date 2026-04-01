@@ -23,6 +23,20 @@ fig_dir = fullfile(base_data, 'figures', 'splits', 'SplitAlphaLoads');
 if ~isfolder(fig_dir)
     mkdir(fig_dir);
 end
+cond_vals = [2 4 6];
+cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
+
+% Load merged subject-level table for gaze deviation summaries.
+merged_file = fullfile(feat_dir, 'AOC_merged_data_sternberg.mat');
+if ~isfile(merged_file)
+    error('Missing file: %s', merged_file);
+end
+S_merged = load(merged_file, 'merged_data_sternberg');
+if ~isfield(S_merged, 'merged_data_sternberg')
+    error('Variable merged_data_sternberg not found in %s', merged_file);
+end
+T_merged = struct2table(S_merged.merged_data_sternberg);
+
 log_dir = fullfile(base_data, 'data', 'controls', 'logs');
 if ~isfolder(log_dir)
     mkdir(log_dir);
@@ -1045,6 +1059,101 @@ ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]); h
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 colormap(gcf, color_map); drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadQuadratic.png'));
 
+%% Best-practice model: continuous alpha-slope -> gaze linear-trend magnitude
+% Uses all valid subjects (no dichotomization) and tests where alpha slope predicts gaze load trend.
+disp(upper('Computing continuous alpha-slope to gaze-trend regression...'))
+
+% Build subject-level gaze linear-trend maps: [-1 0 1] contrast over loads [2 4 6] -> (load6 - load2).
+gaze_lintrend_maps = cell(size(subjects));
+for subj = 1:numel(subjects)
+    if isempty(load2_gaze_cbpt{subj}) || isempty(load6_gaze_cbpt{subj})
+        continue
+    end
+    tmp = load6_gaze_cbpt{subj};
+    tmp.powspctrm = load6_gaze_cbpt{subj}.powspctrm - load2_gaze_cbpt{subj}.powspctrm;
+    gaze_lintrend_maps{subj} = tmp;
+end
+
+% Keep only subjects with finite alpha slope and valid gaze trend maps.
+valid_idx = find(isfinite(slope(:))' & ~cellfun(@isempty, gaze_lintrend_maps));
+if numel(valid_idx) < 6
+    warning('Too few valid subjects (%d) for reliable regression CBPT.', numel(valid_idx));
+else
+    reg_data = gaze_lintrend_maps(valid_idx);
+    reg_pred = slope(valid_idx)';
+    if exist('ft_statfun_indepsamplesregrT', 'file') ~= 2
+        error(['FieldTrip statfun ft_statfun_indepsamplesregrT not found on path. ' ...
+            'Add FieldTrip with this statfun to run continuous regression CBPT.']);
+    end
+
+    cfg = [];
+    cfg.method           = 'montecarlo';
+    cfg.statistic        = 'ft_statfun_indepsamplesregrT';
+    cfg.correctm         = 'cluster';
+    cfg.clusteralpha     = 0.05;
+    cfg.clusterstatistic = 'maxsum';
+    cfg.tail             = 0;
+    cfg.clustertail      = 0;
+    cfg.alpha            = 0.05;
+    cfg.numrandomization = 5000;
+    cfg.design           = reg_pred;
+    cfg.ivar             = 1;
+    cfg_cbpt_gaze_alphaSlopeRegr = cfg;
+
+    statT_gaze_alphaSlopeRegr = ft_freqstatistics(cfg, reg_data{:});
+    statT_gaze_alphaSlopeRegr.stat(statT_gaze_alphaSlopeRegr.mask==0) = 0;
+    % Compact command-window summary.
+    n_valid = numel(valid_idx);
+    alpha_min = min(reg_pred);
+    alpha_max = max(reg_pred);
+    n_sig_pos = 0;
+    n_sig_neg = 0;
+    if isfield(statT_gaze_alphaSlopeRegr, 'posclusters') && ~isempty(statT_gaze_alphaSlopeRegr.posclusters)
+        pos_probs = [statT_gaze_alphaSlopeRegr.posclusters.prob];
+        n_sig_pos = sum(pos_probs < cfg.alpha);
+    end
+    if isfield(statT_gaze_alphaSlopeRegr, 'negclusters') && ~isempty(statT_gaze_alphaSlopeRegr.negclusters)
+        neg_probs = [statT_gaze_alphaSlopeRegr.negclusters.prob];
+        n_sig_neg = sum(neg_probs < cfg.alpha);
+    end
+    if any(statT_gaze_alphaSlopeRegr.mask(:))
+        t_inmask = statT_gaze_alphaSlopeRegr.stat(statT_gaze_alphaSlopeRegr.mask==1);
+        t_min = min(t_inmask);
+        t_max = max(t_inmask);
+    else
+        t_min = NaN;
+        t_max = NaN;
+    end
+    fprintf('\nAlpha-slope -> gaze linear-trend regression (CBPT):\n');
+    fprintf('  Valid subjects: %d\n', n_valid);
+    fprintf('  Alpha slope range: [%.4f, %.4f]\n', alpha_min, alpha_max);
+    fprintf('  Significant clusters (p < %.3f): pos=%d, neg=%d\n', cfg.alpha, n_sig_pos, n_sig_neg);
+    fprintf('  Masked t-value range: [%.3f, %.3f]\n', t_min, t_max);
+
+    % Plot regression t-map (positive t: more positive gaze load trend with larger alpha slope).
+    cfg = [];
+    cfg.parameter = 'stat';
+    cfg.maskparameter = 'mask';
+    cfg.maskstyle = 'outline';
+    cfg.zlim = [-4 4];
+    cfg.xlim = [0 800];
+    cfg.ylim = [0 600];
+    cfg.figure = 'gcf';
+    figure('Position', [0 0 1512 982], 'Color', 'w');
+    ft_singleplotTFR(cfg, statT_gaze_alphaSlopeRegr);
+    title('Continuous model: alpha slope predicts gaze linear load trend', 'FontSize', fontSize, 'Interpreter', 'none');
+    ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]);
+    hold(ax, 'on'); plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+    xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize);
+    ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
+    c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2;
+    c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)];
+    c.Label.String = 't-value';
+    c.Label.FontSize = fontSize - 2;
+    colormap(gcf, color_map);
+    drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_alphaSlopeRegression.png'));
+end
+
 %% Behavioral data
 behav_file = fullfile(feat_dir, 'AOC_behavioral_matrix_sternberg.mat');
 if ~isfile(behav_file)
@@ -1089,25 +1198,17 @@ rt_dec_6 = RT6(idx_dec);
 %%
 figure('Position', [0 0 1512 982], 'Color', 'w');
 clf;
-
-positions = [.3, .6, .9];
-box_w = 0.05;
-density_scale = 0.045;
-density_offset = 0.06;
-box_offset = 0.03;
-cond_cols = [0 0 0; 0 0 1; 1 0 0];
+cond_cols = colors(1:3, :);
 
 % LEFT: alpha increase group
 subplot(2,2,1);
-plot_split_raincloud_triplet({rt_inc_2, rt_inc_4, rt_inc_6}, positions, cond_cols, [0 1.5], ...
-    'Reaction Time [s]', sprintf('Increase (N=%d)', sum(idx_inc)), ...
-    18, density_scale, density_offset, box_offset, box_w);
+plot_split_raincloud_triplet({rt_inc_2, rt_inc_4, rt_inc_6}, cond_labels, cond_cols, [0 1.5], ...
+    'Reaction Time [s]', sprintf('Increase (N=%d)', sum(idx_inc)), fontSize);
 
 % RIGHT: alpha decrease group
 subplot(2,2,2);
-plot_split_raincloud_triplet({rt_dec_2, rt_dec_4, rt_dec_6}, positions, cond_cols, [0 1.5], ...
-    'Reaction Time [s]', sprintf('Decrease (N=%d)', sum(idx_dec)), ...
-    18, density_scale, density_offset, box_offset, box_w);
+plot_split_raincloud_triplet({rt_dec_2, rt_dec_4, rt_dec_6}, cond_labels, cond_cols, [0 1.5], ...
+    'Reaction Time [s]', sprintf('Decrease (N=%d)', sum(idx_dec)), fontSize);
 set(gcf,'color','w');
 
 %% Accuracy example
@@ -1126,18 +1227,44 @@ acc_dec_2 = acc_dec_2(~isnan(acc_dec_2)); acc_dec_4 = acc_dec_4(~isnan(acc_dec_4
 %%
 % ================= LEFT: alpha increase =================
 subplot(2,2,3);
-plot_split_raincloud_triplet({acc_inc_2, acc_inc_4, acc_inc_6}, positions, cond_cols, [50 110], ...
-    'Accuracy [%]', sprintf('Increase (N=%d)', sum(idx_inc)), ...
-    18, density_scale, density_offset, box_offset, box_w);
+plot_split_raincloud_triplet({acc_inc_2, acc_inc_4, acc_inc_6}, cond_labels, cond_cols, [50 110], ...
+    'Accuracy [%]', sprintf('Increase (N=%d)', sum(idx_inc)), fontSize);
 
 % ================= RIGHT: alpha decrease =================
 subplot(2,2,4);
-plot_split_raincloud_triplet({acc_dec_2, acc_dec_4, acc_dec_6}, positions, cond_cols, [50 110], ...
-    'Accuracy [%]', sprintf('Decrease (N=%d)', sum(idx_dec)), ...
-    18, density_scale, density_offset, box_offset, box_w);
+plot_split_raincloud_triplet({acc_dec_2, acc_dec_4, acc_dec_6}, cond_labels, cond_cols, [50 110], ...
+    'Accuracy [%]', sprintf('Decrease (N=%d)', sum(idx_dec)), fontSize);
 
 set(gcf,'color','w');
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_RT_ACC.png'));
+
+%% Gaze deviation rainclouds (Increase vs Decrease; matched AlphaAmpRed aesthetics)
+DEV2 = nan(nSubj,1); DEV4 = nan(nSubj,1); DEV6 = nan(nSubj,1);
+for i = 1:nSubj
+    subj_id = str2double(subjects{i});
+    subj_rows = T_merged(T_merged.ID == subj_id, :);
+    if isempty(subj_rows)
+        continue
+    end
+    for c = 1:3
+        cmask = subj_rows.Condition == cond_vals(c);
+        if any(cmask)
+            dev_val = mean(subj_rows.GazeDeviationFullBL(cmask), 'omitnan');
+            if c == 1
+                DEV2(i) = dev_val;
+            elseif c == 2
+                DEV4(i) = dev_val;
+            else
+                DEV6(i) = dev_val;
+            end
+        end
+    end
+end
+
+dev_inc = [DEV2(idx_inc), DEV4(idx_inc), DEV6(idx_inc)];
+dev_dec = [DEV2(idx_dec), DEV4(idx_dec), DEV6(idx_dec)];
+plot_gaze_deviation_raincloud_split(dev_inc, dev_dec, cond_labels, colors, ...
+    sum(idx_inc), sum(idx_dec), fig_dir, fig_pos, fontSize);
 
 %% LME / TOST (test effects)
 nSubj = length(subjects);
@@ -1217,6 +1344,86 @@ disp(anova(lme_RT))
 disp('--- ACC model ---')
 lme_ACC = fitlme(tbl, 'ACC ~ Load * Group + (1|Subject)');
 disp(anova(lme_ACC))
+
+disp('--- Gaze deviation model ---')
+Subject_dev = [];
+Load_dev = [];
+Group_dev = [];
+Dev = [];
+for i = 1:nSubj
+    if idx_inc(i)
+        g = 1;
+    elseif idx_dec(i)
+        g = -1;
+    else
+        continue
+    end
+    dev_vals = [DEV2(i), DEV4(i), DEV6(i)];
+    for c = 1:3
+        if ~isfinite(dev_vals(c))
+            continue
+        end
+        Subject_dev = [Subject_dev; i];
+        Load_dev = [Load_dev; cond_vals(c)];
+        Group_dev = [Group_dev; g];
+        Dev = [Dev; dev_vals(c)];
+    end
+end
+tbl_dev = table(Subject_dev, Load_dev, Group_dev, Dev, ...
+    'VariableNames', {'Subject', 'Load', 'Group', 'Dev'});
+tbl_dev_num = tbl_dev; % keep numeric load coding for linear-trend tests
+tbl_dev.Subject = categorical(tbl_dev.Subject);
+tbl_dev.Load = categorical(tbl_dev.Load);
+tbl_dev.Group = categorical(tbl_dev.Group, [1 -1], {'inc' 'dec'});
+[lme_DEV, dev_formula] = fitlme_with_random_slope_fallback(tbl_dev, 'Dev ~ Load * Group');
+fprintf('Gaze deviation model formula: %s\n', dev_formula);
+disp(anova(lme_DEV))
+
+disp('--- Gaze linear-trend hypothesis model ---')
+tbl_dev_trend = tbl_dev_num;
+tbl_dev_trend.Subject = categorical(tbl_dev_trend.Subject);
+tbl_dev_trend.Group = categorical(tbl_dev_trend.Group, [1 -1], {'inc' 'dec'});
+% Center and scale load so one unit corresponds to one WM load step (2 items).
+tbl_dev_trend.Load = (tbl_dev_trend.Load - 4) / 2;
+[lme_DEV_trend, dev_trend_formula] = fitlme_with_random_slope_fallback(tbl_dev_trend, 'Dev ~ Load * Group');
+fprintf('Gaze linear-trend model formula: %s\n', dev_trend_formula);
+disp(anova(lme_DEV_trend))
+
+% Directional follow-up tests for the preregistered slope-direction hypothesis:
+% inc group slope < 0; dec group slope > 0.
+tbl_dev_inc = tbl_dev_trend(tbl_dev_trend.Group == 'inc', :);
+tbl_dev_dec = tbl_dev_trend(tbl_dev_trend.Group == 'dec', :);
+[lme_DEV_inc, dev_inc_formula] = fitlme_with_random_slope_fallback(tbl_dev_inc, 'Dev ~ Load');
+[lme_DEV_dec, dev_dec_formula] = fitlme_with_random_slope_fallback(tbl_dev_dec, 'Dev ~ Load');
+
+coef_inc = lme_DEV_inc.Coefficients;
+idx_load_inc = strcmp(coef_inc.Name, 'Load');
+if ~any(idx_load_inc)
+    error('Load coefficient not found in increase-group gaze model.');
+end
+est_inc = coef_inc.Estimate(idx_load_inc);
+t_inc = coef_inc.tStat(idx_load_inc);
+df_inc = lme_DEV_inc.DFE;
+p_inc_two = coef_inc.pValue(idx_load_inc);
+p_inc_one = tcdf(t_inc, df_inc); % H1: slope < 0
+
+coef_dec = lme_DEV_dec.Coefficients;
+idx_load_dec = strcmp(coef_dec.Name, 'Load');
+if ~any(idx_load_dec)
+    error('Load coefficient not found in decrease-group gaze model.');
+end
+est_dec = coef_dec.Estimate(idx_load_dec);
+t_dec = coef_dec.tStat(idx_load_dec);
+df_dec = lme_DEV_dec.DFE;
+p_dec_two = coef_dec.pValue(idx_load_dec);
+p_dec_one = 1 - tcdf(t_dec, df_dec); % H1: slope > 0
+
+fprintf('Increase-group trend model: %s\n', dev_inc_formula);
+fprintf('Increase group load slope (per +2 items): %.4g, t(%g)=%.4g, p(two-sided)=%.4g, p(one-sided, <0)=%.4g\n', ...
+    est_inc, df_inc, t_inc, p_inc_two, p_inc_one);
+fprintf('Decrease-group trend model: %s\n', dev_dec_formula);
+fprintf('Decrease group load slope (per +2 items): %.4g, t(%g)=%.4g, p(two-sided)=%.4g, p(one-sided, >0)=%.4g\n', ...
+    est_dec, df_dec, t_dec, p_dec_two, p_dec_one);
 
 
 %% ================= TOST ANALYSIS =================
@@ -1375,52 +1582,99 @@ else
 end
 end
 
-function plot_split_raincloud_triplet(data_cells, positions, cond_cols, y_limits, y_lab, ttl, fsz, density_scale, density_offset, box_offset, box_w)
+function plot_gaze_deviation_raincloud_split(dev_inc, dev_dec, cond_labels, colors, n_inc, n_dec, fig_dir, fig_pos, fsz)
+all_vals = [dev_inc(:); dev_dec(:)];
+all_vals = all_vals(isfinite(all_vals));
+if isempty(all_vals)
+    ymax = 1;
+else
+    ymax = max(abs(all_vals));
+    if ymax <= 0
+        ymax = 1;
+    end
+    ymax = ymax * 1.15;
+end
+ylim_shared = [-ymax ymax];
+
+figure('Position', fig_pos, 'Color', 'w');
+tiledlayout(1, 2, 'TileSpacing', 'compact');
+
+nexttile;
 hold on
-for cc = 1:3
-    y = data_cells{cc};
-    y = y(isfinite(y));
-    if numel(y) < 3
-        continue
-    end
+for c = 1:3
+    draw_one_cloud(dev_inc(:, c), c, colors(c, :), 0.3, 96, 0.45);
+end
+yline(0, '--', 'Color', [0.4 0.4 0.4]);
+ylim(ylim_shared);
+set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
+title(sprintf('Increase (N=%d)', n_inc), 'Interpreter', 'none');
+ylabel('Gaze deviation [%]', 'Interpreter', 'none');
+box off
 
-    [f, xi] = ksdensity(y, 'NumPoints', 120);
-    if max(f) > 0
-        f = (f ./ max(f)) * density_scale;
-    else
-        f = zeros(size(f));
-    end
+nexttile;
+hold on
+for c = 1:3
+    draw_one_cloud(dev_dec(:, c), c, colors(c, :), 0.3, 96, 0.45);
+end
+yline(0, '--', 'Color', [0.4 0.4 0.4]);
+ylim(ylim_shared);
+set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
+title(sprintf('Decrease (N=%d)', n_dec), 'Interpreter', 'none');
+ylabel('Gaze deviation [%]', 'Interpreter', 'none');
+box off
 
-    x_den = positions(cc) - density_offset;
-    x_box = positions(cc) + box_offset;
-
-    fill([x_den - f, fliplr(repmat(x_den, 1, numel(f)))], [xi, fliplr(xi)], cond_cols(cc, :), ...
-        'FaceAlpha', 0.30, 'EdgeColor', cond_cols(cc, :), 'LineWidth', 1);
-
-    q1 = prctile(y, 25);
-    q3 = prctile(y, 75);
-    med = median(y);
-    p5 = prctile(y, 5);
-    p95 = prctile(y, 95);
-
-    plot([x_box x_box], [p5 q1], '-k', 'LineWidth', 1.2);
-    plot([x_box x_box], [q3 p95], '-k', 'LineWidth', 1.2);
-    rectangle('Position', [x_box-box_w/2, q1, box_w, q3-q1], ...
-        'FaceColor', [cond_cols(cc, :) 0.08], 'EdgeColor', 'k', 'LineWidth', 1.2);
-    plot(x_box + [-box_w/2 box_w/2], [med med], '-k', 'LineWidth', 2);
-
-    jit = box_w * (rand(numel(y),1)-0.5);
-    scatter(x_box + jit, y, 24, cond_cols(cc,:), 'filled', 'MarkerFaceAlpha', 0.50, ...
-        'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
+sgtitle('Gaze deviation', 'FontSize', fsz+2, 'Interpreter', 'none');
+drawnow;
+saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_raincloud_gazedeviation.png'));
+close(gcf);
 end
 
+function draw_one_cloud(yvals, xpos, col, box_w, dot_size, dot_alpha, density_offset, box_offset, dot_jitter_halfwidth)
+y = yvals(isfinite(yvals));
+if numel(y) < 3
+    return
+end
+[f, xi] = ksdensity(y, 'NumPoints', 120);
+if nargin < 7 || isempty(density_offset), density_offset = 0.08; end
+if nargin < 8 || isempty(box_offset), box_offset = 0.03; end
+if nargin < 9 || isempty(dot_jitter_halfwidth), dot_jitter_halfwidth = box_w / 2; end
+if max(f) > 0
+    f = f / max(f) * 0.35;
+else
+    f = zeros(size(f));
+end
+x_den = xpos - density_offset;
+x_box = xpos + box_offset;
+fill([x_den - f, fliplr(repmat(x_den, 1, numel(f)))], [xi, fliplr(xi)], col, ...
+    'FaceAlpha', 0.30, 'EdgeColor', col, 'LineWidth', 1);
+q1 = prctile(y, 25);
+q3 = prctile(y, 75);
+med = median(y);
+p5 = prctile(y, 5);
+p95 = prctile(y, 95);
+plot([x_box x_box], [p5 q1], '-k', 'LineWidth', 1.2);
+plot([x_box x_box], [q3 p95], '-k', 'LineWidth', 1.2);
+rectangle('Position', [x_box-box_w/2, q1, box_w, q3-q1], ...
+    'FaceColor', [col 0.08], 'EdgeColor', 'k', 'LineWidth', 1.2);
+plot(x_box + [-box_w/2 box_w/2], [med med], '-k', 'LineWidth', 2);
+jit = dot_jitter_halfwidth * 2 * (rand(numel(y),1)-0.5);
+scatter(x_box + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, ...
+    'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
+end
+
+function plot_split_raincloud_triplet(data_cells, cond_labels, cond_cols, y_limits, y_lab, ttl, fsz)
+hold on
+for cc = 1:3
+    draw_one_cloud(data_cells{cc}, cc, cond_cols(cc, :), 0.3, 96, 0.45);
+end
+yline(0, '--', 'Color', [0.4 0.4 0.4]);
 ylabel(y_lab);
 title(ttl);
-set(gca, 'FontSize', fsz);
-set(gca, 'XTick', positions, 'XTickLabel', {'load 2','load 4','load 6'});
+set(gca, 'FontSize', fsz-2);
+set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels);
 ylim(y_limits);
-xlim([positions(1)-0.12 positions(end)+0.12]);
-box on
+xlim([0.7 3.3]);
+box off
 end
 function [p1, p2, equivalent] = tost(x1, x2, delta, alpha)
 
@@ -1902,7 +2156,7 @@ if isempty(k_fe)
     error('Group coefficient not found in fixed effects output.');
 end
 est = fe(k_fe);
-ci_tbl = coefCI(lme, alpha_ci);
+ci_tbl = coefCI(lme, 'Alpha', alpha_ci);
 ci = ci_tbl(strcmp(lme.CoefficientNames, coeff_name), :);
 end
 

@@ -40,6 +40,9 @@ color_map = customcolormap_preset('red-white-blue');
 winsor_cfg = struct();
 winsor_cfg.enable = true;
 winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
+split_cfg = struct();
+split_cfg.use_threshold_override = false; % set true to override symmetric tail split
+split_cfg.threshold = 0.1; % default absolute slope threshold for override
 
 % Gaze heatmap color limits (diverging maps): robust scale for sparse, heavy-tailed fields
 gaze_zlim_cfg = struct();
@@ -124,38 +127,50 @@ for subj = 1:nSubj
 end
 
 %% Split and Plot slope distribution (inclusion)
-% Zero-centered symmetric tails:
-% - amplification: largest positive slopes
-% - reduction: most negative slopes
-% - intermediate: remaining participants
+% Default: zero-centered symmetric tails.
+% Optional override: absolute slope threshold (|slope| > threshold).
 nSubj = numel(slope);
-k = floor(nSubj/3); % requested equal tail size
-if k < 1
-    error('Not enough subjects for a zero-centered tail split.');
+if split_cfg.use_threshold_override
+    thr = split_cfg.threshold;
+    if ~isscalar(thr) || ~isfinite(thr) || thr < 0
+        error('split_cfg.threshold must be a finite, non-negative scalar.');
+    end
+    idx_inc = slope > thr;   % amplification
+    idx_dec = slope < -thr;  % reduction
+    idx_flat = ~(idx_inc | idx_dec); % intermediate
+else
+    % Zero-centered symmetric tails:
+    % - amplification: largest positive slopes
+    % - reduction: most negative slopes
+    % - intermediate: remaining participants
+    k = floor(nSubj/3); % requested equal tail size
+    if k < 1
+        error('Not enough subjects for a zero-centered tail split.');
+    end
+
+    pos_idx = find(slope > 0);
+    [~, ord_pos] = sort(slope(pos_idx), 'descend');
+    pos_sel = pos_idx(ord_pos(1:min(k, numel(pos_idx))));
+
+    neg_idx = find(slope < 0);
+    [~, ord_neg] = sort(slope(neg_idx), 'ascend');
+    neg_sel = neg_idx(ord_neg(1:min(k, numel(neg_idx))));
+
+    % Enforce equal N in both tails; handle sign-imbalanced cohorts gracefully.
+    k_eff = min(numel(pos_sel), numel(neg_sel));
+    if k_eff < k
+        warning('Only %d participants per tail possible (requested %d).', k_eff, k);
+    end
+    pos_sel = pos_sel(1:k_eff);
+    neg_sel = neg_sel(1:k_eff);
+
+    idx_inc = false(nSubj,1); % amplification
+    idx_dec  = false(nSubj,1); % reduction
+    idx_flat   = true(nSubj,1);  % intermediate
+    idx_inc(pos_sel) = true;
+    idx_dec(neg_sel)  = true;
+    idx_flat(idx_inc | idx_dec) = false;
 end
-
-pos_idx = find(slope > 0);
-[~, ord_pos] = sort(slope(pos_idx), 'descend');
-pos_sel = pos_idx(ord_pos(1:min(k, numel(pos_idx))));
-
-neg_idx = find(slope < 0);
-[~, ord_neg] = sort(slope(neg_idx), 'ascend');
-neg_sel = neg_idx(ord_neg(1:min(k, numel(neg_idx))));
-
-% Enforce equal N in both tails; handle sign-imbalanced cohorts gracefully.
-k_eff = min(numel(pos_sel), numel(neg_sel));
-if k_eff < k
-    warning('Only %d participants per tail possible (requested %d).', k_eff, k);
-end
-pos_sel = pos_sel(1:k_eff);
-neg_sel = neg_sel(1:k_eff);
-
-idx_inc = false(nSubj,1); % amplification
-idx_dec  = false(nSubj,1); % reduction
-idx_flat   = true(nSubj,1);  % intermediate
-idx_inc(pos_sel) = true;
-idx_dec(neg_sel)  = true;
-idx_flat(idx_inc | idx_dec) = false;
 
 % counts
 n_inc = sum(idx_inc);

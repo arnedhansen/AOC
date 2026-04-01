@@ -56,7 +56,7 @@ winsor_cfg.enable = true;
 winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
 split_cfg = struct();
 split_cfg.use_threshold_override = true; % set true to override symmetric tail split
-split_cfg.threshold = 0.1; % default absolute slope threshold for override
+split_cfg.threshold = 0.015; % default absolute slope threshold for override
 
 % Gaze heatmap color limits (diverging maps): robust scale for sparse, heavy-tailed fields
 gaze_zlim_cfg = struct();

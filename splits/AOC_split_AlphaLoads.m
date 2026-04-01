@@ -55,7 +55,7 @@ winsor_cfg = struct();
 winsor_cfg.enable = true;
 winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
 split_cfg = struct();
-split_cfg.use_threshold_override = false; % set true to override symmetric tail split
+split_cfg.use_threshold_override = true; % set true to override symmetric tail split
 split_cfg.threshold = 0.1; % default absolute slope threshold for override
 
 % Gaze heatmap color limits (diverging maps): robust scale for sparse, heavy-tailed fields
@@ -1189,11 +1189,16 @@ for ii = 1:nSubj
 end
 
 mask_couple = isfinite(slope(:)) & isfinite(gaze_dev_slope(:));
-% Figure and coupling stats here: symmetric alpha tails only (exclude intermediate).
+% Figure and coupling stats here: alpha increase/decrease groups only (exclude intermediate).
 mask_couple_fig = mask_couple & (idx_inc | idx_dec);
 n_couple = sum(mask_couple);
 n_couple_fig = sum(mask_couple_fig);
-r_p = NaN; p_p = NaN; r_s = NaN; p_s = NaN; p_pearson_inv = NaN;
+mI = mask_couple_fig & idx_inc;
+mD = mask_couple_fig & idx_dec;
+n_inc_fig = sum(mI);
+n_dec_fig = sum(mD);
+r_p_inc = NaN; p_p_inc = NaN; r_s_inc = NaN; p_s_inc = NaN; p_pearson_inv_inc = NaN;
+r_p_dec = NaN; p_p_dec = NaN; r_s_dec = NaN; p_s_dec = NaN; p_pearson_inv_dec = NaN;
 
 fprintf('\n========== SUBJECT-LEVEL ALPHA–GAZE COUPLING (WM LOAD 2–6) ==========\n');
 fprintf('Gaze deviation slope: OLS of GazeDeviationFullBL on load [2,4,6] (slope = b_load).\n');
@@ -1208,145 +1213,67 @@ if n_gaze_fin > 0
     fprintf('  Gaze dev slope: min=%.5g, max=%.5g, mean=%.5g, SD=%.5g, median=%.5g\n', ...
         min(gs_all), max(gs_all), mean(gs_all), std(gs_all), median(gs_all));
 end
-fprintf('N with finite alpha and gaze slopes (any): %d; symmetric tails only (figure / coupling): %d\n', ...
+fprintf('N with finite alpha and gaze slopes (any): %d; increase/decrease groups (figure / coupling): %d\n', ...
     n_couple, n_couple_fig);
 if n_couple_fig > 0
     sa_d = slope(mask_couple_fig);
     sg_d = gaze_dev_slope(mask_couple_fig);
-    fprintf('  Alpha slope (tails N): min=%.5g, max=%.5g, mean=%.5g, SD=%.5g\n', ...
+    fprintf('  Alpha slope (coupling N): min=%.5g, max=%.5g, mean=%.5g, SD=%.5g\n', ...
         min(sa_d), max(sa_d), mean(sa_d), std(sa_d));
-    fprintf('  Gaze dev slope (tails N): min=%.5g, max=%.5g, mean=%.5g, SD=%.5g\n', ...
+    fprintf('  Gaze dev slope (coupling N): min=%.5g, max=%.5g, mean=%.5g, SD=%.5g\n', ...
         min(sg_d), max(sg_d), mean(sg_d), std(sg_d));
     n_inc_c = sum(mask_couple_fig & idx_inc);
     n_dec_c = sum(mask_couple_fig & idx_dec);
-    fprintf('  Symmetric-tail counts in this sample: alpha inc=%d, alpha dec=%d\n', n_inc_c, n_dec_c);
+    fprintf('  Counts in this sample: alpha increase=%d, alpha decrease=%d\n', n_inc_c, n_dec_c);
 end
 
-fprintf('\n--- Correlation (alpha slope vs gaze dev slope), pairwise complete (symmetric tails only) ---\n');
-if n_couple_fig >= 5
-    sa = slope(mask_couple_fig);
-    sg = gaze_dev_slope(mask_couple_fig);
-    [r_p, p_p] = corr(sa, sg, 'Type', 'Pearson', 'rows', 'complete');
-    [r_s, p_s] = corr(sa, sg, 'Type', 'Spearman', 'rows', 'complete');
-    % One-sided test for inverse link: H1 is rho < 0 (Pearson).
-    df_r = n_couple_fig - 2;
-    if df_r > 0 && abs(r_p) < 1 - eps
-        t_r = r_p * sqrt(df_r / max(eps, 1 - r_p^2));
-        p_pearson_inv = tcdf(t_r, df_r);
-    else
-        t_r = NaN;
-        p_pearson_inv = NaN;
+fprintf('\n--- Within-group correlation (alpha slope vs gaze dev slope), per group ---\n');
+fprintf('(Matches separate regression lines on the scatter; need N >= 3 per group for r and p.)\n');
+if n_inc_fig >= 3
+    sa_i = slope(mI); sg_i = gaze_dev_slope(mI);
+    [r_p_inc, p_p_inc] = corr(sa_i, sg_i, 'Type', 'Pearson', 'rows', 'complete');
+    [r_s_inc, p_s_inc] = corr(sa_i, sg_i, 'Type', 'Spearman', 'rows', 'complete');
+    df_i = n_inc_fig - 2;
+    if df_i > 0 && abs(r_p_inc) < 1 - eps
+        t_ri = r_p_inc * sqrt(df_i / max(eps, 1 - r_p_inc^2));
+        p_pearson_inv_inc = tcdf(t_ri, df_i);
     end
-    fprintf('df (Pearson) = n-2 = %d\n', df_r);
-    fprintf('Pearson r = %.5f, two-sided p = %.6g\n', r_p, p_p);
-    if isfinite(t_r)
-        fprintf('  t(%d) = %.4f (test of H0: rho=0)\n', df_r, t_r);
-    end
-    fprintf('  one-sided p (H1: inverse coupling, rho < 0) = %.6g\n', p_pearson_inv);
-    fprintf('Spearman rho = %.5f, two-sided p = %.6g\n', r_s, p_s);
-    % OLS within each tail (same lines as scatter).
-    mI = mask_couple_fig & idx_inc;
-    mD = mask_couple_fig & idx_dec;
-    if sum(mI) >= 2
-        p_ols_inc = polyfit(slope(mI), gaze_dev_slope(mI), 1);
-        fprintf('OLS, alpha inc. tail: gaze_dev_slope = %.5g + %.5g * alpha_slope\n', p_ols_inc(2), p_ols_inc(1));
-    end
-    if sum(mD) >= 2
-        p_ols_dec = polyfit(slope(mD), gaze_dev_slope(mD), 1);
-        fprintf('OLS, alpha dec. tail: gaze_dev_slope = %.5g + %.5g * alpha_slope\n', p_ols_dec(2), p_ols_dec(1));
-    end
-elseif n_couple_fig >= 3 && n_couple_fig < 5
-    sa = slope(mask_couple_fig);
-    sg = gaze_dev_slope(mask_couple_fig);
-    [r_p, p_p] = corr(sa, sg, 'Type', 'Pearson', 'rows', 'complete');
-    [r_s, p_s] = corr(sa, sg, 'Type', 'Spearman', 'rows', 'complete');
-    fprintf('N=%d: correlation computed but interpret with caution (N < 5).\n', n_couple_fig);
-    fprintf('Pearson r = %.5f, two-sided p = %.6g\n', r_p, p_p);
-    fprintf('Spearman rho = %.5f, two-sided p = %.6g\n', r_s, p_s);
-    df_r = n_couple_fig - 2;
-    if df_r > 0 && abs(r_p) < 1 - eps
-        t_r = r_p * sqrt(df_r / max(eps, 1 - r_p^2));
-        p_pearson_inv = tcdf(t_r, df_r);
-        fprintf('  one-sided p (H1: rho < 0) = %.6g\n', p_pearson_inv);
-    end
+    fprintf('Alpha increase (N=%d): Pearson r=%.5f, p=%.6g; H1 inv. coupling (rho<0): p=%.6g; Spearman rho=%.5f, p=%.6g\n', ...
+        n_inc_fig, r_p_inc, p_p_inc, p_pearson_inv_inc, r_s_inc, p_s_inc);
 else
-    fprintf('Too few subjects in tails (N=%d) for stable correlation; need N >= 3 for bivariate stats.\n', n_couple_fig);
+    fprintf('Alpha increase: N=%d (skipped correlation; need N>=3)\n', n_inc_fig);
+end
+if n_dec_fig >= 3
+    sa_dv = slope(mD); sg_dv = gaze_dev_slope(mD);
+    [r_p_dec, p_p_dec] = corr(sa_dv, sg_dv, 'Type', 'Pearson', 'rows', 'complete');
+    [r_s_dec, p_s_dec] = corr(sa_dv, sg_dv, 'Type', 'Spearman', 'rows', 'complete');
+    df_d = n_dec_fig - 2;
+    if df_d > 0 && abs(r_p_dec) < 1 - eps
+        t_rd = r_p_dec * sqrt(df_d / max(eps, 1 - r_p_dec^2));
+        p_pearson_inv_dec = tcdf(t_rd, df_d);
+    end
+    fprintf('Alpha decrease (N=%d): Pearson r=%.5f, p=%.6g; H1 inv. coupling (rho<0): p=%.6g; Spearman rho=%.5f, p=%.6g\n', ...
+        n_dec_fig, r_p_dec, p_p_dec, p_pearson_inv_dec, r_s_dec, p_s_dec);
+else
+    fprintf('Alpha decrease: N=%d (skipped correlation; need N>=3)\n', n_dec_fig);
+end
+if n_inc_fig >= 2
+    p_ols_inc = polyfit(slope(mI), gaze_dev_slope(mI), 1);
+    fprintf('OLS, alpha increase: gaze_dev_slope = %.5g + %.5g * alpha_slope\n', p_ols_inc(2), p_ols_inc(1));
+end
+if n_dec_fig >= 2
+    p_ols_dec = polyfit(slope(mD), gaze_dev_slope(mD), 1);
+    fprintf('OLS, alpha decrease: gaze_dev_slope = %.5g + %.5g * alpha_slope\n', p_ols_dec(2), p_ols_dec(1));
+end
+if n_couple_fig < 3
+    fprintf('Note: total N in coupling sample = %d (very small combined sample).\n', n_couple_fig);
 end
 
-% --- Figures: gaze slope distribution, alpha vs gaze scatter, means by alpha tail ---
+% --- Figures: top = alpha vs gaze scatter; bottom = alpha slope histogram (inclusion-style) + gaze slopes (one bar per participant) ---
 % (mask_gaze_fin / n_gaze_fin defined in descriptive block above)
 col_inc = [0.8 0 0];
 col_dec = [0 0 0.8];
-fprintf('\n--- Building alpha–gaze coupling figures ---\n');
-figure('Position', fig_pos, 'Color', 'w');
-tl = tiledlayout(2, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
-
-axH = nexttile(tl, [1 2]);
-histogram(axH, gaze_dev_slope(mask_couple_fig), 18, 'FaceColor', [0.38 0.52 0.72], ...
-    'EdgeColor', 'w', 'FaceAlpha', 0.85);
-hold(axH, 'on');
-xline(axH, 0, 'k--', 'LineWidth', 1.3);
-hold(axH, 'off');
-title(axH, { 'Distribution of gaze deviation slopes across WM load (2 \rightarrow 6)'; ...
-    sprintf('Symmetric Alpha tails only, N = %d', n_couple_fig) }, 'FontSize', fontSize, 'Interpreter', 'tex');
-xlabel(axH, 'Gaze deviation slope (a.u. per item)', 'FontSize', fontSize - 1);
-ylabel(axH, 'Participants', 'FontSize', fontSize - 1);
-grid(axH, 'on');
-set(axH, 'FontSize', fontSize - 2);
-
-axS = nexttile(tl);
-hold(axS, 'on');
-h1 = scatter(axS, NaN, NaN, 40, col_inc, 'filled', 'MarkerEdgeColor', col_inc * 0.35);
-h2 = scatter(axS, NaN, NaN, 40, col_dec, 'filled', 'MarkerEdgeColor', col_dec * 0.35);
-idx_plot = find(mask_couple_fig);
-for ii = idx_plot(:)'
-    if idx_inc(ii)
-        scatter(axS, slope(ii), gaze_dev_slope(ii), 36, col_inc, 'filled', 'MarkerFaceAlpha', 0.78, ...
-            'MarkerEdgeColor', col_inc * 0.35, 'LineWidth', 0.45);
-    elseif idx_dec(ii)
-        scatter(axS, slope(ii), gaze_dev_slope(ii), 36, col_dec, 'filled', 'MarkerFaceAlpha', 0.78, ...
-            'MarkerEdgeColor', col_dec * 0.35, 'LineWidth', 0.45);
-    end
-end
-mI = mask_couple_fig & idx_inc;
-mD = mask_couple_fig & idx_dec;
-if sum(mI) >= 2
-    sa_i = slope(mI);
-    p_inc = polyfit(sa_i, gaze_dev_slope(mI), 1);
-    xl_i = [min(sa_i), max(sa_i)];
-    pad_i = 0.05 * max(abs(diff(xl_i)), eps);
-    xl_i = [xl_i(1) - pad_i, xl_i(2) + pad_i];
-    plot(axS, xl_i, polyval(p_inc, xl_i), '-', 'Color', col_inc * 0.55, 'LineWidth', 1.65);
-end
-if sum(mD) >= 2
-    sa_d = slope(mD);
-    p_dec = polyfit(sa_d, gaze_dev_slope(mD), 1);
-    xl_d = [min(sa_d), max(sa_d)];
-    pad_d = 0.05 * max(abs(diff(xl_d)), eps);
-    xl_d = [xl_d(1) - pad_d, xl_d(2) + pad_d];
-    plot(axS, xl_d, polyval(p_dec, xl_d), '-', 'Color', col_dec * 0.55, 'LineWidth', 1.65);
-end
-xline(axS, 0, ':', 'Color', [0.55 0.55 0.55], 'LineWidth', 1);
-yline(axS, 0, ':', 'Color', [0.55 0.55 0.55], 'LineWidth', 1);
-hold(axS, 'off');
-xlabel(axS, 'Alpha power slope (a.u. per item)', 'FontSize', fontSize - 1);
-ylabel(axS, 'Gaze deviation slope (a.u. per item)', 'FontSize', fontSize - 1);
-title(axS, 'Alpha vs gaze load slopes (symmetric Alpha tails)', 'FontSize', fontSize, 'Interpreter', 'tex');
-grid(axS, 'on');
-set(axS, 'FontSize', fontSize - 2);
-legend(axS, [h1, h2], {'Alpha increase tail', 'Alpha decrease tail'}, ...
-    'Location', 'best', 'Box', 'off', 'Interpreter', 'tex', 'FontSize', fontSize - 3);
-if n_couple_fig >= 5 && all(isfinite([r_p, p_p, p_pearson_inv, r_s, p_s]))
-    txt = { sprintf('Pearson r = %.3f, p = %.4g', r_p, p_p); ...
-        sprintf('H_1: \\rho < 0: p = %.4g', p_pearson_inv); ...
-        sprintf('Spearman \\rho = %.3f, p = %.4g', r_s, p_s); ...
-        sprintf('N = %d (symmetric tails)', n_couple_fig) };
-    text(axS, 0.03, 0.97, txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
-        'FontSize', fontSize - 3, 'Interpreter', 'tex');
-end
-
-axB = nexttile(tl);
-grp_names = {'Alpha inc. tail', 'Alpha dec. tail'};
+col_flat = [0.5 0.5 0.5];
 mu_gs = nan(1, 2);
 sem_gs = nan(1, 2);
 n_gs = zeros(1, 2);
@@ -1368,9 +1295,80 @@ for gi = 1:2
         end
     end
 end
-fprintf('\n--- Gaze deviation slope by symmetric alpha tail (same sample as scatter: symmetric tails) ---\n');
-fprintf('  tail                 n    mean(gaze slope)       SEM\n');
-tail_lbl = {'alpha inc. tail', 'alpha dec. tail'};
+
+fprintf('\n--- Building alpha–gaze coupling figures ---\n');
+figure('Position', fig_pos, 'Color', 'w');
+axS = subplot(2, 2, [1 2]);
+hold(axS, 'on');
+h1 = scatter(axS, NaN, NaN, 40, col_inc, 'filled', 'MarkerEdgeColor', col_inc * 0.35);
+h2 = scatter(axS, NaN, NaN, 40, col_dec, 'filled', 'MarkerEdgeColor', col_dec * 0.35);
+idx_plot = find(mask_couple_fig);
+for ii = idx_plot(:)'
+    if idx_inc(ii)
+        scatter(axS, slope(ii), gaze_dev_slope(ii), 36, col_inc, 'filled', 'MarkerFaceAlpha', 0.78, ...
+            'MarkerEdgeColor', col_inc * 0.35, 'LineWidth', 0.45);
+    elseif idx_dec(ii)
+        scatter(axS, slope(ii), gaze_dev_slope(ii), 36, col_dec, 'filled', 'MarkerFaceAlpha', 0.78, ...
+            'MarkerEdgeColor', col_dec * 0.35, 'LineWidth', 0.45);
+    end
+end
+if sum(mI) >= 2
+    sa_i = slope(mI);
+    p_inc = polyfit(sa_i, gaze_dev_slope(mI), 1);
+    xl_i = [min(sa_i), max(sa_i)];
+    pad_i = 0.05 * max(abs(diff(xl_i)), eps);
+    xl_i = [xl_i(1) - pad_i, xl_i(2) + pad_i];
+    plot(axS, xl_i, polyval(p_inc, xl_i), '-', 'Color', col_inc * 0.55, 'LineWidth', 1.65);
+end
+if sum(mD) >= 2
+    sa_d = slope(mD);
+    p_dec = polyfit(sa_d, gaze_dev_slope(mD), 1);
+    xl_d = [min(sa_d), max(sa_d)];
+    pad_d = 0.05 * max(abs(diff(xl_d)), eps);
+    xl_d = [xl_d(1) - pad_d, xl_d(2) + pad_d];
+    plot(axS, xl_d, polyval(p_dec, xl_d), '-', 'Color', col_dec * 0.55, 'LineWidth', 1.65);
+end
+xline(axS, 0, ':', 'Color', [0.55 0.55 0.55], 'LineWidth', 1);
+yline(axS, 0, ':', 'Color', [0.55 0.55 0.55], 'LineWidth', 1);
+hold(axS, 'off');
+sa_sc = slope(mask_couple_fig);
+sg_sc = gaze_dev_slope(mask_couple_fig);
+sx_sc = max(abs(sa_sc(isfinite(sa_sc))));
+sy_sc = max(abs(sg_sc(isfinite(sg_sc))));
+if ~isfinite(sx_sc) || sx_sc <= 0, sx_sc = eps; end
+if ~isfinite(sy_sc) || sy_sc <= 0, sy_sc = eps; end
+xlim(axS, [-1 1] * sx_sc * 1.05);
+ylim(axS, [-1 1] * sy_sc * 1.05);
+xlabel(axS, 'Alpha power slope (a.u. per item)', 'FontSize', fontSize - 1);
+ylabel(axS, 'Gaze deviation slope (a.u. per item)', 'FontSize', fontSize - 1);
+title(axS, 'Alpha vs gaze load slopes', 'FontSize', fontSize, 'Interpreter', 'tex');
+set(axS, 'FontSize', fontSize - 2);
+legend(axS, [h1, h2], {'Alpha increase', 'Alpha decrease'}, ...
+    'Location', 'best', 'Box', 'off', 'Interpreter', 'tex', 'FontSize', fontSize - 3);
+txt = { 'Within-group correlations (alpha vs gaze slope):' };
+if n_inc_fig >= 3
+    txt{end+1} = sprintf(['Alpha increase (N=%d): Pearson \\it r\\rm = %.3f, \\it p\\rm = %.4g; ', ...
+        'H_1: \\rho < 0: \\it p\\rm = %.4g; Spearman \\rho = %.3f, \\it p\\rm = %.4g'], ...
+        n_inc_fig, r_p_inc, p_p_inc, p_pearson_inv_inc, r_s_inc, p_s_inc);
+else
+    txt{end+1} = sprintf('Alpha increase: N = %d (correlation requires N \\geq 3)', n_inc_fig);
+end
+if n_dec_fig >= 3
+    txt{end+1} = sprintf(['Alpha decrease (N=%d): Pearson \\it r\\rm = %.3f, \\it p\\rm = %.4g; ', ...
+        'H_1: \\rho < 0: \\it p\\rm = %.4g; Spearman \\rho = %.3f, \\it p\\rm = %.4g'], ...
+        n_dec_fig, r_p_dec, p_p_dec, p_pearson_inv_dec, r_s_dec, p_s_dec);
+else
+    txt{end+1} = sprintf('Alpha decrease: N = %d (correlation requires N \\geq 3)', n_dec_fig);
+end
+txt{end+1} = sprintf(['Mean gaze slope \\pm SEM: increase %.4g \\pm %.4g (n=%d); ', ...
+    'decrease %.4g \\pm %.4g (n=%d)'], ...
+    mu_gs(1), sem_gs(1), n_gs(1), mu_gs(2), sem_gs(2), n_gs(2));
+text(axS, 0.02, 0.98, txt, 'Units', 'normalized', 'VerticalAlignment', 'top', ...
+    'FontSize', fontSize - 4, 'Interpreter', 'tex');
+
+fprintf('\n--- Gaze deviation slope by group (same sample as scatter) ---\n');
+fprintf('  group                n    mean(gaze slope)       SEM\n');
+tail_lbl = {'alpha increase', 'alpha decrease'};
 for gi = 1:2
     if n_gs(gi) < 1
         fprintf('  %-20s   --          --              --\n', tail_lbl{gi});
@@ -1379,41 +1377,70 @@ for gi = 1:2
     end
 end
 
-hold(axB, 'on');
-xpos = 1:2;
-bar_colors = [col_inc; col_dec];
-for gi = 1:2
-    if n_gs(gi) < 1
-        continue
-    end
-    bar(axB, xpos(gi), mu_gs(gi), 0.62, 'FaceColor', bar_colors(gi, :), 'EdgeColor', 'none', 'FaceAlpha', 0.88);
-    if n_gs(gi) >= 2 && sem_gs(gi) > 0
-        errorbar(axB, xpos(gi), mu_gs(gi), sem_gs(gi), 'k', 'LineStyle', 'none', 'LineWidth', 1.2);
-    end
+% Bottom left: alpha slope histogram (same binning as inclusion figure at start of script)
+axAlpha = subplot(2, 2, 3);
+hold(axAlpha, 'on');
+if numel(bin_edges) >= 2 && all(isfinite(bin_edges(:)))
+    histogram(axAlpha, slope(idx_inc), 'BinEdges', bin_edges, 'FaceColor', col_inc, 'FaceAlpha', 0.6, 'EdgeColor', 'none');
+    histogram(axAlpha, slope(idx_dec), 'BinEdges', bin_edges, 'FaceColor', col_dec, 'FaceAlpha', 0.6, 'EdgeColor', 'none');
+    histogram(axAlpha, slope(idx_flat), 'BinEdges', bin_edges, 'FaceColor', col_flat, 'FaceAlpha', 0.6, 'EdgeColor', 'none');
+    lim_a = max(abs([bin_edges(1), bin_edges(end)]));
+else
+    histogram(axAlpha, slope(idx_inc), 'FaceColor', col_inc, 'FaceAlpha', 0.6, 'EdgeColor', 'none');
+    histogram(axAlpha, slope(idx_dec), 'FaceColor', col_dec, 'FaceAlpha', 0.6, 'EdgeColor', 'none');
+    histogram(axAlpha, slope(idx_flat), 'FaceColor', col_flat, 'FaceAlpha', 0.6, 'EdgeColor', 'none');
+    all_s = slope(isfinite(slope));
+    lim_a = max(abs([min(all_s), max(all_s)]));
 end
-yline(axB, 0, 'k--', 'LineWidth', 1);
-hold(axB, 'off');
-set(axB, 'XTick', xpos, 'XTickLabel', grp_names, 'XTickLabelRotation', 0);
-ylabel(axB, 'Mean gaze deviation slope', 'FontSize', fontSize - 1);
-title(axB, 'Gaze load slope by Alpha tail (mean \pm SEM)', 'FontSize', fontSize, 'Interpreter', 'tex');
-grid(axB, 'on');
-set(axB, 'FontSize', fontSize - 3);
-ylb = ylim(axB);
-dyb = diff(ylb);
-for gi = 1:2
-    if n_gs(gi) < 1
-        continue
-    end
-    ytop = mu_gs(gi);
-    if n_gs(gi) >= 2 && sem_gs(gi) > 0
-        ytop = mu_gs(gi) + sem_gs(gi);
-    end
-    text(axB, xpos(gi), ytop + 0.04 * dyb, sprintf('n=%d', n_gs(gi)), ...
-        'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom', ...
-        'FontSize', fontSize - 4, 'Interpreter', 'none');
+xline(axAlpha, 0, 'k-', 'LineWidth', 1);
+if isfinite(t1), xline(axAlpha, t1, 'k--', 'LineWidth', 1.5); end
+if isfinite(t2), xline(axAlpha, t2, 'k--', 'LineWidth', 1.5); end
+hold(axAlpha, 'off');
+if isfinite(lim_a) && lim_a > 0
+    xlim(axAlpha, [-lim_a lim_a]);
 end
+xlabel(axAlpha, 'Alpha power slope', 'FontSize', fontSize - 1);
+ylabel(axAlpha, 'Participants', 'FontSize', fontSize - 1);
+title(axAlpha, 'Alpha power slope across WM load', 'FontSize', fontSize - 1, 'Interpreter', 'none');
+set(axAlpha, 'FontSize', fontSize - 2);
 
-title(tl, 'Subject-level Alpha–gaze coupling over WM load', 'FontSize', fontSize + 2, ...
+% Bottom right: one bar per participant, color by alpha increase vs decrease
+axGaze = subplot(2, 2, 4);
+idx_g = find(mask_couple_fig);
+gv_raw = gaze_dev_slope(idx_g);
+[gv_sorted, ord] = sort(gv_raw);
+n_b = numel(idx_g);
+C_b = zeros(n_b, 3);
+for k = 1:n_b
+    ii = idx_g(ord(k));
+    if idx_inc(ii)
+        C_b(k, :) = col_inc;
+    else
+        C_b(k, :) = col_dec;
+    end
+end
+if n_b >= 1
+    b = bar(axGaze, 1:n_b, gv_sorted, 'BarWidth', 1, 'EdgeColor', 'none');
+    b.FaceColor = 'flat';
+    b.CData = C_b;
+    yline(axGaze, 0, 'k-', 'LineWidth', 1);
+    mg = max(abs(gv_sorted));
+    if isfinite(mg) && mg > 0
+        ylim(axGaze, [-mg mg] * 1.05);
+    end
+    hold(axGaze, 'on');
+    plot(axGaze, NaN, NaN, 's', 'MarkerFaceColor', col_inc, 'MarkerEdgeColor', col_inc * 0.35, 'MarkerSize', 9);
+    plot(axGaze, NaN, NaN, 's', 'MarkerFaceColor', col_dec, 'MarkerEdgeColor', col_dec * 0.35, 'MarkerSize', 9);
+    legend(axGaze, {'Alpha increase', 'Alpha decrease'}, 'Location', 'northeast', ...
+        'Box', 'off', 'FontSize', fontSize - 4, 'Interpreter', 'none');
+    hold(axGaze, 'off');
+end
+xlabel(axGaze, 'Participant (sorted by gaze deviation slope)', 'FontSize', fontSize - 1);
+ylabel(axGaze, 'Gaze deviation slope (a.u. per item)', 'FontSize', fontSize - 1);
+title(axGaze, 'Gaze deviation slopes (one bar per participant)', 'FontSize', fontSize - 1, 'Interpreter', 'none');
+set(axGaze, 'FontSize', fontSize - 2);
+
+sgtitle('Subject-level Alpha–gaze coupling over WM load', 'FontSize', fontSize + 2, ...
     'FontWeight', 'bold', 'Interpreter', 'tex');
 drawnow;
 fig_coupling_path = fullfile(fig_dir, 'AOC_split_AlphaLoads_alpha_gaze_slope_coupling.png');

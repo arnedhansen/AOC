@@ -44,9 +44,9 @@ winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
 % Gaze heatmap color limits (diverging maps): robust scale for sparse, heavy-tailed fields
 gaze_zlim_cfg = struct();
 gaze_zlim_cfg.min_abs = 1e-18;   % values with |x| <= this treated as empty-bin zeros for scaling
-gaze_zlim_cfg.prctile = 95;      % percentile of |x| (above min_abs); lower -> more contrast
+gaze_zlim_cfg.prctile = 90;      % percentile of |x| (above min_abs)
 gaze_zlim_cfg.k_mad = 4;         % symmetric MAD fence: median(|x|)+k*MAD(|x|)
-gaze_zlim_cfg.fallback_abs = 3;  % if scale degenerates (same as previous hard-coded floor)
+gaze_zlim_cfg.fallback_abs = 3;  % if scale degenerates
 
 %% Loop over subjects - load EEG TFR (specParam, baselined)
 clc
@@ -422,7 +422,7 @@ allgazetasklate6 = gaze_dwell_time.allgazetasklate6;
 % CBPT inputs spatially downsample (memory issues on server)
 % gaze_cbpt_bins: scalar N → N×N; or [width height] screen px (e.g. [800 600]) → freq×time = [height width].
 cbpt_gaze_downsample = false;
-gaze_cbpt_bins = [800, 600];
+gaze_cbpt_bins = [200, 150];
 if cbpt_gaze_downsample
     allgazebase2_cbpt = downsample_gaze_cells_powspctrm(allgazebase2, gaze_cbpt_bins);
     allgazebase4_cbpt = downsample_gaze_cells_powspctrm(allgazebase4, gaze_cbpt_bins);
@@ -1889,12 +1889,20 @@ if ~any(idx)
 end
 coeff_name = coef_names{find(idx, 1, 'first')};
 
-[fe, fe_names] = fixedEffects(lme);
-fe_idx = strcmp(fe_names, coeff_name);
-if ~any(fe_idx)
+[fe, fe_betanames] = fixedEffects(lme);
+% R2013b+ returns betanames as a table with variable Name; older/docs cell paths differ.
+if istable(fe_betanames) && ismember('Name', fe_betanames.Properties.VariableNames)
+    fe_name_list = fe_betanames.Name;
+elseif iscell(fe_betanames)
+    fe_name_list = fe_betanames;
+else
+    fe_name_list = fe_betanames;
+end
+k_fe = find(ismember(fe_name_list(:), coeff_name), 1);
+if isempty(k_fe)
     error('Group coefficient not found in fixed effects output.');
 end
-est = fe(fe_idx);
+est = fe(k_fe);
 ci_tbl = coefCI(lme, alpha_ci);
 ci = ci_tbl(strcmp(lme.CoefficientNames, coeff_name), :);
 end

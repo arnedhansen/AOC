@@ -8,7 +8,11 @@
 %% Setup
 startup
 setup('AOC');
-path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
+if ispc == 1
+    path = 'W:\Students\Arne\AOC\data\features\';
+else
+    path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
+end
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
@@ -366,7 +370,11 @@ for subj = 1:length(subjects)
         'BCEALatLateBL', num2cell([l2blatBLl; l4blatBLl; l6blatBLl]));
 
     %% Save data
-    savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
+    if ispc == 1
+        savepath = strcat('W:\Students\Arne\AOC\data\features\', subjects{subj}, '\gaze\');
+    else
+        savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
+    end
     mkdir(savepath)
     cd(savepath)
     save gaze_matrix_sternberg_trial subj_data_gaze_trial
@@ -382,5 +390,10 @@ for subj = 1:length(subjects)
     gaze_data_sternberg = [gaze_data_sternberg; subj_data_gaze];
 end
 trialinfo = dataet.trialinfo';
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_sternberg gaze_x gaze_y trialinfo
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_matrix_sternberg gaze_data_sternberg
+if ispc == 1
+    save W:\Students\Arne\AOC\data\features\AOC_gaze_sternberg gaze_x gaze_y trialinfo
+    save W:\Students\Arne\AOC\data\features\AOC_gaze_matrix_sternberg gaze_data_sternberg
+else
+    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_sternberg gaze_x gaze_y trialinfo
+    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_matrix_sternberg gaze_data_sternberg
+end

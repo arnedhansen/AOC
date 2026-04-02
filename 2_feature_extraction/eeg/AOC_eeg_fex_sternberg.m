@@ -19,7 +19,11 @@ startup
 path = paths.features;
 
 % Setup logging
-logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
+if ispc == 1
+    logDir = 'W:\Students\Arne\AOC\data\controls\logs';
+else
+    logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
+end
 scriptName = 'AOC_eeg_fex_sternberg';
 
 for subj = 1:length(subjects)

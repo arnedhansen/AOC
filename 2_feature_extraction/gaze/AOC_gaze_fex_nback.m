@@ -32,7 +32,7 @@ for subj = 1:length(subjects)
     %% Initialize arrays
     subject_id = [];
     trial_num = [];
-    num_trials = length(dataet.trialinfo);
+    num_trials = size(dataet.trialinfo, 1);
     condition = [];
     gazeDev = [];
     gazeSDx = [];
@@ -51,7 +51,7 @@ for subj = 1:length(subjects)
     blatEarlyBL = []; blatLateBL = []; blatFullBL = [];
 
     %% Get trial-by-trial gaze data
-    for trl = 1:length(dataet.trialinfo)
+    for trl = 1:size(dataet.trialinfo, 1)
         close all
         data = dataet.trial{trl};
 
@@ -181,8 +181,8 @@ for subj = 1:length(subjects)
 
         %% Append data for this trial
         subject_id = [subject_id; str2num(subjects{subj})];
-        trial_num = [trial_num; trl];
-        condition = [condition; dataet.trialinfo(trl)-20];
+        trial_num = [trial_num; dataet.trialinfo(trl, 2)];
+        condition = [condition; dataet.trialinfo(trl, 1)-20];
         gazeDev = [gazeDev; mean_euclidean_distance];
         gazeSDx = [gazeSDx; gaze_standard_deviation_x];
         gazeSDy = [gazeSDy; gaze_standard_deviation_y];

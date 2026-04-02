@@ -30,7 +30,7 @@ gaze_data_nback = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, ...
 
 %% Load all eye movements
 for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj}, '/gaze');
+    datapath = fullfile(path, subjects{subj}, 'gaze');
     load([datapath, filesep, 'dataET_nback'])
 
     %% Initialize arrays
@@ -371,9 +371,9 @@ for subj = 1:length(subjects)
 
     %% Save
     if ispc == 1
-        savepath = strcat('W:\Students\Arne\AOC\data\features\', subjects{subj}, '\gaze\');
+        savepath = fullfile('W:\Students\Arne\AOC\data\features\', subjects{subj}, 'gaze');
     else
-        savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
+        savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, 'gaze');
     end
     mkdir(savepath)
     cd(savepath)

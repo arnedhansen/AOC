@@ -31,7 +31,7 @@ for subj = 1:length(subjects)
         clc
         disp(['Processing windowed POWSPCTRM + FOOOF (subject-level) for Subject AOC ', num2str(subjects{subj})])
         % Load data
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath)
         close all
         load dataEEG_TFR_sternberg   % time-domain FieldTrip data struct (used for tf transforms)
@@ -180,7 +180,7 @@ path = paths.features;
 
 % Define channels
 subj = 1;
-datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+datapath = fullfile(path, subjects{subj}, 'eeg');
 cd(datapath);
 load('power_stern_windows.mat');
 % Occipital channels
@@ -225,7 +225,7 @@ for subj = 1:length(subjects)
     try
         clc
         disp(['Processing Alpha Power, IAF and Lateralization for Subject AOC ', num2str(subjects{subj})])
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath);
         load('power_stern_windows.mat');
 
@@ -361,9 +361,9 @@ for subj = 1:length(subjects)
 
         % Save
         if ispc == 1
-            savepath = strcat('W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\');
+            savepath = fullfile('W:\Students\Arne\AOC\data\features\', subjects{subj}, 'eeg');
         else
-            savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
+            savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, 'eeg');
         end
         mkdir(savepath)
         cd(savepath)

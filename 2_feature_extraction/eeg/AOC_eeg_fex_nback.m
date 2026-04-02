@@ -356,5 +356,3 @@ if ispc == 1
 else
     save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_nback eeg_data_nback
 end
-
-% NOTE: Trial-level power extraction lives in `2_feature_extraction/eeg/trials/AOC_eeg_fex_nback_trials.m`.

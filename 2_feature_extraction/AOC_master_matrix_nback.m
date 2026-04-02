@@ -26,7 +26,7 @@
 %     AlphaPower_bl_early        [0 1]s, baselined
 %     AlphaPower_bl_late         [1 2]s, baselined
 %
-%   Gaze — baselined (BL window [-0.5 -0.25]s; dB for GD/SPL/MS/BCEA, % for pupil):
+%   Gaze — baselined (BL window [-0.5 -0.25]s; % change for all gaze metrics):
 %     GazeDeviationFullBL / EarlyBL / LateBL
 %     ScanPathLengthFullBL / EarlyBL / LateBL
 %     PupilSizeFullBL / EarlyBL / LateBL          (% change)
@@ -128,8 +128,7 @@ end
 %% ===== (B) Baselined gaze metrics (trial → subject-level) =====
 % Average trial-level baselined values per subject x condition.
 % Baseline correction (already applied in trial-level extraction):
-%   GazeDeviation, ScanPathLength, MSRate: dB  = 10*log10(metric/baseline)
-%   PupilSize:                             %Δ  = 100*(metric-baseline)/baseline
+%   All gaze metrics (GD/SPL/MS/BCEA/Pupil): % change = 100*(metric-baseline)/baseline
 % Baseline window: [-0.5 -0.25]s
 
 gazeFields_bl = { ...
@@ -143,33 +142,40 @@ gazeFields_bl = { ...
 nGazeFields = numel(gazeFields_bl);
 gazeBL = nan(nRows, nGazeFields);
 
-% Build look-up arrays from trial data
-trlIDs   = [gaze_data_nback_trials.ID];
-trlConds = [gaze_data_nback_trials.Condition];
+% Prefer subject-level baselined fields if present in gaze_data_nback.
+if all(isfield(gaze_data_nback, gazeFields_bl))
+    for f = 1:nGazeFields
+        gazeBL(:, f) = [gaze_data_nback.(gazeFields_bl{f})]';
+    end
+    fprintf('Baselined gaze metrics loaded from subject-level gaze matrix.\n');
+else
+    % Backward-compatible fallback: aggregate from trial-level matrix.
+    trlIDs   = [gaze_data_nback_trials.ID];
+    trlConds = [gaze_data_nback_trials.Condition];
 
-for s = 1:numel(uIDs)
-    subjID = uIDs(s);
-    condVals = [1, 2, 3];
+    for s = 1:numel(uIDs)
+        subjID = uIDs(s);
+        condVals = [1, 2, 3];
 
-    for c = 1:3
-        % Row in the subject-level output
-        rowIdx = find(allIDs == subjID & allConds == condVals(c));
-        if isempty(rowIdx), continue; end
+        for c = 1:3
+            % Row in the subject-level output
+            rowIdx = find(allIDs == subjID & allConds == condVals(c));
+            if isempty(rowIdx), continue; end
 
-        % Matching trials
-        trlMask = trlIDs == subjID & trlConds == condVals(c);
-        if ~any(trlMask), continue; end
+            % Matching trials
+            trlMask = trlIDs == subjID & trlConds == condVals(c);
+            if ~any(trlMask), continue; end
 
-        trlSubset = gaze_data_nback_trials(trlMask);
+            trlSubset = gaze_data_nback_trials(trlMask);
 
-        for f = 1:nGazeFields
-            vals = [trlSubset.(gazeFields_bl{f})];
-            gazeBL(rowIdx, f) = mean(vals, 'omitnan');
+            for f = 1:nGazeFields
+                vals = [trlSubset.(gazeFields_bl{f})];
+                gazeBL(rowIdx, f) = mean(vals, 'omitnan');
+            end
         end
     end
+    fprintf('Baselined gaze metrics aggregated from trial data (fallback).\n');
 end
-
-fprintf('Baselined gaze metrics aggregated from trial data.\n');
 
 %% ===== (C) Baselined raw alpha power (trial → subject-level) =====
 % Average trial-level baselined alpha power per subject x condition.
@@ -277,7 +283,6 @@ fprintf('Original columns (23):  ID … Lateralization (incl. BCEA, BCEALaterali
 fprintf('FOOOF alpha     ( 4):  AlphaPower_FOOOF, _bl, _bl_early, _bl_late\n');
 fprintf('Raw alpha BL    ( 3):  AlphaPower_bl, _bl_early, _bl_late\n');
 fprintf('Baselined gaze  (18):  GD/SPL/Pupil/MSRate/BCEA/BCEALat × Full/Early/Late BL\n');
-fprintf('    GD/SPL/MS/BCEA baseline correction: dB = 10*log10(metric/baseline)\n');
-fprintf('    PupilSize baseline correction: %%change = 100*(metric-baseline)/baseline\n');
+fprintf('    All gaze baseline correction: %%change = 100*(metric-baseline)/baseline\n');
 fprintf('    Baseline window: [-0.5 -0.25]s\n');
 fprintf('Total columns:  %d\n', nCols);

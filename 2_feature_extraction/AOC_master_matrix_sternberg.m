@@ -26,7 +26,7 @@
 %     AlphaPower_bl_early        [0 1]s, baselined
 %     AlphaPower_bl_late         [1 2]s, baselined
 %
-%   Gaze — baselined (BL window [-0.5 -0.25]s; dB for GD/SPL/MS/BCEA, % for pupil):
+%   Gaze — baselined (BL window [-0.5 -0.25]s; % for GD/SPL/MS/BCEA,pupil):
 %     GazeDeviationFullBL / EarlyBL / LateBL
 %     ScanPathLengthFullBL / EarlyBL / LateBL
 %     PupilSizeFullBL / EarlyBL / LateBL          (% change)
@@ -143,33 +143,40 @@ gazeFields_bl = { ...
 nGazeFields = numel(gazeFields_bl);
 gazeBL = nan(nRows, nGazeFields);
 
-% Build look-up arrays from trial data
-trlIDs   = [gaze_data_sternberg_trials.ID];
-trlConds = [gaze_data_sternberg_trials.Condition];
+% Prefer subject-level baselined fields if present in gaze_data_sternberg.
+if all(isfield(gaze_data_sternberg, gazeFields_bl))
+    for f = 1:nGazeFields
+        gazeBL(:, f) = [gaze_data_sternberg.(gazeFields_bl{f})]';
+    end
+    fprintf('Baselined gaze metrics loaded from subject-level gaze matrix.\n');
+else
+    % Backward-compatible fallback: aggregate from trial-level matrix.
+    trlIDs   = [gaze_data_sternberg_trials.ID];
+    trlConds = [gaze_data_sternberg_trials.Condition];
 
-for s = 1:numel(uIDs)
-    subjID = uIDs(s);
-    condVals = [2, 4, 6];
+    for s = 1:numel(uIDs)
+        subjID = uIDs(s);
+        condVals = [2, 4, 6];
 
-    for c = 1:3
-        % Row in the subject-level output
-        rowIdx = find(allIDs == subjID & allConds == condVals(c));
-        if isempty(rowIdx), continue; end
+        for c = 1:3
+            % Row in the subject-level output
+            rowIdx = find(allIDs == subjID & allConds == condVals(c));
+            if isempty(rowIdx), continue; end
 
-        % Matching trials
-        trlMask = trlIDs == subjID & trlConds == condVals(c);
-        if ~any(trlMask), continue; end
+            % Matching trials
+            trlMask = trlIDs == subjID & trlConds == condVals(c);
+            if ~any(trlMask), continue; end
 
-        trlSubset = gaze_data_sternberg_trials(trlMask);
+            trlSubset = gaze_data_sternberg_trials(trlMask);
 
-        for f = 1:nGazeFields
-            vals = [trlSubset.(gazeFields_bl{f})];
-            gazeBL(rowIdx, f) = mean(vals, 'omitnan');
+            for f = 1:nGazeFields
+                vals = [trlSubset.(gazeFields_bl{f})];
+                gazeBL(rowIdx, f) = mean(vals, 'omitnan');
+            end
         end
     end
+    fprintf('Baselined gaze metrics aggregated from trial data (fallback).\n');
 end
-
-fprintf('Baselined gaze metrics aggregated from trial data.\n');
 
 %% ===== (C) Baselined raw alpha power (trial → subject-level) =====
 % Average trial-level baselined alpha power per subject x condition.

@@ -67,10 +67,10 @@ anova_dir = f"{base_dir}/data/stats/anova"
 
 # %% Variables and labelling
 
-variables  = ["Accuracy", "ReactionTime", "GazeDeviation", "MSRate", "Fixations", "Saccades", "PupilSize", "ScanPathLength", "BCEA", "BCEALateralization", "AlphaPower", "IAF"]
-titles     = ["Accuracy", "Reaction Time", "Gaze Deviation", "Microsaccade Rate", "Fixations", "Saccades", "Pupil Size", "Scan Path Length", "BCEA (95%)", "BCEA Lateralization", "Alpha Power", "IAF"]
-y_labels   = ["Accuracy [%]", "Reaction Time [s]", "Gaze Deviation [px]", "Microsaccade Rate [MS/s]", "Fixations", "Saccades", "Pupil Size [a.u.]", "Scan Path Length [px]", "BCEA [px²]", "BCEA Lateralization [L\u2212R]", "Alpha Power [\u03BCV²/Hz]", "IAF [Hz]"]
-save_names = ["acc", "rt", "gazedev", "ms", "fix", "sacc", "pupil", "spl", "bcea", "bcea_lat", "pow", "iaf"]
+variables  = ["Accuracy", "ReactionTime", "GazeDeviation", "MSRate", "Fixations", "Saccades", "PupilSize", "AlphaPower", "IAF"]
+titles     = ["Accuracy", "Reaction Time", "Gaze Deviation", "Microsaccade Rate", "Fixations", "Saccades", "Pupil Size", "Alpha Power", "IAF"]
+y_labels   = ["Accuracy [%]", "Reaction Time [s]", "Gaze Deviation [px]", "Microsaccade Rate [MS/s]", "Fixations", "Saccades", "Pupil Size [a.u.]", "Alpha Power [\u03BCV²/Hz]", "IAF [Hz]"]
+save_names = ["acc", "rt", "gazedev", "ms", "fix", "sacc", "pupil", "pow", "iaf"]
 
 # Manual y ticks and ylims per variable
 yticks_map = {
@@ -81,7 +81,6 @@ yticks_map = {
     "Fixations"     : np.arange(0, 6, 1),
     "Saccades"      : np.arange(0, 4.25, 1),
     "PupilSize"     : np.arange(0, 5.5, 1),
-    "ScanPathLength": np.arange(0, 410, 50),
     "AlphaPower"    : np.arange(0, 1.52, 0.25),
     "IAF"           : np.arange(8, 14, 1),
 }
@@ -93,7 +92,6 @@ ylims_map = {
     "Fixations"     : (0, 6),
     "Saccades"      : (0, 4.25),
     "PupilSize"     : (0, 5.5),
-    "ScanPathLength": (0, 410),
     "AlphaPower"    : (0, 1.6),
     "IAF"           : (8, 14.1),
 }

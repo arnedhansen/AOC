@@ -24,9 +24,9 @@ if ~isfolder(fig_dir)
 end
 cond_vals = [2 4 6];
 
-t_analysis_eeg = [0.5 1.5]; % s post-stimulus (alpha TFR average)
+t_analysis_eeg = [0 2] % s post-stimulus (alpha TFR average)
 t_base_gaze = [-0.5 -0.25];
-t_task_gaze = [0.5 1.5];
+t_task_gaze = [0 2]
 
 log_dir = fullfile(base_data, 'data', 'controls', 'logs');
 if ~isfolder(log_dir)

@@ -7,7 +7,8 @@
 %
 % Cutoff = alpha_zero_pct of the alpha_ref_percentile of |alpha| (default: 5% of 95th percentile).
 %
-% Uses baselined+FOOOFed alpha (power spectra, TFR, topoplots) and gaze deviation.
+% Uses baselined+FOOOFed alpha (power spectra, TFR, topoplots) and baselined gaze metrics
+% (SPL, Dev, BCEA, Vel; all in dB, 10*log10(value/baseline)).
 %
 % Outliers excluded via Tukey 1.5*IQR (per metric per condition) before visualization/analyses.
 %
@@ -16,8 +17,8 @@
 % - Power spectra (3 conditions) for both groups
 % - TFRs per condition for both groups + group differences
 % - Topoplots per condition for both groups + group-difference topoplots
-% - Rainclouds for Alpha and gaze deviation
-% - Time-course panels for gaze deviation (percent baseline) and combined EEG+gaze view
+% - Rainclouds for Alpha, SPL, Vel, Dev, BCEA
+% - Time-course panels (SPL, velocity, gaze deviation) with effect-size strips
 
 %% Setup
 startup
@@ -50,6 +51,7 @@ cond_codes = [22 24 26];
 cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
 
 fontSize = 20;
+% rng(42);
 alpha_zero_pct = 5; % Exclude near-zero alpha within this % of robust |alpha| reference
 alpha_ref_percentile = 95; % Use this percentile of |alpha| for reference (outlier-resistant)
 tfr_winsor_cfg = struct();
@@ -150,14 +152,20 @@ end
 % Gaze summary metrics from merged subject table (pre-outlier exclusion)
 metrics_raw = struct();
 metrics_raw.Alpha = nan(nSubj, 3);
+metrics_raw.SPL = nan(nSubj, 3);           % ScanPathLengthFullBL [% change]
 metrics_raw.Dev = nan(nSubj, 3);          % GazeDeviationFullBL [% change]
+metrics_raw.BCEA = nan(nSubj, 3);         % BCEAFullBL [% change]
+metrics_raw.Vel = nan(nSubj, 3);          % velocity [% change], computed below
 
 % Time courses per subject x condition (full resolution, pre-outlier exclusion)
 fs = 500;
 t_full = -0.5:1/fs:3;
 t_plot = t_full(2:end);
 Tf = numel(t_plot);
+spl_tc_raw = nan(nSubj, 3, Tf);
 dev_tc_raw = nan(nSubj, 3, Tf);
+vel_tc_raw = nan(nSubj, 3, Tf);
+bcea_tc_raw = nan(nSubj, 3, Tf);
 
 missing_eeg = {};
 missing_tfr = {};
@@ -180,7 +188,9 @@ for s = 1:nSubj
         cmask = subj_rows.Condition == cond_vals(c);
         if any(cmask)
             metrics_raw.Alpha(s, c) = mean(subj_rows.AlphaPower_FOOOF_bl(cmask), 'omitnan');
+            metrics_raw.SPL(s, c) = mean(subj_rows.ScanPathLengthFullBL(cmask), 'omitnan');
             metrics_raw.Dev(s, c) = mean(subj_rows.GazeDeviationFullBL(cmask), 'omitnan');
+            metrics_raw.BCEA(s, c) = mean(subj_rows.BCEAFullBL(cmask), 'omitnan');
         end
     end
 
@@ -220,7 +230,7 @@ for s = 1:nSubj
         missing_tfr{end+1} = sid_str; %#ok<AGROW>
     end
 
-    % Gaze series for deviation time courses
+    % Gaze series for time courses and velocity summary
     gaze_file = fullfile(feat_dir, subj_folder, 'gaze', 'gaze_series_sternberg_trials.mat');
     if ~isfile(gaze_file)
         missing_gaze{end+1} = sid_str; %#ok<AGROW>
@@ -252,7 +262,32 @@ for s = 1:nSubj
             sid_str, n_reach_3s, numel(tmax_trials), median(tmax_trials, 'omitnan'), min(tmax_trials, [], 'omitnan'));
     end
 
-    % Deviation time course from gaze x/y if available
+    % SPL time course from ScanPathSeries
+    if isfield(G, 'ScanPathSeries') && isfield(G, 'ScanPathSeriesT')
+        for c = 1:3
+            tr_mask = conds == cond_codes(c);
+            tr_idx = find(tr_mask);
+            if isempty(tr_idx)
+                continue
+            end
+            mat = nan(numel(tr_idx), Tf);
+            for k = 1:numel(tr_idx)
+                tr = tr_idx(k);
+                srl = G.ScanPathSeries{tr};
+                tt = G.ScanPathSeriesT{tr};
+                if isempty(srl) || isempty(tt)
+                    continue
+                end
+                try
+                    mat(k, :) = interp1(tt, srl, t_plot, 'linear', NaN);
+                catch
+                end
+            end
+            spl_tc_raw(s, c, :) = nanmean(mat, 1);
+        end
+    end
+
+    % Deviation and velocity time course from gaze x/y if available
     has_xy = isfield(G, 'gaze_x') && isfield(G, 'gaze_y');
     if has_xy
         for c = 1:3
@@ -263,6 +298,11 @@ for s = 1:nSubj
             end
 
             dev_mat = nan(numel(tr_idx), Tf);
+            vel_mat = nan(numel(tr_idx), Tf);
+            bcea_mat = nan(numel(tr_idx), Tf);
+            vel_full_trials = nan(numel(tr_idx), 1);
+            vel_bl_trials = nan(numel(tr_idx), 1);
+
             for k = 1:numel(tr_idx)
                 tr = tr_idx(k);
                 x = double(G.gaze_x{tr});
@@ -280,14 +320,31 @@ for s = 1:nSubj
                     tt = linspace(-0.5, 3, numel(x));
                 end
                 dev = sqrt((x - 400).^2 + (y - 300).^2);
+                [vx, vy] = compute_velocity_sg(x, y, fs, 3);
+                [vx, vy] = clean_velocity_components(vx, vy);
+                vel = hypot(vx, vy);
 
                 try
                     dev_mat(k, :) = interp1(tt, dev, t_plot, 'linear', NaN);
+                    vel_mat(k, :) = interp1(tt, vel, t_plot, 'linear', NaN);
+                    bcea_mat(k, :) = compute_bcea_timecourse(x, y, tt, t_plot, 0.1);
                 catch
+                end
+
+                idx_full = tt >= 0 & tt <= 3;
+                idx_bl = tt >= -0.5 & tt <= -0.25;
+                v_full = mean(vel(idx_full), 'omitnan');
+                v_bl = mean(vel(idx_bl), 'omitnan');
+                vel_full_trials(k) = v_full;
+                if isfinite(v_full) && isfinite(v_bl) && v_bl > 0
+                    vel_bl_trials(k) = 100 * (v_full - v_bl) / v_bl;
                 end
             end
 
             dev_tc_raw(s, c, :) = nanmean(dev_mat, 1);
+            vel_tc_raw(s, c, :) = nanmean(vel_mat, 1);
+            bcea_tc_raw(s, c, :) = nanmean(bcea_mat, 1);
+            metrics_raw.Vel(s, c) = mean(vel_bl_trials, 'omitnan');
         end
     end
 end
@@ -298,7 +355,7 @@ is_amp = ismember(uIDs, amplification_ids);
 
 %% Exclude outliers (Tukey 1.5*IQR) before visualization and analyses
 fprintf('\n=== Outlier exclusion (Tukey 1.5*IQR, per metric per condition) ===\n');
-[metrics, dev_tc] = exclude_outliers_tukey(metrics_raw, dev_tc_raw);
+[metrics, spl_tc, dev_tc, vel_tc, bcea_tc] = exclude_outliers_tukey(metrics_raw, spl_tc_raw, dev_tc_raw, vel_tc_raw, bcea_tc_raw);
 
 %% Determine occipital channels (from first available power file)
 channels = {};
@@ -349,12 +406,16 @@ plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fi
 
 %% EEG and Gaze time courses with effect-size
 close all
-Tf = size(dev_tc, 3);
+Tf = size(spl_tc, 3);
 t_full_eeg = linspace(-0.5, 3, Tf);
-fprintf('\n=== Extracting EEG alpha time course from TFR ===\n');
-eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_subj, nSubj, channels, Tf, t_full_eeg);
+addEEG_TC = true;
+eeg_tc = [];
+if addEEG_TC
+    fprintf('\n=== Extracting EEG alpha time course from TFR ===\n');
+    eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_subj, nSubj, channels, Tf, t_full_eeg);
+end
 
-% Baselined gaze deviation time course: percent change from baseline (-0.5 to -0.25 s).
+% Baselined time courses: gaze in dB (baseline -0.5 to -0.25 s); EEG stays in dB
 fprintf('\n=== Computing baselined time courses ===\n');
 t_vec = linspace(-0.5, 3, Tf);
 bl_idx = (t_vec >= -0.5) & (t_vec <= -0.25);
@@ -362,18 +423,51 @@ bl_idx = (t_vec >= -0.5) & (t_vec <= -0.25);
 dev_bl = mean(dev_tc(:, :, bl_idx), 3, 'omitnan');
 dev_bl_3d = repmat(dev_bl, [1, 1, Tf]);
 dev_bl_3d(dev_bl_3d <= 0 | ~isfinite(dev_bl_3d)) = NaN;
-% Percent baseline: (value/baseline - 1) * 100.
+% dB baseline: 10*log10(value/baseline)
+dev_tc_dB = 10 * log10(dev_tc ./ dev_bl_3d);
+dev_tc_dB(~isfinite(dev_tc_dB)) = NaN;
+
+% Percent baseline: (value/baseline - 1) * 100 .
 dev_tc_pct = (dev_tc ./ dev_bl_3d - 1) * 100;
 dev_tc_pct(~isfinite(dev_tc_pct)) = NaN;
 
-% Plot time courses (always save both: gaze-only and combined EEG+gaze)
+% SPL, vel, BCEA: same dB convention as gaze deviation
+spl_bl = mean(spl_tc(:, :, bl_idx), 3, 'omitnan');
+spl_bl_3d = repmat(spl_bl, [1, 1, Tf]);
+spl_bl_3d(spl_bl_3d <= 0 | ~isfinite(spl_bl_3d)) = NaN;
+spl_tc_dB = 10 * log10(spl_tc ./ spl_bl_3d);
+spl_tc_dB(~isfinite(spl_tc_dB)) = NaN;
+
+vel_bl = mean(vel_tc(:, :, bl_idx), 3, 'omitnan');
+vel_bl_3d = repmat(vel_bl, [1, 1, Tf]);
+vel_bl_3d(vel_bl_3d <= 0 | ~isfinite(vel_bl_3d)) = NaN;
+vel_tc_dB = 10 * log10(vel_tc ./ vel_bl_3d);
+vel_tc_dB(~isfinite(vel_tc_dB)) = NaN;
+
+bcea_bl = mean(bcea_tc(:, :, bl_idx), 3, 'omitnan');
+bcea_bl_3d = repmat(bcea_bl, [1, 1, Tf]);
+bcea_bl_3d(bcea_bl_3d <= 0 | ~isfinite(bcea_bl_3d)) = NaN;
+bcea_tc_dB = 10 * log10(bcea_tc ./ bcea_bl_3d);
+bcea_tc_dB(~isfinite(bcea_tc_dB)) = NaN;
+
+% Plot time courses
 close all
 fontSizeTC = 25;
 rng(321)
+plot_timecourse_with_effect_CBPT(dev_tc_dB, is_red, is_amp, cond_labels, colors, ...
+    'Gaze Deviation [dB]', 'gaze_deviation_dB', fig_dir, fig_pos, fontSizeTC, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+
+% Add a parallel gaze deviation timecourse using percent change baseline.
+rng_state = rng;
 plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, cond_labels, colors, ...
-    'Gaze Deviation [%]', 'gaze_deviation_pct', fig_dir, fig_pos, fontSizeTC, fs, eeg_tc, false, 'Alpha Power [dB]');
-plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, cond_labels, colors, ...
-    'Gaze Deviation [%]', 'gaze_deviation_pct_COMBINED', fig_dir, fig_pos, fontSizeTC, fs, eeg_tc, true, 'Alpha Power [dB]');
+    'Gaze Deviation [%]', 'gaze_deviation_pct', fig_dir, fig_pos, fontSizeTC, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+rng(rng_state);
+% plot_timecourse_with_effect_CBPT(spl_tc_dB, is_red, is_amp, cond_labels, colors, ...
+%     'Scan Path Length [dB]', 'spl_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+% plot_timecourse_with_effect_CBPT(vel_tc_dB, is_red, is_amp, cond_labels, colors, ...
+%     'Eye Velocity [dB]', 'velocity_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+% plot_timecourse_with_effect_CBPT(bcea_tc_dB, is_red, is_amp, cond_labels, colors, ...
+%     'BCEA [dB]', 'bcea_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
 
 %% Sanity checks
 fprintf('\n=== Data Diagnostics ===\n');
@@ -382,9 +476,10 @@ fprintf('Missing TFR files: %d\n', numel(unique(missing_tfr)));
 fprintf('Missing gaze files/fields: %d\n', numel(unique(missing_gaze)));
 fprintf('Figures saved to: %s\n', fig_dir);
 
-%% Group comparison: Reduction vs Amplification (gaze deviation)
+%% Group comparison: Reduction vs Amplification (gaze metrics)
 fprintf('\n=== Parametric group comparison (reduction > amp) ===\n');
-metric_names = {'Dev'};
+metric_names = {'SPL', 'Dev', 'BCEA', 'Vel'};
+metric_labels = {'Scan path length [dB]', 'Gaze deviation [dB]', 'BCEA [dB]', 'Velocity [dB]'};
 
 for m = 1:numel(metric_names)
     key = metric_names{m};
@@ -409,7 +504,7 @@ for m = 1:numel(metric_names)
 end
 
 %% Mixed ANOVA: Group × Condition
-fprintf('\n=== Mixed ANOVA (Group × Condition) on gaze deviation ===\n');
+fprintf('\n=== Mixed ANOVA (Group × Condition) on gaze metrics ===\n');
 % Repeated measures: Condition (within-Ss), Group (between-Ss). Use fitrm + ranova.
 incl = is_red | is_amp;
 subj_idx = find(incl);
@@ -509,18 +604,21 @@ for m = 1:numel(metric_names)
     end
 end
 
-%% Follow-up: Alpha & gaze deviation (%) vs WM load (Group × Load)
-fprintf('Alpha: mean AlphaPower_FOOOF_bl [dB] per WM load.\n');
-fprintf('Gaze: mean gaze deviation [%%] per WM load from dev_tc_pct, averaged [0 2] s (task window).\n');
+%% Follow-up: Alpha & gaze deviation (dB) vs WM load (Group × Load)
+% Links the Reduction vs Amplification split to load-resolved outcomes. Gaze dB matches the
+% CBPT time-course convention (baseline -0.5:-0.25 s); values averaged 0.5–1.5 s post-stimulus.
+fprintf('\n========== FOLLOW-UP: GROUP × LOAD (ALPHA & GAZE DEVIATION dB) ==========\n');
+fprintf('Alpha: mean AlphaPower_FOOOF_bl [dB] per WM load (Tukey-cleaned metrics matrix).\n');
+fprintf('Gaze: mean gaze deviation [dB] per WM load from dev_tc_dB, averaged [0.50 1.50] s (task window).\n');
 
-t_win_lo = 0;
-t_win_hi = 2;
+t_win_lo = 0.5;
+t_win_hi = 1.5;
 task_idx_gaze = (t_vec >= t_win_lo) & (t_vec <= t_win_hi);
-dev_pct_by_load = squeeze(mean(dev_tc_pct(:, :, task_idx_gaze), 3, 'omitnan'));
+dev_dB_by_load = squeeze(mean(dev_tc_dB(:, :, task_idx_gaze), 3, 'omitnan'));
 
-follow_names = {'Alpha', 'GazeDev_pct'};
-follow_X = {metrics.Alpha, dev_pct_by_load};
-follow_ylab = {'Alpha power [dB]', 'Gaze deviation [%]'};
+follow_names = {'Alpha', 'GazeDev_dB'};
+follow_X = {metrics.Alpha, dev_dB_by_load};
+follow_ylab = {'Alpha power [dB]', 'Gaze deviation [dB]'};
 
 col_red_line = [0.20 0.42 0.85];
 col_amp_line = [0.88 0.32 0.38];
@@ -668,18 +766,24 @@ for oi = 1:numel(follow_names)
     box off
     hold off
 end
-sgtitle('Alpha & gaze deviation (%) by WM load: Reduction vs Amplification', 'FontSize', fontSize + 2, 'Interpreter', 'none');
-fig_load = fullfile(fig_dir, 'AOC_splitAlpha_load_profiles_Alpha_GazeDev_pct.png');
+sgtitle('Alpha & gaze deviation (dB) by WM load: Reduction vs Amplification', 'FontSize', fontSize + 2, 'Interpreter', 'none');
+fig_load = fullfile(fig_dir, 'AOC_splitAlpha_load_profiles_Alpha_GazeDev_dB.png');
 saveas(gcf, fig_load);
 fprintf('Saved: %s\n', fig_load);
 
 %% ========================= Local Functions =========================
-function [metrics_out, dev_tc_out] = exclude_outliers_tukey(metrics_in, dev_tc_in)
+function [metrics_out, spl_tc_out, dev_tc_out, vel_tc_out, bcea_tc_out] = exclude_outliers_tukey(metrics_in, spl_tc_in, dev_tc_in, vel_tc_in, bcea_tc_in)
 % Apply Tukey 1.5*IQR rule per metric per condition. Set outliers to NaN.
-% Also excludes corresponding gaze deviation time-course rows.
+% Also excludes corresponding time-course data for SPL, Dev, Vel, BCEA.
 metrics_out = metrics_in;
+spl_tc_out = spl_tc_in;
 dev_tc_out = dev_tc_in;
-metric_fields = {'Alpha', 'Dev'};
+vel_tc_out = vel_tc_in;
+bcea_tc_out = bcea_tc_in;
+
+metric_fields = {'Alpha', 'SPL', 'Vel', 'Dev', 'BCEA'};
+tc_map = containers.Map({'SPL', 'Dev', 'Vel', 'BCEA'}, {1, 2, 3, 4});  % index for spl/dev/vel/bcea
+tc_cells = {spl_tc_out, dev_tc_out, vel_tc_out, bcea_tc_out};
 
 for m = 1:numel(metric_fields)
     key = metric_fields{m};
@@ -702,14 +806,23 @@ for m = 1:numel(metric_fields)
         out_mask = (vals < lo) | (vals > hi);
         nOut = nOut + sum(out_mask);
         X(out_mask, c) = NaN;
-        % Exclude corresponding time course for gaze deviation.
-        if strcmp(key, 'Dev')
-            dev_tc_out(out_mask, c, :) = NaN;
+        % Exclude corresponding time course for gaze metrics
+        if isKey(tc_map, key)
+            tc_idx = tc_map(key);
+            tc = tc_cells{tc_idx};
+            tc(out_mask, c, :) = NaN;
+            tc_cells{tc_idx} = tc;
         end
     end
     metrics_out.(key) = X;
-    fprintf('  %s: %d outlier(s) excluded\n', key, nOut);
+    if nOut > 0
+        fprintf('  %s: %d outlier(s) excluded\n', key, nOut);
+    end
 end
+spl_tc_out = tc_cells{1};
+dev_tc_out = tc_cells{2};
+vel_tc_out = tc_cells{3};
+bcea_tc_out = tc_cells{4};
 end
 
 function conds = parse_trialinfo_conds(trialinfo)
@@ -754,6 +867,54 @@ for i = 1:numel(subjects)
 end
 end
 
+function [vx, vy] = clean_velocity_components(vx, vy)
+halfwin = 11; % SG edge region for framelen=21
+if numel(vx) > 2*halfwin
+    vx(1:halfwin) = NaN;
+    vx(end-halfwin+1:end) = NaN;
+    vy(1:halfwin) = NaN;
+    vy(end-halfwin+1:end) = NaN;
+end
+zvx = (vx - nanmean(vx)) ./ (nanstd(vx) + eps);
+zvy = (vy - nanmean(vy)) ./ (nanstd(vy) + eps);
+bad = abs(zvx) > 4 | abs(zvy) > 4;
+vx(bad) = NaN;
+vy(bad) = NaN;
+end
+
+function bcea_t = compute_bcea_timecourse(x, y, tt, t_plot, win_half)
+% BCEA time course: 95% bivariate contour ellipse area in sliding windows.
+% x, y: gaze coordinates; tt: time vector; t_plot: output time points;
+% win_half: half-window in s (e.g. 0.1 for 200 ms total).
+% Returns row vector of BCEA [px²] at each t_plot (NaN if insufficient samples).
+k95 = -log(1 - 0.95);
+nT = numel(t_plot);
+bcea_t = nan(1, nT);
+for j = 1:nT
+    t0 = t_plot(j);
+    idx = tt >= t0 - win_half & tt <= t0 + win_half;
+    xw = x(idx);
+    yw = y(idx);
+    valid = isfinite(xw) & isfinite(yw);
+    xw = xw(valid);
+    yw = yw(valid);
+    if numel(xw) < 10
+        continue
+    end
+    sx = std(xw);
+    sy = std(yw);
+    if sx <= 0 || sy <= 0
+        continue
+    end
+    r = corrcoef(xw, yw);
+    rho = r(1, 2);
+    if ~isfinite(rho)
+        continue
+    end
+    rho2 = max(0, min(1, rho^2));  % guard for numerical issues
+    bcea_t(j) = 2 * k95 * pi * sx * sy * sqrt(1 - rho2);
+end
+end
 
 function plot_group_power_spectrum_combined(pow_red, pow_amp, channels, colors, cond_labels, out_file, fig_pos, fsz)
 if any(cellfun(@isempty, pow_red)) || any(cellfun(@isempty, pow_amp))
@@ -1234,7 +1395,10 @@ end
 function plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_pos, fsz)
 metric_defs = { ...
     'Alpha', 'AlphaPower_FOOOF_bl', false; ...
-    'Dev', 'Gaze deviation', false; ...
+    'SPL', 'Scan path length', true; ...
+    'Vel', 'Velocity', true; ...
+    'Dev', 'Gaze deviation', true; ...
+    'BCEA', 'BCEA', true; ...
     };
 
 for m = 1:size(metric_defs, 1)
@@ -1345,8 +1509,8 @@ end
 figure('Position', fig_pos, 'Color', 'w');
 nR = size(Rall, 1);
 nA = size(Aall, 1);
-show_eeg = addEEG_TC && ~isempty(eeg_tc) && size(eeg_tc, 1) >= (nR + nA) && size(eeg_tc, 2) >= 1 && size(eeg_tc, 3) >= nT;
-if show_eeg
+has_eeg = addEEG_TC && ~isempty(eeg_tc) && size(eeg_tc, 1) >= (nR + nA) && size(eeg_tc, 2) >= 1 && size(eeg_tc, 3) >= nT;
+if has_eeg
     tiledlayout(5, 1, 'TileSpacing', 'compact');
 else
     tiledlayout(3, 1, 'TileSpacing', 'compact');
@@ -1375,7 +1539,7 @@ set(gca, 'FontSize', fsz-4);
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
 leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
 legend([leg_p1 leg_p2], {'Reduction', 'Amplification'}, 'Location', 'northeast', 'FontSize', fsz-2, 'Box', 'off');
-if contains(save_tag, 'gaze_deviation_pct')
+if any(strcmp(save_tag, {'gaze_deviation_dB', 'gaze_deviation_pct'}))
     % ylim from shaded envelopes (mean ± SEM), not just the main lines
     upper = max(mR + sR, mA + sA);
     lower = min(mR - sR, mA - sA);
@@ -1488,8 +1652,8 @@ xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Cohen''s d');
 xlim([-0.5 3]);
-if strcmp(save_tag, 'gaze_deviation_pct_COMBINED')
-    yticks([-0.25, 0, 0.25])
+if any(strcmp(save_tag, {'gaze_deviation_dB', 'gaze_deviation_pct'}))
+    yticks([-0.5, -0.25, 0, 0.25, 0.5])
 end
 box on
 set(gca, 'FontSize', fsz-4);
@@ -1498,9 +1662,9 @@ if ~any(sig_cluster) && any(sig_uncorr)
         'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'HorizontalAlignment', 'center');
 end
 
-% Alpha power time course panel in combined figure.
+% Alpha power time course panel (4th row when has_eeg) - two lines with shaded error bars
 % Error bars: between-subject SEM = std(sample) / sqrt(n) at each time point.
-if show_eeg
+if has_eeg
     EegR = squeeze(mean(eeg_tc(is_red, :, :), 2, 'omitnan'));
     EegA = squeeze(mean(eeg_tc(is_amp, :, :), 2, 'omitnan'));
     if win_sm > 1
@@ -1820,6 +1984,38 @@ thr.extent = NaN;
 
 maxMassNull = [];
 maxExtentNull = [];
+end
+
+function [vx, vy] = compute_velocity_sg(X, Y, fs, polyOrd)
+Ts = 1 / fs;
+L = numel(X);
+framelen = min(21, L);
+if mod(framelen, 2) == 0
+    framelen = framelen - 1;
+end
+minLegal = polyOrd + 3;
+if mod(minLegal, 2) == 0
+    minLegal = minLegal + 1;
+end
+if framelen < minLegal
+    framelen = minLegal;
+end
+if framelen > L
+    framelen = L - mod(L, 2) + 1;
+end
+useFallback = framelen < 5;
+
+if ~useFallback
+    Xs = sgolayfilt(X, polyOrd, framelen);
+    Ys = sgolayfilt(Y, polyOrd, framelen);
+    [~, G] = sgolay(polyOrd, framelen);
+    d1 = (factorial(1) / Ts) * G(:, 2)';
+    vx = conv(Xs, d1, 'same');
+    vy = conv(Ys, d1, 'same');
+else
+    vx = gradient(X) * fs;
+    vy = gradient(Y) * fs;
+end
 end
 
 function cmap = rdbu_cmap(n)

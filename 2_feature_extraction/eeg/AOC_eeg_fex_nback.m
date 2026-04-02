@@ -212,7 +212,8 @@ powerIAF1 = [];
 powerIAF2 = [];
 powerIAF3 = [];
 IAF_results = struct();
-eeg_data_nback = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {}, 'Lateralization', {});
+eeg_data_nback = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {}, 'Lateralization', {}, ...
+    'AlphaPower_FOOOF', {}, 'AlphaPower_FOOOF_bl', {}, 'AlphaPower_FOOOF_bl_early', {}, 'AlphaPower_FOOOF_bl_late', {});
 
 for subj = 1:length(subjects)
     try
@@ -221,6 +222,7 @@ for subj = 1:length(subjects)
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath);
         load('power_nback_windows.mat');
+        load('power_nback_fooof.mat');
 
         % Channels selection based on CBPT
         channelIdx = find(ismember(pow1_full.label, channels));
@@ -333,6 +335,10 @@ for subj = 1:length(subjects)
         AlphaPowerEarlyBL  = [roi_pow(pow1_early_bl, IAF_band1); roi_pow(pow2_early_bl, IAF_band2); roi_pow(pow3_early_bl, IAF_band3)];
         AlphaPowerLateBL   = [roi_pow(pow1_late_bl,  IAF_band1); roi_pow(pow2_late_bl,  IAF_band2); roi_pow(pow3_late_bl,  IAF_band3)];
         AlphaPowerFullBL   = [roi_pow(pow1_full_bl,  IAF_band1); roi_pow(pow2_full_bl,  IAF_band2); roi_pow(pow3_full_bl,  IAF_band3)];
+        AlphaPower_FOOOF         = [roi_pow(pow1_fooof,          alphaRange); roi_pow(pow2_fooof,          alphaRange); roi_pow(pow3_fooof,          alphaRange)];
+        AlphaPower_FOOOF_bl      = [roi_pow(pow1_fooof_bl,       alphaRange); roi_pow(pow2_fooof_bl,       alphaRange); roi_pow(pow3_fooof_bl,       alphaRange)];
+        AlphaPower_FOOOF_bl_early= [roi_pow(pow1_fooof_bl_early, alphaRange); roi_pow(pow2_fooof_bl_early, alphaRange); roi_pow(pow3_fooof_bl_early, alphaRange)];
+        AlphaPower_FOOOF_bl_late = [roi_pow(pow1_fooof_bl_late,  alphaRange); roi_pow(pow2_fooof_bl_late,  alphaRange); roi_pow(pow3_fooof_bl_late,  alphaRange)];
 
         % Keep legacy AlphaPower as LATE raw (registered retention)
         AlphaPower = AlphaPowerLate;
@@ -348,6 +354,10 @@ for subj = 1:length(subjects)
         tmp = num2cell(AlphaPowerEarlyBL); [subj_data_eeg.AlphaPowerEarlyBL] = tmp{:};
         tmp = num2cell(AlphaPowerLateBL);  [subj_data_eeg.AlphaPowerLateBL]  = tmp{:};
         tmp = num2cell(AlphaPowerFullBL);  [subj_data_eeg.AlphaPowerFullBL]  = tmp{:};
+        tmp = num2cell(AlphaPower_FOOOF);          [subj_data_eeg.AlphaPower_FOOOF]          = tmp{:};
+        tmp = num2cell(AlphaPower_FOOOF_bl);       [subj_data_eeg.AlphaPower_FOOOF_bl]       = tmp{:};
+        tmp = num2cell(AlphaPower_FOOOF_bl_early); [subj_data_eeg.AlphaPower_FOOOF_bl_early] = tmp{:};
+        tmp = num2cell(AlphaPower_FOOOF_bl_late);  [subj_data_eeg.AlphaPower_FOOOF_bl_late]  = tmp{:};
 
         % Save
         if ispc == 1

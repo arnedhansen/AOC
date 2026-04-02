@@ -232,28 +232,44 @@ for subj = 1:length(subjects)
         % Calculate IAF for 1-back
         alphaPower1 = powspctrm1(alphaIndices);
         [pks1,locs] = findpeaks(alphaPower1);
-        [~, ind] = max(pks1);
-        IAF1 = pow1_full.freq(alphaIndices(locs(ind)));
-        IAF_range1 = find(pow1_full.freq > (IAF1-4) & pow1_full.freq < (IAF1+2));
+        if isempty(pks1)
+            IAF1 = NaN;
+            IAF_range1 = NaN;
+            powerIAF1 = NaN;
+        else
+            [~, ind] = max(pks1);
+            IAF1 = pow1_full.freq(alphaIndices(locs(ind)));
+            IAF_range1 = find(pow1_full.freq > (IAF1-4) & pow1_full.freq < (IAF1+2));
+            powerIAF1 = mean(powspctrm1(IAF_range1));
+        end
 
         % Calculate IAF for 2-back
         alphaPower2 = powspctrm2(alphaIndices);
         [pks2,locs] = findpeaks(alphaPower2);
-        [~, ind] = max(pks2);
-        IAF2 = pow2_full.freq(alphaIndices(locs(ind)));
-        IAF_range2 = find(pow2_full.freq > (IAF2-4) & pow2_full.freq < (IAF2+2));
+        if isempty(pks2)
+            IAF2 = NaN;
+            IAF_range2 = NaN;
+            powerIAF2 = NaN;
+        else
+            [~, ind] = max(pks2);
+            IAF2 = pow2_full.freq(alphaIndices(locs(ind)));
+            IAF_range2 = find(pow2_full.freq > (IAF2-4) & pow2_full.freq < (IAF2+2));
+            powerIAF2 = mean(powspctrm2(IAF_range2));
+        end
 
         % Calculate IAF for 3-back
         alphaPower3 = powspctrm3(alphaIndices);
         [pks3,locs] = findpeaks(alphaPower3);
-        [~, ind] = max(pks3);
-        IAF3 = pow3_full.freq(alphaIndices(locs(ind)));
-        IAF_range3 = find(pow3_full.freq > (IAF3-4) & pow3_full.freq < (IAF3+2));
-
-        % Store the power values at the calculated IAFs
-        powerIAF1 = mean(powspctrm1(IAF_range1));
-        powerIAF2 = mean(powspctrm2(IAF_range2));
-        powerIAF3 = mean(powspctrm3(IAF_range3));
+        if isempty(pks3)
+            IAF3 = NaN;
+            IAF_range3 = NaN;
+            powerIAF3 = NaN;
+        else
+            [~, ind] = max(pks3);
+            IAF3 = pow3_full.freq(alphaIndices(locs(ind)));
+            IAF_range3 = find(pow3_full.freq > (IAF3-4) & pow3_full.freq < (IAF3+2));
+            powerIAF3 = mean(powspctrm3(IAF_range3));
+        end
 
         % Do not extract alpha peak if there is no clear peak
         % Check if any IAF is 8 or 14 and set the corresponding power to NaN

@@ -6,13 +6,13 @@
 %   Blinks, Fixations, Saccades, ScanPathLength (from preprocessing)
 
 %% Setup 
-clear
-clc
-close all
+startup
+setup('AOC');
 path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
+
 gaze_data_nback = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, ...
     'GazeStdX', {}, 'GazeStdY', {}, 'PupilSize', {}, 'MSRate', {}, ...
     'Blinks', {}, 'Fixations', {}, 'Saccades', {}, 'ScanPathLength', {}, ...
@@ -57,15 +57,16 @@ for subj = 1:length(subjects)
 
         %% Define windows
         t = dataet.time{trl};
-        idx_base  = t >= -0.5 & t <= -0.25;
-        idx_early = t >= 0    & t <= 1;
-        idx_late  = t >= 1    & t <= 2;
-        idx_full  = t >= 0    & t <= 2;
 
         %% Filter out data points outside the screen boundaries
         valid_data_indices = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
         valid_data = data(1:3, valid_data_indices);
         data = valid_data;
+        t = t(valid_data_indices);
+        idx_base  = t >= -0.5 & t <= -0.25;
+        idx_early = t >= 0    & t <= 1;
+        idx_late  = t >= 1    & t <= 2;
+        idx_full  = t >= 0    & t <= 2;
         data(2, :) = 600 - data(2, :); % Invert Y-axis
 
         %% Remove blinks with a window of 100ms (= 50 samples/timepoints)
@@ -331,7 +332,8 @@ for subj = 1:length(subjects)
     l3blatBLl = mean(blatLateBL([subj_data_gaze_trial.Condition] == 3), 'omitnan');
 
     %% Create across condition structure
-    subj_data_gaze = struct('ID', num2cell(subject_id(1:3)), ...
+    subID = str2double(subjects{subj});
+    subj_data_gaze = struct('ID', num2cell([subID; subID; subID]), ...
         'Condition', num2cell([1; 2; 3]), ...
         'GazeDeviation', num2cell([l1gdev; l2gdev; l3gdev]), ...
         'GazeStdX', num2cell([l1gSDx; l2gSDx; l3gSDx]), ...

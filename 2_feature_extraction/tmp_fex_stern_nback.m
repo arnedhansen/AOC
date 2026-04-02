@@ -6,13 +6,13 @@
 %   Blinks, Fixations, Saccades, ScanPathLength (from preprocessing)
 
 %% Setup 
-clear
-clc
-close all
+startup
+setup('AOC');
 path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
+
 gaze_data_nback = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, ...
     'GazeStdX', {}, 'GazeStdY', {}, 'PupilSize', {}, 'MSRate', {}, ...
     'Blinks', {}, 'Fixations', {}, 'Saccades', {}, 'ScanPathLength', {}, ...
@@ -57,15 +57,16 @@ for subj = 1:length(subjects)
 
         %% Define windows
         t = dataet.time{trl};
-        idx_base  = t >= -0.5 & t <= -0.25;
-        idx_early = t >= 0    & t <= 1;
-        idx_late  = t >= 1    & t <= 2;
-        idx_full  = t >= 0    & t <= 2;
 
         %% Filter out data points outside the screen boundaries
         valid_data_indices = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
         valid_data = data(1:3, valid_data_indices);
         data = valid_data;
+        t = t(valid_data_indices);
+        idx_base  = t >= -0.5 & t <= -0.25;
+        idx_early = t >= 0    & t <= 1;
+        idx_late  = t >= 1    & t <= 2;
+        idx_full  = t >= 0    & t <= 2;
         data(2, :) = 600 - data(2, :); % Invert Y-axis
 
         %% Remove blinks with a window of 100ms (= 50 samples/timepoints)
@@ -331,7 +332,8 @@ for subj = 1:length(subjects)
     l3blatBLl = mean(blatLateBL([subj_data_gaze_trial.Condition] == 3), 'omitnan');
 
     %% Create across condition structure
-    subj_data_gaze = struct('ID', num2cell(subject_id(1:3)), ...
+    subID = str2double(subjects{subj});
+    subj_data_gaze = struct('ID', num2cell([subID; subID; subID]), ...
         'Condition', num2cell([1; 2; 3]), ...
         'GazeDeviation', num2cell([l1gdev; l2gdev; l3gdev]), ...
         'GazeStdX', num2cell([l1gSDx; l2gSDx; l3gSDx]), ...
@@ -382,7 +384,6 @@ end
 save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_nback gaze_x gaze_y
 save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_matrix_nback gaze_data_nback
 
-
 %% AOC Gaze Feature Extraction — Sternberg
 % Loads dataET_sternberg, computes gaze deviation, std, pupil, microsaccade rate, and scan-path length per trial and condition. Saccades, blinks and fixations come from AOC_preprocessing_sternberg. Saves gaze_matrix_sternberg.mat.
 %
@@ -393,13 +394,11 @@ save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_matr
 %% Setup
 startup
 setup('AOC');
-clear
-clc
-close all
 path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
+
 gaze_data_sternberg = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, ...
     'GazeStdX', {}, 'GazeStdY', {}, 'PupilSize', {}, 'MSRate', {}, ...
     'Blinks', {}, 'Fixations', {}, 'Saccades', {}, 'ScanPathLength', {}, ...
@@ -444,16 +443,17 @@ for subj = 1:length(subjects)
 
         %% Define windows
         t = dataet.time{trl};
-        idx_base   = t >= -0.5 & t <= -0.25;
-        idx_early  = t >= 0    & t <= 1;
-        idx_late   = t >= 1    & t <= 2;
-        idx_full   = t >= 0    & t <= 2;
-        idx_legacy = idx_late; % keep legacy non-baselined metrics on [1 2]s
 
         %% Filter out data points outside the screen boundaries
         valid_data_indices = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
         valid_data = data(1:3, valid_data_indices);
         data = valid_data;
+        t = t(valid_data_indices);
+        idx_base   = t >= -0.5 & t <= -0.25;
+        idx_early  = t >= 0    & t <= 1;
+        idx_late   = t >= 1    & t <= 2;
+        idx_full   = t >= 0    & t <= 2;
+        idx_legacy = idx_late; % keep legacy non-baselined metrics on [1 2]s
         data(2, :) = 600 - data(2, :); % Invert Y-axis
 
         %% Remove blinks with a window of 100ms (= 50 samples/timepoints)
@@ -718,7 +718,8 @@ for subj = 1:length(subjects)
     l6blatBLl = mean(blatLateBL([subj_data_gaze_trial.Condition] == 6), 'omitnan');
 
     %% Create across condition structure
-    subj_data_gaze = struct('ID', num2cell(subject_id(1:3)), ...
+    subID = str2double(subjects{subj});
+    subj_data_gaze = struct('ID', num2cell([subID; subID; subID]), ...
         'Condition', num2cell([2; 4; 6]), ...
         'GazeDeviation', num2cell([l2gdev; l4gdev; l6gdev]), ...
         'GazeStdX', num2cell([l2gSDx; l4gSDx; l6gSDx]), ...
@@ -757,7 +758,7 @@ for subj = 1:length(subjects)
     save gaze_matrix_sternberg_trial subj_data_gaze_trial
     save gaze_matrix_sternberg subj_data_gaze
     save gaze_dev_sternberg l2gdev l4gdev l6gdev
-    save gaze_std_nback l2gSDx l4gSDx l6gSDx l2gSDy l4gSDy l6gSDy
+    save gaze_std_sternberg l2gSDx l4gSDx l6gSDx l2gSDy l4gSDy l6gSDy
     save pupil_size_sternberg l2pups l4pups l6pups
     save ms_rate_sternberg l2msrate l4msrate l6msrate
     clc
@@ -769,6 +770,7 @@ end
 trialinfo = dataet.trialinfo';
 save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_sternberg gaze_x gaze_y trialinfo
 save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_matrix_sternberg gaze_data_sternberg
+
 
 
 %% AOC EEG Feature Extraction — Sternberg
@@ -1390,28 +1392,44 @@ for subj = 1:length(subjects)
         % Calculate IAF for 1-back
         alphaPower1 = powspctrm1(alphaIndices);
         [pks1,locs] = findpeaks(alphaPower1);
-        [~, ind] = max(pks1);
-        IAF1 = pow1_full.freq(alphaIndices(locs(ind)));
-        IAF_range1 = find(pow1_full.freq > (IAF1-4) & pow1_full.freq < (IAF1+2));
+        if isempty(pks1)
+            IAF1 = NaN;
+            IAF_range1 = NaN;
+            powerIAF1 = NaN;
+        else
+            [~, ind] = max(pks1);
+            IAF1 = pow1_full.freq(alphaIndices(locs(ind)));
+            IAF_range1 = find(pow1_full.freq > (IAF1-4) & pow1_full.freq < (IAF1+2));
+            powerIAF1 = mean(powspctrm1(IAF_range1));
+        end
 
         % Calculate IAF for 2-back
         alphaPower2 = powspctrm2(alphaIndices);
         [pks2,locs] = findpeaks(alphaPower2);
-        [~, ind] = max(pks2);
-        IAF2 = pow2_full.freq(alphaIndices(locs(ind)));
-        IAF_range2 = find(pow2_full.freq > (IAF2-4) & pow2_full.freq < (IAF2+2));
+        if isempty(pks2)
+            IAF2 = NaN;
+            IAF_range2 = NaN;
+            powerIAF2 = NaN;
+        else
+            [~, ind] = max(pks2);
+            IAF2 = pow2_full.freq(alphaIndices(locs(ind)));
+            IAF_range2 = find(pow2_full.freq > (IAF2-4) & pow2_full.freq < (IAF2+2));
+            powerIAF2 = mean(powspctrm2(IAF_range2));
+        end
 
         % Calculate IAF for 3-back
         alphaPower3 = powspctrm3(alphaIndices);
         [pks3,locs] = findpeaks(alphaPower3);
-        [~, ind] = max(pks3);
-        IAF3 = pow3_full.freq(alphaIndices(locs(ind)));
-        IAF_range3 = find(pow3_full.freq > (IAF3-4) & pow3_full.freq < (IAF3+2));
-
-        % Store the power values at the calculated IAFs
-        powerIAF1 = mean(powspctrm1(IAF_range1));
-        powerIAF2 = mean(powspctrm2(IAF_range2));
-        powerIAF3 = mean(powspctrm3(IAF_range3));
+        if isempty(pks3)
+            IAF3 = NaN;
+            IAF_range3 = NaN;
+            powerIAF3 = NaN;
+        else
+            [~, ind] = max(pks3);
+            IAF3 = pow3_full.freq(alphaIndices(locs(ind)));
+            IAF_range3 = find(pow3_full.freq > (IAF3-4) & pow3_full.freq < (IAF3+2));
+            powerIAF3 = mean(powspctrm3(IAF_range3));
+        end
 
         % Do not extract alpha peak if there is no clear peak
         % Check if any IAF is 8 or 14 and set the corresponding power to NaN

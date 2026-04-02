@@ -8,13 +8,11 @@
 %% Setup
 startup
 setup('AOC');
-clear
-clc
-close all
 path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
+
 gaze_data_sternberg = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, ...
     'GazeStdX', {}, 'GazeStdY', {}, 'PupilSize', {}, 'MSRate', {}, ...
     'Blinks', {}, 'Fixations', {}, 'Saccades', {}, 'ScanPathLength', {}, ...
@@ -59,16 +57,17 @@ for subj = 1:length(subjects)
 
         %% Define windows
         t = dataet.time{trl};
-        idx_base   = t >= -0.5 & t <= -0.25;
-        idx_early  = t >= 0    & t <= 1;
-        idx_late   = t >= 1    & t <= 2;
-        idx_full   = t >= 0    & t <= 2;
-        idx_legacy = idx_late; % keep legacy non-baselined metrics on [1 2]s
 
         %% Filter out data points outside the screen boundaries
         valid_data_indices = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
         valid_data = data(1:3, valid_data_indices);
         data = valid_data;
+        t = t(valid_data_indices);
+        idx_base   = t >= -0.5 & t <= -0.25;
+        idx_early  = t >= 0    & t <= 1;
+        idx_late   = t >= 1    & t <= 2;
+        idx_full   = t >= 0    & t <= 2;
+        idx_legacy = idx_late; % keep legacy non-baselined metrics on [1 2]s
         data(2, :) = 600 - data(2, :); % Invert Y-axis
 
         %% Remove blinks with a window of 100ms (= 50 samples/timepoints)
@@ -333,7 +332,8 @@ for subj = 1:length(subjects)
     l6blatBLl = mean(blatLateBL([subj_data_gaze_trial.Condition] == 6), 'omitnan');
 
     %% Create across condition structure
-    subj_data_gaze = struct('ID', num2cell(subject_id(1:3)), ...
+    subID = str2double(subjects{subj});
+    subj_data_gaze = struct('ID', num2cell([subID; subID; subID]), ...
         'Condition', num2cell([2; 4; 6]), ...
         'GazeDeviation', num2cell([l2gdev; l4gdev; l6gdev]), ...
         'GazeStdX', num2cell([l2gSDx; l4gSDx; l6gSDx]), ...
@@ -372,7 +372,7 @@ for subj = 1:length(subjects)
     save gaze_matrix_sternberg_trial subj_data_gaze_trial
     save gaze_matrix_sternberg subj_data_gaze
     save gaze_dev_sternberg l2gdev l4gdev l6gdev
-    save gaze_std_nback l2gSDx l4gSDx l6gSDx l2gSDy l4gSDy l6gSDy
+    save gaze_std_sternberg l2gSDx l4gSDx l6gSDx l2gSDy l4gSDy l6gSDy
     save pupil_size_sternberg l2pups l4pups l6pups
     save ms_rate_sternberg l2msrate l4msrate l6msrate
     clc

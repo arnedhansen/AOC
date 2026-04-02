@@ -1,16 +1,17 @@
-%% Reciprocal subject×load LMEs: Gaze ~ Load*Alpha and Alpha ~ Load*Gaze
+%% Reciprocal subject×load LMEs: Gaze% ~ Load*Alpha and Alpha ~ Load*Gaze%
 %
 % Long-format rows: one per subject × WM load (2/4/6). Alpha = occipital 8–14 Hz
-% TFR power [dB] (FOOOF-baselined TFR), averaged 0.5–1.5 s. Gaze = mean trial-level
-% gaze deviation [dB]: 10*log10(task/baseline), baseline [-0.5 -0.25] s, task [0.5 1.5] s.
+% TFR power [dB] (FOOOF-baselined TFR), averaged 0.5–1.5 s. Gaze% = mean trial-level
+% gaze deviation percentage change [%]: 100*(task/baseline - 1).
+% Baseline [-0.5 -0.25] s, task [0.5 1.5] s.
 %
 % Load is coded as (Load-4)/2 so 0 = load 4, +1 = load 6 (same as AOC_split_AlphaLoads_500_1500ms).
-% In each model the *moderator* is grand-mean centered across all rows (Alpha_c or Gaze_c) so
-% the interaction is interpretable; DVs stay on the raw scale (Gaze, Alpha).
+% In each model the *moderator* is grand-mean centered across all rows (Alpha_c or GazePct_c) so
+% the interaction is interpretable; DVs stay on the raw scale (GazePct, Alpha).
 %
 % Models (random slope for Load by subject, with intercept-only fallback):
-%   (1) Gaze ~ Load * Alpha_c + (Load|Subject)
-%   (2) Alpha ~ Load * Gaze_c + (Load|Subject)
+%   (1) GazePct ~ Load * Alpha_c + (Load|Subject)
+%   (2) Alpha ~ Load * GazePct_c + (Load|Subject)
 %
 % These are associational within-subject×load data; they do not identify causal direction.
 
@@ -25,7 +26,7 @@ else
     base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC';
 end
 feat_dir = fullfile(base_data, 'data', 'features');
-fig_dir = fullfile(base_data, 'figures', 'splits', 'ReciprocalAlphaGazeLME');
+fig_dir = fullfile(base_data, 'figures', 'splits', 'ReciprocalAlphaGazeLME_Pct');
 if ~isfolder(fig_dir)
     mkdir(fig_dir);
 end
@@ -41,13 +42,13 @@ log_dir = fullfile(base_data, 'data', 'controls', 'logs');
 if ~isfolder(log_dir)
     mkdir(log_dir);
 end
-cmdlog_file = fullfile(log_dir, sprintf('AOC_alpha_gaze_reciprocal_LME_%s.log', datestr(now, 'yyyymmdd_HHMMSS')));
+cmdlog_file = fullfile(log_dir, sprintf('AOC_alpha_gaze_reciprocal_LME_Pct_%s.log', datestr(now, 'yyyymmdd_HHMMSS')));
 diary('off');
 diary(cmdlog_file);
 cleanup_diary = onCleanup(@() diary('off')); %#ok<NASGU>
 fprintf('Command window log file: %s\n', cmdlog_file);
 
-fprintf('\n=== Reciprocal LMEs: Gaze ~ Load*Alpha_c, Alpha ~ Load*Gaze_c ===\n');
+fprintf('\n=== Reciprocal LMEs: Gaze%%(GazePct) ~ Load*Alpha_c, Alpha ~ Load*GazePct_c ===\n');
 fprintf('Figure/log directory: %s\n', fig_dir);
 
 %% Load TFR per subject
@@ -117,18 +118,21 @@ alpha6 = val6.powspctrm;
 
 nSubj = numel(subjects);
 
-%% Gaze dB per load (ET)
-fprintf('\nComputing gaze deviation [dB] per load from dataET_sternberg...\n');
-[DEV2, DEV4, DEV6] = sternberg_gaze_deviation_dB_by_load(subjects, path, t_base_gaze, t_task_gaze);
+% Canonical figure size requested
+fig_pos = [0 0 1512 982];
+
+%% Gaze percentage change per load (ET)
+fprintf('\nComputing gaze deviation percentage change [%%] per load from dataET_sternberg...\n');
+[DEV2, DEV4, DEV6] = sternberg_gaze_deviation_percent_change_by_load(subjects, path, t_base_gaze, t_task_gaze);
 
 %% Long table: subject × load
 Subject_col = [];
 Load_raw = [];
-Gaze_col = [];
+GazePct_col = [];
 Alpha_col = [];
 
 idx_ok = find(all(isfinite([alpha2(:), alpha4(:), alpha6(:), DEV2(:), DEV4(:), DEV6(:)]), 2));
-fprintf('\nSubjects with finite alpha (2/4/6) and gaze dB (2/4/6): %d / %d\n', numel(idx_ok), nSubj);
+fprintf('\nSubjects with finite alpha (2/4/6) and gaze %% change (2/4/6): %d / %d\n', numel(idx_ok), nSubj);
 
 for k = 1:numel(idx_ok)
     ii = idx_ok(k);
@@ -138,7 +142,7 @@ for k = 1:numel(idx_ok)
         Subject_col(end+1, 1) = ii; %#ok<AGROW>
         Load_raw(end+1, 1) = cond_vals(c); %#ok<AGROW>
         Alpha_col(end+1, 1) = av(c); %#ok<AGROW>
-        Gaze_col(end+1, 1) = gv(c); %#ok<AGROW>
+        GazePct_col(end+1, 1) = gv(c); %#ok<AGROW>
     end
 end
 
@@ -147,29 +151,29 @@ if numel(Subject_col) < 15
 end
 
 mu_alpha_grand = mean(Alpha_col);
-mu_gaze_grand = mean(Gaze_col);
+mu_gaze_grand = mean(GazePct_col);
 Alpha_c = Alpha_col - mu_alpha_grand;
-Gaze_c = Gaze_col - mu_gaze_grand;
+GazePct_c = GazePct_col - mu_gaze_grand;
 
 Load_ctr = (Load_raw - 4) / 2;
 
-tbl = table(Subject_col, Load_ctr, Gaze_col, Alpha_col, Alpha_c, Gaze_c, ...
-    'VariableNames', {'Subject', 'Load', 'Gaze', 'Alpha', 'Alpha_c', 'Gaze_c'});
+tbl = table(Subject_col, Load_ctr, GazePct_col, Alpha_col, Alpha_c, GazePct_c, ...
+    'VariableNames', {'Subject', 'Load', 'GazePct', 'Alpha', 'Alpha_c', 'GazePct_c'});
 tbl.Subject = categorical(tbl.Subject);
 
 fprintf('\n--- Data summary ---\n');
 fprintf('Rows (subject×load): %d; subjects: %d\n', height(tbl), numel(unique(Subject_col)));
-fprintf('Grand means: Alpha=%.6g [dB], Gaze=%.6g [dB] (subtracted from moderator in each model).\n', ...
+fprintf('Grand means: Alpha=%.6g [dB], Gaze%%=%.6g [%%] (subtracted from moderator in each model).\n', ...
     mu_alpha_grand, mu_gaze_grand);
 fprintf('Load coding: Load = (WM_load - 4) / 2  (0 = load 4; +1 = load 6; -1 = load 2).\n');
 fprintf('EEG window [%.2f %.2f] s; gaze task [%.2f %.2f] s; gaze baseline [%.2f %.2f] s.\n', ...
     t_analysis_eeg(1), t_analysis_eeg(2), t_task_gaze(1), t_task_gaze(2), t_base_gaze(1), t_base_gaze(2));
 
-%% Model 1: Gaze ~ Load * Alpha_c + (Load|Subject)
-fprintf('\n========== MODEL 1: Gaze ~ Load * Alpha_c + (Load|Subject) ==========\n');
-fprintf('DV: Gaze [dB] at each load. Moderator: Alpha_c (Alpha grand-mean centered).\n');
+%% Model 1: GazePct ~ Load * Alpha_c + (Load|Subject)
+fprintf('\n========== MODEL 1: Gaze%% ~ Load * Alpha_c + (Load|Subject) ==========\n');
+fprintf('DV: Gaze%% [%] at each load. Moderator: Alpha_c (Alpha grand-mean centered).\n');
 try
-    [lme1, f1] = fitlme_with_random_slope_fallback(tbl, 'Gaze ~ Load * Alpha_c');
+    [lme1, f1] = fitlme_with_random_slope_fallback(tbl, 'GazePct ~ Load * Alpha_c');
     fprintf('Fitted: %s\n', f1);
     disp(anova(lme1));
     fprintf('Fixed effects:\n');
@@ -183,11 +187,11 @@ catch ME
     fprintf('Model 1 failed: %s\n', ME.message);
 end
 
-%% Model 2: Alpha ~ Load * Gaze_c + (Load|Subject)
-fprintf('\n========== MODEL 2: Alpha ~ Load * Gaze_c + (Load|Subject) ==========\n');
-fprintf('DV: Alpha [dB] at each load. Moderator: Gaze_c (Gaze grand-mean centered).\n');
+%% Model 2: Alpha ~ Load * GazePct_c + (Load|Subject)
+fprintf('\n========== MODEL 2: Alpha ~ Load * GazePct_c + (Load|Subject) ==========\n');
+fprintf('DV: Alpha [dB] at each load. Moderator: GazePct_c (Gaze%% grand-mean centered).\n');
 try
-    [lme2, f2] = fitlme_with_random_slope_fallback(tbl, 'Alpha ~ Load * Gaze_c');
+    [lme2, f2] = fitlme_with_random_slope_fallback(tbl, 'Alpha ~ Load * GazePct_c');
     fprintf('Fitted: %s\n', f2);
     disp(anova(lme2));
     fprintf('Fixed effects:\n');
@@ -199,6 +203,151 @@ try
     end
 catch ME
     fprintf('Model 2 failed: %s\n', ME.message);
+end
+
+%% ========================= Visualizations =========================
+fprintf('\n=== Visualizations: predicted interactions + subject-level slope coupling ===\n');
+
+% Subject-level slopes across loads (using load coding -1,0,+1)
+load_step = [-1; 0; 1];
+alphaSlope_subj = nan(nSubj, 1);
+gazePctSlope_subj = nan(nSubj, 1);
+for ii = 1:nSubj
+    if all(isfinite([alpha2(ii), alpha4(ii), alpha6(ii)])) && all(isfinite([DEV2(ii), DEV4(ii), DEV6(ii)]))
+        yA = [alpha2(ii); alpha4(ii); alpha6(ii)];
+        yG = [DEV2(ii); DEV4(ii); DEV6(ii)];
+        Xmat = [ones(3,1), load_step];
+        bA = Xmat \ yA;
+        bG = Xmat \ yG;
+        alphaSlope_subj(ii) = bA(2);      % change per +2 items (because load_step is in units of +2 items)
+        gazePctSlope_subj(ii) = bG(2);   % change per +2 items
+    end
+end
+maskSlope = isfinite(alphaSlope_subj) & isfinite(gazePctSlope_subj);
+nSlope = sum(maskSlope);
+fprintf('Subject-level slope coupling usable pairs: %d\n', nSlope);
+if nSlope >= 3
+    [r_p, p_p] = corr(alphaSlope_subj(maskSlope), gazePctSlope_subj(maskSlope), 'Type', 'Pearson', 'rows', 'complete');
+    [r_s, p_s] = corr(alphaSlope_subj(maskSlope), gazePctSlope_subj(maskSlope), 'Type', 'Spearman', 'rows', 'complete');
+    fprintf('Slope coupling: Pearson r=%.5f (p=%.6g); Spearman rho=%.5f (p=%.6g)\n', r_p, p_p, r_s, p_s);
+else
+    fprintf('Slope coupling correlation skipped (need >= 3 pairs).\n');
+end
+
+% Plot: alpha slope vs gaze% slope
+figure('Position', fig_pos, 'Color', 'w');
+hold on;
+if nSlope > 0
+    scatter(alphaSlope_subj(maskSlope), gazePctSlope_subj(maskSlope), 35, [0.2 0.4 0.8], 'filled', ...
+        'MarkerFaceAlpha', 0.7, 'MarkerEdgeColor', [0.2 0.4 0.8] * 0.5, 'LineWidth', 0.6);
+    if nSlope >= 2
+        p_fit = polyfit(alphaSlope_subj(maskSlope), gazePctSlope_subj(maskSlope), 1);
+        xl = linspace(min(alphaSlope_subj(maskSlope)), max(alphaSlope_subj(maskSlope)), 100);
+        plot(xl, polyval(p_fit, xl), '-', 'Color', [0.2 0.4 0.8] * 0.7, 'LineWidth', 2);
+    end
+end
+xline(0, ':', 'Color', [0.55 0.55 0.55], 'LineWidth', 1.5);
+yline(0, ':', 'Color', [0.55 0.55 0.55], 'LineWidth', 1.5);
+grid on; box off;
+xlabel('Alpha slope across load (dB per +2 items)');
+ylabel('Gaze% slope across load (% per +2 items)');
+title('Subject-level coupling: alpha slope vs gaze% slope');
+saveas(gcf, fullfile(fig_dir, 'AOC_reciprocal_SubjectSlopeCoupling_AlphaSlope_vs_GazePctSlope.png'));
+close(gcf);
+
+% Plot: predicted interaction curves for Model 1 and Model 2
+% Model 1: GazePct ~ Load * Alpha_c
+if exist('lme1', 'var')
+    loadLevels = unique(tbl.Load);
+    % Map coded load to labels
+    % Load coded: (2-4)/2=-1, (4-4)/2=0, (6-4)/2=+1
+    loadLabels = cell(size(loadLevels));
+    for iL = 1:numel(loadLevels)
+        if abs(loadLevels(iL) + 1) < 1e-9
+            loadLabels{iL} = 'WM load 2';
+        elseif abs(loadLevels(iL) - 0) < 1e-9
+            loadLabels{iL} = 'WM load 4';
+        elseif abs(loadLevels(iL) - 1) < 1e-9
+            loadLabels{iL} = 'WM load 6';
+        else
+            loadLabels{iL} = sprintf('Load code %.3g', loadLevels(iL));
+        end
+    end
+
+    alphaGrid = linspace(min(tbl.Alpha_c), max(tbl.Alpha_c), 120)';
+    nGrid = numel(alphaGrid);
+    nLevels = numel(loadLevels);
+    subjDummy = tbl.Subject(1);
+
+    figure('Position', fig_pos, 'Color', 'w');
+    hold on;
+    for iL = 1:nLevels
+        tblPred = table( ...
+            repmat(subjDummy, nGrid, 1), ...
+            repmat(loadLevels(iL), nGrid, 1), ...
+            alphaGrid, ...
+            'VariableNames', {'Subject', 'Load', 'Alpha_c'});
+        try
+            yhat = predict(lme1, tblPred, 'Conditional', false);
+        catch
+            yhat = predict(lme1, tblPred);
+        end
+        plot(alphaGrid, yhat, 'LineWidth', 2, 'DisplayName', loadLabels{iL});
+    end
+    yline(0, 'k:', 'LineWidth', 1.5);
+    grid on; box off;
+    xlabel('Alpha_c (grand-mean centered alpha [dB])');
+    ylabel('Predicted Gaze%');
+    title('Model 1 prediction: Gaze% ~ Load * Alpha_c');
+    legend('Location', 'best', 'Box', 'off');
+    saveas(gcf, fullfile(fig_dir, 'AOC_reciprocal_Model1_PredictedInteraction_Load_by_Alpha_c_GazePct.png'));
+    close(gcf);
+end
+
+% Model 2: Alpha ~ Load * GazePct_c
+if exist('lme2', 'var')
+    loadLevels = unique(tbl.Load);
+    loadLabels = cell(size(loadLevels));
+    for iL = 1:numel(loadLevels)
+        if abs(loadLevels(iL) + 1) < 1e-9
+            loadLabels{iL} = 'WM load 2';
+        elseif abs(loadLevels(iL) - 0) < 1e-9
+            loadLabels{iL} = 'WM load 4';
+        elseif abs(loadLevels(iL) - 1) < 1e-9
+            loadLabels{iL} = 'WM load 6';
+        else
+            loadLabels{iL} = sprintf('Load code %.3g', loadLevels(iL));
+        end
+    end
+
+    gazeGrid = linspace(min(tbl.GazePct_c), max(tbl.GazePct_c), 120)';
+    nGrid = numel(gazeGrid);
+    nLevels = numel(loadLevels);
+    subjDummy = tbl.Subject(1);
+
+    figure('Position', fig_pos, 'Color', 'w');
+    hold on;
+    for iL = 1:nLevels
+        tblPred = table( ...
+            repmat(subjDummy, nGrid, 1), ...
+            repmat(loadLevels(iL), nGrid, 1), ...
+            gazeGrid, ...
+            'VariableNames', {'Subject', 'Load', 'GazePct_c'});
+        try
+            yhat = predict(lme2, tblPred, 'Conditional', false);
+        catch
+            yhat = predict(lme2, tblPred);
+        end
+        plot(gazeGrid, yhat, 'LineWidth', 2, 'DisplayName', loadLabels{iL});
+    end
+    yline(0, 'k:', 'LineWidth', 1.5);
+    grid on; box off;
+    xlabel('GazePct_c (grand-mean centered gaze% [%%])');
+    ylabel('Predicted Alpha [dB]');
+    title('Model 2 prediction: Alpha ~ Load * GazePct_c');
+    legend('Location', 'best', 'Box', 'off');
+    saveas(gcf, fullfile(fig_dir, 'AOC_reciprocal_Model2_PredictedInteraction_Load_by_GazePct_c_Alpha.png'));
+    close(gcf);
 end
 
 fprintf('\n=== Done. Associational models; interpret Load:moderator as moderation at fixed grand mean of the other variable. ===\n');
@@ -235,8 +384,9 @@ catch
 end
 end
 
-function [DEV2, DEV4, DEV6] = sternberg_gaze_deviation_dB_by_load(subjects, base_path, t_base, t_task)
-% Per subject: mean across trials of 10*log10(gd_task/gd_baseline) for loads 2/4/6.
+function [DEV2, DEV4, DEV6] = sternberg_gaze_deviation_percent_change_by_load(subjects, base_path, t_base, t_task)
+% Per subject: mean across trials of percentage change 100*(gd_task/gd_baseline - 1)
+% for loads 2/4/6.
 screenW = 800; screenH = 600;
 centreX = 400; centreY = 300;
 blink_win = 50;
@@ -306,18 +456,18 @@ for si = 1:nSubj
         if ~(isfinite(gaze_dev_b) && gaze_dev_b > 0 && isfinite(gaze_dev_t) && gaze_dev_t > 0)
             continue
         end
-        gd_dB = 10 * log10(gaze_dev_t / gaze_dev_b);
-        if ~isfinite(gd_dB)
+        gd_pct = 100 * (gaze_dev_t / gaze_dev_b - 1);
+        if ~isfinite(gd_pct)
             continue
         end
 
         cc = cond_code(trl);
         if cc == 2
-            gd_by_cond{1}(end+1, 1) = gd_dB;
+            gd_by_cond{1}(end+1, 1) = gd_pct;
         elseif cc == 4
-            gd_by_cond{2}(end+1, 1) = gd_dB;
+            gd_by_cond{2}(end+1, 1) = gd_pct;
         elseif cc == 6
-            gd_by_cond{3}(end+1, 1) = gd_dB;
+            gd_by_cond{3}(end+1, 1) = gd_pct;
         end
     end
 

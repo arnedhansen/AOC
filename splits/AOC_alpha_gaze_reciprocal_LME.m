@@ -226,6 +226,45 @@ end
 maskSlope = isfinite(alphaSlope_subj) & isfinite(gazePctSlope_subj);
 nSlope = sum(maskSlope);
 fprintf('Subject-level slope coupling usable pairs: %d\n', nSlope);
+
+% Descriptives for the coupling model sample
+x_slope = alphaSlope_subj(maskSlope);
+y_slope = gazePctSlope_subj(maskSlope);
+if nSlope > 0
+    fprintf('  Alpha slope (dB per +2 items): min=%.6g, max=%.6g, mean=%.6g, SD=%.6g, median=%.6g, n=%d\n', ...
+        min(x_slope), max(x_slope), mean(x_slope), std(x_slope), median(x_slope), nSlope);
+    fprintf('  Gaze%% slope (%% per +2 items): min=%.6g, max=%.6g, mean=%.6g, SD=%.6g, median=%.6g, n=%d\n', ...
+        min(y_slope), max(y_slope), mean(y_slope), std(y_slope), median(y_slope), nSlope);
+end
+
+% Linear regression (for CW output)
+p_fit_slopeCouple = [];
+if nSlope >= 2
+    p_fit_slopeCouple = polyfit(x_slope, y_slope, 1); % [slope intercept]
+    yhat = polyval(p_fit_slopeCouple, x_slope);
+    SSE = sum((y_slope - yhat).^2, 'omitnan');
+    SST = sum((y_slope - mean(y_slope)).^2, 'omitnan');
+    R2 = 1 - SSE / max(SST, eps);
+    fprintf('  OLS (unstandardized): Gaze%%_slope = %.6g + %.6g * Alpha_slope; R^2=%.5f\n', ...
+        p_fit_slopeCouple(2), p_fit_slopeCouple(1), R2);
+
+    if nSlope >= 3
+        df = nSlope - 2;
+        x_bar = mean(x_slope);
+        Sxx = sum((x_slope - x_bar).^2, 'omitnan');
+        s2 = SSE / max(df, 1);
+        SE_slope = sqrt(s2 / max(Sxx, eps));
+        t_slope = p_fit_slopeCouple(1) / max(SE_slope, eps);
+        p_two = 2 * tcdf(-abs(t_slope), df);
+        tcrit = tinv(1 - 0.025, df);
+        ci_slope = p_fit_slopeCouple(1) + [-1 1] * tcrit * SE_slope;
+        fprintf('  Slope test: t(%d)=%.4g, p(two-sided)=%.6g, slope SE=%.6g, 95%% CI [%.6g, %.6g]\n', ...
+            df, t_slope, p_two, SE_slope, ci_slope(1), ci_slope(2));
+    else
+        fprintf('  Slope inference skipped (need n>=3).\n');
+    end
+end
+
 if nSlope >= 3
     [r_p, p_p] = corr(alphaSlope_subj(maskSlope), gazePctSlope_subj(maskSlope), 'Type', 'Pearson', 'rows', 'complete');
     [r_s, p_s] = corr(alphaSlope_subj(maskSlope), gazePctSlope_subj(maskSlope), 'Type', 'Spearman', 'rows', 'complete');
@@ -240,10 +279,9 @@ hold on;
 if nSlope > 0
     scatter(alphaSlope_subj(maskSlope), gazePctSlope_subj(maskSlope), 35, [0.2 0.4 0.8], 'filled', ...
         'MarkerFaceAlpha', 0.7, 'MarkerEdgeColor', [0.2 0.4 0.8] * 0.5, 'LineWidth', 0.6);
-    if nSlope >= 2
-        p_fit = polyfit(alphaSlope_subj(maskSlope), gazePctSlope_subj(maskSlope), 1);
+    if nSlope >= 2 && ~isempty(p_fit_slopeCouple)
         xl = linspace(min(alphaSlope_subj(maskSlope)), max(alphaSlope_subj(maskSlope)), 100);
-        plot(xl, polyval(p_fit, xl), '-', 'Color', [0.2 0.4 0.8] * 0.7, 'LineWidth', 2);
+        plot(xl, polyval(p_fit_slopeCouple, xl), '-', 'Color', [0.2 0.4 0.8] * 0.7, 'LineWidth', 2);
     end
 end
 xline(0, ':', 'Color', [0.55 0.55 0.55], 'LineWidth', 1.5);

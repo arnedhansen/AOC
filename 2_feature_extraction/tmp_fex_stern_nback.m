@@ -30,7 +30,7 @@ gaze_data_nback = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, ...
 
 %% Load all eye movements
 for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj}, '/gaze');
+    datapath = strcat(path, filesep, subjects{subj}, '/gaze');
     load([datapath, filesep, 'dataET_nback'])
 
     %% Initialize arrays
@@ -429,7 +429,7 @@ gaze_data_sternberg = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, ...
 
 %% Load all eye movements
 for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj}, '/gaze');
+    datapath = strcat(path, filesep, subjects{subj}, '/gaze');
     load([datapath, filesep, 'dataET_sternberg'])
 
     %% Initialize arrays
@@ -828,11 +828,10 @@ end
 scriptName = 'AOC_eeg_fex_sternberg';
 
 for subj = 1:length(subjects)
-    try
         clc
         disp(['Processing windowed POWSPCTRM + FOOOF (subject-level) for Subject AOC ', num2str(subjects{subj})])
         % Load data
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        datapath = strcat(path, filesep, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all
         load dataEEG_TFR_sternberg   % time-domain FieldTrip data struct (used for tf transforms)
@@ -966,11 +965,6 @@ for subj = 1:length(subjects)
             'pow2_fooof_bl','pow4_fooof_bl','pow6_fooof_bl', ...
             'pow2_fooof_bl_early','pow4_fooof_bl_early','pow6_fooof_bl_early', ...
             'pow2_fooof_bl_late','pow4_fooof_bl_late','pow6_fooof_bl_late')
-
-    catch ME
-        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
-        fprintf('Continuing to next subject...\n');
-    end
 end
 
 %% ALPHA POWER, IAF and LATERALIZATION INDEX
@@ -981,7 +975,7 @@ path = paths.features;
 
 % Define channels
 subj = 1;
-datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+datapath = strcat(path, filesep, subjects{subj}, filesep, 'eeg');
 cd(datapath);
 load('power_stern_windows.mat');
 % Occipital channels
@@ -1023,10 +1017,9 @@ IAF_results = struct();
 eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {}, 'Lateralization', {});
 
 for subj = 1:length(subjects)
-    try
         clc
         disp(['Processing Alpha Power, IAF and Lateralization for Subject AOC ', num2str(subjects{subj})])
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        datapath = strcat(path, filesep, subjects{subj}, filesep, 'eeg');
         cd(datapath);
         load('power_stern_windows.mat');
 
@@ -1177,10 +1170,6 @@ for subj = 1:length(subjects)
         fprintf(['Subject %s IAF: WM2: %f Hz (Power: %f), WM4: %f Hz (Power: %f), ' ...
             'WM6: %f Hz (Power: %f) | Lateralization: %f %f %f \n'], subjects{subj}, ...
             IAF2, powerIAF2, IAF4, powerIAF4, IAF6, powerIAF6, LatIdx2, LatIdx4, LatIdx6);
-    catch ME
-        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
-        fprintf('Continuing to next subject...\n');
-    end
 end
 if ispc == 1
     save W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_sternberg eeg_data_sternberg
@@ -1214,11 +1203,10 @@ end
 scriptName = 'AOC_eeg_fex_nback';
 
 for subj = 1:length(subjects)
-    try
         clc
         disp(['Processing windowed POWSPCTRM + FOOOF (subject-level) for Subject AOC ', num2str(subjects{subj})])
         % Load data
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        datapath = strcat(path, filesep, subjects{subj}, filesep, 'eeg');
         cd(datapath)
         close all
         load dataEEG_TFR_nback
@@ -1347,11 +1335,6 @@ for subj = 1:length(subjects)
             'pow1_fooof_bl','pow2_fooof_bl','pow3_fooof_bl', ...
             'pow1_fooof_bl_early','pow2_fooof_bl_early','pow3_fooof_bl_early', ...
             'pow1_fooof_bl_late','pow2_fooof_bl_late','pow3_fooof_bl_late')
-
-    catch ME
-        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
-        fprintf('Continuing to next subject...\n');
-    end
 end
 
 %% ALPHA POWER, IAF and LATERALIZATION INDEX
@@ -1361,7 +1344,7 @@ startup
 path = paths.features;
 
 % Define channels
-datapath = strcat(path, subjects{1}, filesep, 'eeg');
+datapath = strcat(path, filesep, subjects{1}, filesep, 'eeg');
 cd(datapath);
 load('power_nback_windows.mat');
 % Occipital channels
@@ -1405,10 +1388,9 @@ IAF_results = struct();
 eeg_data_nback = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {}, 'Lateralization', {});
 
 for subj = 1:length(subjects)
-    try
         clc
         disp(['Processing Alpha Power, IAF and Lateralization for Subject AOC ', num2str(subjects{subj})])
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        datapath = strcat(path, filesep, subjects{subj}, filesep, 'eeg');
         cd(datapath);
         load('power_nback_windows.mat');
 
@@ -1556,10 +1538,6 @@ for subj = 1:length(subjects)
         fprintf(['Subject %s IAF: 1-back: %f Hz (Power: %f), 2-back: %f Hz (Power: %f), ' ...
             '3-back: %f Hz (Power: %f) |Lateralization: %f %f %f \n'], subjects{subj}, IAF1, ...
             powerIAF1, IAF2, powerIAF2, IAF3, powerIAF3, LatIdx1, LatIdx2, LatIdx3);
-    catch ME
-        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
-        fprintf('Continuing to next subject...\n');
-    end
 end
 if ispc == 1
     save W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_nback eeg_data_nback

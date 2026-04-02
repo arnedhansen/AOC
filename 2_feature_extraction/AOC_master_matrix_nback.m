@@ -1,5 +1,5 @@
-%% AOC Master Matrix — N-Back (Subject-Level)
-% Main subject-level master matrix. Builds merged_data_nback with:
+%% AOC Master Matrix — N-Back
+% Builds merged_data_nback with:
 %   (a) FOOOF-based alpha power (non-baselined, baselined full/early/late)
 %   (b) Baselined gaze metrics (GazeDeviation, ScanPathLength, PupilSize,
 %       MSRate, BCEA, BCEALateralization — averaged across trials per condition, dB or % change)
@@ -7,12 +7,11 @@
 %
 % All values are loaded from existing files — no recomputation needed.
 %   FOOOF alpha  → per-subject power_nback_fooof.mat
-%   Baselined gaze → aggregate gaze_matrix_nback_trials.mat
-%   Baselined raw alpha → aggregate eeg_matrix_nback_trials.mat
+%   Baselined gaze and alpha → AOC_gaze_matrix_nback.mat / AOC_eeg_matrix_nback.mat
 %
 % Key outputs:
-%   merged_data_nback.mat  (struct with original + new columns)
-%   merged_data_nback.csv  (same, as table)
+%   merged_data_nback.mat
+%   merged_data_nback.csv
 %
 % Columns include:
 %   EEG — FOOOF alpha [8-14 Hz], occ channels:
@@ -51,17 +50,11 @@ demog = table2struct(demog(1:120, :));
 % Behavioral
 load(fullfile(featPath, 'AOC_behavioral_matrix_nback.mat'));  % behav_data_nback
 
-% EEG (original: AlphaPower, IAF, Lateralization)
+% EEG
 load(fullfile(featPath, 'AOC_eeg_matrix_nback.mat'));         % eeg_data_nback
 
-% Gaze (original: subject-level, non-baselined)
+% Gaze
 load(fullfile(featPath, 'AOC_gaze_matrix_nback.mat'));        % gaze_data_nback
-
-% Gaze (trial-level with baselined metrics)
-load(fullfile(featPath, 'AOC_gaze_matrix_nback_trials.mat')); % gaze_data_nback_trials
-
-% EEG (trial-level with baselined alpha power)
-load(fullfile(featPath, 'AOC_eeg_matrix_nback_trials.mat'));  % eeg_data_nback_trials
 
 %% Merge demographics into behavioral struct
 demoIDs = [demog.ID];
@@ -73,205 +66,23 @@ for i = 1:numel(behav_data_nback)
     behav_data_nback(i).OcularDominance = demog(idx).OcularDominance;
 end
 
-%% Indexing helpers
-allIDs   = [behav_data_nback.ID];
-allConds = [behav_data_nback.Condition];
-uIDs     = unique(allIDs);
-nRows    = numel(behav_data_nback);
-alphaRange = [8 14];
-
-%% ===== (A) FOOOF alpha power per subject =====
-AlphaPower_FOOOF          = nan(nRows, 1);
-AlphaPower_FOOOF_bl       = nan(nRows, 1);
-AlphaPower_FOOOF_bl_early = nan(nRows, 1);
-AlphaPower_FOOOF_bl_late  = nan(nRows, 1);
-
-for s = 1:numel(uIDs)
-    subjID  = uIDs(s);
-    subjStr = num2str(subjID);
-
-    fooof_file = fullfile(featPath, subjStr, 'eeg', 'power_nback_fooof.mat');
-    if ~isfile(fooof_file)
-        warning('Missing power_nback_fooof.mat for subject %s — skipping.', subjStr);
-        continue
-    end
-    fooof = load(fooof_file);
-
-    % Occipital channels (labels containing 'O' or 'I')
-    labels  = fooof.pow1_fooof.label;
-    occ_idx = cellfun(@(l) contains(l, 'O') || contains(l, 'I'), labels);
-
-    % Alpha frequency indices
-    freqs     = fooof.pow1_fooof.freq;
-    alpha_idx = freqs >= alphaRange(1) & freqs <= alphaRange(2);
-
-    condPows          = {fooof.pow1_fooof,          fooof.pow2_fooof,          fooof.pow3_fooof};
-    condPows_bl       = {fooof.pow1_fooof_bl,       fooof.pow2_fooof_bl,       fooof.pow3_fooof_bl};
-    condPows_bl_early = {fooof.pow1_fooof_bl_early, fooof.pow2_fooof_bl_early, fooof.pow3_fooof_bl_early};
-    condPows_bl_late  = {fooof.pow1_fooof_bl_late,  fooof.pow2_fooof_bl_late,  fooof.pow3_fooof_bl_late};
-    condVals          = [1, 2, 3];
-
-    for c = 1:3
-        rowIdx = find(allIDs == subjID & allConds == condVals(c));
-        if isempty(rowIdx), continue; end
-
-        AlphaPower_FOOOF(rowIdx)          = mean(mean(condPows{c}.powspctrm(occ_idx, alpha_idx), 2, 'omitnan'), 1, 'omitnan');
-        AlphaPower_FOOOF_bl(rowIdx)       = mean(mean(condPows_bl{c}.powspctrm(occ_idx, alpha_idx), 2, 'omitnan'), 1, 'omitnan');
-        AlphaPower_FOOOF_bl_early(rowIdx) = mean(mean(condPows_bl_early{c}.powspctrm(occ_idx, alpha_idx), 2, 'omitnan'), 1, 'omitnan');
-        AlphaPower_FOOOF_bl_late(rowIdx)  = mean(mean(condPows_bl_late{c}.powspctrm(occ_idx, alpha_idx), 2, 'omitnan'), 1, 'omitnan');
-    end
-
-    clc
-    fprintf('FOOOF: Subject %s (%d/%d) loaded.\n', subjStr, s, numel(uIDs));
-end
-
-%% ===== (B) Baselined gaze metrics (trial → subject-level) =====
-% Average trial-level baselined values per subject x condition.
-% Baseline correction (already applied in trial-level extraction):
-%   All gaze metrics (GD/SPL/MS/BCEA/Pupil): % change = 100*(metric-baseline)/baseline
-% Baseline window: [-0.5 -0.25]s
-
-gazeFields_bl = { ...
-    'GazeDeviationFullBL',    'GazeDeviationEarlyBL',    'GazeDeviationLateBL', ...
-    'ScanPathLengthFullBL',   'ScanPathLengthEarlyBL',   'ScanPathLengthLateBL', ...
-    'PupilSizeFullBL',        'PupilSizeEarlyBL',        'PupilSizeLateBL', ...
-    'MSRateFullBL',           'MSRateEarlyBL',           'MSRateLateBL', ...
-    'BCEAFullBL',             'BCEAEarlyBL',             'BCEALateBL', ...
-    'BCEALatFullBL',          'BCEALatEarlyBL',          'BCEALatLateBL'};
-
-nGazeFields = numel(gazeFields_bl);
-gazeBL = nan(nRows, nGazeFields);
-
-% Prefer subject-level baselined fields if present in gaze_data_nback.
-if all(isfield(gaze_data_nback, gazeFields_bl))
-    for f = 1:nGazeFields
-        gazeBL(:, f) = [gaze_data_nback.(gazeFields_bl{f})]';
-    end
-    fprintf('Baselined gaze metrics loaded from subject-level gaze matrix.\n');
-else
-    % Backward-compatible fallback: aggregate from trial-level matrix.
-    trlIDs   = [gaze_data_nback_trials.ID];
-    trlConds = [gaze_data_nback_trials.Condition];
-
-    for s = 1:numel(uIDs)
-        subjID = uIDs(s);
-        condVals = [1, 2, 3];
-
-        for c = 1:3
-            % Row in the subject-level output
-            rowIdx = find(allIDs == subjID & allConds == condVals(c));
-            if isempty(rowIdx), continue; end
-
-            % Matching trials
-            trlMask = trlIDs == subjID & trlConds == condVals(c);
-            if ~any(trlMask), continue; end
-
-            trlSubset = gaze_data_nback_trials(trlMask);
-
-            for f = 1:nGazeFields
-                vals = [trlSubset.(gazeFields_bl{f})];
-                gazeBL(rowIdx, f) = mean(vals, 'omitnan');
-            end
-        end
-    end
-    fprintf('Baselined gaze metrics aggregated from trial data (fallback).\n');
-end
-
-%% ===== (C) Baselined raw alpha power (trial → subject-level) =====
-% Average trial-level baselined alpha power per subject x condition.
-% Baseline correction (already applied in trial-level extraction):
-%   dB = 10*log10(power/baseline)    Baseline window: [-0.5 -0.25]s
-
-eegFields_bl = {'AlphaPowerFullBL', 'AlphaPowerEarlyBL', 'AlphaPowerLateBL'};
-nEegFields = numel(eegFields_bl);
-eegBL = nan(nRows, nEegFields);
-
-% Build look-up arrays from EEG trial data
-eegTrlIDs   = [eeg_data_nback_trials.ID];
-eegTrlConds = [eeg_data_nback_trials.Condition];
-
-for s = 1:numel(uIDs)
-    subjID = uIDs(s);
-    condVals = [1, 2, 3];
-
-    for c = 1:3
-        rowIdx = find(allIDs == subjID & allConds == condVals(c));
-        if isempty(rowIdx), continue; end
-
-        trlMask = eegTrlIDs == subjID & eegTrlConds == condVals(c);
-        if ~any(trlMask), continue; end
-
-        trlSubset = eeg_data_nback_trials(trlMask);
-
-        for f = 1:nEegFields
-            vals = [trlSubset.(eegFields_bl{f})];
-            eegBL(rowIdx, f) = mean(vals, 'omitnan');
-        end
-    end
-end
-
-fprintf('Baselined raw alpha power aggregated from trial data.\n');
-
 %% Build merged struct
-merged_data_nback = struct( ...
-    ... % --- Original columns (23) ---
-    'ID',                      {behav_data_nback.ID}, ...
-    'Gender',                  {behav_data_nback.Gender}, ...
-    'Age',                     {behav_data_nback.Alter}, ...
-    'Handedness',              {behav_data_nback.H_ndigkeit}, ...
-    'OcularDominance',         {behav_data_nback.OcularDominance}, ...
-    'Condition',               {behav_data_nback.Condition}, ...
-    'Accuracy',                {behav_data_nback.Accuracy}, ...
-    'ReactionTime',            {behav_data_nback.ReactionTime}, ...
-    'GazeDeviation',           {gaze_data_nback.GazeDeviation}, ...
-    'GazeStdX',                {gaze_data_nback.GazeStdX}, ...
-    'GazeStdY',                {gaze_data_nback.GazeStdY}, ...
-    'PupilSize',               {gaze_data_nback.PupilSize}, ...
-    'MSRate',                  {gaze_data_nback.MSRate}, ...
-    'Blinks',                  {gaze_data_nback.Blinks}, ...
-    'Fixations',               {gaze_data_nback.Fixations}, ...
-    'Saccades',                {gaze_data_nback.Saccades}, ...
-    'ScanPathLength',          {gaze_data_nback.ScanPathLength}, ...
-    'BCEA',                    {gaze_data_nback.BCEA}, ...
-    'BCEALateralization',      {gaze_data_nback.BCEALateralization}, ...
-    'AlphaPower',              {eeg_data_nback.AlphaPower}, ...
-    'IAF',                     {eeg_data_nback.IAF}, ...
-    'Lateralization',          {eeg_data_nback.Lateralization}, ...
-    ... % --- FOOOF alpha (4) ---
-    'AlphaPower_FOOOF',          num2cell(AlphaPower_FOOOF)', ...
-    'AlphaPower_FOOOF_bl',       num2cell(AlphaPower_FOOOF_bl)', ...
-    'AlphaPower_FOOOF_bl_early', num2cell(AlphaPower_FOOOF_bl_early)', ...
-    'AlphaPower_FOOOF_bl_late',  num2cell(AlphaPower_FOOOF_bl_late)', ...
-    ... % --- Baselined raw alpha (3) ---
-    'AlphaPower_bl',             num2cell(eegBL(:, 1))', ...
-    'AlphaPower_bl_early',       num2cell(eegBL(:, 2))', ...
-    'AlphaPower_bl_late',        num2cell(eegBL(:, 3))', ...
-    ... % --- Baselined gaze (18) ---
-    'GazeDeviationFullBL',     num2cell(gazeBL(:, 1))', ...
-    'GazeDeviationEarlyBL',    num2cell(gazeBL(:, 2))', ...
-    'GazeDeviationLateBL',     num2cell(gazeBL(:, 3))', ...
-    'ScanPathLengthFullBL',    num2cell(gazeBL(:, 4))', ...
-    'ScanPathLengthEarlyBL',   num2cell(gazeBL(:, 5))', ...
-    'ScanPathLengthLateBL',    num2cell(gazeBL(:, 6))', ...
-    'PupilSizeFullBL',         num2cell(gazeBL(:, 7))', ...
-    'PupilSizeEarlyBL',        num2cell(gazeBL(:, 8))', ...
-    'PupilSizeLateBL',         num2cell(gazeBL(:, 9))', ...
-    'MSRateFullBL',            num2cell(gazeBL(:,10))', ...
-    'MSRateEarlyBL',           num2cell(gazeBL(:,11))', ...
-    'MSRateLateBL',            num2cell(gazeBL(:,12))', ...
-    'BCEAFullBL',              num2cell(gazeBL(:,13))', ...
-    'BCEAEarlyBL',             num2cell(gazeBL(:,14))', ...
-    'BCEALateBL',              num2cell(gazeBL(:,15))', ...
-    'BCEALatFullBL',           num2cell(gazeBL(:,16))', ...
-    'BCEALatEarlyBL',          num2cell(gazeBL(:,17))', ...
-    'BCEALatLateBL',           num2cell(gazeBL(:,18))');
+behav_table = struct2table(behav_data_nback);
+gaze_table  = struct2table(gaze_data_nback);
+eeg_table   = struct2table(eeg_data_nback);
+
+% Merge by ID and Condition; keep all existing columns from input matrices.
+merged_table = outerjoin(behav_table, gaze_table, ...
+    'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
+merged_table = outerjoin(merged_table, eeg_table, ...
+    'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
+merged_data_nback = table2struct(merged_table);
 
 %% Save as .mat
 save(fullfile(featPath, 'AOC_merged_data_nback.mat'), 'merged_data_nback');
 fprintf('Saved merged_data_nback.mat\n');
 
 %% Save as .csv
-merged_table = struct2table(merged_data_nback);
 writetable(merged_table, fullfile(featPath, 'AOC_merged_data_nback.csv'));
 fprintf('Saved merged_data_nback.csv\n');
 
@@ -279,10 +90,4 @@ fprintf('Saved merged_data_nback.csv\n');
 nCols = numel(fieldnames(merged_data_nback));
 fprintf('\n=== N-Back merge complete ===\n');
 fprintf('Rows: %d  |  Columns: %d\n', numel(merged_data_nback), nCols);
-fprintf('Original columns (23):  ID … Lateralization (incl. BCEA, BCEALateralization)\n');
-fprintf('FOOOF alpha     ( 4):  AlphaPower_FOOOF, _bl, _bl_early, _bl_late\n');
-fprintf('Raw alpha BL    ( 3):  AlphaPower_bl, _bl_early, _bl_late\n');
-fprintf('Baselined gaze  (18):  GD/SPL/Pupil/MSRate/BCEA/BCEALat × Full/Early/Late BL\n');
-fprintf('    All gaze baseline correction: %%change = 100*(metric-baseline)/baseline\n');
-fprintf('    Baseline window: [-0.5 -0.25]s\n');
 fprintf('Total columns:  %d\n', nCols);

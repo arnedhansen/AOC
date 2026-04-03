@@ -30,13 +30,15 @@ gaze_data_nback = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, ...
 
 %% Load all eye movements
 for subj = 1:length(subjects)
+    clc
+    fprintf('[GAZE FEX - NBACK] Gaze feature extraction for Subject %d / %d (%s)\n', subj, length(subjects), subjects{subj})
     datapath = fullfile(path, subjects{subj}, 'gaze');
     load([datapath, filesep, 'dataET_nback'])
 
     %% Initialize arrays
     subject_id = [];
     trial_num = [];
-    num_trials = size(dataet.trialinfo, 1);
+    num_trials = size(dataETlong.trialinfo, 1);
     condition = [];
     gazeDev = [];
     gazeSDx = [];
@@ -55,12 +57,12 @@ for subj = 1:length(subjects)
     blatEarlyBL = []; blatLateBL = []; blatFullBL = [];
 
     %% Get trial-by-trial gaze data
-    for trl = 1:size(dataet.trialinfo, 1)
+    for trl = 1:size(dataETlong.trialinfo, 1)
         close all
-        data = dataet.trial{trl};
+        data = dataETlong.trial{trl};
 
         %% Define windows
-        t = dataet.time{trl};
+        t = dataETlong.time{trl};
 
         %% Filter out data points outside the screen boundaries
         valid_data_indices = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
@@ -124,30 +126,24 @@ for subj = 1:length(subjects)
 
         %% Baselined metrics from per-trial baseline window
         fsample = 500;
-        min_valid = 100;
 
         % baseline
         xb = data(1, idx_base); yb = data(2, idx_base); pb = data(3, idx_base);
-        ok_b = sum(isfinite(xb) & isfinite(yb)) >= min_valid;
-        if ok_b
-            gd_base = mean(sqrt((xb-400).^2 + (yb-300).^2), 'omitnan');
-            spl_base = sum(sqrt(diff(xb).^2 + diff(yb).^2), 'omitnan');
-            pup_base = mean(pb, 'omitnan');
-            Tb = sum(isfinite(xb) & isfinite(yb)) / fsample;
-            [~, msb] = detect_microsaccades(fsample, [xb; yb], numel(xb));
-            ms_base = numel(msb.Onset) / Tb;
-            if ~isfinite(ms_base) || ms_base <= 0, ms_base = NaN; end
-            vb = isfinite(xb) & isfinite(yb);
-            xb2 = double(xb(vb)); yb2 = double(yb(vb));
-            if numel(xb2) >= 10
-                k95 = -log(1 - 0.95);
-                bcea_base = 2*k95*pi*std(xb2)*std(yb2)*sqrt(1-corr(xb2(:), yb2(:))^2);
-                blat_base = (mean(xb2) - 400) / 400;
-            else
-                bcea_base = NaN; blat_base = NaN;
-            end
+        gd_base = mean(sqrt((xb-400).^2 + (yb-300).^2), 'omitnan');
+        spl_base = sum(sqrt(diff(xb).^2 + diff(yb).^2), 'omitnan');
+        pup_base = mean(pb, 'omitnan');
+        Tb = sum(isfinite(xb) & isfinite(yb)) / fsample;
+        [~, msb] = detect_microsaccades(fsample, [xb; yb], numel(xb));
+        ms_base = numel(msb.Onset) / Tb;
+        if ~isfinite(ms_base) || ms_base <= 0, ms_base = NaN; end
+        vb = isfinite(xb) & isfinite(yb);
+        xb2 = double(xb(vb)); yb2 = double(yb(vb));
+        if numel(xb2) >= 10
+            k95 = -log(1 - 0.95);
+            bcea_base = 2*k95*pi*std(xb2)*std(yb2)*sqrt(1-corr(xb2(:), yb2(:))^2);
+            blat_base = (mean(xb2) - 400) / 400;
         else
-            gd_base = NaN; spl_base = NaN; pup_base = NaN; ms_base = NaN; bcea_base = NaN; blat_base = NaN;
+            bcea_base = NaN; blat_base = NaN;
         end
 
         % helper inline for each active window
@@ -155,9 +151,6 @@ for subj = 1:length(subjects)
         gd_bl = nan(1,3); spl_bl = nan(1,3); pup_bl = nan(1,3); ms_bl = nan(1,3); bcea_bl = nan(1,3); blat_bl = nan(1,3);
         for wi = 1:3
             xw = data(1, winDefs{wi}); yw = data(2, winDefs{wi}); pw = data(3, winDefs{wi});
-            ok_w = sum(isfinite(xw) & isfinite(yw)) >= min_valid;
-            if ~ok_w, continue; end
-
             gd_w = mean(sqrt((xw-400).^2 + (yw-300).^2), 'omitnan');
             spl_w = sum(sqrt(diff(xw).^2 + diff(yw).^2), 'omitnan');
             pup_w = mean(pw, 'omitnan');
@@ -186,8 +179,8 @@ for subj = 1:length(subjects)
 
         %% Append data for this trial
         subject_id = [subject_id; str2num(subjects{subj})];
-        trial_num = [trial_num; dataet.trialinfo(trl, 2)];
-        condition = [condition; dataet.trialinfo(trl, 1)-20];
+        trial_num = [trial_num; dataETlong.trialinfo(trl, 2)];
+        condition = [condition; dataETlong.trialinfo(trl, 1)-20];
         gazeDev = [gazeDev; mean_euclidean_distance];
         gazeSDx = [gazeSDx; gaze_standard_deviation_x];
         gazeSDy = [gazeSDy; gaze_standard_deviation_y];
@@ -375,7 +368,9 @@ for subj = 1:length(subjects)
     else
         savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, 'gaze');
     end
-    mkdir(savepath)
+    if ~exist(savepath, 'dir')
+        mkdir(savepath)
+    end
     cd(savepath)
     save gaze_matrix_nback_trial subj_data_gaze_trial
     save gaze_matrix_nback subj_data_gaze
@@ -383,9 +378,7 @@ for subj = 1:length(subjects)
     save gaze_std_nback l1gSDx l2gSDx l3gSDx l1gSDy l2gSDy l3gSDy
     save pupil_size_nback l1pups l2pups l3pups
     save ms_rate_nback l1msrate l2msrate l3msrate
-    clc
-    disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' done.'])
-
+    
     % Append to the final structure array
     gaze_data_nback = [gaze_data_nback; subj_data_gaze];
 end

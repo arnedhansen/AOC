@@ -109,6 +109,11 @@ for subj = 1:length(subjects)
         % FOOOF spectra per window (subject-level, no sliding)
         % Output convention: pow*_fooof = (model fit - aperiodic) in log space
         % Baselining: absolute difference (window - baseline) in log space
+        %
+        % NOTE:
+        % This path uses one FFT per broad latency window and is more sensitive
+        % to occasional catastrophic fits than the sliding-window TFR pipeline.
+        % Hard guards are applied below before saving.
         % ----------------------
         cfg_fooof            = [];
         cfg_fooof.method     = 'mtmfft';
@@ -160,7 +165,25 @@ for subj = 1:length(subjects)
         pow4_fooof_bl_late = fooof4_late; pow4_fooof_bl_late.powspctrm = fooof4_late.powspctrm - fooof4_base.powspctrm;
         pow6_fooof_bl_late = fooof6_late; pow6_fooof_bl_late.powspctrm = fooof6_late.powspctrm - fooof6_base.powspctrm;
 
-        save('power_stern_fooof.mat', ...
+        % Hard guards against catastrophic numeric explosions in FOOOF output.
+        cfg_guard = struct('r2_min', 0.90, 'hard_abs', 1e4, 'winsor_prc', [1 99]);
+        fooof2_base = sanitize_fooof_struct(fooof2_base, cfg_guard);
+        fooof4_base = sanitize_fooof_struct(fooof4_base, cfg_guard);
+        fooof6_base = sanitize_fooof_struct(fooof6_base, cfg_guard);
+        pow2_fooof = sanitize_fooof_struct(pow2_fooof, cfg_guard);
+        pow4_fooof = sanitize_fooof_struct(pow4_fooof, cfg_guard);
+        pow6_fooof = sanitize_fooof_struct(pow6_fooof, cfg_guard);
+        pow2_fooof_bl = sanitize_fooof_struct(pow2_fooof_bl, cfg_guard);
+        pow4_fooof_bl = sanitize_fooof_struct(pow4_fooof_bl, cfg_guard);
+        pow6_fooof_bl = sanitize_fooof_struct(pow6_fooof_bl, cfg_guard);
+        pow2_fooof_bl_early = sanitize_fooof_struct(pow2_fooof_bl_early, cfg_guard);
+        pow4_fooof_bl_early = sanitize_fooof_struct(pow4_fooof_bl_early, cfg_guard);
+        pow6_fooof_bl_early = sanitize_fooof_struct(pow6_fooof_bl_early, cfg_guard);
+        pow2_fooof_bl_late = sanitize_fooof_struct(pow2_fooof_bl_late, cfg_guard);
+        pow4_fooof_bl_late = sanitize_fooof_struct(pow4_fooof_bl_late, cfg_guard);
+        pow6_fooof_bl_late = sanitize_fooof_struct(pow6_fooof_bl_late, cfg_guard);
+
+        save('power_stern_fooof_windows.mat', ...
             'pow2_fooof','pow4_fooof','pow6_fooof', ...
             'pow2_fooof_bl','pow4_fooof_bl','pow6_fooof_bl', ...
             'pow2_fooof_bl_early','pow4_fooof_bl_early','pow6_fooof_bl_early', ...
@@ -231,7 +254,7 @@ for subj = 1:length(subjects)
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath);
         load('power_stern_windows.mat');
-        load('power_stern_fooof.mat');
+        load('power_stern_fooof_windows.mat');
 
         % Channel selection
         channelIdx = find(ismember(pow2_full.label, channels));
@@ -401,6 +424,38 @@ fmask = S.freq >= band(1) & S.freq <= band(2);
 if ~any(fmask)
     v = NaN;
     return
+end
+
+function S = sanitize_fooof_struct(S, cfg)
+if ~isfield(S, 'powspctrm') || isempty(S.powspctrm)
+    return
+end
+
+X = S.powspctrm;
+X(~isfinite(X)) = NaN;
+
+if isfield(S, 'fooofparams') && ~isempty(S.fooofparams)
+    fp = S.fooofparams;
+    if iscell(fp), fp = fp{1}; end
+    if isstruct(fp) && isfield(fp, 'r_squared')
+        rsq = [fp.r_squared]';
+        bad = ~isfinite(rsq) | rsq < cfg.r2_min;
+        if isvector(bad) && numel(bad) == size(X, 1)
+            X(bad, :) = NaN;
+        end
+    end
+end
+
+X(abs(X) > cfg.hard_abs) = NaN;
+
+vals = X(isfinite(X));
+if numel(vals) >= 20
+    lo = prctile(vals, cfg.winsor_prc(1));
+    hi = prctile(vals, cfg.winsor_prc(2));
+    X = min(max(X, lo), hi);
+end
+
+S.powspctrm = X;
 end
 x = S.powspctrm(channelIdx, fmask);
 x = x(:);

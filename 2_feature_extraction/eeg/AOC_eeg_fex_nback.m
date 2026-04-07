@@ -105,6 +105,11 @@ for subj = 1:length(subjects)
         % ----------------------
         % FOOOF spectra per window (subject-level, no sliding)
         % Baselining: absolute difference (window - baseline) in log space
+        %
+        % NOTE:
+        % This path uses one FFT per broad latency window and is more sensitive
+        % to occasional catastrophic fits than the sliding-window TFR pipeline.
+        % Hard guards are applied below before saving.
         % ----------------------
         cfg_fooof            = [];
         cfg_fooof.method     = 'mtmfft';
@@ -151,6 +156,24 @@ for subj = 1:length(subjects)
         pow1_fooof_bl_late = fooof1_late; pow1_fooof_bl_late.powspctrm = fooof1_late.powspctrm - fooof1_base.powspctrm;
         pow2_fooof_bl_late = fooof2_late; pow2_fooof_bl_late.powspctrm = fooof2_late.powspctrm - fooof2_base.powspctrm;
         pow3_fooof_bl_late = fooof3_late; pow3_fooof_bl_late.powspctrm = fooof3_late.powspctrm - fooof3_base.powspctrm;
+
+        % Hard guards against catastrophic numeric explosions in FOOOF output.
+        cfg_guard = struct('r2_min', 0.90, 'hard_abs', 1e4, 'winsor_prc', [1 99]);
+        fooof1_base = sanitize_fooof_struct(fooof1_base, cfg_guard);
+        fooof2_base = sanitize_fooof_struct(fooof2_base, cfg_guard);
+        fooof3_base = sanitize_fooof_struct(fooof3_base, cfg_guard);
+        pow1_fooof = sanitize_fooof_struct(pow1_fooof, cfg_guard);
+        pow2_fooof = sanitize_fooof_struct(pow2_fooof, cfg_guard);
+        pow3_fooof = sanitize_fooof_struct(pow3_fooof, cfg_guard);
+        pow1_fooof_bl = sanitize_fooof_struct(pow1_fooof_bl, cfg_guard);
+        pow2_fooof_bl = sanitize_fooof_struct(pow2_fooof_bl, cfg_guard);
+        pow3_fooof_bl = sanitize_fooof_struct(pow3_fooof_bl, cfg_guard);
+        pow1_fooof_bl_early = sanitize_fooof_struct(pow1_fooof_bl_early, cfg_guard);
+        pow2_fooof_bl_early = sanitize_fooof_struct(pow2_fooof_bl_early, cfg_guard);
+        pow3_fooof_bl_early = sanitize_fooof_struct(pow3_fooof_bl_early, cfg_guard);
+        pow1_fooof_bl_late = sanitize_fooof_struct(pow1_fooof_bl_late, cfg_guard);
+        pow2_fooof_bl_late = sanitize_fooof_struct(pow2_fooof_bl_late, cfg_guard);
+        pow3_fooof_bl_late = sanitize_fooof_struct(pow3_fooof_bl_late, cfg_guard);
 
         save('power_nback_fooof.mat', ...
             'pow1_fooof','pow2_fooof','pow3_fooof', ...
@@ -392,6 +415,38 @@ fmask = S.freq >= band(1) & S.freq <= band(2);
 if ~any(fmask)
     v = NaN;
     return
+end
+
+function S = sanitize_fooof_struct(S, cfg)
+if ~isfield(S, 'powspctrm') || isempty(S.powspctrm)
+    return
+end
+
+X = S.powspctrm;
+X(~isfinite(X)) = NaN;
+
+if isfield(S, 'fooofparams') && ~isempty(S.fooofparams)
+    fp = S.fooofparams;
+    if iscell(fp), fp = fp{1}; end
+    if isstruct(fp) && isfield(fp, 'r_squared')
+        rsq = [fp.r_squared]';
+        bad = ~isfinite(rsq) | rsq < cfg.r2_min;
+        if isvector(bad) && numel(bad) == size(X, 1)
+            X(bad, :) = NaN;
+        end
+    end
+end
+
+X(abs(X) > cfg.hard_abs) = NaN;
+
+vals = X(isfinite(X));
+if numel(vals) >= 20
+    lo = prctile(vals, cfg.winsor_prc(1));
+    hi = prctile(vals, cfg.winsor_prc(2));
+    X = min(max(X, lo), hi);
+end
+
+S.powspctrm = X;
 end
 x = S.powspctrm(channelIdx, fmask);
 x = x(:);

@@ -56,7 +56,7 @@ merged_data_sternberg_trials.Properties.VariableNames{'Alter'} = 'Age';
 merged_data_sternberg_trials.Properties.VariableNames{'H_ndigkeit'} = 'Handedness';
 
 %% Add FOOOF alpha power (subject-level, repeated per trial)
-% Loads per-subject power_stern_fooof.mat; extracts scalar alpha [8-14 Hz]
+% Loads per-subject power_stern_fooof_windows.mat; extracts scalar alpha [8-14 Hz]
 % averaged over occipital channels for each condition.
 alphaRange = [8 14];
 nTrials = height(merged_data_sternberg_trials);
@@ -70,9 +70,9 @@ for s = 1:numel(uIDs)
     subjID  = uIDs(s);
     subjStr = num2str(subjID);
 
-    fooof_file = fullfile(featPath, subjStr, 'eeg', 'power_stern_fooof.mat');
+    fooof_file = fullfile(featPath, subjStr, 'eeg', 'power_stern_fooof_windows.mat');
     if ~isfile(fooof_file)
-        warning('Missing power_stern_fooof.mat for subject %s — skipping.', subjStr);
+        warning('Missing power_stern_fooof_windows.mat for subject %s — skipping.', subjStr);
         continue
     end
     fooof = load(fooof_file);

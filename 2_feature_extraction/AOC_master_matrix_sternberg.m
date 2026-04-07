@@ -6,7 +6,7 @@
 %       MSRate, BCEA, BCEALateralization — averaged across trials per condition, dB or % change)
 %
 % All values are loaded from existing files — no recomputation needed.
-%   FOOOF alpha  → per-subject power_stern_fooof.mat
+%   FOOOF alpha  → per-subject power_stern_fooof_windows.mat
 %   Raw/baselined alpha + baselined gaze → AOC_gaze_matrix_sternberg.mat / AOC_eeg_matrix_sternberg.mat
 %
 % Key outputs:
@@ -38,9 +38,6 @@
 %     BCEALatFullBL / BCEALatEarlyBL / BCEALatLateBL
 
 %% Setup
-clear
-clc
-close all
 startup
 [~, paths, ~, ~] = setup('AOC', 0);
 featPath = paths.features;

@@ -51,12 +51,12 @@ tasks(1).merged_var = 'merged_data_sternberg';
 tasks(1).cond_vals = [2 4 6];
 tasks(1).cond_codes = [22 24 26];
 tasks(1).cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
-tasks(1).power_fname = 'power_stern_fooof.mat';
+tasks(1).power_fname = 'power_stern_fooof_windows.mat';
 tasks(1).pow_vars = {'pow2_fooof_bl', 'pow4_fooof_bl', 'pow6_fooof_bl'};
 tasks(1).tfr_fname = 'tfr_stern.mat';
 tasks(1).tfr_vars = {'tfr2_fooof_bl', 'tfr4_fooof_bl', 'tfr6_fooof_bl'};
 tasks(1).gaze_fname = 'gaze_series_sternberg_trials.mat';
-tasks(1).power_missing_label = 'power_stern_fooof.mat';
+tasks(1).power_missing_label = 'power_stern_fooof_windows.mat';
 
 tasks(2).tag = 'nback';
 tasks(2).merged_file = 'AOC_merged_data_nback.mat';
@@ -496,12 +496,12 @@ for m = 1:numel(metric_names)
     grp_use = 1 + is_amp(subj_idx(keep));  % 1=reduction, 2=amplification
 
     % fitrm expects wide format: rows = subjects, cols = condition values
-    t = array2table(X_use, 'VariableNames', {'Cond_2', 'Cond_4', 'Cond_6'});
+    t = array2table(X_use, 'VariableNames', {'C1', 'C2', 'C3'});
     t.Group = categorical(grp_use, [1 2], {'Reduction', 'Amplification'});
-    within = table([2; 4; 6], 'VariableNames', {'Load'});
+    within = table(cond_vals(:), 'VariableNames', {'Load'});
 
     try
-        rm = fitrm(t, 'Cond_2-Cond_6~Group', 'WithinDesign', within);
+        rm = fitrm(t, 'C1-C3~Group', 'WithinDesign', within);
         % Between-Ss (Group): from anova(rm), which uses Within/Between columns
         anovatbl = anova(rm);
         idx_grp = strcmp(string(anovatbl.Between), 'Group');
@@ -634,11 +634,11 @@ for oi = 1:numel(follow_names)
     end
     X_use = X_incl(keep, :);
     grp_use = 1 + is_amp(subj_idx_gl(keep));
-    t_rm = array2table(X_use, 'VariableNames', {'Cond_2', 'Cond_4', 'Cond_6'});
+    t_rm = array2table(X_use, 'VariableNames', {'C1', 'C2', 'C3'});
     t_rm.Group = categorical(grp_use, [1 2], {'Reduction', 'Amplification'});
     within_design = table(cond_vals(:), 'VariableNames', {'Load'});
     try
-        rm = fitrm(t_rm, 'Cond_2-Cond_6 ~ Group', 'WithinDesign', within_design);
+        rm = fitrm(t_rm, 'C1-C3 ~ Group', 'WithinDesign', within_design);
         fprintf('\n  ----- %s: anova(rm) (between-subject) -----\n', oname);
         anovatbl = anova(rm);
         disp(anovatbl);
@@ -830,9 +830,14 @@ if any(cellfun(@isempty, pow_red)) || any(cellfun(@isempty, pow_amp))
 end
 ga_red = cell(1, 3);
 ga_amp = cell(1, 3);
+guard_cfg = struct('hard_abs', 1e4, 'winsor_prc', [1 99]);
 for c = 1:3
-    ga_red{c} = ft_freqgrandaverage([], pow_red{c}{:});
-    ga_amp{c} = ft_freqgrandaverage([], pow_amp{c}{:});
+    red_clean = cellfun(@(x) sanitize_pow_struct(x, guard_cfg), pow_red{c}, 'UniformOutput', false);
+    amp_clean = cellfun(@(x) sanitize_pow_struct(x, guard_cfg), pow_amp{c}, 'UniformOutput', false);
+    ga_red{c} = ft_freqgrandaverage([], red_clean{:});
+    ga_amp{c} = ft_freqgrandaverage([], amp_clean{:});
+    pow_red{c} = red_clean;
+    pow_amp{c} = amp_clean;
 end
 
 elecs = ismember(ga_red{1}.label, channels);
@@ -1078,9 +1083,12 @@ end
 
 ga_red = cell(1, 3);
 ga_amp = cell(1, 3);
+guard_cfg = struct('hard_abs', 1e4, 'winsor_prc', [1 99]);
 for c = 1:3
-    ga_red{c} = ft_freqgrandaverage([], pow_red{c}{:});
-    ga_amp{c} = ft_freqgrandaverage([], pow_amp{c}{:});
+    red_clean = cellfun(@(x) sanitize_pow_struct(x, guard_cfg), pow_red{c}, 'UniformOutput', false);
+    amp_clean = cellfun(@(x) sanitize_pow_struct(x, guard_cfg), pow_amp{c}, 'UniformOutput', false);
+    ga_red{c} = ft_freqgrandaverage([], red_clean{:});
+    ga_amp{c} = ft_freqgrandaverage([], amp_clean{:});
 end
 
 cfg = [];
@@ -1241,6 +1249,9 @@ if isempty(pow_red_all) || isempty(pow_amp_all)
     return
 end
 
+guard_cfg = struct('hard_abs', 1e4, 'winsor_prc', [1 99]);
+pow_red_all = cellfun(@(x) sanitize_pow_struct(x, guard_cfg), pow_red_all, 'UniformOutput', false);
+pow_amp_all = cellfun(@(x) sanitize_pow_struct(x, guard_cfg), pow_amp_all, 'UniformOutput', false);
 ga_red = ft_freqgrandaverage([], pow_red_all{:});
 ga_amp = ft_freqgrandaverage([], pow_amp_all{:});
 
@@ -1951,5 +1962,21 @@ try
 catch
     lme = fitlme(tbl_in, formula_ri);
     used_formula = formula_ri;
+end
+
+function S = sanitize_pow_struct(S, cfg)
+if ~isfield(S, 'powspctrm') || isempty(S.powspctrm)
+    return
+end
+X = S.powspctrm;
+X(~isfinite(X)) = NaN;
+X(abs(X) > cfg.hard_abs) = NaN;
+vals = X(isfinite(X));
+if numel(vals) >= 20
+    lo = prctile(vals, cfg.winsor_prc(1));
+    hi = prctile(vals, cfg.winsor_prc(2));
+    X = min(max(X, lo), hi);
+end
+S.powspctrm = X;
 end
 end

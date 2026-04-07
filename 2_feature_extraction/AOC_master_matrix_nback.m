@@ -38,9 +38,6 @@
 %     BCEALatFullBL / BCEALatEarlyBL / BCEALatLateBL
 
 %% Setup
-clear
-clc
-close all
 startup
 [~, paths, ~, ~] = setup('AOC', 0);
 featPath = paths.features;

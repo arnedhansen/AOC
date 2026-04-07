@@ -1,29 +1,33 @@
 %% AOC Master Matrix — Sternberg
 % Builds merged_data_sternberg with:
-%   (a) FOOOF-based alpha power (non-baselined, baselined full/early/late)
-%   (b) Baselined gaze metrics (GazeDeviation, ScanPathLength, PupilSize,
+%   (a) Raw alpha power (non-baselined full/early/late + baselined full/early/late)
+%   (b) FOOOF-based alpha power (non-baselined + baselined full/early/late)
+%   (c) Baselined gaze metrics (GazeDeviation, ScanPathLength, PupilSize,
 %       MSRate, BCEA, BCEALateralization — averaged across trials per condition, dB or % change)
-%   (c) Baselined raw alpha power (full/early/late, dB vs [-0.5 -0.25]s)
 %
 % All values are loaded from existing files — no recomputation needed.
 %   FOOOF alpha  → per-subject power_stern_fooof.mat
-%   Baselined gaze and alpha → AOC_gaze_matrix_sternberg.mat / AOC_eeg_matrix_sternberg.mat
+%   Raw/baselined alpha + baselined gaze → AOC_gaze_matrix_sternberg.mat / AOC_eeg_matrix_sternberg.mat
 %
 % Key outputs:
 %   merged_data_sternberg.mat 
 %   merged_data_sternberg.csv
 %
 % Columns include:
+%   EEG — Raw alpha power:
+%     AlphaPower                non-baselined
+%     AlphaPowerEarly           non-baselined
+%     AlphaPowerLate            non-baselined
+%     AlphaPowerFull            non-baselined
+%     AlphaPowerEarlyBL         baselined
+%     AlphaPowerLateBL          baselined
+%     AlphaPowerFullBL          baselined
+%
 %   EEG — FOOOF alpha [8-14 Hz], occ channels:
 %     AlphaPower_FOOOF           [0 2]s, no baseline
 %     AlphaPower_FOOOF_bl        [0 2]s, baselined [-0.5 -0.25]s absolute
 %     AlphaPower_FOOOF_bl_early  [0 1]s, baselined
 %     AlphaPower_FOOOF_bl_late   [1 2]s, baselined
-%
-%   EEG — Raw alpha power (baselined, dB vs [-0.5 -0.25]s):
-%     AlphaPower_bl              [0 2]s, baselined
-%     AlphaPower_bl_early        [0 1]s, baselined
-%     AlphaPower_bl_late         [1 2]s, baselined
 %
 %   Gaze — baselined (BL window [-0.5 -0.25]s; % for GD/SPL/MS/BCEA,pupil):
 %     GazeDeviationFullBL / EarlyBL / LateBL
@@ -45,6 +49,7 @@ featPath = paths.features;
 % Demographics
 demog = readtable('/Volumes/g_psyplafor_methlab$/VP/OCC/AOC/AOC_VPs.xlsx');
 demog = demog(:, {'ID', 'Gender', 'Alter', 'H_ndigkeit', 'OcularDominance'});
+demog = renamevars(demog, {'Alter', 'H_ndigkeit'}, {'Age', 'Handedness'});
 demog = table2struct(demog(1:120, :));
 
 % Behavioral
@@ -61,8 +66,8 @@ demoIDs = [demog.ID];
 for i = 1:numel(behav_data_sternberg)
     idx = find(demoIDs == behav_data_sternberg(i).ID, 1);
     behav_data_sternberg(i).Gender          = demog(idx).Gender;
-    behav_data_sternberg(i).Alter           = demog(idx).Alter;
-    behav_data_sternberg(i).H_ndigkeit      = demog(idx).H_ndigkeit;
+    behav_data_sternberg(i).Age             = demog(idx).Age;
+    behav_data_sternberg(i).Handedness      = demog(idx).Handedness;
     behav_data_sternberg(i).OcularDominance = demog(idx).OcularDominance;
 end
 
@@ -87,7 +92,4 @@ writetable(merged_table, fullfile(featPath, 'AOC_merged_data_sternberg.csv'));
 fprintf('Saved merged_data_sternberg.csv\n');
 
 %% Summary
-nCols = numel(fieldnames(merged_data_sternberg));
-fprintf('\n=== Sternberg merge complete ===\n');
-fprintf('Rows: %d  |  Columns: %d\n', numel(merged_data_sternberg), nCols);
-fprintf('Total columns:  %d\n', nCols);
+disp(merged_data_sternberg)

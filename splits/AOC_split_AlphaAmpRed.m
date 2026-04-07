@@ -112,17 +112,34 @@ for i = 1:nSubj
     alpha_mean(i) = mean(T.AlphaPower_FOOOF_bl(mask), 'omitnan');
 end
 
-% Percentage-based exclusion band around zero (outlier-resistant reference).
-valid_alpha_mean = alpha_mean(isfinite(alpha_mean));
+% Robust filtering for split reference:
+% remove non-finite values and pathological subject-level alpha outliers
+% before deriving the zero band. This prevents single corrupt values from
+% inflating the percentile-based cutoff.
+split_valid = isfinite(alpha_mean);
+vals = alpha_mean(split_valid);
+if numel(vals) >= 4
+    q1_split = prctile(vals, 25);
+    q3_split = prctile(vals, 75);
+    iqr_split = q3_split - q1_split;
+    if isfinite(iqr_split) && iqr_split > 0
+        lo_split = q1_split - 3 * iqr_split;
+        hi_split = q3_split + 3 * iqr_split;
+        split_valid = split_valid & (alpha_mean >= lo_split) & (alpha_mean <= hi_split);
+    end
+end
+
+valid_alpha_mean = alpha_mean(split_valid);
 if isempty(valid_alpha_mean)
     error('No finite subject-level alpha values found for split.');
 end
 alpha_abs_ref = prctile(abs(valid_alpha_mean), alpha_ref_percentile);
 alpha_zero_margin = (alpha_zero_pct / 100) * alpha_abs_ref;
 
-reduction_ids = uIDs(alpha_mean < -alpha_zero_margin);
-amplification_ids = uIDs(alpha_mean > alpha_zero_margin);
-zero_ids = uIDs(abs(alpha_mean) <= alpha_zero_margin);
+reduction_ids = uIDs(split_valid & (alpha_mean < -alpha_zero_margin));
+amplification_ids = uIDs(split_valid & (alpha_mean > alpha_zero_margin));
+zero_ids = uIDs(split_valid & (abs(alpha_mean) <= alpha_zero_margin));
+invalid_ids = uIDs(~split_valid);
 
 fprintf('\n=== Split Summary [%s] (AlphaPower_FOOOF_bl, full window) ===\n', task_tag);
 fprintf('Subjects total: %d\n', nSubj);
@@ -131,6 +148,9 @@ fprintf('Zero-band setting: %.2f%% of %dth-percentile |alpha| (ref=%.4f, cutoff=
 fprintf('Reduction (< -%.4f): %d\n', alpha_zero_margin, numel(reduction_ids));
 fprintf('Amplification (> %.4f): %d\n', alpha_zero_margin, numel(amplification_ids));
 fprintf('Excluded (|alpha| <= %.4f): %d\n', alpha_zero_margin, numel(zero_ids));
+if ~isempty(invalid_ids)
+    fprintf('Excluded (invalid/pathological alpha): %d\n', numel(invalid_ids));
+end
 
 if numel(reduction_ids) < 2 || numel(amplification_ids) < 2
     warning('Task %s: insufficient subjects per split group (red=%d, amp=%d). Skipping task.', ...
@@ -151,7 +171,7 @@ yline(-alpha_zero_margin, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
 x_vals = (1:nSubj)';
 idx_red = ismember(uIDs, reduction_ids);
 idx_amp = ismember(uIDs, amplification_ids);
-idx_excl = ismember(uIDs, zero_ids);
+idx_excl = ismember(uIDs, zero_ids) | ismember(uIDs, invalid_ids);
 scatter(x_vals(idx_excl), alpha_mean(idx_excl), 80, [0.5 0.5 0.5], 'filled', 'MarkerFaceAlpha', 0.7);
 scatter(x_vals(idx_red), alpha_mean(idx_red), 80, [0.2 0.4 0.8], 'filled', 'MarkerFaceAlpha', 0.8);
 scatter(x_vals(idx_amp), alpha_mean(idx_amp), 80, [0.8 0.2 0.2], 'filled', 'MarkerFaceAlpha', 0.8);

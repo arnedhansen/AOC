@@ -329,18 +329,16 @@ for subj = 1:length(subjects)
         IAF_band2 = [IAF2-4 IAF2+2]; if any(isnan(IAF_band2)); IAF_band2 = alphaRange; end
         IAF_band3 = [IAF3-4 IAF3+2]; if any(isnan(IAF_band3)); IAF_band3 = alphaRange; end
 
-        roi_pow = @(S, band) mean(mean(S.powspctrm(channelIdx, S.freq>=band(1) & S.freq<=band(2)), 2, 'omitnan'), 1, 'omitnan');
-
-        AlphaPowerEarly    = [roi_pow(pow1_early, IAF_band1);    roi_pow(pow2_early, IAF_band2);    roi_pow(pow3_early, IAF_band3)];
-        AlphaPowerLate     = [roi_pow(pow1_late,  IAF_band1);    roi_pow(pow2_late,  IAF_band2);    roi_pow(pow3_late,  IAF_band3)];
-        AlphaPowerFull     = [roi_pow(pow1_full,  IAF_band1);    roi_pow(pow2_full,  IAF_band2);    roi_pow(pow3_full,  IAF_band3)];
-        AlphaPowerEarlyBL  = [roi_pow(pow1_early_bl, IAF_band1); roi_pow(pow2_early_bl, IAF_band2); roi_pow(pow3_early_bl, IAF_band3)];
-        AlphaPowerLateBL   = [roi_pow(pow1_late_bl,  IAF_band1); roi_pow(pow2_late_bl,  IAF_band2); roi_pow(pow3_late_bl,  IAF_band3)];
-        AlphaPowerFullBL   = [roi_pow(pow1_full_bl,  IAF_band1); roi_pow(pow2_full_bl,  IAF_band2); roi_pow(pow3_full_bl,  IAF_band3)];
-        AlphaPower_FOOOF         = [roi_pow(pow1_fooof,          alphaRange); roi_pow(pow2_fooof,          alphaRange); roi_pow(pow3_fooof,          alphaRange)];
-        AlphaPower_FOOOF_bl      = [roi_pow(pow1_fooof_bl,       alphaRange); roi_pow(pow2_fooof_bl,       alphaRange); roi_pow(pow3_fooof_bl,       alphaRange)];
-        AlphaPower_FOOOF_bl_early= [roi_pow(pow1_fooof_bl_early, alphaRange); roi_pow(pow2_fooof_bl_early, alphaRange); roi_pow(pow3_fooof_bl_early, alphaRange)];
-        AlphaPower_FOOOF_bl_late = [roi_pow(pow1_fooof_bl_late,  alphaRange); roi_pow(pow2_fooof_bl_late,  alphaRange); roi_pow(pow3_fooof_bl_late,  alphaRange)];
+        AlphaPowerEarly    = [robust_roi_pow(pow1_early, channelIdx, IAF_band1);    robust_roi_pow(pow2_early, channelIdx, IAF_band2);    robust_roi_pow(pow3_early, channelIdx, IAF_band3)];
+        AlphaPowerLate     = [robust_roi_pow(pow1_late,  channelIdx, IAF_band1);    robust_roi_pow(pow2_late,  channelIdx, IAF_band2);    robust_roi_pow(pow3_late,  channelIdx, IAF_band3)];
+        AlphaPowerFull     = [robust_roi_pow(pow1_full,  channelIdx, IAF_band1);    robust_roi_pow(pow2_full,  channelIdx, IAF_band2);    robust_roi_pow(pow3_full,  channelIdx, IAF_band3)];
+        AlphaPowerEarlyBL  = [robust_roi_pow(pow1_early_bl, channelIdx, IAF_band1); robust_roi_pow(pow2_early_bl, channelIdx, IAF_band2); robust_roi_pow(pow3_early_bl, channelIdx, IAF_band3)];
+        AlphaPowerLateBL   = [robust_roi_pow(pow1_late_bl,  channelIdx, IAF_band1); robust_roi_pow(pow2_late_bl,  channelIdx, IAF_band2); robust_roi_pow(pow3_late_bl,  channelIdx, IAF_band3)];
+        AlphaPowerFullBL   = [robust_roi_pow(pow1_full_bl,  channelIdx, IAF_band1); robust_roi_pow(pow2_full_bl,  channelIdx, IAF_band2); robust_roi_pow(pow3_full_bl,  channelIdx, IAF_band3)];
+        AlphaPower_FOOOF         = [robust_roi_pow(pow1_fooof,          channelIdx, alphaRange); robust_roi_pow(pow2_fooof,          channelIdx, alphaRange); robust_roi_pow(pow3_fooof,          channelIdx, alphaRange)];
+        AlphaPower_FOOOF_bl      = [robust_roi_pow(pow1_fooof_bl,       channelIdx, alphaRange); robust_roi_pow(pow2_fooof_bl,       channelIdx, alphaRange); robust_roi_pow(pow3_fooof_bl,       channelIdx, alphaRange)];
+        AlphaPower_FOOOF_bl_early= [robust_roi_pow(pow1_fooof_bl_early, channelIdx, alphaRange); robust_roi_pow(pow2_fooof_bl_early, channelIdx, alphaRange); robust_roi_pow(pow3_fooof_bl_early, channelIdx, alphaRange)];
+        AlphaPower_FOOOF_bl_late = [robust_roi_pow(pow1_fooof_bl_late,  channelIdx, alphaRange); robust_roi_pow(pow2_fooof_bl_late,  channelIdx, alphaRange); robust_roi_pow(pow3_fooof_bl_late,  channelIdx, alphaRange)];
 
         % Keep legacy AlphaPower as LATE raw (registered retention)
         AlphaPower = AlphaPowerLate;
@@ -387,4 +385,32 @@ if ispc == 1
     save W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_nback eeg_data_nback
 else
     save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_nback eeg_data_nback
+end
+
+function v = robust_roi_pow(S, channelIdx, band)
+fmask = S.freq >= band(1) & S.freq <= band(2);
+if ~any(fmask)
+    v = NaN;
+    return
+end
+x = S.powspctrm(channelIdx, fmask);
+x = x(:);
+x = x(isfinite(x));
+% Hard plausibility guard to suppress catastrophic numeric explosions.
+x = x(abs(x) <= 1e4);
+if numel(x) >= 8
+    q1 = prctile(x, 25);
+    q3 = prctile(x, 75);
+    iqr_v = q3 - q1;
+    if isfinite(iqr_v) && iqr_v > 0
+        lo = q1 - 3 * iqr_v;
+        hi = q3 + 3 * iqr_v;
+        x = x(x >= lo & x <= hi);
+    end
+end
+if isempty(x)
+    v = NaN;
+else
+    v = mean(x, 'omitnan');
+end
 end

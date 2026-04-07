@@ -84,6 +84,9 @@ task_tag = tk.tag;
 cond_vals = tk.cond_vals;
 cond_codes = tk.cond_codes;
 cond_labels = tk.cond_labels;
+if strcmp(task_tag, 'nback')
+    cond_labels = {'1-back', '2-back', '3-back'};
+end
 fig_prefix = sprintf('AOC_splitAlphaAmpRed_%s', task_tag);
 
 fprintf('\n\n========== TASK: %s ==========\n', upper(task_tag));

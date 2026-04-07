@@ -23,7 +23,6 @@ from functions.stats_helpers import (
 from functions.rainclouds_plotting_helpers import add_stat_brackets
 
 from functions.export_model_table import export_model_table
-from functions.aoc_feature_files import feature_file
 
 from functions.mixedlm_helpers import (
     fit_mixedlm, drop1_lrt, pairwise_condition_contrasts_at_mean_gaze, mixedlm_fixed_effects_to_df, lr_effect_sizes
@@ -70,33 +69,33 @@ os.makedirs(anova_dir, exist_ok=True)
 
 # %% Variables and labelling
 
-variables  = ["Accuracy", "ReactionTime", "GazeDeviationFullBL", "MSRateFullBL", "Fixations", "Saccades", "PupilSizeFullBL", "AlphaPower_bl", "AlphaPower_FOOOF_bl"]
-titles     = ["Accuracy", "Reaction Time", "Gaze Deviation (BL % change)", "Microsaccade Rate (BL % change)", "Fixations", "Saccades", "Pupil Size (BL % change)", "Alpha Power (BL dB)", "SpecParam Alpha (BL log)"]
-y_labels   = ["Accuracy [%]", "Reaction Time [s]", "Gaze Deviation [% change]", "Microsaccade Rate [% change]", "Fixations", "Saccades", "Pupil Size [% change]", "Alpha Power [dB]", "SpecParam Alpha [log, BL]"]
-save_names = ["acc", "rt", "gazedev_bl", "ms_bl", "fix", "sacc", "pupil_bl", "pow_bl", "pow_specparam_bl"]
+variables  = ["Accuracy", "ReactionTime", "GazeDeviationFullBL", "MSRateFullBL", "PupilSizeFullBL", "AlphaPowerFullBL", "AlphaPower_FOOOF_bl"]
+titles     = ["Accuracy", "Reaction Time", "Gaze Deviation", "Microsaccade Rate", "Pupil Size", "Alpha Power", "Alpha Power"]
+y_labels   = ["Accuracy [%]", "Reaction Time [s]", "Gaze Deviation [%]", "Microsaccade Rate [%]", "Pupil Size [%]", "Alpha Power [dB]", "Alpha Power [dB]"]
+save_names = ["acc", "rt", "gazedev_bl", "ms_bl", "pupil_bl", "pow_bl", "pow_specparam_bl"]
 
 # Manual y ticks and ylims per variable
 yticks_map = {
     "Accuracy"      : np.arange(60, 101, 5),
     "ReactionTime"  : np.arange(0.3, 1.35, 0.1),
-    "GazeDeviationFullBL" : np.arange(-100, 301, 50),
-    "MSRateFullBL"        : np.arange(-100, 401, 100),
+    "GazeDeviationFullBL" : np.arange(0, 401, 50),
+    "MSRateFullBL"        : np.arange(0, -105, 5),
     "Fixations"     : np.arange(0, 6, 1),
     "Saccades"      : np.arange(0, 4.25, 1),
     "PupilSizeFullBL"     : np.arange(-20, 121, 20),
     "AlphaPower_bl"    : np.arange(-3, 3.1, 1),
-    "AlphaPower_FOOOF_bl"           : np.arange(-1.5, 1.6, 0.5),
+    "AlphaPower_FOOOF_bl" : np.arange(-.3, 0.31, 0.1),
 }
 ylims_map = {
     "Accuracy"      : (60, 102),
     "ReactionTime"  : (0.3, 1.35),
-    "GazeDeviationFullBL" : (-100, 300),
-    "MSRateFullBL"        : (-100, 400),
+    "GazeDeviationFullBL" : (0, 400),
+    "MSRateFullBL"        : (0, -100),
     "Fixations"     : (0, 6),
     "Saccades"      : (0, 4.25),
     "PupilSizeFullBL"     : (-20, 120),
     "AlphaPower_bl"    : (-3, 3),
-    "AlphaPower_FOOOF_bl"           : (-1.5, 1.5),
+    "AlphaPower_FOOOF_bl" : (-0.325, 0.325),
 }
 
 # %% Task configurations
@@ -104,7 +103,7 @@ ylims_map = {
 tasks = [
     {
         "name"       : "sternberg",
-        "input_csv"  : feature_file(base_dir, "merged_data_sternberg.csv"),
+        "input_csv"  : os.path.join(base_dir, "data", "features", "AOC_merged_data_sternberg.csv"),
         # Accept numeric encodings {1,2,3} or {2,4,6}; otherwise normalise existing strings
         "cond_to_label_numeric": [{1: "WM load 2", 2: "WM load 4", 3: "WM load 6"},
                                   {2: "WM load 2", 4: "WM load 4", 6: "WM load 6"}],
@@ -114,7 +113,7 @@ tasks = [
     },
     {
         "name"       : "nback",
-        "input_csv"  : feature_file(base_dir, "merged_data_nback.csv"),
+        "input_csv"  : os.path.join(base_dir, "data", "features", "AOC_merged_data_nback.csv"),
         "cond_to_label_numeric": [{1: "1-back", 2: "2-back", 3: "3-back"}],
         "categories" : ["1-back", "2-back", "3-back"],
         "comparisons": [("1-back", "2-back"), ("1-back", "3-back"), ("2-back", "3-back")],

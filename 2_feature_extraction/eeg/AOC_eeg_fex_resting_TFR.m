@@ -50,7 +50,7 @@ r_sq_thresh = 0.90;
 %% Loop subjects
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath)
         close all
         clc

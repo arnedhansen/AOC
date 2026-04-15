@@ -1,5 +1,10 @@
-%% TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM (NBACK) | AOC
-% FOOOF output here is: (model fit - aperiodic) in FOOOF/log space (NOT peaks-only)
+%% AOC EEG FOOOF Extraction — N-back (TFR Branch)
+% Computes TFR-based FOOOF outputs and builds FOOOF-only EEG products:
+% `eeg_data_nback_FOOOF` (MAT + CSV).
+% IAF is loaded from non-FOOOF CSV (`AOC_eeg_matrix_nback.csv`).
+% If IAF is missing/invalid for a subject-condition, FOOOF alpha is computed
+% with fallback band [8 14] Hz (aligned with normal non-FOOOF scripts).
+% FOOOF output here is: (model fit - aperiodic) in FOOOF/log space.
 
 clear; close all; clc
 
@@ -7,15 +12,25 @@ clear; close all; clc
 startup
 [subjects, paths, ~, ~] = setup('AOC');
 path = paths.features;
+featPath = paths.features;
 
 % Setup logging
 logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
 scriptName = 'AOC_eeg_fex_nback_FOOOF';
+eeg_data_nback_FOOOF = struct('ID', {}, 'Condition', {}, ...
+    'AlphaPower_FOOOF', {}, 'AlphaPower_FOOOF_bl', {}, ...
+    'AlphaPower_FOOOF_bl_early', {}, 'AlphaPower_FOOOF_bl_late', {});
+
+iaf_csv = fullfile(featPath, 'AOC_eeg_matrix_nback.csv');
+if ~isfile(iaf_csv)
+    error('Missing non-FOOOF EEG CSV for IAF lookup: %s', iaf_csv);
+end
+iaf_table = readtable(iaf_csv);
 
 %% Loop subjects
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath)
         close all
         clc
@@ -412,6 +427,45 @@ for subj = 1:length(subjects)
         pow1_fooof_bl_early pow2_fooof_bl_early pow3_fooof_bl_early ...
         pow1_fooof_bl_late pow2_fooof_bl_late pow3_fooof_bl_late
 
+    occ_channels_fooof = occ_channels_from_labels(pow1_fooof.label);
+    occ_idx = find(ismember(pow1_fooof.label, occ_channels_fooof));
+    condVals = [1; 2; 3];
+    subID = str2double(subjects{subj});
+    if isnan(subID)
+        subID = str2num(subjects{subj}); %#ok<ST2NM>
+    end
+    AlphaPower_FOOOF = nan(3, 1);
+    AlphaPower_FOOOF_bl = nan(3, 1);
+    AlphaPower_FOOOF_bl_early = nan(3, 1);
+    AlphaPower_FOOOF_bl_late = nan(3, 1);
+    condPows = {pow1_fooof, pow2_fooof, pow3_fooof};
+    condPows_bl = {pow1_fooof_bl, pow2_fooof_bl, pow3_fooof_bl};
+    condPows_bl_early = {pow1_fooof_bl_early, pow2_fooof_bl_early, pow3_fooof_bl_early};
+    condPows_bl_late = {pow1_fooof_bl_late, pow2_fooof_bl_late, pow3_fooof_bl_late};
+    nIAF_fallback = 0;
+    for c = 1:3
+        IAF_now = get_iaf_from_table(iaf_table, subID, condVals(c));
+        band = [IAF_now - 4, IAF_now + 2];
+        if ~isfinite(IAF_now) || any(~isfinite(band)) || band(1) >= band(2)
+            band = [8 14];
+            nIAF_fallback = nIAF_fallback + 1;
+        end
+        AlphaPower_FOOOF(c) = robust_roi_pow(condPows{c}, occ_idx, band);
+        AlphaPower_FOOOF_bl(c) = robust_roi_pow(condPows_bl{c}, occ_idx, band);
+        AlphaPower_FOOOF_bl_early(c) = robust_roi_pow(condPows_bl_early{c}, occ_idx, band);
+        AlphaPower_FOOOF_bl_late(c) = robust_roi_pow(condPows_bl_late{c}, occ_idx, band);
+    end
+    if nIAF_fallback > 0
+        fprintf('Subject %s: IAF fallback [8 14] used in %d/3 conditions.\n', subjects{subj}, nIAF_fallback);
+    end
+    subj_data_fooof = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell(condVals), ...
+        'AlphaPower_FOOOF', num2cell(AlphaPower_FOOOF), ...
+        'AlphaPower_FOOOF_bl', num2cell(AlphaPower_FOOOF_bl), ...
+        'AlphaPower_FOOOF_bl_early', num2cell(AlphaPower_FOOOF_bl_early), ...
+        'AlphaPower_FOOOF_bl_late', num2cell(AlphaPower_FOOOF_bl_late));
+    save eeg_matrix_nback_FOOOF_subj subj_data_fooof
+    eeg_data_nback_FOOOF = [eeg_data_nback_FOOOF; subj_data_fooof];
+
         clc
         fprintf('Subject AOC %s (%.3d/%.3d) DONE (sliding-window FOOOF: model - aperiodic) \n', ...
             num2str(subjects{subj}), subj, length(subjects))
@@ -419,4 +473,51 @@ for subj = 1:length(subjects)
         log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
         fprintf('Continuing to next subject...\n');
     end
+end
+
+if ispc == 1
+    save W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_nback_FOOOF eeg_data_nback_FOOOF
+    writetable(struct2table(eeg_data_nback_FOOOF), 'W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_nback_FOOOF.csv')
+else
+    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_nback_FOOOF eeg_data_nback_FOOOF
+    writetable(struct2table(eeg_data_nback_FOOOF), '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_nback_FOOOF.csv')
+end
+
+function ch = occ_channels_from_labels(labels)
+ch = {};
+for i = 1:numel(labels)
+    lab = labels{i};
+    if contains(lab, {'O'}) || contains(lab, {'I'}) || contains(lab, {'PO'})
+        ch{end+1} = lab; %#ok<AGROW>
+    end
+end
+if isempty(ch)
+    ch = labels;
+end
+end
+
+function iaf_val = get_iaf_from_table(T, id_val, cond_val)
+row = T.ID == id_val & T.Condition == cond_val;
+if ~any(row) || ~ismember('IAF', T.Properties.VariableNames)
+    iaf_val = NaN;
+    return
+end
+vals = T.IAF(row);
+iaf_val = vals(1);
+end
+
+function v = robust_roi_pow(S, channelIdx, band)
+fmask = S.freq >= band(1) & S.freq <= band(2);
+if ~any(fmask)
+    v = NaN;
+    return
+end
+x = S.powspctrm(channelIdx, fmask);
+x = x(:);
+x = x(isfinite(x));
+if isempty(x)
+    v = NaN;
+else
+    v = mean(x, 'omitnan');
+end
 end

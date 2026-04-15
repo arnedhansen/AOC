@@ -1,4 +1,7 @@
-%% TFR (Raw, FOOOF and Baselined) | Sternberg (AOC) | Trial-level
+%% AOC EEG FOOOF Extraction — Sternberg (Trial-Level TFR)
+% Computes trial-level sliding-window FOOOF products for Sternberg.
+% This is separate from subject-level split outputs (`eeg_data_sternberg_FOOOF`)
+% used by subject/master matrix scripts.
 startup
 [subjects, paths, ~, ~] = setup('AOC');
 path = paths.features;
@@ -9,7 +12,7 @@ scriptName = 'AOC_eeg_fex_sternberg_FOOOF_trials';
 
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath)
         close all
         clc

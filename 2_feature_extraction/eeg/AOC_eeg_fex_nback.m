@@ -1,15 +1,16 @@
 %% AOC EEG Feature Extraction — N-Back
-% Computes subject-level power spectra in early/late/full windows (raw + baselined),
-% IAF, lateralization, and FOOOF-based alpha (raw + baselined) from preprocessed
-% N-back EEG. Saves per-subject and grand results.
+% Computes subject-level NON-FOOOF EEG features from preprocessed N-back EEG.
+% This script is the non-FOOOF branch in the split pipeline and saves
+% `eeg_data_nback` (MAT + CSV). FOOOF features are produced in
+% AOC_eeg_fex_nback_TFR.m.
 %
 % Extracted features:
-%   Power Spectrum
-%   IAF, Power at IAF, and Lateralization Index
-%   POWER TRIAL-BY-TRIAL
-%   TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM
+%   Power Spectrum windows (raw + baselined)
+%   IAF (condition-wise from full window)
+%   Alpha power in IAF band (early/late/full; raw + dB)
+%   Lateralization index (late baselined)
 
-%% POWSPCTRM (Baseline + Early/Late/Full) + FOOOF window spectra (subject-level)
+%% POWSPCTRM (Baseline + Early/Late/Full) (subject-level)
 % Setup
 startup
 [subjects, paths, ~ , ~] = setup('AOC');
@@ -26,7 +27,7 @@ scriptName = 'AOC_eeg_fex_nback';
 for subj = 1:length(subjects)
     try
         clc
-        disp(['Processing windowed POWSPCTRM + FOOOF (subject-level) for Subject AOC ', num2str(subjects{subj})])
+        disp(['Processing windowed POWSPCTRM (subject-level) for Subject AOC ', num2str(subjects{subj})])
         % Load data
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath)
@@ -102,85 +103,6 @@ for subj = 1:length(subjects)
             'pow1_late_bl','pow2_late_bl','pow3_late_bl', ...
             'pow1_full_bl','pow2_full_bl','pow3_full_bl')
 
-        % ----------------------
-        % FOOOF spectra per window (subject-level, no sliding)
-        % Baselining: absolute difference (window - baseline) in log space
-        %
-        % NOTE:
-        % This path uses one FFT per broad latency window and is more sensitive
-        % to occasional catastrophic fits than the sliding-window TFR pipeline.
-        % Hard guards are applied below before saving.
-        % ----------------------
-        cfg_fooof            = [];
-        cfg_fooof.method     = 'mtmfft';
-        cfg_fooof.taper      = 'hanning';
-        cfg_fooof.foilim     = freq_range;
-        cfg_fooof.pad        = 5;
-        cfg_fooof.output     = 'fooof';
-        cfg_fooof.keeptrials = 'no';
-
-        dat1_base = ft_selectdata(struct('latency', t_base, 'trials', ind1), dataTFR);
-        dat2_base = ft_selectdata(struct('latency', t_base, 'trials', ind2), dataTFR);
-        dat3_base = ft_selectdata(struct('latency', t_base, 'trials', ind3), dataTFR);
-        fooof1_base = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat1_base);
-        fooof2_base = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat2_base);
-        fooof3_base = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat3_base);
-
-        dat1_full = ft_selectdata(struct('latency', t_full, 'trials', ind1), dataTFR);
-        dat2_full = ft_selectdata(struct('latency', t_full, 'trials', ind2), dataTFR);
-        dat3_full = ft_selectdata(struct('latency', t_full, 'trials', ind3), dataTFR);
-        pow1_fooof = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat1_full);
-        pow2_fooof = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat2_full);
-        pow3_fooof = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat3_full);
-
-        pow1_fooof_bl = pow1_fooof; pow1_fooof_bl.powspctrm = pow1_fooof.powspctrm - fooof1_base.powspctrm;
-        pow2_fooof_bl = pow2_fooof; pow2_fooof_bl.powspctrm = pow2_fooof.powspctrm - fooof2_base.powspctrm;
-        pow3_fooof_bl = pow3_fooof; pow3_fooof_bl.powspctrm = pow3_fooof.powspctrm - fooof3_base.powspctrm;
-
-        dat1_early = ft_selectdata(struct('latency', t_early, 'trials', ind1), dataTFR);
-        dat2_early = ft_selectdata(struct('latency', t_early, 'trials', ind2), dataTFR);
-        dat3_early = ft_selectdata(struct('latency', t_early, 'trials', ind3), dataTFR);
-        fooof1_early = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat1_early);
-        fooof2_early = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat2_early);
-        fooof3_early = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat3_early);
-        pow1_fooof_bl_early = fooof1_early; pow1_fooof_bl_early.powspctrm = fooof1_early.powspctrm - fooof1_base.powspctrm;
-        pow2_fooof_bl_early = fooof2_early; pow2_fooof_bl_early.powspctrm = fooof2_early.powspctrm - fooof2_base.powspctrm;
-        pow3_fooof_bl_early = fooof3_early; pow3_fooof_bl_early.powspctrm = fooof3_early.powspctrm - fooof3_base.powspctrm;
-
-        dat1_late = ft_selectdata(struct('latency', t_late, 'trials', ind1), dataTFR);
-        dat2_late = ft_selectdata(struct('latency', t_late, 'trials', ind2), dataTFR);
-        dat3_late = ft_selectdata(struct('latency', t_late, 'trials', ind3), dataTFR);
-        fooof1_late = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat1_late);
-        fooof2_late = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat2_late);
-        fooof3_late = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat3_late);
-        pow1_fooof_bl_late = fooof1_late; pow1_fooof_bl_late.powspctrm = fooof1_late.powspctrm - fooof1_base.powspctrm;
-        pow2_fooof_bl_late = fooof2_late; pow2_fooof_bl_late.powspctrm = fooof2_late.powspctrm - fooof2_base.powspctrm;
-        pow3_fooof_bl_late = fooof3_late; pow3_fooof_bl_late.powspctrm = fooof3_late.powspctrm - fooof3_base.powspctrm;
-
-        % Hard guards against catastrophic numeric explosions in FOOOF output.
-        cfg_guard = struct('r2_min', 0.90, 'hard_abs', 1e4, 'winsor_prc', [1 99]);
-        fooof1_base = sanitize_fooof_struct(fooof1_base, cfg_guard);
-        fooof2_base = sanitize_fooof_struct(fooof2_base, cfg_guard);
-        fooof3_base = sanitize_fooof_struct(fooof3_base, cfg_guard);
-        pow1_fooof = sanitize_fooof_struct(pow1_fooof, cfg_guard);
-        pow2_fooof = sanitize_fooof_struct(pow2_fooof, cfg_guard);
-        pow3_fooof = sanitize_fooof_struct(pow3_fooof, cfg_guard);
-        pow1_fooof_bl = sanitize_fooof_struct(pow1_fooof_bl, cfg_guard);
-        pow2_fooof_bl = sanitize_fooof_struct(pow2_fooof_bl, cfg_guard);
-        pow3_fooof_bl = sanitize_fooof_struct(pow3_fooof_bl, cfg_guard);
-        pow1_fooof_bl_early = sanitize_fooof_struct(pow1_fooof_bl_early, cfg_guard);
-        pow2_fooof_bl_early = sanitize_fooof_struct(pow2_fooof_bl_early, cfg_guard);
-        pow3_fooof_bl_early = sanitize_fooof_struct(pow3_fooof_bl_early, cfg_guard);
-        pow1_fooof_bl_late = sanitize_fooof_struct(pow1_fooof_bl_late, cfg_guard);
-        pow2_fooof_bl_late = sanitize_fooof_struct(pow2_fooof_bl_late, cfg_guard);
-        pow3_fooof_bl_late = sanitize_fooof_struct(pow3_fooof_bl_late, cfg_guard);
-
-        save('power_nback_fooof.mat', ...
-            'pow1_fooof','pow2_fooof','pow3_fooof', ...
-            'pow1_fooof_bl','pow2_fooof_bl','pow3_fooof_bl', ...
-            'pow1_fooof_bl_early','pow2_fooof_bl_early','pow3_fooof_bl_early', ...
-            'pow1_fooof_bl_late','pow2_fooof_bl_late','pow3_fooof_bl_late')
-
     catch ME
         log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
         fprintf('Continuing to next subject...\n');
@@ -237,8 +159,7 @@ powerIAF3 = [];
 IAF_results = struct();
 eeg_data_nback = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {}, 'Lateralization', {}, ...
     'AlphaPowerEarly', {}, 'AlphaPowerLate', {}, 'AlphaPowerFull', {}, ...
-    'AlphaPowerEarlyBL', {}, 'AlphaPowerLateBL', {}, 'AlphaPowerFullBL', {}, ...
-    'AlphaPower_FOOOF', {}, 'AlphaPower_FOOOF_bl', {}, 'AlphaPower_FOOOF_bl_early', {}, 'AlphaPower_FOOOF_bl_late', {});
+    'AlphaPowerEarlyBL', {}, 'AlphaPowerLateBL', {}, 'AlphaPowerFullBL', {});
 
 for subj = 1:length(subjects)
     try
@@ -247,7 +168,6 @@ for subj = 1:length(subjects)
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath);
         load('power_nback_windows.mat');
-        load('power_nback_fooof.mat');
 
         % Channels selection based on CBPT
         channelIdx = find(ismember(pow1_full.label, channels));
@@ -358,11 +278,6 @@ for subj = 1:length(subjects)
         AlphaPowerEarlyBL  = [robust_roi_pow(pow1_early_bl, channelIdx, IAF_band1); robust_roi_pow(pow2_early_bl, channelIdx, IAF_band2); robust_roi_pow(pow3_early_bl, channelIdx, IAF_band3)];
         AlphaPowerLateBL   = [robust_roi_pow(pow1_late_bl,  channelIdx, IAF_band1); robust_roi_pow(pow2_late_bl,  channelIdx, IAF_band2); robust_roi_pow(pow3_late_bl,  channelIdx, IAF_band3)];
         AlphaPowerFullBL   = [robust_roi_pow(pow1_full_bl,  channelIdx, IAF_band1); robust_roi_pow(pow2_full_bl,  channelIdx, IAF_band2); robust_roi_pow(pow3_full_bl,  channelIdx, IAF_band3)];
-        AlphaPower_FOOOF         = [robust_roi_pow(pow1_fooof,          channelIdx, alphaRange); robust_roi_pow(pow2_fooof,          channelIdx, alphaRange); robust_roi_pow(pow3_fooof,          channelIdx, alphaRange)];
-        AlphaPower_FOOOF_bl      = [robust_roi_pow(pow1_fooof_bl,       channelIdx, alphaRange); robust_roi_pow(pow2_fooof_bl,       channelIdx, alphaRange); robust_roi_pow(pow3_fooof_bl,       channelIdx, alphaRange)];
-        AlphaPower_FOOOF_bl_early= [robust_roi_pow(pow1_fooof_bl_early, channelIdx, alphaRange); robust_roi_pow(pow2_fooof_bl_early, channelIdx, alphaRange); robust_roi_pow(pow3_fooof_bl_early, channelIdx, alphaRange)];
-        AlphaPower_FOOOF_bl_late = [robust_roi_pow(pow1_fooof_bl_late,  channelIdx, alphaRange); robust_roi_pow(pow2_fooof_bl_late,  channelIdx, alphaRange); robust_roi_pow(pow3_fooof_bl_late,  channelIdx, alphaRange)];
-
         % Keep legacy AlphaPower as LATE raw (registered retention)
         AlphaPower = AlphaPowerLate;
 
@@ -377,11 +292,6 @@ for subj = 1:length(subjects)
         tmp = num2cell(AlphaPowerEarlyBL); [subj_data_eeg.AlphaPowerEarlyBL] = tmp{:};
         tmp = num2cell(AlphaPowerLateBL);  [subj_data_eeg.AlphaPowerLateBL]  = tmp{:};
         tmp = num2cell(AlphaPowerFullBL);  [subj_data_eeg.AlphaPowerFullBL]  = tmp{:};
-        tmp = num2cell(AlphaPower_FOOOF);          [subj_data_eeg.AlphaPower_FOOOF]          = tmp{:};
-        tmp = num2cell(AlphaPower_FOOOF_bl);       [subj_data_eeg.AlphaPower_FOOOF_bl]       = tmp{:};
-        tmp = num2cell(AlphaPower_FOOOF_bl_early); [subj_data_eeg.AlphaPower_FOOOF_bl_early] = tmp{:};
-        tmp = num2cell(AlphaPower_FOOOF_bl_late);  [subj_data_eeg.AlphaPower_FOOOF_bl_late]  = tmp{:};
-
         % Save
         if ispc == 1
             savepath = fullfile('W:\Students\Arne\AOC\data\features\', subjects{subj}, 'eeg');
@@ -406,8 +316,10 @@ for subj = 1:length(subjects)
 end
 if ispc == 1
     save W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_nback eeg_data_nback
+    writetable(struct2table(eeg_data_nback), 'W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_nback.csv')
 else
     save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_nback eeg_data_nback
+    writetable(struct2table(eeg_data_nback), '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_nback.csv')
 end
 
 function v = robust_roi_pow(S, channelIdx, band)
@@ -417,37 +329,6 @@ if ~any(fmask)
     return
 end
 
-function S = sanitize_fooof_struct(S, cfg)
-if ~isfield(S, 'powspctrm') || isempty(S.powspctrm)
-    return
-end
-
-X = S.powspctrm;
-X(~isfinite(X)) = NaN;
-
-if isfield(S, 'fooofparams') && ~isempty(S.fooofparams)
-    fp = S.fooofparams;
-    if iscell(fp), fp = fp{1}; end
-    if isstruct(fp) && isfield(fp, 'r_squared')
-        rsq = [fp.r_squared]';
-        bad = ~isfinite(rsq) | rsq < cfg.r2_min;
-        if isvector(bad) && numel(bad) == size(X, 1)
-            X(bad, :) = NaN;
-        end
-    end
-end
-
-X(abs(X) > cfg.hard_abs) = NaN;
-
-vals = X(isfinite(X));
-if numel(vals) >= 20
-    lo = prctile(vals, cfg.winsor_prc(1));
-    hi = prctile(vals, cfg.winsor_prc(2));
-    X = min(max(X, lo), hi);
-end
-
-S.powspctrm = X;
-end
 x = S.powspctrm(channelIdx, fmask);
 x = x(:);
 x = x(isfinite(x));

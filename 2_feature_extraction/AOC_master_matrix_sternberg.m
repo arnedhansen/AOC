@@ -1,13 +1,10 @@
 %% AOC Master Matrix — Sternberg
-% Builds merged_data_sternberg with:
-%   (a) Raw alpha power (non-baselined full/early/late + baselined full/early/late)
-%   (b) FOOOF-based alpha power (non-baselined + baselined full/early/late)
-%   (c) Baselined gaze metrics (GazeDeviation, ScanPathLength, PupilSize,
-%       MSRate, BCEA, BCEALateralization — averaged across trials per condition, dB or % change)
-%
-% All values are loaded from existing files — no recomputation needed.
-%   FOOOF alpha  → per-subject power_stern_fooof_windows.mat
-%   Raw/baselined alpha + baselined gaze → AOC_gaze_matrix_sternberg.mat / AOC_eeg_matrix_sternberg.mat
+% Merges four sources by `ID`,`Condition`:
+%   (a) behavioral
+%   (b) gaze
+%   (c) EEG non-FOOOF (`AOC_eeg_matrix_sternberg.mat`)
+%   (d) EEG FOOOF-only (`AOC_eeg_matrix_sternberg_FOOOF.mat`)
+% Includes key-uniqueness checks before merge to prevent row inflation.
 %
 % Key outputs:
 %   merged_data_sternberg.mat 
@@ -52,8 +49,9 @@ demog = table2struct(demog(1:120, :));
 % Behavioral
 load(fullfile(featPath, 'AOC_behavioral_matrix_sternberg.mat'));  % behav_data_sternberg
 
-% EEG
+% EEG (split products)
 load(fullfile(featPath, 'AOC_eeg_matrix_sternberg.mat'));         % eeg_data_sternberg
+load(fullfile(featPath, 'AOC_eeg_matrix_sternberg_FOOOF.mat'));   % eeg_data_sternberg_FOOOF
 
 % Gaze
 load(fullfile(featPath, 'AOC_gaze_matrix_sternberg.mat'));        % gaze_data_sternberg
@@ -72,11 +70,17 @@ end
 behav_table = struct2table(behav_data_sternberg);
 gaze_table  = struct2table(gaze_data_sternberg);
 eeg_table   = struct2table(eeg_data_sternberg);
+eeg_fooof_table = struct2table(eeg_data_sternberg_FOOOF);
+
+assert_unique_keys(eeg_table, {'ID', 'Condition'}, 'eeg_data_sternberg');
+assert_unique_keys(eeg_fooof_table, {'ID', 'Condition'}, 'eeg_data_sternberg_FOOOF');
 
 % Merge by ID and Condition; keep all existing columns from input matrices.
 merged_table = outerjoin(behav_table, gaze_table, ...
     'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
 merged_table = outerjoin(merged_table, eeg_table, ...
+    'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
+merged_table = outerjoin(merged_table, eeg_fooof_table, ...
     'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
 merged_data_sternberg = table2struct(merged_table);
 
@@ -90,3 +94,10 @@ fprintf('Saved merged_data_sternberg.csv\n');
 
 %% Summary
 disp(merged_data_sternberg)
+
+function assert_unique_keys(T, keyVars, tableName)
+[~, ia] = unique(T(:, keyVars), 'rows', 'stable');
+if numel(ia) ~= height(T)
+    error('Duplicate key rows detected in %s for keys: %s', tableName, strjoin(keyVars, ', '));
+end
+end

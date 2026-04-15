@@ -1,5 +1,7 @@
 %% AOC EEG Feature Extraction — Sternberg (Trial-Level)
-% Trial-wise power spectra (early/late, retention, baseline), IAF, power at IAF, lateralization, and TFR (raw, FOOOF, baselined) from dataEEG_TFR_sternberg. Saves eeg_matrix_sternberg_trials and per-subject TFR/FOOOF.
+% Computes trial-wise NON-FOOOF EEG features for Sternberg.
+% Saves `eeg_matrix_sternberg_trials`; trial-level FOOOF is handled in
+% AOC_eeg_fex_sternberg_FOOOF_trials.m.
 %
 % Extracted features:
 %   Power Spectrum (Early, Late (= Registered Retention))  [trial-by-trial]
@@ -18,7 +20,7 @@ for subj = 1:length(subjects)
 
     try
         % Load data
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath)
         close all
         load dataEEG_TFR_sternberg
@@ -157,7 +159,7 @@ path = paths.features;
 
 % Define channels (from one subject-s labels)
 subj = 1;
-datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+datapath = fullfile(path, subjects{subj}, 'eeg');
 cd(datapath);
 load('power_stern_late_trials.mat');
 % Occipital channels
@@ -205,7 +207,7 @@ for subj = 1:length(subjects)
     disp(['Processing Alpha Power (trial-wise), IAF (subject), Lateralization (trial-wise) for Subject AOC ', num2str(subjects{subj})])
 
     try
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath);
 
         % Load trial-wise spectra
@@ -352,9 +354,9 @@ for subj = 1:length(subjects)
 
         % Save (per subject + append to grand table)
         if ispc == 1
-            savepath = strcat('W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\');
+            savepath = fullfile('W:\Students\Arne\AOC\data\features\', subjects{subj}, 'eeg');
         else
-            savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
+            savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, 'eeg');
         end
         mkdir(savepath)
         cd(savepath)

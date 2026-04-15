@@ -1,17 +1,32 @@
-%% TFR (Raw, FOOOF and Baselined) | Sternberg (AOC)
+%% AOC EEG FOOOF Extraction — Sternberg (TFR Branch)
+% Computes TFR-based FOOOF outputs and builds FOOOF-only EEG products:
+% `eeg_data_sternberg_FOOOF` (MAT + CSV).
+% IAF is loaded from non-FOOOF CSV (`AOC_eeg_matrix_sternberg.csv`).
+% If IAF is missing/invalid for a subject-condition, FOOOF alpha is computed
+% with fallback band [8 14] Hz (aligned with normal non-FOOOF scripts).
 clear; close all; clc
 
 startup
 [subjects, paths, ~, ~] = setup('AOC');
 path = paths.features;
+featPath = paths.features;
 
 % Setup logging
 logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
 scriptName = 'AOC_eeg_fex_sternberg_FOOOF';
+eeg_data_sternberg_FOOOF = struct('ID', {}, 'Condition', {}, ...
+    'AlphaPower_FOOOF', {}, 'AlphaPower_FOOOF_bl', {}, ...
+    'AlphaPower_FOOOF_bl_early', {}, 'AlphaPower_FOOOF_bl_late', {});
+
+iaf_csv = fullfile(featPath, 'AOC_eeg_matrix_sternberg.csv');
+if ~isfile(iaf_csv)
+    error('Missing non-FOOOF EEG CSV for IAF lookup: %s', iaf_csv);
+end
+iaf_table = readtable(iaf_csv);
 
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath)
         close all
         clc
@@ -402,6 +417,70 @@ for subj = 1:length(subjects)
             pow2_fooof_bl_early pow4_fooof_bl_early pow6_fooof_bl_early ...
             pow2_fooof_bl_late pow4_fooof_bl_late pow6_fooof_bl_late
 
+        % Build FOOOF-only subject EEG rows using IAF from non-FOOOF CSV.
+        occ_channels_fooof = occ_channels_from_labels(pow2_fooof.label);
+        occ_idx = find(ismember(pow2_fooof.label, occ_channels_fooof));
+        condVals = [2; 4; 6];
+        subID = str2double(subjects{subj});
+        if isnan(subID)
+            subID = str2num(subjects{subj}); %#ok<ST2NM>
+        end
+        AlphaPower_FOOOF = nan(3, 1);
+        AlphaPower_FOOOF_bl = nan(3, 1);
+        AlphaPower_FOOOF_bl_early = nan(3, 1);
+        AlphaPower_FOOOF_bl_late = nan(3, 1);
+        condPows = {pow2_fooof, pow4_fooof, pow6_fooof};
+        condPows_bl = {pow2_fooof_bl, pow4_fooof_bl, pow6_fooof_bl};
+        condPows_bl_early = {pow2_fooof_bl_early, pow4_fooof_bl_early, pow6_fooof_bl_early};
+        condPows_bl_late = {pow2_fooof_bl_late, pow4_fooof_bl_late, pow6_fooof_bl_late};
+        nIAF_fallback = 0;
+        for c = 1:3
+            IAF_now = get_iaf_from_table(iaf_table, subID, condVals(c));
+            band = [IAF_now - 4, IAF_now + 2];
+            if ~isfinite(IAF_now) || any(~isfinite(band)) || band(1) >= band(2)
+                band = [8 14];
+                nIAF_fallback = nIAF_fallback + 1;
+            end
+            AlphaPower_FOOOF(c) = robust_roi_pow(condPows{c}, occ_idx, band);
+            AlphaPower_FOOOF_bl(c) = robust_roi_pow(condPows_bl{c}, occ_idx, band);
+            AlphaPower_FOOOF_bl_early(c) = robust_roi_pow(condPows_bl_early{c}, occ_idx, band);
+            AlphaPower_FOOOF_bl_late(c) = robust_roi_pow(condPows_bl_late{c}, occ_idx, band);
+        end
+        if nIAF_fallback > 0
+            fprintf('Subject %s: IAF fallback [8 14] used in %d/3 conditions.\n', subjects{subj}, nIAF_fallback);
+        end
+        subj_data_fooof = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell(condVals), ...
+            'AlphaPower_FOOOF', num2cell(AlphaPower_FOOOF), ...
+            'AlphaPower_FOOOF_bl', num2cell(AlphaPower_FOOOF_bl), ...
+            'AlphaPower_FOOOF_bl_early', num2cell(AlphaPower_FOOOF_bl_early), ...
+            'AlphaPower_FOOOF_bl_late', num2cell(AlphaPower_FOOOF_bl_late));
+        save eeg_matrix_sternberg_FOOOF_subj subj_data_fooof
+        eeg_data_sternberg_FOOOF = [eeg_data_sternberg_FOOOF; subj_data_fooof];
+
+        %% Additional sanity check: WM-load differences (subject-level alpha, FOOOF-bl)
+        % Uses split-style cloud + box + jitter aesthetics.
+        occ_channels = occ_channels_from_labels(pow2_fooof_bl.label);
+        alphaRange = [8 14];
+        a2 = extract_subject_alpha_samples(pow2_fooof_bl, occ_channels, alphaRange);
+        a4 = extract_subject_alpha_samples(pow4_fooof_bl, occ_channels, alphaRange);
+        a6 = extract_subject_alpha_samples(pow6_fooof_bl, occ_channels, alphaRange);
+
+        figure('Position', [0 0 1512 982]);
+        hold on
+        cols = [0.60 0.78 0.88; 0.63 0.82 0.61; 0.93 0.70 0.78];
+        draw_one_cloud_sanity(a2, 1, cols(1, :), 0.30, 120, 0.75);
+        draw_one_cloud_sanity(a4, 2, cols(2, :), 0.30, 120, 0.75);
+        draw_one_cloud_sanity(a6, 3, cols(3, :), 0.30, 120, 0.75);
+        yline(0, '--', 'Color', [0.6 0.6 0.6]);
+        set(gca, 'XTick', 1:3, 'XTickLabel', {'WM load 2', 'WM load 4', 'WM load 6'}, 'FontSize', 20);
+        ylabel('AlphaPower\_FOOOF\_bl');
+        title(sprintf('Sanity check WM-load differences: Subject %s', subjects{subj}), 'Interpreter', 'none');
+        box off
+
+        saveName = sprintf('AOC_controls_FOOOF_stern_subj%s_alphaLoadSanity.png', subjects{subj});
+        saveas(gcf, fullfile(savePathControls, saveName));
+        close(gcf);
+
         clc
         fprintf('Subject AOC %s (%.3d/%.3d) DONE (sliding-window FOOOF: model - aperiodic) \n', ...
             num2str(subjects{subj}), subj, length(subjects))
@@ -409,4 +488,94 @@ for subj = 1:length(subjects)
         log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
         fprintf('Continuing to next subject...\n');
     end
+end
+
+if ispc == 1
+    save W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_sternberg_FOOOF eeg_data_sternberg_FOOOF
+    writetable(struct2table(eeg_data_sternberg_FOOOF), 'W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_sternberg_FOOOF.csv')
+else
+    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg_FOOOF eeg_data_sternberg_FOOOF
+    writetable(struct2table(eeg_data_sternberg_FOOOF), '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg_FOOOF.csv')
+end
+
+function ch = occ_channels_from_labels(labels)
+ch = {};
+for i = 1:numel(labels)
+    lab = labels{i};
+    if contains(lab, {'O'}) || contains(lab, {'I'}) || contains(lab, {'PO'})
+        ch{end+1} = lab; %#ok<AGROW>
+    end
+end
+if isempty(ch)
+    ch = labels;
+end
+end
+
+function alpha_vals = extract_subject_alpha_samples(S, channels, band)
+ch_idx = find(ismember(S.label, channels));
+f_idx = S.freq >= band(1) & S.freq <= band(2);
+if isempty(ch_idx) || ~any(f_idx)
+    alpha_vals = NaN;
+    return
+end
+X = S.powspctrm(ch_idx, f_idx);
+alpha_vals = X(:);
+alpha_vals = alpha_vals(isfinite(alpha_vals));
+if isempty(alpha_vals), alpha_vals = NaN; end
+end
+
+function draw_one_cloud_sanity(yvals, xpos, col, box_w, dot_size, dot_alpha)
+y = yvals(isfinite(yvals));
+if isempty(y)
+    return
+end
+
+function iaf_val = get_iaf_from_table(T, id_val, cond_val)
+row = T.ID == id_val & T.Condition == cond_val;
+if ~any(row) || ~ismember('IAF', T.Properties.VariableNames)
+    iaf_val = NaN;
+    return
+end
+vals = T.IAF(row);
+iaf_val = vals(1);
+end
+
+function v = robust_roi_pow(S, channelIdx, band)
+fmask = S.freq >= band(1) & S.freq <= band(2);
+if ~any(fmask)
+    v = NaN;
+    return
+end
+x = S.powspctrm(channelIdx, fmask);
+x = x(:);
+x = x(isfinite(x));
+if isempty(x)
+    v = NaN;
+else
+    v = mean(x, 'omitnan');
+end
+end
+[f, xi] = ksdensity(y, 'NumPoints', 120);
+if max(f) > 0
+    f = f / max(f) * 0.30;
+else
+    f = zeros(size(f));
+end
+x_den = xpos - 0.08;
+x_box = xpos + 0.03;
+fill([x_den - f, fliplr(repmat(x_den, 1, numel(f)))], [xi, fliplr(xi)], col, ...
+    'FaceAlpha', 0.30, 'EdgeColor', col, 'LineWidth', 1);
+q1 = prctile(y, 25);
+q3 = prctile(y, 75);
+med = median(y);
+p5 = prctile(y, 5);
+p95 = prctile(y, 95);
+plot([x_box x_box], [p5 q1], '-k', 'LineWidth', 1.2);
+plot([x_box x_box], [q3 p95], '-k', 'LineWidth', 1.2);
+rectangle('Position', [x_box-box_w/2, q1, box_w, q3-q1], ...
+    'FaceColor', [col 0.08], 'EdgeColor', 'k', 'LineWidth', 1.2);
+plot(x_box + [-box_w/2 box_w/2], [med med], '-k', 'LineWidth', 2);
+jit = box_w * (rand(numel(y), 1) - 0.5);
+scatter(x_box + jit, y, dot_size, col, 'filled', ...
+    'MarkerFaceAlpha', dot_alpha, 'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
 end

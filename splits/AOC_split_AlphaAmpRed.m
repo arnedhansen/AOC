@@ -1,13 +1,16 @@
 %% AOC Split Alpha Amp/Red (Subject-Level) — Sternberg + N-back
 % Subject-level split (fixed across conditions) using merged_data_<task>:
-%   mean AlphaPower_FOOOF_bl across WM2/4/6 (baselined, FOOOFed alpha)
+%   mean AlphaPower_FOOOF_bl across load levels (baselined, FOOOFed alpha)
 %   < -cutoff  -> reduction group
 %   > cutoff   -> amplification group
 %   |alpha| <= cutoff -> excluded (percentage-based band around zero)
 %
 % Cutoff = alpha_zero_pct of the alpha_ref_percentile of |alpha| (default: 5% of 95th percentile).
 %
-% Uses baselined+FOOOFed alpha (power spectra, TFR, topoplots) and gaze deviation.
+% Uses split-pipeline FOOOF sources:
+%   Sternberg: power_stern_fooof_TFR.mat
+%   N-back:    power_nback_fooof.mat
+% plus merged gaze/behavioral metrics.
 %
 % Outliers excluded via Tukey 1.5*IQR (per metric per condition) before visualization/analyses.
 %
@@ -51,12 +54,12 @@ tasks(1).merged_var = 'merged_data_sternberg';
 tasks(1).cond_vals = [2 4 6];
 tasks(1).cond_codes = [22 24 26];
 tasks(1).cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
-tasks(1).power_fname = 'power_stern_fooof_windows.mat';
+tasks(1).power_fname = 'power_stern_fooof_TFR.mat';
 tasks(1).pow_vars = {'pow2_fooof_bl', 'pow4_fooof_bl', 'pow6_fooof_bl'};
 tasks(1).tfr_fname = 'tfr_stern.mat';
 tasks(1).tfr_vars = {'tfr2_fooof_bl', 'tfr4_fooof_bl', 'tfr6_fooof_bl'};
 tasks(1).gaze_fname = 'gaze_series_sternberg_trials.mat';
-tasks(1).power_missing_label = 'power_stern_fooof_windows.mat';
+tasks(1).power_missing_label = 'power_stern_fooof_TFR.mat';
 
 tasks(2).tag = 'nback';
 tasks(2).merged_file = 'AOC_merged_data_nback.mat';

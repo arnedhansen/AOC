@@ -1,18 +1,17 @@
 %% AOC EEG Feature Extraction — Sternberg
-% Computes subject-level power spectra in early/late/full windows (raw + baselined),
-% IAF, lateralization, and FOOOF-based alpha (raw + baselined) from preprocessed
-% Sternberg EEG. Saves per-subject and grand results.
+% Computes subject-level NON-FOOOF EEG features from preprocessed Sternberg EEG.
+% This script is the non-FOOOF branch in the split pipeline and saves
+% `eeg_data_sternberg` (MAT + CSV). FOOOF features are produced in
+% AOC_eeg_fex_sternberg_TFR.m.
 %
 % Extracted features:
 %   Power Spectrum (Early [0 1], Late [1 2], Full [0 2]) + Baseline [-0.5 -0.25]
 %   Baselined spectra (dB) for each window
-%   IAF (subject-level, pooled across conditions, full window)
+%   IAF (condition-wise from full window)
 %   Alpha power in IAF band (early/late/full; raw + dB)
 %   Lateralization index (late baselined)
-%   FOOOF-based spectra (model fit - aperiodic) for each window + baselined (absolute, log space)
-%   FOOOF alpha power (8-14 Hz) full + baselined (full/early/late)
 
-%% POWSPCTRM (Baseline + Early/Late/Full) + FOOOF window spectra
+%% POWSPCTRM (Baseline + Early/Late/Full)
 % Setup
 startup
 [subjects, paths, ~ , ~] = setup('AOC');
@@ -29,7 +28,7 @@ scriptName = 'AOC_eeg_fex_sternberg';
 for subj = 1:length(subjects)
     try
         clc
-        disp(['Processing windowed POWSPCTRM + FOOOF (subject-level) for Subject AOC ', num2str(subjects{subj})])
+        disp(['Processing windowed POWSPCTRM (subject-level) for Subject AOC ', num2str(subjects{subj})])
         % Load data
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath)
@@ -105,90 +104,6 @@ for subj = 1:length(subjects)
             'pow2_late_bl','pow4_late_bl','pow6_late_bl', ...
             'pow2_full_bl','pow4_full_bl','pow6_full_bl')
 
-        % ----------------------
-        % FOOOF spectra per window (subject-level, no sliding)
-        % Output convention: pow*_fooof = (model fit - aperiodic) in log space
-        % Baselining: absolute difference (window - baseline) in log space
-        %
-        % NOTE:
-        % This path uses one FFT per broad latency window and is more sensitive
-        % to occasional catastrophic fits than the sliding-window TFR pipeline.
-        % Hard guards are applied below before saving.
-        % ----------------------
-        cfg_fooof            = [];
-        cfg_fooof.method     = 'mtmfft';
-        cfg_fooof.taper      = 'hanning';
-        cfg_fooof.foilim     = freq_range;
-        cfg_fooof.pad        = 5;
-        cfg_fooof.output     = 'fooof';
-        cfg_fooof.keeptrials = 'no';
-
-        % Baseline window per condition (for baselining in log space)
-        dat2_base = ft_selectdata(struct('latency', t_base, 'trials', ind2), dataTFR);
-        dat4_base = ft_selectdata(struct('latency', t_base, 'trials', ind4), dataTFR);
-        dat6_base = ft_selectdata(struct('latency', t_base, 'trials', ind6), dataTFR);
-
-        fooof2_base = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat2_base);
-        fooof4_base = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat4_base);
-        fooof6_base = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat6_base);
-
-        % Full window (0-2) non-baselined
-        dat2_full = ft_selectdata(struct('latency', t_full, 'trials', ind2), dataTFR);
-        dat4_full = ft_selectdata(struct('latency', t_full, 'trials', ind4), dataTFR);
-        dat6_full = ft_selectdata(struct('latency', t_full, 'trials', ind6), dataTFR);
-        pow2_fooof = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat2_full);
-        pow4_fooof = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat4_full);
-        pow6_fooof = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat6_full);
-
-        % Baselined full/early/late (absolute in log space)
-        pow2_fooof_bl = pow2_fooof; pow2_fooof_bl.powspctrm = pow2_fooof.powspctrm - fooof2_base.powspctrm;
-        pow4_fooof_bl = pow4_fooof; pow4_fooof_bl.powspctrm = pow4_fooof.powspctrm - fooof4_base.powspctrm;
-        pow6_fooof_bl = pow6_fooof; pow6_fooof_bl.powspctrm = pow6_fooof.powspctrm - fooof6_base.powspctrm;
-
-        dat2_early = ft_selectdata(struct('latency', t_early, 'trials', ind2), dataTFR);
-        dat4_early = ft_selectdata(struct('latency', t_early, 'trials', ind4), dataTFR);
-        dat6_early = ft_selectdata(struct('latency', t_early, 'trials', ind6), dataTFR);
-        fooof2_early = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat2_early);
-        fooof4_early = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat4_early);
-        fooof6_early = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat6_early);
-        pow2_fooof_bl_early = fooof2_early; pow2_fooof_bl_early.powspctrm = fooof2_early.powspctrm - fooof2_base.powspctrm;
-        pow4_fooof_bl_early = fooof4_early; pow4_fooof_bl_early.powspctrm = fooof4_early.powspctrm - fooof4_base.powspctrm;
-        pow6_fooof_bl_early = fooof6_early; pow6_fooof_bl_early.powspctrm = fooof6_early.powspctrm - fooof6_base.powspctrm;
-
-        dat2_late = ft_selectdata(struct('latency', t_late, 'trials', ind2), dataTFR);
-        dat4_late = ft_selectdata(struct('latency', t_late, 'trials', ind4), dataTFR);
-        dat6_late = ft_selectdata(struct('latency', t_late, 'trials', ind6), dataTFR);
-        fooof2_late = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat2_late);
-        fooof4_late = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat4_late);
-        fooof6_late = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat6_late);
-        pow2_fooof_bl_late = fooof2_late; pow2_fooof_bl_late.powspctrm = fooof2_late.powspctrm - fooof2_base.powspctrm;
-        pow4_fooof_bl_late = fooof4_late; pow4_fooof_bl_late.powspctrm = fooof4_late.powspctrm - fooof4_base.powspctrm;
-        pow6_fooof_bl_late = fooof6_late; pow6_fooof_bl_late.powspctrm = fooof6_late.powspctrm - fooof6_base.powspctrm;
-
-        % Hard guards against catastrophic numeric explosions in FOOOF output.
-        cfg_guard = struct('r2_min', 0.90, 'hard_abs', 1e4, 'winsor_prc', [1 99]);
-        fooof2_base = sanitize_fooof_struct(fooof2_base, cfg_guard);
-        fooof4_base = sanitize_fooof_struct(fooof4_base, cfg_guard);
-        fooof6_base = sanitize_fooof_struct(fooof6_base, cfg_guard);
-        pow2_fooof = sanitize_fooof_struct(pow2_fooof, cfg_guard);
-        pow4_fooof = sanitize_fooof_struct(pow4_fooof, cfg_guard);
-        pow6_fooof = sanitize_fooof_struct(pow6_fooof, cfg_guard);
-        pow2_fooof_bl = sanitize_fooof_struct(pow2_fooof_bl, cfg_guard);
-        pow4_fooof_bl = sanitize_fooof_struct(pow4_fooof_bl, cfg_guard);
-        pow6_fooof_bl = sanitize_fooof_struct(pow6_fooof_bl, cfg_guard);
-        pow2_fooof_bl_early = sanitize_fooof_struct(pow2_fooof_bl_early, cfg_guard);
-        pow4_fooof_bl_early = sanitize_fooof_struct(pow4_fooof_bl_early, cfg_guard);
-        pow6_fooof_bl_early = sanitize_fooof_struct(pow6_fooof_bl_early, cfg_guard);
-        pow2_fooof_bl_late = sanitize_fooof_struct(pow2_fooof_bl_late, cfg_guard);
-        pow4_fooof_bl_late = sanitize_fooof_struct(pow4_fooof_bl_late, cfg_guard);
-        pow6_fooof_bl_late = sanitize_fooof_struct(pow6_fooof_bl_late, cfg_guard);
-
-        save('power_stern_fooof_windows.mat', ...
-            'pow2_fooof','pow4_fooof','pow6_fooof', ...
-            'pow2_fooof_bl','pow4_fooof_bl','pow6_fooof_bl', ...
-            'pow2_fooof_bl_early','pow4_fooof_bl_early','pow6_fooof_bl_early', ...
-            'pow2_fooof_bl_late','pow4_fooof_bl_late','pow6_fooof_bl_late')
-
     catch ME
         log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
         fprintf('Continuing to next subject...\n');
@@ -244,8 +159,7 @@ powerIAF6 = [];
 IAF_results = struct();
 eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {}, 'Lateralization', {}, ...
     'AlphaPowerEarly', {}, 'AlphaPowerLate', {}, 'AlphaPowerFull', {}, ...
-    'AlphaPowerEarlyBL', {}, 'AlphaPowerLateBL', {}, 'AlphaPowerFullBL', {}, ...
-    'AlphaPower_FOOOF', {}, 'AlphaPower_FOOOF_bl', {}, 'AlphaPower_FOOOF_bl_early', {}, 'AlphaPower_FOOOF_bl_late', {});
+    'AlphaPowerEarlyBL', {}, 'AlphaPowerLateBL', {}, 'AlphaPowerFullBL', {});
 
 for subj = 1:length(subjects)
     try
@@ -254,7 +168,6 @@ for subj = 1:length(subjects)
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath);
         load('power_stern_windows.mat');
-        load('power_stern_fooof_windows.mat');
 
         % Channel selection
         channelIdx = find(ismember(pow2_full.label, channels));
@@ -365,11 +278,6 @@ for subj = 1:length(subjects)
         AlphaPowerEarlyBL  = [robust_roi_pow(pow2_early_bl, channelIdx, IAF_band2); robust_roi_pow(pow4_early_bl, channelIdx, IAF_band4); robust_roi_pow(pow6_early_bl, channelIdx, IAF_band6)];
         AlphaPowerLateBL   = [robust_roi_pow(pow2_late_bl,  channelIdx, IAF_band2); robust_roi_pow(pow4_late_bl,  channelIdx, IAF_band4); robust_roi_pow(pow6_late_bl,  channelIdx, IAF_band6)];
         AlphaPowerFullBL   = [robust_roi_pow(pow2_full_bl,  channelIdx, IAF_band2); robust_roi_pow(pow4_full_bl,  channelIdx, IAF_band4); robust_roi_pow(pow6_full_bl,  channelIdx, IAF_band6)];
-        AlphaPower_FOOOF         = [robust_roi_pow(pow2_fooof,          channelIdx, alphaRange); robust_roi_pow(pow4_fooof,          channelIdx, alphaRange); robust_roi_pow(pow6_fooof,          channelIdx, alphaRange)];
-        AlphaPower_FOOOF_bl      = [robust_roi_pow(pow2_fooof_bl,       channelIdx, alphaRange); robust_roi_pow(pow4_fooof_bl,       channelIdx, alphaRange); robust_roi_pow(pow6_fooof_bl,       channelIdx, alphaRange)];
-        AlphaPower_FOOOF_bl_early= [robust_roi_pow(pow2_fooof_bl_early, channelIdx, alphaRange); robust_roi_pow(pow4_fooof_bl_early, channelIdx, alphaRange); robust_roi_pow(pow6_fooof_bl_early, channelIdx, alphaRange)];
-        AlphaPower_FOOOF_bl_late = [robust_roi_pow(pow2_fooof_bl_late,  channelIdx, alphaRange); robust_roi_pow(pow4_fooof_bl_late,  channelIdx, alphaRange); robust_roi_pow(pow6_fooof_bl_late,  channelIdx, alphaRange)];
-
         % Keep legacy AlphaPower as LATE raw (registered retention)
         AlphaPower = AlphaPowerLate;
 
@@ -386,11 +294,6 @@ for subj = 1:length(subjects)
         tmp = num2cell(AlphaPowerEarlyBL); [subj_data_eeg.AlphaPowerEarlyBL] = tmp{:};
         tmp = num2cell(AlphaPowerLateBL);  [subj_data_eeg.AlphaPowerLateBL]  = tmp{:};
         tmp = num2cell(AlphaPowerFullBL);  [subj_data_eeg.AlphaPowerFullBL]  = tmp{:};
-        tmp = num2cell(AlphaPower_FOOOF);          [subj_data_eeg.AlphaPower_FOOOF]          = tmp{:};
-        tmp = num2cell(AlphaPower_FOOOF_bl);       [subj_data_eeg.AlphaPower_FOOOF_bl]       = tmp{:};
-        tmp = num2cell(AlphaPower_FOOOF_bl_early); [subj_data_eeg.AlphaPower_FOOOF_bl_early] = tmp{:};
-        tmp = num2cell(AlphaPower_FOOOF_bl_late);  [subj_data_eeg.AlphaPower_FOOOF_bl_late]  = tmp{:};
-
         % Save
         if ispc == 1
             savepath = fullfile('W:\Students\Arne\AOC\data\features\', subjects{subj}, 'eeg');
@@ -415,8 +318,10 @@ for subj = 1:length(subjects)
 end
 if ispc == 1
     save W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_sternberg eeg_data_sternberg
+    writetable(struct2table(eeg_data_sternberg), 'W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_sternberg.csv')
 else
     save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg eeg_data_sternberg
+    writetable(struct2table(eeg_data_sternberg), '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg.csv')
 end
 
 function v = robust_roi_pow(S, channelIdx, band)
@@ -426,37 +331,6 @@ if ~any(fmask)
     return
 end
 
-function S = sanitize_fooof_struct(S, cfg)
-if ~isfield(S, 'powspctrm') || isempty(S.powspctrm)
-    return
-end
-
-X = S.powspctrm;
-X(~isfinite(X)) = NaN;
-
-if isfield(S, 'fooofparams') && ~isempty(S.fooofparams)
-    fp = S.fooofparams;
-    if iscell(fp), fp = fp{1}; end
-    if isstruct(fp) && isfield(fp, 'r_squared')
-        rsq = [fp.r_squared]';
-        bad = ~isfinite(rsq) | rsq < cfg.r2_min;
-        if isvector(bad) && numel(bad) == size(X, 1)
-            X(bad, :) = NaN;
-        end
-    end
-end
-
-X(abs(X) > cfg.hard_abs) = NaN;
-
-vals = X(isfinite(X));
-if numel(vals) >= 20
-    lo = prctile(vals, cfg.winsor_prc(1));
-    hi = prctile(vals, cfg.winsor_prc(2));
-    X = min(max(X, lo), hi);
-end
-
-S.powspctrm = X;
-end
 x = S.powspctrm(channelIdx, fmask);
 x = x(:);
 x = x(isfinite(x));

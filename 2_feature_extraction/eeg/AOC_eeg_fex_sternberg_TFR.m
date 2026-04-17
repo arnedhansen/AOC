@@ -524,12 +524,6 @@ alpha_vals = alpha_vals(isfinite(alpha_vals));
 if isempty(alpha_vals), alpha_vals = NaN; end
 end
 
-function draw_one_cloud_sanity(yvals, xpos, col, box_w, dot_size, dot_alpha)
-y = yvals(isfinite(yvals));
-if isempty(y)
-    return
-end
-
 function iaf_val = get_iaf_from_table(T, id_val, cond_val)
 row = T.ID == id_val & T.Condition == cond_val;
 if ~any(row) || ~ismember('IAF', T.Properties.VariableNames)
@@ -554,6 +548,12 @@ if isempty(x)
 else
     v = mean(x, 'omitnan');
 end
+end
+
+function draw_one_cloud_sanity(yvals, xpos, col, box_w, dot_size, dot_alpha)
+y = yvals(isfinite(yvals));
+if isempty(y)
+    return
 end
 [f, xi] = ksdensity(y, 'NumPoints', 120);
 if max(f) > 0

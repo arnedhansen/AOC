@@ -73,15 +73,27 @@ eeg_table   = struct2table(eeg_data_sternberg);
 eeg_fooof_table = struct2table(eeg_data_sternberg_FOOOF);
 
 assert_unique_keys(eeg_table, {'ID', 'Condition'}, 'eeg_data_sternberg');
-assert_unique_keys(eeg_fooof_table, {'ID', 'Condition'}, 'eeg_data_sternberg_FOOOF');
+if height(eeg_fooof_table) > 0
+    assert_unique_keys(eeg_fooof_table, {'ID', 'Condition'}, 'eeg_data_sternberg_FOOOF');
+end
 
 % Merge by ID and Condition; keep all existing columns from input matrices.
 merged_table = outerjoin(behav_table, gaze_table, ...
     'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
 merged_table = outerjoin(merged_table, eeg_table, ...
     'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
-merged_table = outerjoin(merged_table, eeg_fooof_table, ...
-    'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
+if height(eeg_fooof_table) > 0
+    merged_table = outerjoin(merged_table, eeg_fooof_table, ...
+        'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
+else
+    warning('AOC_master_matrix_sternberg:EmptyFOOOF', ...
+        ['eeg_data_sternberg_FOOOF is empty; FOOOF columns are set to NaN. ', ...
+        'Re-run AOC_eeg_fex_sternberg_TFR.m after non-FOOOF EEG (IAF CSV).']);
+    merged_table.AlphaPower_FOOOF = nan(height(merged_table), 1);
+    merged_table.AlphaPower_FOOOF_bl = nan(height(merged_table), 1);
+    merged_table.AlphaPower_FOOOF_bl_early = nan(height(merged_table), 1);
+    merged_table.AlphaPower_FOOOF_bl_late = nan(height(merged_table), 1);
+end
 merged_data_sternberg = table2struct(merged_table);
 
 %% Save as .mat

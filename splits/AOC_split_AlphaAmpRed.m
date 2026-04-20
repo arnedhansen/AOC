@@ -1,4 +1,4 @@
-%% AOC Split Alpha Amp/Red (Subject-Level) — Sternberg + N-back
+%% AOC Split Alpha Amp/Red (Subject-Level) — Sternberg
 % Subject-level split (fixed across conditions) using merged_data_<task>:
 %   mean AlphaPower_FOOOF_bl across load levels (baselined, FOOOFed alpha)
 %   < -cutoff  -> reduction group
@@ -9,7 +9,6 @@
 %
 % Uses split-pipeline FOOOF sources:
 %   Sternberg: power_stern_fooof_TFR.mat
-%   N-back:    power_nback_fooof.mat
 % plus merged gaze/behavioral metrics.
 %
 % Outliers excluded via Tukey 1.5*IQR (per metric per condition) before visualization/analyses.
@@ -41,13 +40,13 @@ fig_dir = fullfile(base_data, 'figures', 'splits', 'SplitAlphaAmpRed');
 if ~isfolder(fig_dir)
     mkdir(fig_dir);
 end
-fprintf('\n=== AOC Split Alpha Amp/Red (Sternberg + N-back) ===\n');
+fprintf('\n=== AOC Split Alpha Amp/Red (Sternberg) ===\n');
 fprintf('Figure directory: %s\n', fig_dir);
 
 % Keep canonical figure size requested.
 fig_pos = [0 0 1512 982];
 
-% Task definitions (Sternberg + N-back)
+% Task definition (Sternberg)
 tasks(1).tag = 'sternberg';
 tasks(1).merged_file = 'AOC_merged_data_sternberg.mat';
 tasks(1).merged_var = 'merged_data_sternberg';
@@ -60,19 +59,6 @@ tasks(1).tfr_fname = 'tfr_stern.mat';
 tasks(1).tfr_vars = {'tfr2_fooof_bl', 'tfr4_fooof_bl', 'tfr6_fooof_bl'};
 tasks(1).gaze_fname = 'gaze_series_sternberg_trials.mat';
 tasks(1).power_missing_label = 'power_stern_fooof_TFR.mat';
-
-tasks(2).tag = 'nback';
-tasks(2).merged_file = 'AOC_merged_data_nback.mat';
-tasks(2).merged_var = 'merged_data_nback';
-tasks(2).cond_vals = [1 2 3];
-tasks(2).cond_codes = [21 22 23];
-tasks(2).cond_labels = {'1-back', '2-back', '3-back'};
-tasks(2).power_fname = 'power_nback_fooof.mat';
-tasks(2).pow_vars = {'pow1_fooof_bl', 'pow2_fooof_bl', 'pow3_fooof_bl'};
-tasks(2).tfr_fname = 'tfr_nback.mat';
-tasks(2).tfr_vars = {'tfr1_fooof_bl', 'tfr2_fooof_bl', 'tfr3_fooof_bl'};
-tasks(2).gaze_fname = 'gaze_series_nback_trials.mat';
-tasks(2).power_missing_label = 'power_nback_fooof.mat';
 
 fontSize = 20;
 alpha_zero_pct = 5; % Exclude near-zero alpha within this % of robust |alpha| reference
@@ -87,9 +73,6 @@ task_tag = tk.tag;
 cond_vals = tk.cond_vals;
 cond_codes = tk.cond_codes;
 cond_labels = tk.cond_labels;
-if strcmp(task_tag, 'nback')
-    cond_labels = {'1-back', '2-back', '3-back'};
-end
 fig_prefix = sprintf('AOC_splitAlphaAmpRed_%s', task_tag);
 
 fprintf('\n\n========== TASK: %s ==========\n', upper(task_tag));
@@ -445,9 +428,6 @@ fprintf('Missing gaze files/fields: %d\n', numel(unique(missing_gaze)));
 fprintf('Figures saved to: %s\n', fig_dir);
 
 load_axis_label = 'WM load';
-if strcmp(task_tag, 'nback')
-    load_axis_label = 'N-back load';
-end
 
 %% Group comparison: Reduction vs Amplification (gaze deviation)
 fprintf('\n=== Parametric group comparison (reduction > amp) ===\n');
@@ -1966,6 +1946,7 @@ catch
     lme = fitlme(tbl_in, formula_ri);
     used_formula = formula_ri;
 end
+end
 
 function S = sanitize_pow_struct(S, cfg)
 if ~isfield(S, 'powspctrm') || isempty(S.powspctrm)
@@ -1981,5 +1962,4 @@ if numel(vals) >= 20
     X = min(max(X, lo), hi);
 end
 S.powspctrm = X;
-end
 end

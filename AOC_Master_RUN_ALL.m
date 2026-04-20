@@ -1,96 +1,66 @@
-%% AOC — master runner (startup-safe, subject-level only)
+%% AOC Master Analysis
 %
-% This orchestration runs the MATLAB AOC pipeline in dependency order. Running
-% it through the feature-extraction and master-matrix stages creates the CSV
-% files required as inputs for the statistical analyses implemented in the
-% Python scripts in this repository (alongside corresponding MAT outputs on the
-% data share).
+% Runs the AOC pipeline. Running preprocessing, feature extraction and
+% creation of CSVs for stats. Change the paths to your file locations first.
 %
-% IMPORTANT: Scripts call `startup` and/or `clear`, which wipe the workspace.
-%
+% IMPORTANT: Scripts call startup/clear, which wipe the workspace.
 
 startup
+disp(datestr(now))
 
 % ----------------------------------------------------------------------------
-% Manual prerequisite (not executed here): in 1_preprocessing, run in order
+% For raw data, DO THIS FIRST: in 1_preprocessing, run in order
 %   (1) scripts in 1_cut to cut the raw data,
-%   (2) Automagic,
-%   (3) scripts in 3_merge to build merged blocks,
-%   then the AOC_preprocessing_* scripts below (4_preprocessing) apply.
+%   (2) Automagic (refer to paper for settings),
+%   (3) scripts in 3_merge to get merged blocks data
 % ----------------------------------------------------------------------------
 
-disp('=== AOC Master RUN ALL (subject-level) start ===')
-disp(datestr(now, 31))
-
-%% 1_preprocessing/4_preprocessing — FieldTrip (merged blocks → epoched EEG)
-disp('[RUN: AOC_preprocessing_sternberg.m]')
+%% 1_preprocessing/4_preprocessing FieldTrip
 run('C:\Users\Administrator\Documents\GitHub\AOC\1_preprocessing\4_preprocessing\AOC_preprocessing_sternberg.m');
-
-disp('[RUN: AOC_preprocessing_nback.m]')
 run('C:\Users\Administrator\Documents\GitHub\AOC\1_preprocessing\4_preprocessing\AOC_preprocessing_nback.m');
 
-%% 2 — Subject-level feature extraction
-disp('[RUN: AOC_demographics.m]')
+%% 2 Subject-level feature extraction
+% Demographics
 run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\AOC_demographics.m');
 
-disp('[RUN: AOC_behavioral_fex_sternberg.m]')
+% Behavioral
 run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\behavioral\AOC_behavioral_fex_sternberg.m');
-
-disp('[RUN: AOC_behavioral_fex_nback.m]')
 run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\behavioral\AOC_behavioral_fex_nback.m');
 
-disp('[RUN: AOC_gaze_fex_sternberg.m]')
+% Gaze
 run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\gaze\AOC_gaze_fex_sternberg.m');
-
-disp('[RUN: AOC_gaze_fex_nback.m]')
 run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\gaze\AOC_gaze_fex_nback.m');
 
-disp('[RUN: AOC_eeg_fex_sternberg.m]')
+% EEG
 run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_sternberg.m');
-
-disp('[RUN: AOC_eeg_fex_nback.m]')
 run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_nback.m');
-
-disp('[RUN: AOC_eeg_fex_sternberg_TFR.m]')
 run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_sternberg_TFR.m');
-
-disp('[RUN: AOC_eeg_fex_nback_TFR.m]')
 run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_nback_TFR.m');
 
-disp('[RUN: AOC_master_matrix_sternberg.m]')
+% Master Matrices (CSVs)
 run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\AOC_master_matrix_sternberg.m');
-
-disp('[RUN: AOC_master_matrix_nback.m]')
 run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\AOC_master_matrix_nback.m');
 
-%% 3 — Visualization (MATLAB figures)
-disp('[RUN: AOC_eeg_powspctrm_nback.m]')
+%% 3 Visualization
+% Powspctrm
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_nback.m');
-
-disp('[RUN: AOC_eeg_powspctrm_sternberg.m]')
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_sternberg.m');
 
-disp('[RUN: AOC_tfr_nback.m]')
+% TFR
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_nback.m');
-
-disp('[RUN: AOC_tfr_nback_fooof_abs.m]')
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_nback_fooof_abs.m');
-
-disp('[RUN: AOC_tfr_sternberg.m]')
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_sternberg.m');
-
-disp('[RUN: AOC_tfr_sternberg_fooof_abs.m]')
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_sternberg_fooof_abs.m');
 
-disp('[RUN: AOC_eeg_topos_nback.m]')
+% Topos
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\topos\AOC_eeg_topos_nback.m');
-
-disp('[RUN: AOC_eeg_topos_sternberg.m]')
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\topos\AOC_eeg_topos_sternberg.m');
 
-%% 4 — SPLITS
+%% 4 Split
+run('C:\Users\Administrator\Documents\GitHub\AOC\AOC_split_AlphaAmpRed.m');
 
+%% Stats
+% For the stats and raincloud plots, run the Python scripts.
 
 %%
-disp('=== AOC Master RUN ALL (subject-level) end ===')
-disp(datestr(now, 31))
+disp(datestr(now))

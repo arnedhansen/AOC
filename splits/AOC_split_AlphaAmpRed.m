@@ -410,11 +410,12 @@ dev_tc_pct(~isfinite(dev_tc_pct)) = NaN;
 % Plot time courses (always save both: gaze-only and combined EEG+gaze)
 close all
 fontSizeTC = 25;
-rng(321)
-plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, cond_labels, colors, ...
-    'Gaze Deviation [%]', sprintf('%s_gaze_deviation_pct', task_tag), fig_dir, fig_pos, fontSizeTC, fs, eeg_tc, false, 'Alpha Power [dB]');
-plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, cond_labels, colors, ...
-    'Gaze Deviation [%]', sprintf('%s_gaze_deviation_pct_COMBINED', task_tag), fig_dir, fig_pos, fontSizeTC, fs, eeg_tc, true, 'Alpha Power [dB]');
+rng(123)
+ds_factor = 50; % downsampling to 100ms windows
+plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, colors, ...
+    'Gaze Deviation [%]', sprintf('%s_gaze_deviation_pct', task_tag), fig_dir, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]');
+%plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, colors, ...
+%    'Gaze Deviation [%]', sprintf('%s_gaze_deviation_pct_COMBINED', task_tag), fig_dir, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, true, 'Alpha Power [dB]');
 
 %% Sanity checks
 fprintf('\n=== Data Diagnostics [%s] ===\n', task_tag);
@@ -422,9 +423,6 @@ fprintf('Missing EEG power (%s): %d\n', tk.power_missing_label, numel(unique(mis
 fprintf('Missing TFR files: %d\n', numel(unique(missing_tfr)));
 fprintf('Missing gaze files/fields: %d\n', numel(unique(missing_gaze)));
 fprintf('Figures saved to: %s\n', fig_dir);
-
-load_axis_label = 'WM load';
-
 %% Group comparison: Reduction vs Amplification (gaze deviation)
 fprintf('\n=== Parametric group comparison (reduction > amp) ===\n');
 metric_names = {'Dev'};
@@ -703,7 +701,7 @@ for oi = 1:numel(follow_names)
     end
     xlim([min(xloads)-0.5 max(xloads)+0.5]);
     set(gca, 'XTick', xloads, 'XTickLabel', cond_labels, 'FontSize', fontSize - 2);
-    xlabel(load_axis_label, 'Interpreter', 'none');
+    xlabel('WM load', 'Interpreter', 'none');
     ylabel(follow_ylab{oi}, 'Interpreter', 'none');
     title(follow_names{oi}, 'Interpreter', 'none');
     legend('Location', 'best', 'Box', 'off');
@@ -711,7 +709,7 @@ for oi = 1:numel(follow_names)
     box off
     hold off
 end
-sgtitle(sprintf('Alpha & gaze deviation (%%) by %s: Reduction vs Amplification', load_axis_label), ...
+sgtitle(sprintf('Alpha & gaze deviation (%%): Reduction vs Amplification'), ...
     'FontSize', fontSize + 2, 'Interpreter', 'none');
 fig_load = fullfile(fig_dir, sprintf('%s_load_profiles_Alpha_GazeDev_pct.png', fig_prefix));
 saveas(gcf, fig_load);
@@ -1385,7 +1383,8 @@ scatter(x_box + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, .
 end
 
 % Cluster-based permutation test
-function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, cond_labels, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, eeg_tc, addEEG_TC, eeg_ylab)
+function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, ds_factor, eeg_tc, addEEG_TC, eeg_ylab)
+if nargin < 11 || isempty(ds_factor), ds_factor = 50; end
 if nargin < 12, eeg_tc = []; end
 if nargin < 13, addEEG_TC = ~isempty(eeg_tc); end
 if nargin < 14, eeg_ylab = 'Alpha Power [dB]'; end
@@ -1455,7 +1454,6 @@ for t = 1:nT
     sp = sqrt(((numel(x)-1)*var(x) + (numel(y)-1)*var(y)) / max(numel(x)+numel(y)-2, 1));
     d(t) = (mean(y) - mean(x)) / max(sp, eps);
 end
-ds_factor = 10;
 Rall_ds = Rall(:, 1:ds_factor:end);
 Aall_ds = Aall(:, 1:ds_factor:end);
 nT_ds = size(Rall_ds, 2);

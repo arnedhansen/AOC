@@ -1506,40 +1506,32 @@ try
     fprintf('\n========== END SUBJECT-LEVEL ALPHA–GAZE COUPLING OUTPUT ==========\n\n');
 end
 
-% Inverse-direction model (requested): does alpha-slope value vary with load-by-gaze?
-% Note: AlphaSlope_c is subject-level and therefore constant across the 3 load rows.
-% This model is included for symmetry/reporting, but inference should prioritize
-% Dev ~ Load * AlphaSlope_c, where the outcome varies within subject.
-disp('--- LME (inverse): AlphaSlope_c ~ Load * Dev + (Load|Subject) ---')
+% Subject-level reverse-direction check (one row per subject):
+% alpha slope as a function of gaze-deviation slope.
+disp('--- Subject-level regression: AlphaSlope ~ GazeDevSlope ---')
 try
-    tbl_ag_inv = table(tbl_ag.Subject, tbl_ag.Load, tbl_ag.Dev, tbl_ag.AlphaSlope_c, ...
-        'VariableNames', {'Subject', 'Load', 'Dev', 'AlphaSlope_c'});
-    [lme_ag_inv, lme_ag_inv_formula] = fitlme_with_random_slope_fallback(tbl_ag_inv, 'AlphaSlope_c ~ Load * Dev');
-    fprintf('Fitted formula: %s\n', lme_ag_inv_formula);
-    fprintf('\nANOVA (marginal tests):\n');
-    disp(anova(lme_ag_inv))
-
-    fprintf('Fixed-effects coefficients:\n');
-    disp(lme_ag_inv.Coefficients)
-
-    coef_ag_inv = lme_ag_inv.Coefficients;
-    idx_int_inv = contains(coef_ag_inv.Name, ':') & (contains(coef_ag_inv.Name, 'Load') & contains(coef_ag_inv.Name, 'Dev'));
-    ix_int_inv = find(idx_int_inv, 1, 'first');
-    if ~isempty(ix_int_inv)
-        row = coef_ag_inv(ix_int_inv, :);
-        fprintf('Primary test (Load:Dev): estimate, SE, t, DF, p\n');
-        fprintf('  Estimate=%.6g, SE=%.6g, t=%.4g, DF=%.4g, p=%.6g\n', ...
-            row.Estimate(1), row.SE(1), row.tStat(1), row.DF(1), row.pValue(1));
+    idx_subreg = find(mask_couple);
+    tbl_subreg = table(idx_subreg(:), slope(mask_couple), gaze_dev_slope(mask_couple), ...
+        'VariableNames', {'Subject', 'AlphaSlope', 'GazeDevSlope'});
+    n_subreg = height(tbl_subreg);
+    fprintf('Rows (subjects with finite alpha and gaze slopes): %d\n', n_subreg);
+    if n_subreg >= 3
+        lm_subreg = fitlm(tbl_subreg, 'AlphaSlope ~ GazeDevSlope');
+        disp(lm_subreg)
+        coef_sr = lm_subreg.Coefficients;
+        ix_gaze = strcmp(coef_sr.Properties.RowNames, 'GazeDevSlope');
+        if any(ix_gaze)
+            row = coef_sr(ix_gaze, :);
+            fprintf('Primary test (GazeDevSlope): estimate, SE, t, p\n');
+            fprintf('  Estimate=%.6g, SE=%.6g, t=%.4g, p=%.6g\n', ...
+                row.Estimate(1), row.SE(1), row.tStat(1), row.pValue(1));
+        end
+        fprintf('Model R^2 (ordinary): %.6g\n', lm_subreg.Rsquared.Ordinary);
     else
-        fprintf('Note: Load:Dev interaction row not found in coefficient table (check names).\n');
+        fprintf('Skipped: need at least 3 subjects for stable regression.\n');
     end
-    try
-        fprintf('\n95%% CI for fixed effects (coefCI):\n');
-        disp(coefCI(lme_ag_inv));
-    catch %#ok<CTCH>
-    end
-catch ME_inv
-    fprintf('Inverse LME failed: %s\n', ME_inv.message);
+catch ME_subreg
+    fprintf('Subject-level regression failed: %s\n', ME_subreg.message);
 end
 
 %% LME (RT / ACC / gaze deviation; categorical load)

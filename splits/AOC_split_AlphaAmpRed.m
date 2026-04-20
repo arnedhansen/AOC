@@ -193,16 +193,16 @@ for c = 1:3
 end
 
 % Gaze summary metrics from merged subject table (pre-outlier exclusion)
-metrics_raw = struct();
-metrics_raw.Alpha = nan(nSubj, 3);
-metrics_raw.Dev = nan(nSubj, 3);          % GazeDeviationFullBL [% change]
+metrics = struct();
+metrics.Alpha = nan(nSubj, 3);
+metrics.Dev = nan(nSubj, 3);          % GazeDeviationFullBL [% change]
 
 % Time courses per subject x condition (full resolution, pre-outlier exclusion)
 fs = 500;
 t_full = -0.5:1/fs:3;
 t_plot = t_full(2:end);
 Tf = numel(t_plot);
-dev_tc_raw = nan(nSubj, 3, Tf);
+dev_tc = nan(nSubj, 3, Tf);
 
 missing_eeg = {};
 missing_tfr = {};
@@ -224,8 +224,8 @@ for s = 1:nSubj
     for c = 1:3
         cmask = subj_rows.Condition == cond_vals(c);
         if any(cmask)
-            metrics_raw.Alpha(s, c) = mean(subj_rows.AlphaPower_FOOOF_bl(cmask), 'omitnan');
-            metrics_raw.Dev(s, c) = mean(subj_rows.GazeDeviationFullBL(cmask), 'omitnan');
+            metrics.Alpha(s, c) = mean(subj_rows.AlphaPower_FOOOF_bl(cmask), 'omitnan');
+            metrics.Dev(s, c) = mean(subj_rows.GazeDeviationFullBL(cmask), 'omitnan');
         end
     end
 
@@ -236,13 +236,13 @@ for s = 1:nSubj
         pow_conds = {P.(tk.pow_vars{1}), P.(tk.pow_vars{2}), P.(tk.pow_vars{3})};
         for c = 1:3
             if ismember(sid, reduction_ids)
-                pow_red{c}{end+1} = pow_conds{c}; %#ok<AGROW>
+                pow_red{c}{end+1} = pow_conds{c};
             elseif ismember(sid, amplification_ids)
-                pow_amp{c}{end+1} = pow_conds{c}; %#ok<AGROW>
+                pow_amp{c}{end+1} = pow_conds{c};
             end
         end
     catch
-        missing_eeg{end+1} = sid_str; %#ok<AGROW>
+        missing_eeg{end+1} = sid_str;
     end
 
     % EEG TFR sources (store subject index for correct time-course extraction)
@@ -252,35 +252,35 @@ for s = 1:nSubj
         tfr_conds = {R.(tk.tfr_vars{1}), R.(tk.tfr_vars{2}), R.(tk.tfr_vars{3})};
         if ismember(sid, reduction_ids)
             for c = 1:3
-                tfr_red{c}{end+1} = tfr_conds{c}; %#ok<AGROW>
+                tfr_red{c}{end+1} = tfr_conds{c};
             end
-            tfr_red_subj(end+1) = s; %#ok<AGROW>
+            tfr_red_subj(end+1) = s;
         elseif ismember(sid, amplification_ids)
             for c = 1:3
-                tfr_amp{c}{end+1} = tfr_conds{c}; %#ok<AGROW>
+                tfr_amp{c}{end+1} = tfr_conds{c};
             end
-            tfr_amp_subj(end+1) = s; %#ok<AGROW>
+            tfr_amp_subj(end+1) = s;
         end
     catch
-        missing_tfr{end+1} = sid_str; %#ok<AGROW>
+        missing_tfr{end+1} = sid_str;
     end
 
     % Gaze series for deviation time courses
     gaze_file = fullfile(feat_dir, subj_folder, 'gaze', tk.gaze_fname);
     if ~isfile(gaze_file)
-        missing_gaze{end+1} = sid_str; %#ok<AGROW>
+        missing_gaze{end+1} = sid_str;
         continue
     end
 
     G = load(gaze_file);
     if ~isfield(G, 'trialinfo')
-        missing_gaze{end+1} = sid_str; %#ok<AGROW>
+        missing_gaze{end+1} = sid_str;
         continue
     end
 
     conds = parse_trialinfo_conds(G.trialinfo);
     if isempty(conds)
-        missing_gaze{end+1} = sid_str; %#ok<AGROW>
+        missing_gaze{end+1} = sid_str;
         continue
     end
 
@@ -332,7 +332,7 @@ for s = 1:nSubj
                 end
             end
 
-            dev_tc_raw(s, c, :) = nanmean(dev_mat, 1);
+            dev_tc(s, c, :) = nanmean(dev_mat, 1);
         end
     end
 end
@@ -340,10 +340,6 @@ end
 %% Define groups in row index space
 is_red = ismember(uIDs, reduction_ids);
 is_amp = ismember(uIDs, amplification_ids);
-
-%% Exclude outliers (Tukey 1.5*IQR) before visualization and analyses
-fprintf('\n=== Outlier exclusion (Tukey 1.5*IQR, per metric per condition) ===\n');
-[metrics, dev_tc] = exclude_outliers_tukey(metrics_raw, dev_tc_raw);
 
 %% Determine occipital channels (from first available power file)
 channels = {};
@@ -522,7 +518,7 @@ for m = 1:numel(metric_names)
             val = X_incl(s, c);
             if isfinite(val)
                 grp = 1 + is_amp(subj_idx(s));
-                rows(end+1, :) = [subj_idx(s), c, grp, val]; %#ok<AGROW>
+                rows(end+1, :) = [subj_idx(s), c, grp, val];
             end
         end
     end
@@ -644,7 +640,7 @@ for oi = 1:numel(follow_names)
             val = X(sid, c);
             if isfinite(val)
                 grp = 1 + is_amp(sid);
-                rows_lme(end+1, :) = [sid, cond_vals(c), grp, val]; %#ok<AGROW>
+                rows_lme(end+1, :) = [sid, cond_vals(c), grp, val];
             end
         end
     end
@@ -786,7 +782,7 @@ ch = {};
 for i = 1:numel(labels)
     lab = labels{i};
     if contains(lab, {'O'}) || contains(lab, {'I'}) || contains(lab, {'PO'})
-        ch{end+1} = lab; %#ok<AGROW>
+        ch{end+1} = lab;
     end
 end
 if isempty(ch)
@@ -843,7 +839,7 @@ for grp = 1:2
         end
         m = mean(subj_spec, 1, 'omitnan');
         se = std(subj_spec, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(subj_spec), 1)), 1);
-        all_m = [all_m; m]; all_se = [all_se; se]; %#ok<AGROW>
+        all_m = [all_m; m]; all_se = [all_se; se];
     end
 end
 % Absolute max centered around 0: ylim = [-ymax, ymax] (5-30 Hz only)
@@ -1096,7 +1092,7 @@ all_alpha = [];
 for c = 1:3
     Ared = mean(ga_red{c}.powspctrm(:, freq_idx), 2, 'omitnan');
     Aamp = mean(ga_amp{c}.powspctrm(:, freq_idx), 2, 'omitnan');
-    all_alpha = [all_alpha; Ared(:); Aamp(:)]; %#ok<AGROW>
+    all_alpha = [all_alpha; Ared(:); Aamp(:)];
 end
 all_alpha = all_alpha(isfinite(all_alpha));
 if isempty(all_alpha)
@@ -1863,7 +1859,7 @@ for k = 1:numel(clist)
         idx = post_idx(idx(valid));  % map to full time indices
         if isempty(idx), continue; end
     end
-    clusters(end+1).idx = idx; %#ok<AGROW>
+    clusters(end+1).idx = idx;
     clusters(end).mass = sum(abs(tvals(idx)), 'omitnan');
     clusters(end).extent = numel(idx);
     clusters(end).p = clist(k).prob;

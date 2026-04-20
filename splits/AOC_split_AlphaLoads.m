@@ -44,7 +44,7 @@ end
 cmdlog_file = fullfile(log_dir, sprintf('AOC_split_AlphaLoads_commandwindow_%s.log', datestr(now,'yyyymmdd_HHMMSS')));
 diary('off');
 diary(cmdlog_file);
-cleanup_diary = onCleanup(@() diary('off')); %#ok<NASGU>
+cleanup_diary = onCleanup(@() diary('off'));
 fprintf('Command window log file: %s\n', cmdlog_file);
 
 %% Figure setup
@@ -380,7 +380,7 @@ for c = 1:3
     subj_spec = squeeze(mean(ga_inc{c}.powspctrm(:, ch_idx_inc, :), 2, 'omitnan'));
     m = mean(subj_spec, 1, 'omitnan');
     se = std(subj_spec, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(subj_spec), 1)), 1);
-    eb_inc(c) = shadedErrorBar(freqs_inc, m, se, 'lineProps', {'-'}, 'transparent', true); %#ok<AGROW>
+    eb_inc(c) = shadedErrorBar(freqs_inc, m, se, 'lineProps', {'-'}, 'transparent', true); 
     set(eb_inc(c).mainLine, 'Color', colors(c, :), 'LineWidth', 3);
     set(eb_inc(c).patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
     set(eb_inc(c).edge(1), 'Color', colors(c, :));
@@ -412,7 +412,7 @@ for c = 1:3
     subj_spec = squeeze(mean(ga_dec{c}.powspctrm(:, ch_idx_dec, :), 2, 'omitnan'));
     m = mean(subj_spec, 1, 'omitnan');
     se = std(subj_spec, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(subj_spec), 1)), 1);
-    eb_dec(c) = shadedErrorBar(freqs_dec, m, se, 'lineProps', {'-'}, 'transparent', true); %#ok<AGROW>
+    eb_dec(c) = shadedErrorBar(freqs_dec, m, se, 'lineProps', {'-'}, 'transparent', true); 
     set(eb_dec(c).mainLine, 'Color', colors(c, :), 'LineWidth', 3);
     set(eb_dec(c).patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
     set(eb_dec(c).edge(1), 'Color', colors(c, :));
@@ -1960,7 +1960,7 @@ for ii = 1:numel(trial_idx)
     xw(~valid) = NaN;
     yw(~valid) = NaN;
 
-    pos_cells{end+1} = [xw; yw]; %#ok<AGROW>
+    pos_cells{end+1} = [xw; yw]; 
 end
 end
 

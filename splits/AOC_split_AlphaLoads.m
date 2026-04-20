@@ -1506,6 +1506,42 @@ try
     fprintf('\n========== END SUBJECT-LEVEL ALPHA–GAZE COUPLING OUTPUT ==========\n\n');
 end
 
+% Inverse-direction model (requested): does alpha-slope value vary with load-by-gaze?
+% Note: AlphaSlope_c is subject-level and therefore constant across the 3 load rows.
+% This model is included for symmetry/reporting, but inference should prioritize
+% Dev ~ Load * AlphaSlope_c, where the outcome varies within subject.
+disp('--- LME (inverse): AlphaSlope_c ~ Load * Dev + (Load|Subject) ---')
+try
+    tbl_ag_inv = table(tbl_ag.Subject, tbl_ag.Load, tbl_ag.Dev, tbl_ag.AlphaSlope_c, ...
+        'VariableNames', {'Subject', 'Load', 'Dev', 'AlphaSlope_c'});
+    [lme_ag_inv, lme_ag_inv_formula] = fitlme_with_random_slope_fallback(tbl_ag_inv, 'AlphaSlope_c ~ Load * Dev');
+    fprintf('Fitted formula: %s\n', lme_ag_inv_formula);
+    fprintf('\nANOVA (marginal tests):\n');
+    disp(anova(lme_ag_inv))
+
+    fprintf('Fixed-effects coefficients:\n');
+    disp(lme_ag_inv.Coefficients)
+
+    coef_ag_inv = lme_ag_inv.Coefficients;
+    idx_int_inv = contains(coef_ag_inv.Name, ':') & (contains(coef_ag_inv.Name, 'Load') & contains(coef_ag_inv.Name, 'Dev'));
+    ix_int_inv = find(idx_int_inv, 1, 'first');
+    if ~isempty(ix_int_inv)
+        row = coef_ag_inv(ix_int_inv, :);
+        fprintf('Primary test (Load:Dev): estimate, SE, t, DF, p\n');
+        fprintf('  Estimate=%.6g, SE=%.6g, t=%.4g, DF=%.4g, p=%.6g\n', ...
+            row.Estimate(1), row.SE(1), row.tStat(1), row.DF(1), row.pValue(1));
+    else
+        fprintf('Note: Load:Dev interaction row not found in coefficient table (check names).\n');
+    end
+    try
+        fprintf('\n95%% CI for fixed effects (coefCI):\n');
+        disp(coefCI(lme_ag_inv));
+    catch %#ok<CTCH>
+    end
+catch ME_inv
+    fprintf('Inverse LME failed: %s\n', ME_inv.message);
+end
+
 %% LME (RT / ACC / gaze deviation; categorical load)
 nSubj = length(subjects);
 

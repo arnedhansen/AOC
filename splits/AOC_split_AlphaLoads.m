@@ -56,7 +56,7 @@ winsor_cfg.enable = true;
 winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
 split_cfg = struct();
 split_cfg.use_threshold_override = true; % set true to override symmetric tail split
-split_cfg.threshold = 0.015; % default absolute slope threshold for override
+split_cfg.threshold = 0.015 % default absolute slope threshold for override
 
 % Gaze heatmap color limits (diverging maps): robust scale for sparse, heavy-tailed fields
 gaze_zlim_cfg = struct();
@@ -931,7 +931,6 @@ c.Ticks = [0 10]; c.Label.String = 'F-value'; c.Label.FontSize = fontSize-2;
 
 drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_statF_omnibus.png'));
 
-%{
 %% Test linear (and quadratic) trends across WM load
 addpath(fileparts(mfilename('fullpath')));
 
@@ -1059,7 +1058,6 @@ subplot(2,1,2); ft_singleplotTFR(cfg,statT_gaze_quad_dec); title('Decreasing slo
 ax = gca; set(ax, 'FontSize', fontSize); xlim(ax, [0 800]); ylim(ax, [0 600]); hold(ax, 'on'); plot(ax, 400, 300, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k'); xlabel(ax, 'Screen Width [px]', 'FontSize', fontSize); ylabel(ax, 'Screen Height [px]', 'FontSize', fontSize-2);
 c = colorbar(ax); c.LineWidth = 1; c.FontSize = fontSize - 2; c.Ticks = [cfg.zlim(1) 0 cfg.zlim(2)]; c.Label.String = 't-value'; c.Label.FontSize = fontSize - 2;
 colormap(gcf, color_map); drawnow; saveas(gcf, fullfile(fig_dir, 'AOC_split_AlphaLoads_gaze_TFR_loadQuadratic.png'));
-%}
 
 %% Behavioral data
 behav_file = fullfile(feat_dir, 'AOC_behavioral_matrix_sternberg.mat');

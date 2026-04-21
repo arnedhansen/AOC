@@ -410,6 +410,19 @@ for oi = 1:numel(obs_clusters)
 end
 if isempty(obs_clusters)
     fprintf('  Observed clusters above tcrit: none\n');
+    cand_clusters = get_candidate_clusters(tvals_cl, t_plot_ds, dt_ds, 0);
+    if isempty(cand_clusters)
+        fprintf('  Candidate clusters above 0: none\n');
+    else
+        [~, ordc] = sort([cand_clusters.mass], 'descend');
+        top_k = min(5, numel(ordc));
+        fprintf('  Candidate clusters above 0 (subthreshold), showing top %d by mass\n', top_k);
+        for ii = 1:top_k
+            c = cand_clusters(ordc(ii));
+            fprintf('    #%d onset=%.3fs offset=%.3fs mass=%.3f extent=%d peak_t=%.3f peak_p_unc=%.4g\n', ...
+                ii, c.onset, c.offset, c.mass, c.extent, c.peak_t, c.peak_p_unc);
+        end
+    end
 else
     [~, ord] = sort([obs_clusters.mass], 'descend');
     top_k = min(5, numel(ord));
@@ -580,6 +593,46 @@ sig_obs = (tvals > tcrit) & isfinite(tvals);
 obs = struct('idx', {}, 'mass', {}, 'extent', {}, 'onset', {}, 'offset', {}, 'p', {});
 if ~any(sig_obs)
     return
+end
+
+function cand = get_candidate_clusters(tvals, t_plot_ds, dt_ds, min_t)
+% Candidate clusters for diagnostics, independent of cluster-forming threshold.
+% For one-tailed positive tests, use contiguous runs where tvals > min_t.
+if nargin < 4
+    min_t = 0;
+end
+mask = (tvals > min_t) & isfinite(tvals);
+cand = struct('idx', {}, 'mass', {}, 'extent', {}, 'onset', {}, 'offset', {}, 'peak_t', {}, 'peak_p_unc', {});
+if ~any(mask)
+    return
+end
+
+run_start = [false, diff(mask) == 1];
+run_end = [diff(mask) == -1, false];
+if mask(1), run_start(1) = true; end
+if mask(end), run_end(end) = true; end
+starts = find(run_start);
+ends = find(run_end);
+df_approx = max(sum(isfinite(tvals)) - 2, 1);
+
+for k = 1:numel(starts)
+    idx = starts(k):ends(k);
+    seg = tvals(idx);
+    [peak_t, peak_i] = max(seg, [], 'omitnan');
+    if isempty(peak_t) || ~isfinite(peak_t)
+        peak_t = NaN;
+        p_unc = NaN;
+    else
+        p_unc = 1 - tcdf(peak_t, df_approx); % one-tailed, uncorrected (approximate)
+    end
+    cand(k).idx = idx; %#ok<AGROW>
+    cand(k).mass = sum(seg, 'omitnan');
+    cand(k).extent = numel(idx);
+    cand(k).onset = max(0, t_plot_ds(idx(1)) - dt_ds/2);
+    cand(k).offset = t_plot_ds(idx(end)) + dt_ds/2;
+    cand(k).peak_t = peak_t;
+    cand(k).peak_p_unc = p_unc;
+end
 end
 run_start = [false, diff(sig_obs) == 1];
 run_end = [diff(sig_obs) == -1, false];

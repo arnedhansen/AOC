@@ -324,7 +324,7 @@ for task in tasks:
             pw = mixedlm_pairwise_contrasts(
                 dvar.rename(columns={var: "value"}),
                 value_col="value", group_col="Condition",
-                id_col="ID", p_adjust="bonferroni",
+                id_col="ID", p_adjust="fdr_bh",
             )
         except Exception:
             pw = pd.DataFrame(columns=["group1", "group2", "p_adj"])

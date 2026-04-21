@@ -283,18 +283,18 @@ for task in tasks:
         lower_bound = float(dvar[var].min())
         upper_bound = float(dvar[var].max())
 
-        # Mixed model + Bonferroni pairwise
+        # Mixed model + FDR-BH pairwise
         pw = mixedlm_pairwise_contrasts(
             dvar.rename(columns={var: "value"}),
             value_col="value",
             group_col="Condition",
             id_col="ID",
-            p_adjust="bonferroni"
+            p_adjust="fdr_bh"
         )
 
         # Print pairwise contrasts to console
         if not pw.empty:
-            print(f"  Pairwise contrasts (Bonferroni): {var} [{task['name']}]")
+            print(f"  Pairwise contrasts (FDR-BH): {var} [{task['name']}]")
             for _, r in pw.iterrows():
                 sig = p_to_signif(float(r['p_adj'])) if 'p_adj' in r else ''
                 coef_val = r.get('coef', r.get('Coef.', ''))

@@ -114,13 +114,13 @@ idx_dec = ismember(uIDs, decrease_ids);
 idx_inc = ismember(uIDs, increase_ids);
 idx_excl = ismember(uIDs, flat_ids);
 
-scatter(x_vals(idx_excl), alpha_slope(idx_excl), 80, [0.5 0.5 0.5], 'filled', 'MarkerFaceAlpha', 0.7);
-scatter(x_vals(idx_dec), alpha_slope(idx_dec), 80, [0.2 0.4 0.8], 'filled', 'MarkerFaceAlpha', 0.8);
-scatter(x_vals(idx_inc), alpha_slope(idx_inc), 80, [0.8 0.2 0.2], 'filled', 'MarkerFaceAlpha', 0.8);
-xlabel('Participant (index)');
+h_excl = scatter(x_vals(idx_excl), alpha_slope(idx_excl), 80, [0.5 0.5 0.5], 'filled', 'MarkerFaceAlpha', 0.7);
+h_dec = scatter(x_vals(idx_dec), alpha_slope(idx_dec), 80, [0.2 0.4 0.8], 'filled', 'MarkerFaceAlpha', 0.8);
+h_inc = scatter(x_vals(idx_inc), alpha_slope(idx_inc), 80, [0.8 0.2 0.2], 'filled', 'MarkerFaceAlpha', 0.8);
+xlabel('Subject');
 ylabel('Alpha slope [a.u./load]');
 title('Alpha-load slope split: Decrease (blue), Increase (red), Excluded (grey)');
-legend({'Excluded', 'Decrease', 'Increase'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
+legend([h_excl, h_dec, h_inc], {'Excluded', 'Decrease', 'Increase'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
 set(gca, 'FontSize', fontSize);
 box on
 saveas(gcf, fullfile(fig_dir, 'AOC_splitAlphaLoads_inclusion.png'));

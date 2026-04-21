@@ -38,26 +38,39 @@ def pooled_cohens_d(x: np.ndarray, y: np.ndarray) -> float:
 
 
 def fit_mixedlm_with_fallback(formula_fixed: str, data: pd.DataFrame):
-    formulas = [
-        f"{formula_fixed} + (LoadValue|Subject)",
-        f"{formula_fixed} + (1|Subject)",
+    model_specs = [
+        {"label": "random intercept + slope", "re_formula": "~LoadValue"},
+        {"label": "random intercept", "re_formula": "1"},
     ]
     last_err = None
-    for fml in formulas:
+    for spec in model_specs:
         try:
-            model = smf.mixedlm(fml, data=data, groups=data["Subject"])
+            model = smf.mixedlm(
+                formula_fixed,
+                data=data,
+                groups=data["Subject"],
+                re_formula=spec["re_formula"],
+            )
             res = model.fit(reml=False, method="lbfgs", maxiter=500, disp=False)
-            return res, fml
+            return res, spec["label"]
         except Exception as exc:
             last_err = exc
             continue
-    raise RuntimeError(f"LMM failed for all candidate formulas: {last_err}")
+    raise RuntimeError(f"LMM failed for all candidate random-effects structures: {last_err}")
+
+
+def fmt_p(p: float) -> str:
+    if pd.isna(p):
+        return "nan"
+    if p < 1e-4:
+        return "<1e-4"
+    return f"{p:.4f}"
 
 
 def run_group_comparison(df_incl: pd.DataFrame) -> None:
     print("\n=== Parametric group comparison (Reduction > Amplification) ===")
     subj = (
-        df_incl.groupby(["ID", "Group"], as_index=False)["DevMetric"]
+        df_incl.groupby(["ID", "Group"], as_index=False, observed=False)["DevMetric"]
         .mean(numeric_only=True)
         .rename(columns={"DevMetric": "SubjMeanDev"})
     )
@@ -79,8 +92,8 @@ def run_group_comparison(df_incl: pd.DataFrame) -> None:
         f"Red mean={np.mean(red):.2f} (SD={np.std(red, ddof=1):.2f}), "
         f"Amp mean={np.mean(amp):.2f} (SD={np.std(amp, ddof=1):.2f}); "
         f"diff={np.mean(red) - np.mean(amp):.2f}; "
-        f"one-tailed p(Red>Amp)={t_one.pvalue:.4f}; "
-        f"two-tailed p={t_two.pvalue:.4f}; d={d_val:.3f}; "
+        f"one-tailed p(Red>Amp)={fmt_p(t_one.pvalue)}; "
+        f"two-tailed p={fmt_p(t_two.pvalue)}; d={d_val:.3f}; "
         f"t({dfree})={t_two.statistic:.2f}; n_red={len(red)}, n_amp={len(amp)}"
     )
 
@@ -103,8 +116,8 @@ def run_group_load_anova_like(df_metric: pd.DataFrame, metric_name: str) -> None
         n_subj = df_metric["Subject"].nunique()
 
         print(
-            f"{metric_name}: Load p={p_load:.4f}; Group p={p_group:.4f}; "
-            f"LoadxGroup p={p_int:.4f}; n={n_subj}"
+            f"{metric_name}: Load p={fmt_p(p_load)}; Group p={fmt_p(p_group)}; "
+            f"LoadxGroup p={fmt_p(p_int)}; n={n_subj}"
         )
         print("ANOVA table:")
         print(aov.to_string())
@@ -119,7 +132,7 @@ def run_lmm(df_metric: pd.DataFrame, metric_name: str) -> None:
         return
     try:
         res, formula_used = fit_mixedlm_with_fallback("Value ~ C(Group) * C(LoadLabel)", df_metric)
-        print(f"{metric_name}: Formula: {formula_used}")
+        print(f"{metric_name}: Random effects: {formula_used}")
         print(res.summary())
         print(f"n_obs={len(df_metric)}, n_subj={df_metric['Subject'].nunique()}")
     except Exception as exc:
@@ -179,7 +192,7 @@ def main() -> None:
     print(f"Included observations: {len(df)}")
     print(f"Included subjects: {df['Subject'].nunique()}")
     print("Group sizes (subjects):")
-    print(df.groupby("Group")["Subject"].nunique().to_string())
+    print(df.groupby("Group", observed=False)["Subject"].nunique().to_string())
 
     # 1) Group comparison on subject means of gaze deviation.
     run_group_comparison(df)

@@ -226,17 +226,17 @@ max_s = max(slope);
 k_left = ceil((t1 - min_s) / bin_w);
 k_right = ceil((max_s - t1) / bin_w);
 bin_edges = t1 + (-k_left:k_right) * bin_w;
-histogram(slope(idx_inc), 'BinEdges', bin_edges, 'FaceColor', [0.8 0 0], 'FaceAlpha', 0.6);
-histogram(slope(idx_dec),  'BinEdges', bin_edges, 'FaceColor', [0 0 0.8], 'FaceAlpha', 0.6);
-histogram(slope(idx_flat),   'BinEdges', bin_edges, 'FaceColor', [0.5 0.5 0.5], 'FaceAlpha', 0.6);
-xline(t1, 'k--', 'LineWidth', 2);
-xline(t2, 'k--', 'LineWidth', 2);
+h_inc = histogram(slope(idx_inc), 'BinEdges', bin_edges, 'FaceColor', [0.8 0 0], 'FaceAlpha', 0.6);
+h_dec = histogram(slope(idx_dec),  'BinEdges', bin_edges, 'FaceColor', [0 0 0.8], 'FaceAlpha', 0.6);
+h_flat = histogram(slope(idx_flat),   'BinEdges', bin_edges, 'FaceColor', [0.5 0.5 0.5], 'FaceAlpha', 0.6);
+h_cut = xline(t1, 'k--', 'LineWidth', 2);
+xline(t2, 'k--', 'LineWidth', 2, 'HandleVisibility', 'off');
 xlabel('Alpha power slope')
 ylabel('Participants')
 title('Linear Slope of Alpha Power across WM Load (2, 4, 6 items)', 'FontSize', 20)
-legend({sprintf('Increase (N=%d)', n_inc), ...
+legend([h_inc, h_dec, h_flat, h_cut], {sprintf('Increase (N=%d)', n_inc), ...
     sprintf('Decrease (N=%d)', n_dec), ...
-    sprintf('intermediate (N=%d)', n_f), ...
+    sprintf('Intermediate (N=%d)', n_f), ...
     'symmetric-tail cutoffs'}, 'Box', 'off')
 box on
 set(gca, 'FontSize', 15)

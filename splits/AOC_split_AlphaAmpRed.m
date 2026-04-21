@@ -1,24 +1,25 @@
-%% AOC Split Sternberg Alpha (Subject-Level)
-% Subject-level split (fixed across conditions) using merged_data_sternberg:
-%   mean AlphaPower_FOOOF_bl across WM2/4/6 (baselined, FOOOFed alpha)
+%% AOC Split Alpha Amp/Red (Subject-Level) — Sternberg
+% Subject-level split (fixed across conditions) using merged_data_<task>:
+%   mean AlphaPower_FOOOF_bl across load levels (baselined, FOOOFed alpha)
 %   < -cutoff  -> reduction group
 %   > cutoff   -> amplification group
 %   |alpha| <= cutoff -> excluded (percentage-based band around zero)
 %
 % Cutoff = alpha_zero_pct of the alpha_ref_percentile of |alpha| (default: 5% of 95th percentile).
 %
-% Uses baselined+FOOOFed alpha (power spectra, TFR, topoplots) and baselined gaze metrics
-% (SPL, Dev, BCEA, Vel; all in dB, 10*log10(value/baseline)).
+% Uses split-pipeline FOOOF sources:
+%   Sternberg: power_stern_fooof_TFR.mat
+% plus merged gaze/behavioral metrics.
 %
 % Outliers excluded via Tukey 1.5*IQR (per metric per condition) before visualization/analyses.
 %
-% Generates:
+% Generates (per task):
 % - Alpha split inclusion figure (participants by alpha, thresholds, group assignment)
 % - Power spectra (3 conditions) for both groups
 % - TFRs per condition for both groups + group differences
 % - Topoplots per condition for both groups + group-difference topoplots
-% - Rainclouds for Alpha, SPL, Vel, Dev, BCEA
-% - Time-course panels (SPL, velocity, gaze deviation) with effect-size strips
+% - Rainclouds for Alpha and gaze deviation
+% - Time-course panels for gaze deviation (percent baseline) and combined EEG+gaze view
 
 %% Setup
 startup
@@ -36,43 +37,59 @@ addpath(seb_path);
 
 feat_dir = fullfile(base_data, 'data', 'features');
 fig_dir = fullfile(base_data, 'figures', 'splits', 'SplitAlphaAmpRed');
-stats_dir = fullfile(base_data, 'data', 'stats', 'splits');
 if ~isfolder(fig_dir)
     mkdir(fig_dir);
 end
-if ~isfolder(stats_dir)
-    mkdir(stats_dir);
-end
-fprintf('\n=== AOC Split Sternberg Alpha ===\n');
+fprintf('\n=== AOC Split Alpha Amp/Red (Sternberg) ===\n');
 fprintf('Figure directory: %s\n', fig_dir);
 
 % Keep canonical figure size requested.
 fig_pos = [0 0 1512 982];
 
-% Conditions and labels
-cond_vals = [2 4 6];
-cond_codes = [22 24 26];
-cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
+% Task definition (Sternberg)
+tasks(1).tag = 'sternberg';
+tasks(1).merged_file = 'AOC_merged_data_sternberg.mat';
+tasks(1).merged_var = 'merged_data_sternberg';
+tasks(1).cond_vals = [2 4 6];
+tasks(1).cond_codes = [22 24 26];
+tasks(1).cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
+tasks(1).power_fname = 'power_stern_fooof_TFR.mat';
+tasks(1).pow_vars = {'pow2_fooof_bl', 'pow4_fooof_bl', 'pow6_fooof_bl'};
+tasks(1).tfr_fname = 'tfr_stern.mat';
+tasks(1).tfr_vars = {'tfr2_fooof_bl', 'tfr4_fooof_bl', 'tfr6_fooof_bl'};
+tasks(1).gaze_fname = 'gaze_series_sternberg_trials.mat';
+tasks(1).power_missing_label = 'power_stern_fooof_TFR.mat';
 
 fontSize = 20;
-% rng(42);
 alpha_zero_pct = 5; % Exclude near-zero alpha within this % of robust |alpha| reference
 alpha_ref_percentile = 95; % Use this percentile of |alpha| for reference (outlier-resistant)
 tfr_winsor_cfg = struct();
 tfr_winsor_cfg.enable = true;
 tfr_winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
 
+for ti = 1:numel(tasks)
+tk = tasks(ti);
+task_tag = tk.tag;
+cond_vals = tk.cond_vals;
+cond_codes = tk.cond_codes;
+cond_labels = tk.cond_labels;
+fig_prefix = sprintf('AOC_splitAlphaAmpRed_%s', task_tag);
+
+fprintf('\n\n========== TASK: %s ==========\n', upper(task_tag));
+
 %% Load subject-level merged data and define alpha split
-fprintf('\n=== Loading merged data ===\n');
-merged_file = fullfile(feat_dir, 'AOC_merged_data_sternberg.mat');
+fprintf('\n=== Loading merged data (%s) ===\n', task_tag);
+merged_file = fullfile(feat_dir, tk.merged_file);
 if ~isfile(merged_file)
-    error('Missing file: %s', merged_file);
+    warning('Skipping task %s: missing file %s', task_tag, merged_file);
+    continue
 end
-S = load(merged_file, 'merged_data_sternberg');
-if ~isfield(S, 'merged_data_sternberg')
-    error('Variable merged_data_sternberg not found in %s', merged_file);
+S = load(merged_file, tk.merged_var);
+if ~isfield(S, tk.merged_var)
+    warning('Skipping task %s: variable %s not found in %s', task_tag, tk.merged_var, merged_file);
+    continue
 end
-T = struct2table(S.merged_data_sternberg);
+T = struct2table(S.(tk.merged_var));
 
 % Compute subject-level split value from full-window FOOOF-baselined alpha.
 uIDs = unique(T.ID);
@@ -84,28 +101,50 @@ for i = 1:nSubj
     alpha_mean(i) = mean(T.AlphaPower_FOOOF_bl(mask), 'omitnan');
 end
 
-% Percentage-based exclusion band around zero (outlier-resistant reference).
-valid_alpha_mean = alpha_mean(isfinite(alpha_mean));
+% Robust filtering for split reference:
+% remove non-finite values and pathological subject-level alpha outliers
+% before deriving the zero band. This prevents single corrupt values from
+% inflating the percentile-based cutoff.
+split_valid = isfinite(alpha_mean);
+vals = alpha_mean(split_valid);
+if numel(vals) >= 4
+    q1_split = prctile(vals, 25);
+    q3_split = prctile(vals, 75);
+    iqr_split = q3_split - q1_split;
+    if isfinite(iqr_split) && iqr_split > 0
+        lo_split = q1_split - 3 * iqr_split;
+        hi_split = q3_split + 3 * iqr_split;
+        split_valid = split_valid & (alpha_mean >= lo_split) & (alpha_mean <= hi_split);
+    end
+end
+
+valid_alpha_mean = alpha_mean(split_valid);
 if isempty(valid_alpha_mean)
     error('No finite subject-level alpha values found for split.');
 end
 alpha_abs_ref = prctile(abs(valid_alpha_mean), alpha_ref_percentile);
 alpha_zero_margin = (alpha_zero_pct / 100) * alpha_abs_ref;
 
-reduction_ids = uIDs(alpha_mean < -alpha_zero_margin);
-amplification_ids = uIDs(alpha_mean > alpha_zero_margin);
-zero_ids = uIDs(abs(alpha_mean) <= alpha_zero_margin);
+reduction_ids = uIDs(split_valid & (alpha_mean < -alpha_zero_margin));
+amplification_ids = uIDs(split_valid & (alpha_mean > alpha_zero_margin));
+zero_ids = uIDs(split_valid & (abs(alpha_mean) <= alpha_zero_margin));
+invalid_ids = uIDs(~split_valid);
 
-fprintf('\n=== Split Summary (AlphaPower_FOOOF_bl, full window) ===\n');
+fprintf('\n=== Split Summary [%s] (AlphaPower_FOOOF_bl, full window) ===\n', task_tag);
 fprintf('Subjects total: %d\n', nSubj);
 fprintf('Zero-band setting: %.2f%% of %dth-percentile |alpha| (ref=%.4f, cutoff=%.4f)\n', ...
     alpha_zero_pct, alpha_ref_percentile, alpha_abs_ref, alpha_zero_margin);
 fprintf('Reduction (< -%.4f): %d\n', alpha_zero_margin, numel(reduction_ids));
 fprintf('Amplification (> %.4f): %d\n', alpha_zero_margin, numel(amplification_ids));
 fprintf('Excluded (|alpha| <= %.4f): %d\n', alpha_zero_margin, numel(zero_ids));
+if ~isempty(invalid_ids)
+    fprintf('Excluded (invalid/pathological alpha): %d\n', numel(invalid_ids));
+end
 
 if numel(reduction_ids) < 2 || numel(amplification_ids) < 2
-    error('Insufficient subjects per split group.');
+    warning('Task %s: insufficient subjects per split group (red=%d, amp=%d). Skipping task.', ...
+        task_tag, numel(reduction_ids), numel(amplification_ids));
+    continue
 end
 
 %% Alpha split inclusion figure
@@ -121,17 +160,17 @@ yline(-alpha_zero_margin, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
 x_vals = (1:nSubj)';
 idx_red = ismember(uIDs, reduction_ids);
 idx_amp = ismember(uIDs, amplification_ids);
-idx_excl = ismember(uIDs, zero_ids);
-h_excl = scatter(x_vals(idx_excl), alpha_mean(idx_excl), 80, [0.5 0.5 0.5], 'filled', 'MarkerFaceAlpha', 0.7);
-h_red = scatter(x_vals(idx_red), alpha_mean(idx_red), 80, [0.2 0.4 0.8], 'filled', 'MarkerFaceAlpha', 0.8);
-h_amp = scatter(x_vals(idx_amp), alpha_mean(idx_amp), 80, [0.8 0.2 0.2], 'filled', 'MarkerFaceAlpha', 0.8);
-xlabel('Subject');
+idx_excl = ismember(uIDs, zero_ids) | ismember(uIDs, invalid_ids);
+scatter(x_vals(idx_excl), alpha_mean(idx_excl), 80, [0.5 0.5 0.5], 'filled', 'MarkerFaceAlpha', 0.7);
+scatter(x_vals(idx_red), alpha_mean(idx_red), 80, [0.2 0.4 0.8], 'filled', 'MarkerFaceAlpha', 0.8);
+scatter(x_vals(idx_amp), alpha_mean(idx_amp), 80, [0.8 0.2 0.2], 'filled', 'MarkerFaceAlpha', 0.8);
+xlabel('Participant (index)');
 ylabel('Alpha Power [dB]');
-title('Alpha Split: Reduction (blue), Amplification (red), Excluded (grey)');
-legend([h_excl, h_red, h_amp], {'Excluded', 'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
+title(sprintf('Alpha Split [%s]: Reduction (blue), Amplification (red), Excluded (grey)', task_tag), 'Interpreter', 'none');
+legend({'Excluded', 'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
 set(gca, 'FontSize', fontSize);
 box on
-saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_inclusion.png'));
+saveas(gcf, fullfile(fig_dir, sprintf('%s_inclusion.png', fig_prefix)));
 close(gcf);
 
 %% Preallocate containers
@@ -154,22 +193,16 @@ for c = 1:3
 end
 
 % Gaze summary metrics from merged subject table (pre-outlier exclusion)
-metrics_raw = struct();
-metrics_raw.Alpha = nan(nSubj, 3);
-metrics_raw.SPL = nan(nSubj, 3);           % ScanPathLengthFullBL [% change]
-metrics_raw.Dev = nan(nSubj, 3);          % GazeDeviationFullBL [% change]
-metrics_raw.BCEA = nan(nSubj, 3);         % BCEAFullBL [% change]
-metrics_raw.Vel = nan(nSubj, 3);          % velocity [% change], computed below
+metrics = struct();
+metrics.Alpha = nan(nSubj, 3);
+metrics.Dev = nan(nSubj, 3);          % GazeDeviationFullBL [% change]
 
 % Time courses per subject x condition (full resolution, pre-outlier exclusion)
 fs = 500;
 t_full = -0.5:1/fs:3;
 t_plot = t_full(2:end);
 Tf = numel(t_plot);
-spl_tc_raw = nan(nSubj, 3, Tf);
-dev_tc_raw = nan(nSubj, 3, Tf);
-vel_tc_raw = nan(nSubj, 3, Tf);
-bcea_tc_raw = nan(nSubj, 3, Tf);
+dev_tc = nan(nSubj, 3, Tf);
 
 missing_eeg = {};
 missing_tfr = {};
@@ -187,69 +220,67 @@ for s = 1:nSubj
     end
     subj_rows = T(T.ID == sid, :);
 
-    % Subject-level condition metrics from merged_data_sternberg
+    % Subject-level condition metrics from merged_data_<task>
     for c = 1:3
         cmask = subj_rows.Condition == cond_vals(c);
         if any(cmask)
-            metrics_raw.Alpha(s, c) = mean(subj_rows.AlphaPower_FOOOF_bl(cmask), 'omitnan');
-            metrics_raw.SPL(s, c) = mean(subj_rows.ScanPathLengthFullBL(cmask), 'omitnan');
-            metrics_raw.Dev(s, c) = mean(subj_rows.GazeDeviationFullBL(cmask), 'omitnan');
-            metrics_raw.BCEA(s, c) = mean(subj_rows.BCEAFullBL(cmask), 'omitnan');
+            metrics.Alpha(s, c) = mean(subj_rows.AlphaPower_FOOOF_bl(cmask), 'omitnan');
+            metrics.Dev(s, c) = mean(subj_rows.GazeDeviationFullBL(cmask), 'omitnan');
         end
     end
 
     % EEG power spectra and topography sources (baselined, FOOOFed)
     eeg_dir = fullfile(pathAOC, subj_folder, 'eeg');
     try
-        P = load(fullfile(eeg_dir, 'power_stern_fooof.mat'), 'pow2_fooof_bl', 'pow4_fooof_bl', 'pow6_fooof_bl');
-        pow_conds = {P.pow2_fooof_bl, P.pow4_fooof_bl, P.pow6_fooof_bl};
+        P = load(fullfile(eeg_dir, tk.power_fname), tk.pow_vars{:});
+        pow_conds = {P.(tk.pow_vars{1}), P.(tk.pow_vars{2}), P.(tk.pow_vars{3})};
         for c = 1:3
             if ismember(sid, reduction_ids)
-                pow_red{c}{end+1} = pow_conds{c}; %#ok<AGROW>
+                pow_red{c}{end+1} = pow_conds{c};
             elseif ismember(sid, amplification_ids)
-                pow_amp{c}{end+1} = pow_conds{c}; %#ok<AGROW>
+                pow_amp{c}{end+1} = pow_conds{c};
             end
         end
     catch
-        missing_eeg{end+1} = sid_str; %#ok<AGROW>
+        missing_eeg{end+1} = sid_str;
     end
 
     % EEG TFR sources (store subject index for correct time-course extraction)
     try
         % Use FOOOFed + baselined TFR to avoid raw-power scale skew.
-        R = load(fullfile(eeg_dir, 'tfr_stern.mat'), 'tfr2_fooof_bl', 'tfr4_fooof_bl', 'tfr6_fooof_bl');
-        tfr_conds = {R.tfr2_fooof_bl, R.tfr4_fooof_bl, R.tfr6_fooof_bl};
+        R = load(fullfile(eeg_dir, tk.tfr_fname), tk.tfr_vars{:});
+        tfr_conds = {R.(tk.tfr_vars{1}), R.(tk.tfr_vars{2}), R.(tk.tfr_vars{3})};
         if ismember(sid, reduction_ids)
             for c = 1:3
-                tfr_red{c}{end+1} = tfr_conds{c}; %#ok<AGROW>
+                tfr_red{c}{end+1} = tfr_conds{c};
             end
-            tfr_red_subj(end+1) = s; %#ok<AGROW>
+            tfr_red_subj(end+1) = s;
         elseif ismember(sid, amplification_ids)
             for c = 1:3
-                tfr_amp{c}{end+1} = tfr_conds{c}; %#ok<AGROW>
+                tfr_amp{c}{end+1} = tfr_conds{c};
             end
-            tfr_amp_subj(end+1) = s; %#ok<AGROW>
+            tfr_amp_subj(end+1) = s;
         end
     catch
-        missing_tfr{end+1} = sid_str; %#ok<AGROW>
+        missing_tfr{end+1} = sid_str;
     end
 
-    % Gaze series for time courses and velocity summary
-    gaze_file = fullfile(feat_dir, subj_folder, 'gaze', 'gaze_series_sternberg_trials.mat');
+    % Gaze series for deviation time courses
+    gaze_file = fullfile(feat_dir, subj_folder, 'gaze', tk.gaze_fname);
     if ~isfile(gaze_file)
-        missing_gaze{end+1} = sid_str; %#ok<AGROW>
+        missing_gaze{end+1} = sid_str;
         continue
     end
 
     G = load(gaze_file);
     if ~isfield(G, 'trialinfo')
-        missing_gaze{end+1} = sid_str; %#ok<AGROW>
+        missing_gaze{end+1} = sid_str;
         continue
     end
 
     conds = parse_trialinfo_conds(G.trialinfo);
     if isempty(conds)
-        missing_gaze{end+1} = sid_str; %#ok<AGROW>
+        missing_gaze{end+1} = sid_str;
         continue
     end
 
@@ -266,32 +297,7 @@ for s = 1:nSubj
             sid_str, n_reach_3s, numel(tmax_trials), median(tmax_trials, 'omitnan'), min(tmax_trials, [], 'omitnan'));
     end
 
-    % SPL time course from ScanPathSeries
-    if isfield(G, 'ScanPathSeries') && isfield(G, 'ScanPathSeriesT')
-        for c = 1:3
-            tr_mask = conds == cond_codes(c);
-            tr_idx = find(tr_mask);
-            if isempty(tr_idx)
-                continue
-            end
-            mat = nan(numel(tr_idx), Tf);
-            for k = 1:numel(tr_idx)
-                tr = tr_idx(k);
-                srl = G.ScanPathSeries{tr};
-                tt = G.ScanPathSeriesT{tr};
-                if isempty(srl) || isempty(tt)
-                    continue
-                end
-                try
-                    mat(k, :) = interp1(tt, srl, t_plot, 'linear', NaN);
-                catch
-                end
-            end
-            spl_tc_raw(s, c, :) = nanmean(mat, 1);
-        end
-    end
-
-    % Deviation and velocity time course from gaze x/y if available
+    % Deviation time course from gaze x/y if available
     has_xy = isfield(G, 'gaze_x') && isfield(G, 'gaze_y');
     if has_xy
         for c = 1:3
@@ -302,11 +308,6 @@ for s = 1:nSubj
             end
 
             dev_mat = nan(numel(tr_idx), Tf);
-            vel_mat = nan(numel(tr_idx), Tf);
-            bcea_mat = nan(numel(tr_idx), Tf);
-            vel_full_trials = nan(numel(tr_idx), 1);
-            vel_bl_trials = nan(numel(tr_idx), 1);
-
             for k = 1:numel(tr_idx)
                 tr = tr_idx(k);
                 x = double(G.gaze_x{tr});
@@ -324,31 +325,14 @@ for s = 1:nSubj
                     tt = linspace(-0.5, 3, numel(x));
                 end
                 dev = sqrt((x - 400).^2 + (y - 300).^2);
-                [vx, vy] = compute_velocity_sg(x, y, fs, 3);
-                [vx, vy] = clean_velocity_components(vx, vy);
-                vel = hypot(vx, vy);
 
                 try
                     dev_mat(k, :) = interp1(tt, dev, t_plot, 'linear', NaN);
-                    vel_mat(k, :) = interp1(tt, vel, t_plot, 'linear', NaN);
-                    bcea_mat(k, :) = compute_bcea_timecourse(x, y, tt, t_plot, 0.1);
                 catch
-                end
-
-                idx_full = tt >= 0 & tt <= 3;
-                idx_bl = tt >= -0.5 & tt <= -0.25;
-                v_full = mean(vel(idx_full), 'omitnan');
-                v_bl = mean(vel(idx_bl), 'omitnan');
-                vel_full_trials(k) = v_full;
-                if isfinite(v_full) && isfinite(v_bl) && v_bl > 0
-                    vel_bl_trials(k) = 100 * (v_full - v_bl) / v_bl;
                 end
             end
 
-            dev_tc_raw(s, c, :) = nanmean(dev_mat, 1);
-            vel_tc_raw(s, c, :) = nanmean(vel_mat, 1);
-            bcea_tc_raw(s, c, :) = nanmean(bcea_mat, 1);
-            metrics_raw.Vel(s, c) = mean(vel_bl_trials, 'omitnan');
+            dev_tc(s, c, :) = nanmean(dev_mat, 1);
         end
     end
 end
@@ -356,10 +340,6 @@ end
 %% Define groups in row index space
 is_red = ismember(uIDs, reduction_ids);
 is_amp = ismember(uIDs, amplification_ids);
-
-%% Exclude outliers (Tukey 1.5*IQR) before visualization and analyses
-fprintf('\n=== Outlier exclusion (Tukey 1.5*IQR, per metric per condition) ===\n');
-[metrics, spl_tc, dev_tc, vel_tc, bcea_tc] = exclude_outliers_tukey(metrics_raw, spl_tc_raw, dev_tc_raw, vel_tc_raw, bcea_tc_raw);
 
 %% Determine occipital channels (from first available power file)
 channels = {};
@@ -382,44 +362,40 @@ end
 close all
 fprintf('\n=== Plotting power spectra ===\n');
 plot_group_power_spectrum_combined(pow_red, pow_amp, channels, colors, cond_labels, ...
-    fullfile(fig_dir, 'AOC_splitAlpha_powspctrm.png'), fig_pos, fontSize);
+    fullfile(fig_dir, sprintf('%s_powspctrm.png', fig_prefix)), fig_pos, fontSize);
 
 %% TFRs per condition (both groups + diff, 3x3)
 fprintf('\n=== Plotting TFRs ===\n');
 color_map_tfr = customcolormap_preset('red-white-blue');
 
 plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, ...
-    color_map_tfr, fig_dir, fig_pos, fontSize, tfr_winsor_cfg);
+    color_map_tfr, fig_dir, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg);
 
 %% TFRs collapsed over conditions (both groups)
 fprintf('\n=== Plotting collapsed TFRs (across conditions) ===\n');
 plot_group_tfrs_collapsed(tfr_red, tfr_amp, channels, headmodel, color_map_tfr, ...
-    fig_dir, fig_pos, fontSize, tfr_winsor_cfg);
+    fig_dir, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg);
 
 %% Topoplots per condition (both groups + differences)
 fprintf('\n=== Plotting topoplots ===\n');
-plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, fig_dir, fig_pos, fontSize);
+plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, fig_dir, fig_prefix, fig_pos, fontSize);
 
 %% Topoplots collapsed over conditions (both groups)
 fprintf('\n=== Plotting collapsed topoplots (across conditions) ===\n');
-plot_group_topos_collapsed(pow_red, pow_amp, channels, headmodel, fig_dir, fig_pos, fontSize);
+plot_group_topos_collapsed(pow_red, pow_amp, channels, headmodel, fig_dir, fig_prefix, fig_pos, fontSize);
 
 %% Rainclouds
 fprintf('\n=== Plotting rainclouds ===\n');
-plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_pos, fontSize);
+plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_prefix, fig_pos, fontSize);
 
 %% EEG and Gaze time courses with effect-size
 close all
-Tf = size(spl_tc, 3);
+Tf = size(dev_tc, 3);
 t_full_eeg = linspace(-0.5, 3, Tf);
-addEEG_TC = true;
-eeg_tc = [];
-if addEEG_TC
-    fprintf('\n=== Extracting EEG alpha time course from TFR ===\n');
-    eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_subj, nSubj, channels, Tf, t_full_eeg);
-end
+fprintf('\n=== Extracting EEG alpha time course from TFR ===\n');
+eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_subj, nSubj, channels, Tf, t_full_eeg);
 
-% Baselined time courses: gaze in dB (baseline -0.5 to -0.25 s); EEG stays in dB
+% Baselined gaze deviation time course: percent change from baseline (-0.5 to -0.25 s).
 fprintf('\n=== Computing baselined time courses ===\n');
 t_vec = linspace(-0.5, 3, Tf);
 bl_idx = (t_vec >= -0.5) & (t_vec <= -0.25);
@@ -427,80 +403,165 @@ bl_idx = (t_vec >= -0.5) & (t_vec <= -0.25);
 dev_bl = mean(dev_tc(:, :, bl_idx), 3, 'omitnan');
 dev_bl_3d = repmat(dev_bl, [1, 1, Tf]);
 dev_bl_3d(dev_bl_3d <= 0 | ~isfinite(dev_bl_3d)) = NaN;
-% dB baseline: 10*log10(value/baseline)
-dev_tc_dB = 10 * log10(dev_tc ./ dev_bl_3d);
-dev_tc_dB(~isfinite(dev_tc_dB)) = NaN;
-
-% Percent baseline: (value/baseline - 1) * 100 .
+% Percent baseline: (value/baseline - 1) * 100.
 dev_tc_pct = (dev_tc ./ dev_bl_3d - 1) * 100;
 dev_tc_pct(~isfinite(dev_tc_pct)) = NaN;
 
-% SPL, vel, BCEA: same dB convention as gaze deviation
-spl_bl = mean(spl_tc(:, :, bl_idx), 3, 'omitnan');
-spl_bl_3d = repmat(spl_bl, [1, 1, Tf]);
-spl_bl_3d(spl_bl_3d <= 0 | ~isfinite(spl_bl_3d)) = NaN;
-spl_tc_dB = 10 * log10(spl_tc ./ spl_bl_3d);
-spl_tc_dB(~isfinite(spl_tc_dB)) = NaN;
-
-vel_bl = mean(vel_tc(:, :, bl_idx), 3, 'omitnan');
-vel_bl_3d = repmat(vel_bl, [1, 1, Tf]);
-vel_bl_3d(vel_bl_3d <= 0 | ~isfinite(vel_bl_3d)) = NaN;
-vel_tc_dB = 10 * log10(vel_tc ./ vel_bl_3d);
-vel_tc_dB(~isfinite(vel_tc_dB)) = NaN;
-
-bcea_bl = mean(bcea_tc(:, :, bl_idx), 3, 'omitnan');
-bcea_bl_3d = repmat(bcea_bl, [1, 1, Tf]);
-bcea_bl_3d(bcea_bl_3d <= 0 | ~isfinite(bcea_bl_3d)) = NaN;
-bcea_tc_dB = 10 * log10(bcea_tc ./ bcea_bl_3d);
-bcea_tc_dB(~isfinite(bcea_tc_dB)) = NaN;
-
-% Plot time courses
+% Plot time courses (always save both: gaze-only and combined EEG+gaze)
 close all
 fontSizeTC = 25;
-rng(321)
-plot_timecourse_with_effect_CBPT(dev_tc_dB, is_red, is_amp, cond_labels, colors, ...
-    'Gaze Deviation [dB]', 'gaze_deviation_dB', fig_dir, fig_pos, fontSizeTC, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
-
-% Add a parallel gaze deviation timecourse using percent change baseline.
-rng_state = rng;
-plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, cond_labels, colors, ...
-    'Gaze Deviation [%]', 'gaze_deviation_pct', fig_dir, fig_pos, fontSizeTC, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
-rng(rng_state);
-% plot_timecourse_with_effect_CBPT(spl_tc_dB, is_red, is_amp, cond_labels, colors, ...
-%     'Scan Path Length [dB]', 'spl_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
-% plot_timecourse_with_effect_CBPT(vel_tc_dB, is_red, is_amp, cond_labels, colors, ...
-%     'Eye Velocity [dB]', 'velocity_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
-% plot_timecourse_with_effect_CBPT(bcea_tc_dB, is_red, is_amp, cond_labels, colors, ...
-%     'BCEA [dB]', 'bcea_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+rng(123)
+ds_factor = 50; % downsampling to 100ms windows
+plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, colors, ...
+    'Gaze Deviation [%]', sprintf('%s_gaze_deviation_pct', task_tag), fig_dir, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]');
+%plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, colors, ...
+%    'Gaze Deviation [%]', sprintf('%s_gaze_deviation_pct_COMBINED', task_tag), fig_dir, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, true, 'Alpha Power [dB]');
 
 %% Sanity checks
-fprintf('\n=== Data Diagnostics ===\n');
-fprintf('Missing EEG power (power_stern_fooof.mat): %d\n', numel(unique(missing_eeg)));
+fprintf('\n=== Data Diagnostics [%s] ===\n', task_tag);
+fprintf('Missing EEG power (%s): %d\n', tk.power_missing_label, numel(unique(missing_eeg)));
 fprintf('Missing TFR files: %d\n', numel(unique(missing_tfr)));
 fprintf('Missing gaze files/fields: %d\n', numel(unique(missing_gaze)));
 fprintf('Figures saved to: %s\n', fig_dir);
+%% Group comparison: Reduction vs Amplification (gaze deviation)
+fprintf('\n=== Parametric group comparison (reduction > amp) ===\n');
+metric_names = {'Dev'};
 
-%% Statistical models moved to Python
-% Intentionally no inferential statistics are run in this MATLAB script.
-% Use 4_stats/AOC_stats_splits_AmpRed.py on the exported CSV inputs.
-metric_names = {'SPL', 'Dev', 'BCEA', 'Vel'}; %#ok<NASGU>
-metric_labels = {'Scan path length [dB]', 'Gaze deviation [dB]', 'BCEA [dB]', 'Velocity [dB]'}; %#ok<NASGU>
+for m = 1:numel(metric_names)
+    key = metric_names{m};
+    X = metrics.(key);
+    subj_mean = mean(X, 2, 'omitnan');
 
-%% Follow-up: Alpha & gaze deviation (dB) vs WM load (Group × Load)
-% Links the Reduction vs Amplification split to load-resolved outcomes. Gaze dB matches the
-% CBPT time-course convention (baseline -0.5:-0.25 s); values averaged 0.5–1.5 s post-stimulus.
-fprintf('\n========== FOLLOW-UP: GROUP × LOAD (ALPHA & GAZE DEVIATION dB) ==========\n');
-fprintf('Alpha: mean AlphaPower_FOOOF_bl [dB] per WM load (Tukey-cleaned metrics matrix).\n');
-fprintf('Gaze: mean gaze deviation [dB] per WM load from dev_tc_dB, averaged [0.50 1.50] s (task window).\n');
+    red_vals = subj_mean(is_red);
+    amp_vals = subj_mean(is_amp);
+    red_vals = red_vals(isfinite(red_vals));
+    amp_vals = amp_vals(isfinite(amp_vals));
 
-t_win_lo = 0.5;
-t_win_hi = 1.5;
+    if numel(red_vals) < 2 || numel(amp_vals) < 2
+        fprintf('  %s: insufficient data (n_red=%d, n_amp=%d)\n', key, numel(red_vals), numel(amp_vals));
+        continue
+    end
+
+    [~, p_one, ~, stats] = ttest2(red_vals, amp_vals, 'Tail', 'right');  % H1: reduction > amp
+    [~, p_two] = ttest2(red_vals, amp_vals);
+    d = (mean(red_vals) - mean(amp_vals)) / sqrt(((numel(red_vals)-1)*var(red_vals) + (numel(amp_vals)-1)*var(amp_vals)) / (numel(red_vals)+numel(amp_vals)-2));
+    fprintf('  %s: Red mean=%.2f (SD=%.2f), Amp mean=%.2f (SD=%.2f); diff=%.2f; one-tailed p(reduction>amp)=%.4f; two-tailed p=%.4f; d=%.3f; t(%d)=%.2f; n_red=%d, n_amp=%d\n', ...
+        key, mean(red_vals), std(red_vals), mean(amp_vals), std(amp_vals), mean(red_vals)-mean(amp_vals), p_one, p_two, d, stats.df, stats.tstat, numel(red_vals), numel(amp_vals));
+end
+
+%% Mixed ANOVA: Group × Condition
+fprintf('\n=== Mixed ANOVA (Group × Condition) on gaze deviation ===\n');
+% Repeated measures: Condition (within-Ss), Group (between-Ss). Use fitrm + ranova.
+incl = is_red | is_amp;
+subj_idx = find(incl);
+n_incl = numel(subj_idx);
+
+for m = 1:numel(metric_names)
+    key = metric_names{m};
+    X = metrics.(key);
+    X_incl = X(incl, :);
+
+    % Exclude subjects with < 2 valid conditions (fitrm needs enough repeated measures)
+    n_valid_per_subj = sum(isfinite(X_incl), 2);
+    keep = n_valid_per_subj >= 2;
+    if sum(keep) < 4
+        fprintf('  %s: insufficient subjects for repeated-measures ANOVA (n=%d)\n', key, sum(keep));
+        continue
+    end
+
+    X_use = X_incl(keep, :);
+    grp_use = 1 + is_amp(subj_idx(keep));  % 1=reduction, 2=amplification
+
+    % fitrm expects wide format: rows = subjects, cols = condition values
+    t = array2table(X_use, 'VariableNames', {'C1', 'C2', 'C3'});
+    t.Group = categorical(grp_use, [1 2], {'Reduction', 'Amplification'});
+    within = table(cond_vals(:), 'VariableNames', {'Load'});
+
+    try
+        rm = fitrm(t, 'C1-C3~Group', 'WithinDesign', within);
+        % Between-Ss (Group): from anova(rm), which uses Within/Between columns
+        anovatbl = anova(rm);
+        idx_grp = strcmp(string(anovatbl.Between), 'Group');
+        p_grp = anovatbl.pValue(idx_grp);
+        if isempty(p_grp), p_grp = NaN; elseif numel(p_grp) > 1, p_grp = p_grp(1); end
+        % Within-Ss (Load, Load:Group): from ranova(rm), row names like (Intercept):Load, Group:Load
+        ranovatbl = ranova(rm);
+        rn = ranovatbl.Properties.RowNames;
+        p_cond = ranovatbl.pValue(1);  % (Intercept):Load = main effect of Load
+        idx_int = cellfun(@(x) contains(x, 'Group') && contains(x, ':'), rn);
+        p_int = ranovatbl.pValue(idx_int);
+        if isempty(p_int), p_int = NaN; elseif numel(p_int) > 1, p_int = p_int(1); end
+        fprintf('  %s: Condition (Load) p=%.4f; Group p=%.4f; Condition×Group p=%.4f; n=%d\n', ...
+            key, p_cond, p_grp, p_int, sum(keep));
+    catch ME
+        fprintf('  %s: Mixed ANOVA failed (%s)\n', key, ME.message);
+    end
+end
+
+%% Linear mixed models (LMM): Group × Condition + (1|Subject)
+fprintf('\n=== Linear mixed models (Value ~ Group * Condition + (1|Subject)) ===\n');
+% Long-format table: Subject, Condition, Group, Value. Random intercept by subject.
+incl = is_red | is_amp;
+subj_idx = find(incl);
+
+for m = 1:numel(metric_names)
+    key = metric_names{m};
+    X = metrics.(key);
+    X_incl = X(incl, :);
+
+    % Stack to long format
+    rows = [];
+    for s = 1:numel(subj_idx)
+        for c = 1:3
+            val = X_incl(s, c);
+            if isfinite(val)
+                grp = 1 + is_amp(subj_idx(s));
+                rows(end+1, :) = [subj_idx(s), c, grp, val];
+            end
+        end
+    end
+
+    if size(rows, 1) < 15
+        fprintf('  %s: insufficient data for LMM (n_obs=%d)\n', key, size(rows, 1));
+        continue
+    end
+
+    tbl = array2table(rows, 'VariableNames', {'Subject', 'Condition', 'Group', 'Value'});
+    tbl.Subject = categorical(tbl.Subject);
+    tbl.Condition = categorical(tbl.Condition, [1 2 3], cond_labels);
+    tbl.Group = categorical(tbl.Group, [1 2], {'Reduction', 'Amplification'});
+
+    try
+        lme = fitlme(tbl, 'Value ~ Group * Condition + (1|Subject)');
+        aov = anova(lme);
+        terms = aov.Term;
+        get_p = @(t) aov.pValue(strcmp(terms, t));
+        p_grp = get_p('Group');
+        p_cond = get_p('Condition');
+        p_int = get_p('Condition:Group');
+        if isempty(p_int), p_int = get_p('Group:Condition'); end
+        if isempty(p_grp), p_grp = NaN; end
+        if isempty(p_cond), p_cond = NaN; end
+        if isempty(p_int), p_int = NaN; end
+        fprintf('  %s: Group p=%.4f; Condition p=%.4f; Group×Condition p=%.4f; n_obs=%d, n_subj=%d\n', ...
+            key, p_grp, p_cond, p_int, size(rows, 1), numel(unique(tbl.Subject)));
+    catch ME
+        fprintf('  %s: LMM failed (%s)\n', key, ME.message);
+    end
+end
+
+%% Follow-up: Alpha & gaze deviation (%) vs load (Group × Load)
+fprintf('Alpha: mean AlphaPower_FOOOF_bl [dB] per load condition.\n');
+fprintf('Gaze: mean gaze deviation [%%] per load condition from dev_tc_pct, averaged [0 2] s (task window).\n');
+
+t_win_lo = 0;
+t_win_hi = 2;
 task_idx_gaze = (t_vec >= t_win_lo) & (t_vec <= t_win_hi);
-dev_dB_by_load = squeeze(mean(dev_tc_dB(:, :, task_idx_gaze), 3, 'omitnan'));
+dev_pct_by_load = squeeze(mean(dev_tc_pct(:, :, task_idx_gaze), 3, 'omitnan'));
 
-follow_names = {'Alpha', 'GazeDev_dB'};
-follow_X = {metrics.Alpha, dev_dB_by_load};
-follow_ylab = {'Alpha power [dB]', 'Gaze deviation [dB]'};
+follow_names = {'Alpha', 'GazeDev_pct'};
+follow_X = {metrics.Alpha, dev_pct_by_load};
+follow_ylab = {'Alpha power [dB]', 'Gaze deviation [%]'};
 
 col_red_line = [0.20 0.42 0.85];
 col_amp_line = [0.88 0.32 0.38];
@@ -537,56 +598,76 @@ for oi = 1:numel(follow_names)
     end
 end
 
-fprintf('\n--- Inferential models moved to Python (MATLAB prints descriptives + figures only) ---\n');
-
-%% Export long-format CSV for Python stats
-split_group = repmat("Excluded", nSubj, 1);
-split_group(is_red) = "Reduction";
-split_group(is_amp) = "Amplification";
-included = is_red | is_amp;
-
-rows_n = nSubj * numel(cond_vals);
-ID = nan(rows_n, 1);
-LoadValue = nan(rows_n, 1);
-LoadLabel = strings(rows_n, 1);
-Group = strings(rows_n, 1);
-Included = false(rows_n, 1);
-AlphaPower_FOOOF_bl = nan(rows_n, 1);
-SPL_dB = nan(rows_n, 1);
-Dev_dB = nan(rows_n, 1);
-BCEA_dB = nan(rows_n, 1);
-Vel_dB = nan(rows_n, 1);
-GazeDev_dB_0p5_1p5s = nan(rows_n, 1);
-AlphaSplitSubjectMean = nan(rows_n, 1);
-AlphaZeroCutoff = nan(rows_n, 1);
-
-r = 1;
-for s = 1:nSubj
-    for c = 1:numel(cond_vals)
-        ID(r) = uIDs(s);
-        LoadValue(r) = cond_vals(c);
-        LoadLabel(r) = string(cond_labels{c});
-        Group(r) = split_group(s);
-        Included(r) = included(s);
-        AlphaPower_FOOOF_bl(r) = metrics.Alpha(s, c);
-        SPL_dB(r) = metrics.SPL(s, c);
-        Dev_dB(r) = metrics.Dev(s, c);
-        BCEA_dB(r) = metrics.BCEA(s, c);
-        Vel_dB(r) = metrics.Vel(s, c);
-        GazeDev_dB_0p5_1p5s(r) = dev_dB_by_load(s, c);
-        AlphaSplitSubjectMean(r) = alpha_mean(s);
-        AlphaZeroCutoff(r) = alpha_zero_margin;
-        r = r + 1;
+fprintf('\n--- Mixed ANOVA (fitrm + ranova): full tables ---\n');
+for oi = 1:numel(follow_names)
+    X = follow_X{oi};
+    oname = follow_names{oi};
+    X_incl = X(incl_gl, :);
+    n_valid_per_subj = sum(isfinite(X_incl), 2);
+    keep = n_valid_per_subj >= 2;
+    if sum(keep) < 4
+        fprintf('\n  %s: insufficient subjects for repeated-measures ANOVA (n=%d)\n', oname, sum(keep));
+        continue
+    end
+    X_use = X_incl(keep, :);
+    grp_use = 1 + is_amp(subj_idx_gl(keep));
+    t_rm = array2table(X_use, 'VariableNames', {'C1', 'C2', 'C3'});
+    t_rm.Group = categorical(grp_use, [1 2], {'Reduction', 'Amplification'});
+    within_design = table(cond_vals(:), 'VariableNames', {'Load'});
+    try
+        rm = fitrm(t_rm, 'C1-C3 ~ Group', 'WithinDesign', within_design);
+        fprintf('\n  ----- %s: anova(rm) (between-subject) -----\n', oname);
+        anovatbl = anova(rm);
+        disp(anovatbl);
+        fprintf('  ----- %s: ranova(rm) (within / interaction) -----\n', oname);
+        ranovatbl = ranova(rm);
+        disp(ranovatbl);
+    catch ME
+        fprintf('\n  %s: Mixed ANOVA failed (%s)\n', oname, ME.message);
     end
 end
 
-split_stats = table(ID, LoadValue, LoadLabel, Group, Included, ...
-    AlphaPower_FOOOF_bl, SPL_dB, Dev_dB, BCEA_dB, Vel_dB, GazeDev_dB_0p5_1p5s, ...
-    AlphaSplitSubjectMean, AlphaZeroCutoff);
-out_csv = fullfile(stats_dir, 'AOC_splitAmpRed_sternberg_stats_input.csv');
-writetable(split_stats, out_csv);
-fprintf('Saved Python stats input CSV: %s\n', out_csv);
-fprintf('Rows: %d (included rows: %d)\n', height(split_stats), sum(split_stats.Included));
+fprintf('\n--- Linear mixed models: Value ~ Group * Load + random effects (fallback: see formula line) ---\n');
+for oi = 1:numel(follow_names)
+    X = follow_X{oi};
+    oname = follow_names{oi};
+    rows_lme = [];
+    for s = 1:numel(subj_idx_gl)
+        sid = subj_idx_gl(s);
+        for c = 1:3
+            val = X(sid, c);
+            if isfinite(val)
+                grp = 1 + is_amp(sid);
+                rows_lme(end+1, :) = [sid, cond_vals(c), grp, val];
+            end
+        end
+    end
+    if size(rows_lme, 1) < 15
+        fprintf('\n  %s: insufficient observations for LME (n_obs=%d)\n', oname, size(rows_lme, 1));
+        continue
+    end
+    tbl_lme = array2table(rows_lme, 'VariableNames', {'Subject', 'Load', 'Group', 'Value'});
+    tbl_lme.Subject = categorical(tbl_lme.Subject);
+    tbl_lme.Load = categorical(tbl_lme.Load, cond_vals, cond_labels);
+    tbl_lme.Group = categorical(tbl_lme.Group, [1 2], {'Reduction', 'Amplification'});
+    try
+        [lme_gl, fml_gl] = fitlme_with_random_slope_fallback(tbl_lme, 'Value ~ Group * Load');
+        fprintf('\n  ----- %s -----\n', oname);
+        fprintf('  Formula: %s\n', fml_gl);
+        fprintf('  ANOVA (marginal tests):\n');
+        disp(anova(lme_gl));
+        fprintf('  Fixed-effect coefficients:\n');
+        disp(lme_gl.Coefficients);
+        fprintf('  95%% CI for fixed effects (coefCI):\n');
+        try
+            disp(coefCI(lme_gl));
+        catch MEc
+            fprintf('  coefCI not available (%s)\n', MEc.message);
+        end
+    catch ME
+        fprintf('\n  %s: LME failed (%s)\n', oname, ME.message);
+    end
+end
 
 fprintf('\n--- Figure: load profiles (mean ± SEM) ---\n');
 figure('Position', fig_pos, 'Color', 'w');
@@ -628,24 +709,22 @@ for oi = 1:numel(follow_names)
     box off
     hold off
 end
-sgtitle('Alpha & gaze deviation (dB) by WM load: Reduction vs Amplification', 'FontSize', fontSize + 2, 'Interpreter', 'none');
-fig_load = fullfile(fig_dir, 'AOC_splitAlpha_load_profiles_Alpha_GazeDev_dB.png');
+sgtitle(sprintf('Alpha & gaze deviation (%%): Reduction vs Amplification'), ...
+    'FontSize', fontSize + 2, 'Interpreter', 'none');
+fig_load = fullfile(fig_dir, sprintf('%s_load_profiles_Alpha_GazeDev_pct.png', fig_prefix));
 saveas(gcf, fig_load);
 fprintf('Saved: %s\n', fig_load);
+close(gcf);
+
+end % task loop
 
 %% ========================= Local Functions =========================
-function [metrics_out, spl_tc_out, dev_tc_out, vel_tc_out, bcea_tc_out] = exclude_outliers_tukey(metrics_in, spl_tc_in, dev_tc_in, vel_tc_in, bcea_tc_in)
+function [metrics_out, dev_tc_out] = exclude_outliers_tukey(metrics_in, dev_tc_in)
 % Apply Tukey 1.5*IQR rule per metric per condition. Set outliers to NaN.
-% Also excludes corresponding time-course data for SPL, Dev, Vel, BCEA.
+% Also excludes corresponding gaze deviation time-course rows.
 metrics_out = metrics_in;
-spl_tc_out = spl_tc_in;
 dev_tc_out = dev_tc_in;
-vel_tc_out = vel_tc_in;
-bcea_tc_out = bcea_tc_in;
-
-metric_fields = {'Alpha', 'SPL', 'Vel', 'Dev', 'BCEA'};
-tc_map = containers.Map({'SPL', 'Dev', 'Vel', 'BCEA'}, {1, 2, 3, 4});  % index for spl/dev/vel/bcea
-tc_cells = {spl_tc_out, dev_tc_out, vel_tc_out, bcea_tc_out};
+metric_fields = {'Alpha', 'Dev'};
 
 for m = 1:numel(metric_fields)
     key = metric_fields{m};
@@ -668,23 +747,14 @@ for m = 1:numel(metric_fields)
         out_mask = (vals < lo) | (vals > hi);
         nOut = nOut + sum(out_mask);
         X(out_mask, c) = NaN;
-        % Exclude corresponding time course for gaze metrics
-        if isKey(tc_map, key)
-            tc_idx = tc_map(key);
-            tc = tc_cells{tc_idx};
-            tc(out_mask, c, :) = NaN;
-            tc_cells{tc_idx} = tc;
+        % Exclude corresponding time course for gaze deviation.
+        if strcmp(key, 'Dev')
+            dev_tc_out(out_mask, c, :) = NaN;
         end
     end
     metrics_out.(key) = X;
-    if nOut > 0
-        fprintf('  %s: %d outlier(s) excluded\n', key, nOut);
-    end
+    fprintf('  %s: %d outlier(s) excluded\n', key, nOut);
 end
-spl_tc_out = tc_cells{1};
-dev_tc_out = tc_cells{2};
-vel_tc_out = tc_cells{3};
-bcea_tc_out = tc_cells{4};
 end
 
 function conds = parse_trialinfo_conds(trialinfo)
@@ -710,7 +780,7 @@ ch = {};
 for i = 1:numel(labels)
     lab = labels{i};
     if contains(lab, {'O'}) || contains(lab, {'I'}) || contains(lab, {'PO'})
-        ch{end+1} = lab; %#ok<AGROW>
+        ch{end+1} = lab;
     end
 end
 if isempty(ch)
@@ -729,54 +799,6 @@ for i = 1:numel(subjects)
 end
 end
 
-function [vx, vy] = clean_velocity_components(vx, vy)
-halfwin = 11; % SG edge region for framelen=21
-if numel(vx) > 2*halfwin
-    vx(1:halfwin) = NaN;
-    vx(end-halfwin+1:end) = NaN;
-    vy(1:halfwin) = NaN;
-    vy(end-halfwin+1:end) = NaN;
-end
-zvx = (vx - nanmean(vx)) ./ (nanstd(vx) + eps);
-zvy = (vy - nanmean(vy)) ./ (nanstd(vy) + eps);
-bad = abs(zvx) > 4 | abs(zvy) > 4;
-vx(bad) = NaN;
-vy(bad) = NaN;
-end
-
-function bcea_t = compute_bcea_timecourse(x, y, tt, t_plot, win_half)
-% BCEA time course: 95% bivariate contour ellipse area in sliding windows.
-% x, y: gaze coordinates; tt: time vector; t_plot: output time points;
-% win_half: half-window in s (e.g. 0.1 for 200 ms total).
-% Returns row vector of BCEA [px²] at each t_plot (NaN if insufficient samples).
-k95 = -log(1 - 0.95);
-nT = numel(t_plot);
-bcea_t = nan(1, nT);
-for j = 1:nT
-    t0 = t_plot(j);
-    idx = tt >= t0 - win_half & tt <= t0 + win_half;
-    xw = x(idx);
-    yw = y(idx);
-    valid = isfinite(xw) & isfinite(yw);
-    xw = xw(valid);
-    yw = yw(valid);
-    if numel(xw) < 10
-        continue
-    end
-    sx = std(xw);
-    sy = std(yw);
-    if sx <= 0 || sy <= 0
-        continue
-    end
-    r = corrcoef(xw, yw);
-    rho = r(1, 2);
-    if ~isfinite(rho)
-        continue
-    end
-    rho2 = max(0, min(1, rho^2));  % guard for numerical issues
-    bcea_t(j) = 2 * k95 * pi * sx * sy * sqrt(1 - rho2);
-end
-end
 
 function plot_group_power_spectrum_combined(pow_red, pow_amp, channels, colors, cond_labels, out_file, fig_pos, fsz)
 if any(cellfun(@isempty, pow_red)) || any(cellfun(@isempty, pow_amp))
@@ -785,9 +807,14 @@ if any(cellfun(@isempty, pow_red)) || any(cellfun(@isempty, pow_amp))
 end
 ga_red = cell(1, 3);
 ga_amp = cell(1, 3);
+guard_cfg = struct('hard_abs', 1e4, 'winsor_prc', [1 99]);
 for c = 1:3
-    ga_red{c} = ft_freqgrandaverage([], pow_red{c}{:});
-    ga_amp{c} = ft_freqgrandaverage([], pow_amp{c}{:});
+    red_clean = cellfun(@(x) sanitize_pow_struct(x, guard_cfg), pow_red{c}, 'UniformOutput', false);
+    amp_clean = cellfun(@(x) sanitize_pow_struct(x, guard_cfg), pow_amp{c}, 'UniformOutput', false);
+    ga_red{c} = ft_freqgrandaverage([], red_clean{:});
+    ga_amp{c} = ft_freqgrandaverage([], amp_clean{:});
+    pow_red{c} = red_clean;
+    pow_amp{c} = amp_clean;
 end
 
 elecs = ismember(ga_red{1}.label, channels);
@@ -810,7 +837,7 @@ for grp = 1:2
         end
         m = mean(subj_spec, 1, 'omitnan');
         se = std(subj_spec, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(subj_spec), 1)), 1);
-        all_m = [all_m; m]; all_se = [all_se; se]; %#ok<AGROW>
+        all_m = [all_m; m]; all_se = [all_se; se];
     end
 end
 % Absolute max centered around 0: ylim = [-ymax, ymax] (5-30 Hz only)
@@ -864,7 +891,7 @@ saveas(gcf, out_file);
 close(gcf);
 end
 
-function plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, color_map, fig_dir, fig_pos, fsz, winsor_cfg)
+function plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, color_map, fig_dir, fig_prefix, fig_pos, fsz, winsor_cfg)
 if any(cellfun(@isempty, tfr_red)) || any(cellfun(@isempty, tfr_amp))
     warning('Skipping TFR plot (incomplete condition data).');
     return
@@ -955,7 +982,7 @@ for c = 1:3
     cbar.Label.FontSize = fsz_tfr;
     title(ax, sprintf('Amplification - %s', cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
 end
-saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_tfr_all.png'));
+saveas(gcf, fullfile(fig_dir, sprintf('%s_tfr_all.png', fig_prefix)));
 close(gcf);
 end
 
@@ -1025,7 +1052,7 @@ P_2d = min(max(P_2d, lo), hi);
 freq_out.powspctrm = reshape(P_2d, P_size);
 end
 
-function plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, fig_dir, fig_pos, fsz)
+function plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, fig_dir, fig_prefix, fig_pos, fsz)
 if any(cellfun(@isempty, pow_red)) || any(cellfun(@isempty, pow_amp))
     warning('Skipping topoplots (missing power data).');
     return
@@ -1033,9 +1060,12 @@ end
 
 ga_red = cell(1, 3);
 ga_amp = cell(1, 3);
+guard_cfg = struct('hard_abs', 1e4, 'winsor_prc', [1 99]);
 for c = 1:3
-    ga_red{c} = ft_freqgrandaverage([], pow_red{c}{:});
-    ga_amp{c} = ft_freqgrandaverage([], pow_amp{c}{:});
+    red_clean = cellfun(@(x) sanitize_pow_struct(x, guard_cfg), pow_red{c}, 'UniformOutput', false);
+    amp_clean = cellfun(@(x) sanitize_pow_struct(x, guard_cfg), pow_amp{c}, 'UniformOutput', false);
+    ga_red{c} = ft_freqgrandaverage([], red_clean{:});
+    ga_amp{c} = ft_freqgrandaverage([], amp_clean{:});
 end
 
 cfg = [];
@@ -1060,7 +1090,7 @@ all_alpha = [];
 for c = 1:3
     Ared = mean(ga_red{c}.powspctrm(:, freq_idx), 2, 'omitnan');
     Aamp = mean(ga_amp{c}.powspctrm(:, freq_idx), 2, 'omitnan');
-    all_alpha = [all_alpha; Ared(:); Aamp(:)]; %#ok<AGROW>
+    all_alpha = [all_alpha; Ared(:); Aamp(:)];
 end
 all_alpha = all_alpha(isfinite(all_alpha));
 if isempty(all_alpha)
@@ -1092,11 +1122,11 @@ for c = 1:3
     set(ax, 'FontSize', fsz);
     title(ax, sprintf('Amplification - %s', cond_labels{c}), 'Interpreter', 'none');
 end
-saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_topo_all.png'));
+saveas(gcf, fullfile(fig_dir, sprintf('%s_topo_all.png', fig_prefix)));
 close(gcf);
 end
 
-function plot_group_tfrs_collapsed(tfr_red, tfr_amp, channels, headmodel, color_map, fig_dir, fig_pos, fsz, winsor_cfg)
+function plot_group_tfrs_collapsed(tfr_red, tfr_amp, channels, headmodel, color_map, fig_dir, fig_prefix, fig_pos, fsz, winsor_cfg)
 if any(cellfun(@isempty, tfr_red)) || any(cellfun(@isempty, tfr_amp))
     warning('Skipping collapsed TFR plot (incomplete condition data).');
     return
@@ -1179,10 +1209,10 @@ cbar.Label.String = 'Power [dB]';
 cbar.Label.FontSize = fsz_tfr;
 title(ax, 'Amplification', 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
 
-saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_tfr_collapsedConditions.png'));
+saveas(gcf, fullfile(fig_dir, sprintf('%s_tfr_collapsedConditions.png', fig_prefix)));
 end
 
-function plot_group_topos_collapsed(pow_red, pow_amp, channels, headmodel, fig_dir, fig_pos, fsz)
+function plot_group_topos_collapsed(pow_red, pow_amp, channels, headmodel, fig_dir, fig_prefix, fig_pos, fsz)
 if any(cellfun(@isempty, pow_red)) || any(cellfun(@isempty, pow_amp))
     warning('Skipping collapsed topoplots (missing power data).');
     return
@@ -1196,6 +1226,9 @@ if isempty(pow_red_all) || isempty(pow_amp_all)
     return
 end
 
+guard_cfg = struct('hard_abs', 1e4, 'winsor_prc', [1 99]);
+pow_red_all = cellfun(@(x) sanitize_pow_struct(x, guard_cfg), pow_red_all, 'UniformOutput', false);
+pow_amp_all = cellfun(@(x) sanitize_pow_struct(x, guard_cfg), pow_amp_all, 'UniformOutput', false);
 ga_red = ft_freqgrandaverage([], pow_red_all{:});
 ga_amp = ft_freqgrandaverage([], pow_amp_all{:});
 
@@ -1250,17 +1283,14 @@ colorbar(ax);
 set(ax, 'FontSize', fsz);
 title(ax, 'Amplification - collapsed over conditions', 'Interpreter', 'none');
 
-saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_topo_collapsedConditions.png'));
+saveas(gcf, fullfile(fig_dir, sprintf('%s_topo_collapsedConditions.png', fig_prefix)));
 close(gcf);
 end
 
-function plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_pos, fsz)
+function plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_prefix, fig_pos, fsz)
 metric_defs = { ...
     'Alpha', 'AlphaPower_FOOOF_bl', false; ...
-    'SPL', 'Scan path length', true; ...
-    'Vel', 'Velocity', true; ...
-    'Dev', 'Gaze deviation', true; ...
-    'BCEA', 'BCEA', true; ...
+    'Dev', 'Gaze deviation', false; ...
     };
 
 for m = 1:size(metric_defs, 1)
@@ -1314,7 +1344,7 @@ for m = 1:size(metric_defs, 1)
     box off
 
     sgtitle(varname, 'FontSize', fsz+2, 'Interpreter', 'none');
-    saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_raincloud_%s.png', lower(key))));
+    saveas(gcf, fullfile(fig_dir, sprintf('%s_raincloud_%s.png', fig_prefix, lower(key))));
     close(gcf);
 end
 end
@@ -1353,7 +1383,8 @@ scatter(x_box + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, .
 end
 
 % Cluster-based permutation test
-function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, cond_labels, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, eeg_tc, addEEG_TC, eeg_ylab)
+function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, ds_factor, eeg_tc, addEEG_TC, eeg_ylab)
+if nargin < 11 || isempty(ds_factor), ds_factor = 50; end
 if nargin < 12, eeg_tc = []; end
 if nargin < 13, addEEG_TC = ~isempty(eeg_tc); end
 if nargin < 14, eeg_ylab = 'Alpha Power [dB]'; end
@@ -1371,8 +1402,8 @@ end
 figure('Position', fig_pos, 'Color', 'w');
 nR = size(Rall, 1);
 nA = size(Aall, 1);
-has_eeg = addEEG_TC && ~isempty(eeg_tc) && size(eeg_tc, 1) >= (nR + nA) && size(eeg_tc, 2) >= 1 && size(eeg_tc, 3) >= nT;
-if has_eeg
+show_eeg = addEEG_TC && ~isempty(eeg_tc) && size(eeg_tc, 1) >= (nR + nA) && size(eeg_tc, 2) >= 1 && size(eeg_tc, 3) >= nT;
+if show_eeg
     tiledlayout(5, 1, 'TileSpacing', 'compact');
 else
     tiledlayout(3, 1, 'TileSpacing', 'compact');
@@ -1401,7 +1432,7 @@ set(gca, 'FontSize', fsz-4);
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
 leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
 legend([leg_p1 leg_p2], {'Reduction', 'Amplification'}, 'Location', 'northeast', 'FontSize', fsz-2, 'Box', 'off');
-if any(strcmp(save_tag, {'gaze_deviation_dB', 'gaze_deviation_pct'}))
+if contains(save_tag, 'gaze_deviation_pct')
     % ylim from shaded envelopes (mean ± SEM), not just the main lines
     upper = max(mR + sR, mA + sA);
     lower = min(mR - sR, mA - sA);
@@ -1423,7 +1454,6 @@ for t = 1:nT
     sp = sqrt(((numel(x)-1)*var(x) + (numel(y)-1)*var(y)) / max(numel(x)+numel(y)-2, 1));
     d(t) = (mean(y) - mean(x)) / max(sp, eps);
 end
-ds_factor = 10;
 Rall_ds = Rall(:, 1:ds_factor:end);
 Aall_ds = Aall(:, 1:ds_factor:end);
 nT_ds = size(Rall_ds, 2);
@@ -1514,8 +1544,8 @@ xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Cohen''s d');
 xlim([-0.5 3]);
-if any(strcmp(save_tag, {'gaze_deviation_dB', 'gaze_deviation_pct'}))
-    yticks([-0.5, -0.25, 0, 0.25, 0.5])
+if contains(save_tag, 'gaze_deviation_pct_COMBINED')
+    yticks([-0.25, 0, 0.25])
 end
 box on
 set(gca, 'FontSize', fsz-4);
@@ -1524,9 +1554,9 @@ if ~any(sig_cluster) && any(sig_uncorr)
         'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'HorizontalAlignment', 'center');
 end
 
-% Alpha power time course panel (4th row when has_eeg) - two lines with shaded error bars
+% Alpha power time course panel in combined figure.
 % Error bars: between-subject SEM = std(sample) / sqrt(n) at each time point.
-if has_eeg
+if show_eeg
     EegR = squeeze(mean(eeg_tc(is_red, :, :), 2, 'omitnan'));
     EegA = squeeze(mean(eeg_tc(is_amp, :, :), 2, 'omitnan'));
     if win_sm > 1
@@ -1637,7 +1667,7 @@ if has_eeg
     set(gca, 'FontSize', fsz-4);
 end
 
-saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_timecourse_%s_CBPT.png', save_tag)));
+saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlphaAmpRed_timecourse_%s_CBPT.png', save_tag)));
 end
 
 function [clusters, tvals, thr, maxMassNull, maxExtentNull] = ft_cluster_permutation_1d(Rall, Aall, nPerm, alpha, tail, t_plot_ds)
@@ -1827,7 +1857,7 @@ for k = 1:numel(clist)
         idx = post_idx(idx(valid));  % map to full time indices
         if isempty(idx), continue; end
     end
-    clusters(end+1).idx = idx; %#ok<AGROW>
+    clusters(end+1).idx = idx;
     clusters(end).mass = sum(abs(tvals(idx)), 'omitnan');
     clusters(end).extent = numel(idx);
     clusters(end).p = clist(k).prob;
@@ -1846,38 +1876,6 @@ thr.extent = NaN;
 
 maxMassNull = [];
 maxExtentNull = [];
-end
-
-function [vx, vy] = compute_velocity_sg(X, Y, fs, polyOrd)
-Ts = 1 / fs;
-L = numel(X);
-framelen = min(21, L);
-if mod(framelen, 2) == 0
-    framelen = framelen - 1;
-end
-minLegal = polyOrd + 3;
-if mod(minLegal, 2) == 0
-    minLegal = minLegal + 1;
-end
-if framelen < minLegal
-    framelen = minLegal;
-end
-if framelen > L
-    framelen = L - mod(L, 2) + 1;
-end
-useFallback = framelen < 5;
-
-if ~useFallback
-    Xs = sgolayfilt(X, polyOrd, framelen);
-    Ys = sgolayfilt(Y, polyOrd, framelen);
-    [~, G] = sgolay(polyOrd, framelen);
-    d1 = (factorial(1) / Ts) * G(:, 2)';
-    vx = conv(Xs, d1, 'same');
-    vy = conv(Ys, d1, 'same');
-else
-    vx = gradient(X) * fs;
-    vy = gradient(Y) * fs;
-end
 end
 
 function cmap = rdbu_cmap(n)
@@ -1942,4 +1940,20 @@ catch
     lme = fitlme(tbl_in, formula_ri);
     used_formula = formula_ri;
 end
+end
+
+function S = sanitize_pow_struct(S, cfg)
+if ~isfield(S, 'powspctrm') || isempty(S.powspctrm)
+    return
+end
+X = S.powspctrm;
+X(~isfinite(X)) = NaN;
+X(abs(X) > cfg.hard_abs) = NaN;
+vals = X(isfinite(X));
+if numel(vals) >= 20
+    lo = prctile(vals, cfg.winsor_prc(1));
+    hi = prctile(vals, cfg.winsor_prc(2));
+    X = min(max(X, lo), hi);
+end
+S.powspctrm = X;
 end

@@ -1,132 +1,248 @@
-%% AOC Split Alpha Amp/Red (Sternberg)
-% Creates a CSV with split labels and per-subject/per-load metrics
-% for downstream statistics in Python.
+%% AOC Split Sternberg Alpha (Subject-Level)
+% Subject-level split (fixed across conditions) using merged_data_sternberg:
+%   mean AlphaPower_FOOOF_bl across WM2/4/6 (baselined, FOOOFed alpha)
+%   < -cutoff  -> reduction group
+%   > cutoff   -> amplification group
+%   |alpha| <= cutoff -> excluded (percentage-based band around zero)
+%
+% Cutoff = alpha_zero_pct of the alpha_ref_percentile of |alpha| (default: 5% of 95th percentile).
+%
+% Uses baselined+FOOOFed alpha (power spectra, TFR, topoplots) and baselined gaze metrics
+% (SPL, Dev, BCEA, Vel; all in dB, 10*log10(value/baseline)).
+%
+% Outliers excluded via Tukey 1.5*IQR (per metric per condition) before visualization/analyses.
+%
+% Generates:
+% - Alpha split inclusion figure (participants by alpha, thresholds, group assignment)
+% - Power spectra (3 conditions) for both groups
+% - TFRs per condition for both groups + group differences
+% - Topoplots per condition for both groups + group-difference topoplots
+% - Rainclouds for Alpha, SPL, Vel, Dev, BCEA
+% - Time-course panels (SPL, velocity, gaze deviation) with effect-size strips
 
 %% Setup
 startup
-[subjects, paths, ~, ~] = setup('AOC');
+[subjects, paths, colors, headmodel] = setup('AOC');
 pathAOC = paths.features;
 
 if ispc
     base_data = 'W:\Students\Arne\AOC';
+    seb_path = 'W:\Students\Arne\toolboxes\shadedErrorBar';
 else
     base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC';
+    seb_path = '/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/shadedErrorBar';
 end
+addpath(seb_path);
 
 feat_dir = fullfile(base_data, 'data', 'features');
-out_dir = fullfile(base_data, 'data', 'stats', 'splits');
-if ~isfolder(out_dir)
-    mkdir(out_dir);
+fig_dir = fullfile(base_data, 'figures', 'splits', 'SplitAlphaAmpRed');
+stats_dir = fullfile(base_data, 'data', 'stats', 'splits');
+if ~isfolder(fig_dir)
+    mkdir(fig_dir);
 end
+if ~isfolder(stats_dir)
+    mkdir(stats_dir);
+end
+fprintf('\n=== AOC Split Sternberg Alpha ===\n');
+fprintf('Figure directory: %s\n', fig_dir);
 
-fprintf('\n=== AOC Split Alpha Amp/Red (Sternberg) ===\n');
+% Keep canonical figure size requested.
+fig_pos = [0 0 1512 982];
 
-%% Task definition (Sternberg only)
-task_tag = 'sternberg';
-merged_file = 'AOC_merged_data_sternberg.mat';
-merged_var = 'merged_data_sternberg';
+% Conditions and labels
 cond_vals = [2 4 6];
 cond_codes = [22 24 26];
 cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
-gaze_fname = 'gaze_series_sternberg_trials.mat';
 
-alpha_zero_pct = 5;
-alpha_ref_percentile = 95;
+fontSize = 20;
+% rng(42);
+alpha_zero_pct = 5; % Exclude near-zero alpha within this % of robust |alpha| reference
+alpha_ref_percentile = 95; % Use this percentile of |alpha| for reference (outlier-resistant)
+tfr_winsor_cfg = struct();
+tfr_winsor_cfg.enable = true;
+tfr_winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
 
-%% Load merged data
-src_file = fullfile(feat_dir, merged_file);
-if ~isfile(src_file)
-    error('Missing merged file: %s', src_file);
+%% Load subject-level merged data and define alpha split
+fprintf('\n=== Loading merged data ===\n');
+merged_file = fullfile(feat_dir, 'AOC_merged_data_sternberg.mat');
+if ~isfile(merged_file)
+    error('Missing file: %s', merged_file);
 end
-
-S = load(src_file, merged_var);
-if ~isfield(S, merged_var)
-    error('Variable %s not found in %s', merged_var, src_file);
+S = load(merged_file, 'merged_data_sternberg');
+if ~isfield(S, 'merged_data_sternberg')
+    error('Variable merged_data_sternberg not found in %s', merged_file);
 end
-T = struct2table(S.(merged_var));
+T = struct2table(S.merged_data_sternberg);
 
-%% Define split at subject level from AlphaPower_FOOOF_bl
+% Compute subject-level split value from full-window FOOOF-baselined alpha.
 uIDs = unique(T.ID);
 nSubj = numel(uIDs);
 alpha_mean = nan(nSubj, 1);
 for i = 1:nSubj
     sid = uIDs(i);
-    alpha_mean(i) = mean(T.AlphaPower_FOOOF_bl(T.ID == sid), 'omitnan');
+    mask = T.ID == sid;
+    alpha_mean(i) = mean(T.AlphaPower_FOOOF_bl(mask), 'omitnan');
 end
 
-split_valid = isfinite(alpha_mean);
-vals = alpha_mean(split_valid);
-if numel(vals) >= 4
-    q1 = prctile(vals, 25);
-    q3 = prctile(vals, 75);
-    iqr_val = q3 - q1;
-    if isfinite(iqr_val) && iqr_val > 0
-        lo = q1 - 3 * iqr_val;
-        hi = q3 + 3 * iqr_val;
-        split_valid = split_valid & alpha_mean >= lo & alpha_mean <= hi;
-    end
+% Percentage-based exclusion band around zero (outlier-resistant reference).
+valid_alpha_mean = alpha_mean(isfinite(alpha_mean));
+if isempty(valid_alpha_mean)
+    error('No finite subject-level alpha values found for split.');
 end
-
-valid_alpha = alpha_mean(split_valid);
-if isempty(valid_alpha)
-    error('No valid subject-level alpha values for split.');
-end
-alpha_abs_ref = prctile(abs(valid_alpha), alpha_ref_percentile);
+alpha_abs_ref = prctile(abs(valid_alpha_mean), alpha_ref_percentile);
 alpha_zero_margin = (alpha_zero_pct / 100) * alpha_abs_ref;
 
-reduction_ids = uIDs(split_valid & (alpha_mean < -alpha_zero_margin));
-amplification_ids = uIDs(split_valid & (alpha_mean > alpha_zero_margin));
-zero_ids = uIDs(split_valid & (abs(alpha_mean) <= alpha_zero_margin));
-invalid_ids = uIDs(~split_valid);
+reduction_ids = uIDs(alpha_mean < -alpha_zero_margin);
+amplification_ids = uIDs(alpha_mean > alpha_zero_margin);
+zero_ids = uIDs(abs(alpha_mean) <= alpha_zero_margin);
 
-fprintf('\n=== Split Summary [%s] ===\n', task_tag);
+fprintf('\n=== Split Summary (AlphaPower_FOOOF_bl, full window) ===\n');
 fprintf('Subjects total: %d\n', nSubj);
-fprintf('Cutoff (|alpha|): %.4f\n', alpha_zero_margin);
-fprintf('Reduction: %d\n', numel(reduction_ids));
-fprintf('Amplification: %d\n', numel(amplification_ids));
-fprintf('Excluded near-zero: %d\n', numel(zero_ids));
-fprintf('Excluded invalid: %d\n', numel(invalid_ids));
+fprintf('Zero-band setting: %.2f%% of %dth-percentile |alpha| (ref=%.4f, cutoff=%.4f)\n', ...
+    alpha_zero_pct, alpha_ref_percentile, alpha_abs_ref, alpha_zero_margin);
+fprintf('Reduction (< -%.4f): %d\n', alpha_zero_margin, numel(reduction_ids));
+fprintf('Amplification (> %.4f): %d\n', alpha_zero_margin, numel(amplification_ids));
+fprintf('Excluded (|alpha| <= %.4f): %d\n', alpha_zero_margin, numel(zero_ids));
 
-%% Preallocate metrics
-metrics_Alpha = nan(nSubj, 3);
-metrics_Dev = nan(nSubj, 3);
+if numel(reduction_ids) < 2 || numel(amplification_ids) < 2
+    error('Insufficient subjects per split group.');
+end
 
-% Gaze-derived percent baseline deviation time-course
+%% Alpha split inclusion figure
+fprintf('\n=== Plotting alpha split inclusion figure ===\n');
+figure('Position', fig_pos, 'Color', 'w');
+hold on
+% Grey yline at 0
+yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 2);
+% Red ylines at thresholds
+yline(alpha_zero_margin, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
+yline(-alpha_zero_margin, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
+% Plot subjects: reduction blue, amplification red, excluded grey
+x_vals = (1:nSubj)';
+idx_red = ismember(uIDs, reduction_ids);
+idx_amp = ismember(uIDs, amplification_ids);
+idx_excl = ismember(uIDs, zero_ids);
+scatter(x_vals(idx_excl), alpha_mean(idx_excl), 80, [0.5 0.5 0.5], 'filled', 'MarkerFaceAlpha', 0.7);
+scatter(x_vals(idx_red), alpha_mean(idx_red), 80, [0.2 0.4 0.8], 'filled', 'MarkerFaceAlpha', 0.8);
+scatter(x_vals(idx_amp), alpha_mean(idx_amp), 80, [0.8 0.2 0.2], 'filled', 'MarkerFaceAlpha', 0.8);
+xlabel('Participant (index)');
+ylabel('Alpha Power [dB]');
+title('Alpha Split: Reduction (blue), Amplification (red), Excluded (grey)');
+legend({'Excluded', 'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
+set(gca, 'FontSize', fontSize);
+box on
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_inclusion.png'));
+close(gcf);
+
+%% Preallocate containers
+% EEG power spectra/topography
+pow_red = cell(1, 3);
+pow_amp = cell(1, 3);
+for c = 1:3
+    pow_red{c} = {};
+    pow_amp{c} = {};
+end
+
+% EEG TFR (tfr_*_subj: subject indices corresponding to each TFR, for correct variance mapping)
+tfr_red = cell(1, 3);
+tfr_amp = cell(1, 3);
+tfr_red_subj = [];
+tfr_amp_subj = [];
+for c = 1:3
+    tfr_red{c} = {};
+    tfr_amp{c} = {};
+end
+
+% Gaze summary metrics from merged subject table (pre-outlier exclusion)
+metrics_raw = struct();
+metrics_raw.Alpha = nan(nSubj, 3);
+metrics_raw.SPL = nan(nSubj, 3);           % ScanPathLengthFullBL [% change]
+metrics_raw.Dev = nan(nSubj, 3);          % GazeDeviationFullBL [% change]
+metrics_raw.BCEA = nan(nSubj, 3);         % BCEAFullBL [% change]
+metrics_raw.Vel = nan(nSubj, 3);          % velocity [% change], computed below
+
+% Time courses per subject x condition (full resolution, pre-outlier exclusion)
 fs = 500;
 t_full = -0.5:1/fs:3;
 t_plot = t_full(2:end);
 Tf = numel(t_plot);
-dev_tc = nan(nSubj, 3, Tf);
+spl_tc_raw = nan(nSubj, 3, Tf);
+dev_tc_raw = nan(nSubj, 3, Tf);
+vel_tc_raw = nan(nSubj, 3, Tf);
+bcea_tc_raw = nan(nSubj, 3, Tf);
 
+missing_eeg = {};
+missing_tfr = {};
 missing_gaze = {};
 
-%% Aggregate subject-level/load-level metrics
-fprintf('\n=== Aggregating merged and gaze metrics ===\n');
+%% Aggregate per-subject data
+fprintf('\n=== Aggregating per-subject data (%d subjects) ===\n', nSubj);
 for s = 1:nSubj
+    disp(s)
     sid = uIDs(s);
     sid_str = num2str(sid);
-    subj_rows = T(T.ID == sid, :);
-
-    for c = 1:3
-        cmask = subj_rows.Condition == cond_vals(c);
-        if any(cmask)
-            metrics_Alpha(s, c) = mean(subj_rows.AlphaPower_FOOOF_bl(cmask), 'omitnan');
-            metrics_Dev(s, c) = mean(subj_rows.GazeDeviationFullBL(cmask), 'omitnan');
-        end
-    end
-
     subj_folder = resolve_subject_folder(subjects, sid);
     if isempty(subj_folder)
         subj_folder = sid_str;
     end
-    gaze_file = fullfile(pathAOC, subj_folder, 'gaze', gaze_fname);
+    subj_rows = T(T.ID == sid, :);
+
+    % Subject-level condition metrics from merged_data_sternberg
+    for c = 1:3
+        cmask = subj_rows.Condition == cond_vals(c);
+        if any(cmask)
+            metrics_raw.Alpha(s, c) = mean(subj_rows.AlphaPower_FOOOF_bl(cmask), 'omitnan');
+            metrics_raw.SPL(s, c) = mean(subj_rows.ScanPathLengthFullBL(cmask), 'omitnan');
+            metrics_raw.Dev(s, c) = mean(subj_rows.GazeDeviationFullBL(cmask), 'omitnan');
+            metrics_raw.BCEA(s, c) = mean(subj_rows.BCEAFullBL(cmask), 'omitnan');
+        end
+    end
+
+    % EEG power spectra and topography sources (baselined, FOOOFed)
+    eeg_dir = fullfile(pathAOC, subj_folder, 'eeg');
+    try
+        P = load(fullfile(eeg_dir, 'power_stern_fooof.mat'), 'pow2_fooof_bl', 'pow4_fooof_bl', 'pow6_fooof_bl');
+        pow_conds = {P.pow2_fooof_bl, P.pow4_fooof_bl, P.pow6_fooof_bl};
+        for c = 1:3
+            if ismember(sid, reduction_ids)
+                pow_red{c}{end+1} = pow_conds{c}; %#ok<AGROW>
+            elseif ismember(sid, amplification_ids)
+                pow_amp{c}{end+1} = pow_conds{c}; %#ok<AGROW>
+            end
+        end
+    catch
+        missing_eeg{end+1} = sid_str; %#ok<AGROW>
+    end
+
+    % EEG TFR sources (store subject index for correct time-course extraction)
+    try
+        % Use FOOOFed + baselined TFR to avoid raw-power scale skew.
+        R = load(fullfile(eeg_dir, 'tfr_stern.mat'), 'tfr2_fooof_bl', 'tfr4_fooof_bl', 'tfr6_fooof_bl');
+        tfr_conds = {R.tfr2_fooof_bl, R.tfr4_fooof_bl, R.tfr6_fooof_bl};
+        if ismember(sid, reduction_ids)
+            for c = 1:3
+                tfr_red{c}{end+1} = tfr_conds{c}; %#ok<AGROW>
+            end
+            tfr_red_subj(end+1) = s; %#ok<AGROW>
+        elseif ismember(sid, amplification_ids)
+            for c = 1:3
+                tfr_amp{c}{end+1} = tfr_conds{c}; %#ok<AGROW>
+            end
+            tfr_amp_subj(end+1) = s; %#ok<AGROW>
+        end
+    catch
+        missing_tfr{end+1} = sid_str; %#ok<AGROW>
+    end
+
+    % Gaze series for time courses and velocity summary
+    gaze_file = fullfile(feat_dir, subj_folder, 'gaze', 'gaze_series_sternberg_trials.mat');
     if ~isfile(gaze_file)
         missing_gaze{end+1} = sid_str; %#ok<AGROW>
         continue
     end
 
     G = load(gaze_file);
-    if ~isfield(G, 'trialinfo') || ~isfield(G, 'gaze_x') || ~isfield(G, 'gaze_y')
+    if ~isfield(G, 'trialinfo')
         missing_gaze{end+1} = sid_str; %#ok<AGROW>
         continue
     end
@@ -137,82 +253,327 @@ for s = 1:nSubj
         continue
     end
 
-    for c = 1:3
-        tr_idx = find(conds == cond_codes(c));
-        if isempty(tr_idx)
-            continue
+    % ET coverage diagnostic for the requested 1-3 s window (per subject).
+    if isfield(G, 'time') && ~isempty(G.time)
+        tmax_trials = nan(1, numel(G.time));
+        for tr = 1:numel(G.time)
+            tt_cov = G.time{tr};
+            if isempty(tt_cov), continue, end
+            tmax_trials(tr) = tt_cov(end);
         end
-        dev_mat = nan(numel(tr_idx), Tf);
-        for k = 1:numel(tr_idx)
-            tr = tr_idx(k);
-            x = double(G.gaze_x{tr});
-            y = double(G.gaze_y{tr});
-            if isempty(x) || isempty(y) || numel(x) ~= numel(y)
+        n_reach_3s = sum(tmax_trials >= 3, 'omitnan');
+        fprintf('ET coverage %s: %d/%d trials reach 3 s (tmax median=%.3f s, min=%.3f s)\n', ...
+            sid_str, n_reach_3s, numel(tmax_trials), median(tmax_trials, 'omitnan'), min(tmax_trials, [], 'omitnan'));
+    end
+
+    % SPL time course from ScanPathSeries
+    if isfield(G, 'ScanPathSeries') && isfield(G, 'ScanPathSeriesT')
+        for c = 1:3
+            tr_mask = conds == cond_codes(c);
+            tr_idx = find(tr_mask);
+            if isempty(tr_idx)
                 continue
             end
-            if isfield(G, 'time') && numel(G.time) >= tr && ~isempty(G.time{tr})
-                tt = double(G.time{tr});
-                if numel(tt) ~= numel(x)
-                    tt = linspace(tt(1), tt(end), numel(x));
+            mat = nan(numel(tr_idx), Tf);
+            for k = 1:numel(tr_idx)
+                tr = tr_idx(k);
+                srl = G.ScanPathSeries{tr};
+                tt = G.ScanPathSeriesT{tr};
+                if isempty(srl) || isempty(tt)
+                    continue
                 end
-            else
-                tt = linspace(-0.5, 3, numel(x));
+                try
+                    mat(k, :) = interp1(tt, srl, t_plot, 'linear', NaN);
+                catch
+                end
             end
-            dev = sqrt((x - 400).^2 + (y - 300).^2);
-            try
-                dev_mat(k, :) = interp1(tt, dev, t_plot, 'linear', NaN);
-            catch
-            end
+            spl_tc_raw(s, c, :) = nanmean(mat, 1);
         end
-        dev_tc(s, c, :) = nanmean(dev_mat, 1);
+    end
+
+    % Deviation and velocity time course from gaze x/y if available
+    has_xy = isfield(G, 'gaze_x') && isfield(G, 'gaze_y');
+    if has_xy
+        for c = 1:3
+            tr_mask = conds == cond_codes(c);
+            tr_idx = find(tr_mask);
+            if isempty(tr_idx)
+                continue
+            end
+
+            dev_mat = nan(numel(tr_idx), Tf);
+            vel_mat = nan(numel(tr_idx), Tf);
+            bcea_mat = nan(numel(tr_idx), Tf);
+            vel_full_trials = nan(numel(tr_idx), 1);
+            vel_bl_trials = nan(numel(tr_idx), 1);
+
+            for k = 1:numel(tr_idx)
+                tr = tr_idx(k);
+                x = double(G.gaze_x{tr});
+                y = double(G.gaze_y{tr});
+                if isempty(x) || isempty(y) || numel(x) ~= numel(y)
+                    continue
+                end
+
+                if isfield(G, 'time') && numel(G.time) >= tr && ~isempty(G.time{tr})
+                    tt = double(G.time{tr});
+                    if numel(tt) ~= numel(x)
+                        tt = linspace(tt(1), tt(end), numel(x));
+                    end
+                else
+                    tt = linspace(-0.5, 3, numel(x));
+                end
+                dev = sqrt((x - 400).^2 + (y - 300).^2);
+                [vx, vy] = compute_velocity_sg(x, y, fs, 3);
+                [vx, vy] = clean_velocity_components(vx, vy);
+                vel = hypot(vx, vy);
+
+                try
+                    dev_mat(k, :) = interp1(tt, dev, t_plot, 'linear', NaN);
+                    vel_mat(k, :) = interp1(tt, vel, t_plot, 'linear', NaN);
+                    bcea_mat(k, :) = compute_bcea_timecourse(x, y, tt, t_plot, 0.1);
+                catch
+                end
+
+                idx_full = tt >= 0 & tt <= 3;
+                idx_bl = tt >= -0.5 & tt <= -0.25;
+                v_full = mean(vel(idx_full), 'omitnan');
+                v_bl = mean(vel(idx_bl), 'omitnan');
+                vel_full_trials(k) = v_full;
+                if isfinite(v_full) && isfinite(v_bl) && v_bl > 0
+                    vel_bl_trials(k) = 100 * (v_full - v_bl) / v_bl;
+                end
+            end
+
+            dev_tc_raw(s, c, :) = nanmean(dev_mat, 1);
+            vel_tc_raw(s, c, :) = nanmean(vel_mat, 1);
+            bcea_tc_raw(s, c, :) = nanmean(bcea_mat, 1);
+            metrics_raw.Vel(s, c) = mean(vel_bl_trials, 'omitnan');
+        end
     end
 end
 
-fprintf('Missing gaze files/fields: %d\n', numel(unique(missing_gaze)));
+%% Define groups in row index space
+is_red = ismember(uIDs, reduction_ids);
+is_amp = ismember(uIDs, amplification_ids);
 
-%% Baseline-corrected gaze deviation (%), then [0..2] s mean by load
+%% Exclude outliers (Tukey 1.5*IQR) before visualization and analyses
+fprintf('\n=== Outlier exclusion (Tukey 1.5*IQR, per metric per condition) ===\n');
+[metrics, spl_tc, dev_tc, vel_tc, bcea_tc] = exclude_outliers_tukey(metrics_raw, spl_tc_raw, dev_tc_raw, vel_tc_raw, bcea_tc_raw);
+
+%% Determine occipital channels (from first available power file)
+channels = {};
+for c = 1:3
+    if ~isempty(pow_red{c})
+        p0 = pow_red{c}{1};
+        channels = occ_channels_from_labels(p0.label);
+        break
+    elseif ~isempty(pow_amp{c})
+        p0 = pow_amp{c}{1};
+        channels = occ_channels_from_labels(p0.label);
+        break
+    end
+end
+if isempty(channels)
+    error('No power data available for channel definition.');
+end
+
+%% Power spectra (both groups, single figure)
+close all
+fprintf('\n=== Plotting power spectra ===\n');
+plot_group_power_spectrum_combined(pow_red, pow_amp, channels, colors, cond_labels, ...
+    fullfile(fig_dir, 'AOC_splitAlpha_powspctrm.png'), fig_pos, fontSize);
+
+%% TFRs per condition (both groups + diff, 3x3)
+fprintf('\n=== Plotting TFRs ===\n');
+color_map_tfr = customcolormap_preset('red-white-blue');
+
+plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, ...
+    color_map_tfr, fig_dir, fig_pos, fontSize, tfr_winsor_cfg);
+
+%% TFRs collapsed over conditions (both groups)
+fprintf('\n=== Plotting collapsed TFRs (across conditions) ===\n');
+plot_group_tfrs_collapsed(tfr_red, tfr_amp, channels, headmodel, color_map_tfr, ...
+    fig_dir, fig_pos, fontSize, tfr_winsor_cfg);
+
+%% Topoplots per condition (both groups + differences)
+fprintf('\n=== Plotting topoplots ===\n');
+plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, fig_dir, fig_pos, fontSize);
+
+%% Topoplots collapsed over conditions (both groups)
+fprintf('\n=== Plotting collapsed topoplots (across conditions) ===\n');
+plot_group_topos_collapsed(pow_red, pow_amp, channels, headmodel, fig_dir, fig_pos, fontSize);
+
+%% Rainclouds
+fprintf('\n=== Plotting rainclouds ===\n');
+plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_pos, fontSize);
+
+%% EEG and Gaze time courses with effect-size
+close all
+Tf = size(spl_tc, 3);
+t_full_eeg = linspace(-0.5, 3, Tf);
+addEEG_TC = true;
+eeg_tc = [];
+if addEEG_TC
+    fprintf('\n=== Extracting EEG alpha time course from TFR ===\n');
+    eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_subj, nSubj, channels, Tf, t_full_eeg);
+end
+
+% Baselined time courses: gaze in dB (baseline -0.5 to -0.25 s); EEG stays in dB
+fprintf('\n=== Computing baselined time courses ===\n');
 t_vec = linspace(-0.5, 3, Tf);
-bl_idx = t_vec >= -0.5 & t_vec <= -0.25;
-task_idx = t_vec >= 0 & t_vec <= 2;
+bl_idx = (t_vec >= -0.5) & (t_vec <= -0.25);
 
 dev_bl = mean(dev_tc(:, :, bl_idx), 3, 'omitnan');
 dev_bl_3d = repmat(dev_bl, [1, 1, Tf]);
 dev_bl_3d(dev_bl_3d <= 0 | ~isfinite(dev_bl_3d)) = NaN;
+% dB baseline: 10*log10(value/baseline)
+dev_tc_dB = 10 * log10(dev_tc ./ dev_bl_3d);
+dev_tc_dB(~isfinite(dev_tc_dB)) = NaN;
+
+% Percent baseline: (value/baseline - 1) * 100 .
 dev_tc_pct = (dev_tc ./ dev_bl_3d - 1) * 100;
 dev_tc_pct(~isfinite(dev_tc_pct)) = NaN;
-dev_pct_by_load = squeeze(mean(dev_tc_pct(:, :, task_idx), 3, 'omitnan'));
+
+% SPL, vel, BCEA: same dB convention as gaze deviation
+spl_bl = mean(spl_tc(:, :, bl_idx), 3, 'omitnan');
+spl_bl_3d = repmat(spl_bl, [1, 1, Tf]);
+spl_bl_3d(spl_bl_3d <= 0 | ~isfinite(spl_bl_3d)) = NaN;
+spl_tc_dB = 10 * log10(spl_tc ./ spl_bl_3d);
+spl_tc_dB(~isfinite(spl_tc_dB)) = NaN;
+
+vel_bl = mean(vel_tc(:, :, bl_idx), 3, 'omitnan');
+vel_bl_3d = repmat(vel_bl, [1, 1, Tf]);
+vel_bl_3d(vel_bl_3d <= 0 | ~isfinite(vel_bl_3d)) = NaN;
+vel_tc_dB = 10 * log10(vel_tc ./ vel_bl_3d);
+vel_tc_dB(~isfinite(vel_tc_dB)) = NaN;
+
+bcea_bl = mean(bcea_tc(:, :, bl_idx), 3, 'omitnan');
+bcea_bl_3d = repmat(bcea_bl, [1, 1, Tf]);
+bcea_bl_3d(bcea_bl_3d <= 0 | ~isfinite(bcea_bl_3d)) = NaN;
+bcea_tc_dB = 10 * log10(bcea_tc ./ bcea_bl_3d);
+bcea_tc_dB(~isfinite(bcea_tc_dB)) = NaN;
+
+% Plot time courses
+close all
+fontSizeTC = 25;
+rng(321)
+plot_timecourse_with_effect_CBPT(dev_tc_dB, is_red, is_amp, cond_labels, colors, ...
+    'Gaze Deviation [dB]', 'gaze_deviation_dB', fig_dir, fig_pos, fontSizeTC, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+
+% Add a parallel gaze deviation timecourse using percent change baseline.
+rng_state = rng;
+plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, cond_labels, colors, ...
+    'Gaze Deviation [%]', 'gaze_deviation_pct', fig_dir, fig_pos, fontSizeTC, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+rng(rng_state);
+% plot_timecourse_with_effect_CBPT(spl_tc_dB, is_red, is_amp, cond_labels, colors, ...
+%     'Scan Path Length [dB]', 'spl_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+% plot_timecourse_with_effect_CBPT(vel_tc_dB, is_red, is_amp, cond_labels, colors, ...
+%     'Eye Velocity [dB]', 'velocity_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+% plot_timecourse_with_effect_CBPT(bcea_tc_dB, is_red, is_amp, cond_labels, colors, ...
+%     'BCEA [dB]', 'bcea_dB', fig_dir, fig_pos, fontSize, fs, eeg_tc, addEEG_TC, 'Alpha Power [dB]');
+
+%% Sanity checks
+fprintf('\n=== Data Diagnostics ===\n');
+fprintf('Missing EEG power (power_stern_fooof.mat): %d\n', numel(unique(missing_eeg)));
+fprintf('Missing TFR files: %d\n', numel(unique(missing_tfr)));
+fprintf('Missing gaze files/fields: %d\n', numel(unique(missing_gaze)));
+fprintf('Figures saved to: %s\n', fig_dir);
+
+%% Statistical models moved to Python
+% Intentionally no inferential statistics are run in this MATLAB script.
+% Use 4_stats/AOC_stats_splits_AmpRed.py on the exported CSV inputs.
+metric_names = {'SPL', 'Dev', 'BCEA', 'Vel'}; %#ok<NASGU>
+metric_labels = {'Scan path length [dB]', 'Gaze deviation [dB]', 'BCEA [dB]', 'Velocity [dB]'}; %#ok<NASGU>
+
+%% Follow-up: Alpha & gaze deviation (dB) vs WM load (Group × Load)
+% Links the Reduction vs Amplification split to load-resolved outcomes. Gaze dB matches the
+% CBPT time-course convention (baseline -0.5:-0.25 s); values averaged 0.5–1.5 s post-stimulus.
+fprintf('\n========== FOLLOW-UP: GROUP × LOAD (ALPHA & GAZE DEVIATION dB) ==========\n');
+fprintf('Alpha: mean AlphaPower_FOOOF_bl [dB] per WM load (Tukey-cleaned metrics matrix).\n');
+fprintf('Gaze: mean gaze deviation [dB] per WM load from dev_tc_dB, averaged [0.50 1.50] s (task window).\n');
+
+t_win_lo = 0.5;
+t_win_hi = 1.5;
+task_idx_gaze = (t_vec >= t_win_lo) & (t_vec <= t_win_hi);
+dev_dB_by_load = squeeze(mean(dev_tc_dB(:, :, task_idx_gaze), 3, 'omitnan'));
+
+follow_names = {'Alpha', 'GazeDev_dB'};
+follow_X = {metrics.Alpha, dev_dB_by_load};
+follow_ylab = {'Alpha power [dB]', 'Gaze deviation [dB]'};
+
+col_red_line = [0.20 0.42 0.85];
+col_amp_line = [0.88 0.32 0.38];
+
+incl_gl = is_red | is_amp;
+subj_idx_gl = find(incl_gl);
+
+fprintf('\n--- Descriptive: mean (SEM) by group and load; n = finite values per cell ---\n');
+for oi = 1:numel(follow_names)
+    X = follow_X{oi};
+    oname = follow_names{oi};
+    fprintf('\n  %s (%s)\n', oname, follow_ylab{oi});
+    for gi = 1:2
+        if gi == 1
+            mask = is_red;
+            gstr = 'Reduction';
+        else
+            mask = is_amp;
+            gstr = 'Amplification';
+        end
+        fprintf('    %s:\n', gstr);
+        for c = 1:3
+            v = X(mask, c);
+            v = v(isfinite(v));
+            nv = numel(v);
+            if nv > 0
+                m = mean(v);
+                se = std(v) / sqrt(nv);
+                fprintf('      %s: n=%d, mean=%.6g, SEM=%.6g\n', cond_labels{c}, nv, m, se);
+            else
+                fprintf('      %s: n=0\n', cond_labels{c});
+            end
+        end
+    end
+end
+
+fprintf('\n--- Inferential models moved to Python (MATLAB prints descriptives + figures only) ---\n');
 
 %% Export long-format CSV for Python stats
-split_label = repmat("Excluded", nSubj, 1);
-split_label(ismember(uIDs, reduction_ids)) = "Reduction";
-split_label(ismember(uIDs, amplification_ids)) = "Amplification";
-split_label(ismember(uIDs, zero_ids)) = "ExcludedNearZero";
-split_label(ismember(uIDs, invalid_ids)) = "ExcludedInvalid";
-is_included = split_label == "Reduction" | split_label == "Amplification";
+split_group = repmat("Excluded", nSubj, 1);
+split_group(is_red) = "Reduction";
+split_group(is_amp) = "Amplification";
+included = is_red | is_amp;
 
-rows_n = nSubj * 3;
+rows_n = nSubj * numel(cond_vals);
 ID = nan(rows_n, 1);
 LoadValue = nan(rows_n, 1);
 LoadLabel = strings(rows_n, 1);
 Group = strings(rows_n, 1);
 Included = false(rows_n, 1);
 AlphaPower_FOOOF_bl = nan(rows_n, 1);
-GazeDeviationFullBL = nan(rows_n, 1);
-GazeDev_pct_0_2s = nan(rows_n, 1);
+SPL_dB = nan(rows_n, 1);
+Dev_dB = nan(rows_n, 1);
+BCEA_dB = nan(rows_n, 1);
+Vel_dB = nan(rows_n, 1);
+GazeDev_dB_0p5_1p5s = nan(rows_n, 1);
 AlphaSplitSubjectMean = nan(rows_n, 1);
 AlphaZeroCutoff = nan(rows_n, 1);
 
 r = 1;
 for s = 1:nSubj
-    for c = 1:3
+    for c = 1:numel(cond_vals)
         ID(r) = uIDs(s);
         LoadValue(r) = cond_vals(c);
         LoadLabel(r) = string(cond_labels{c});
-        Group(r) = split_label(s);
-        Included(r) = is_included(s);
-        AlphaPower_FOOOF_bl(r) = metrics_Alpha(s, c);
-        GazeDeviationFullBL(r) = metrics_Dev(s, c);
-        GazeDev_pct_0_2s(r) = dev_pct_by_load(s, c);
+        Group(r) = split_group(s);
+        Included(r) = included(s);
+        AlphaPower_FOOOF_bl(r) = metrics.Alpha(s, c);
+        SPL_dB(r) = metrics.SPL(s, c);
+        Dev_dB(r) = metrics.Dev(s, c);
+        BCEA_dB(r) = metrics.BCEA(s, c);
+        Vel_dB(r) = metrics.Vel(s, c);
+        GazeDev_dB_0p5_1p5s(r) = dev_dB_by_load(s, c);
         AlphaSplitSubjectMean(r) = alpha_mean(s);
         AlphaZeroCutoff(r) = alpha_zero_margin;
         r = r + 1;
@@ -220,17 +581,112 @@ for s = 1:nSubj
 end
 
 split_stats = table(ID, LoadValue, LoadLabel, Group, Included, ...
-    AlphaPower_FOOOF_bl, GazeDeviationFullBL, GazeDev_pct_0_2s, ...
+    AlphaPower_FOOOF_bl, SPL_dB, Dev_dB, BCEA_dB, Vel_dB, GazeDev_dB_0p5_1p5s, ...
     AlphaSplitSubjectMean, AlphaZeroCutoff);
-
-out_csv = fullfile(out_dir, 'AOC_splitAmpRed_sternberg_stats_input.csv');
+out_csv = fullfile(stats_dir, 'AOC_splitAmpRed_sternberg_stats_input.csv');
 writetable(split_stats, out_csv);
+fprintf('Saved Python stats input CSV: %s\n', out_csv);
+fprintf('Rows: %d (included rows: %d)\n', height(split_stats), sum(split_stats.Included));
 
-fprintf('\nSaved CSV: %s\n', out_csv);
-fprintf('Rows: %d\n', height(split_stats));
-fprintf('Included rows (Reduction/Amplification): %d\n', sum(split_stats.Included));
+fprintf('\n--- Figure: load profiles (mean ± SEM) ---\n');
+figure('Position', fig_pos, 'Color', 'w');
+tiledlayout(1, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
+for oi = 1:numel(follow_names)
+    X = follow_X{oi};
+    nexttile; hold on
+    xloads = cond_vals;
+    for gi = 1:2
+        if gi == 1
+            mask = is_red;
+            col = col_red_line;
+            gstr = 'Reduction';
+        else
+            mask = is_amp;
+            col = col_amp_line;
+            gstr = 'Amplification';
+        end
+        m = nan(1, 3);
+        se = nan(1, 3);
+        for c = 1:3
+            v = X(mask, c);
+            v = v(isfinite(v));
+            if ~isempty(v)
+                m(c) = mean(v);
+                se(c) = std(v) / sqrt(numel(v));
+            end
+        end
+        errorbar(xloads, m, se, '-o', 'Color', col, 'LineWidth', 2, 'CapSize', 10, ...
+            'MarkerFaceColor', col, 'MarkerSize', 7, 'DisplayName', gstr);
+    end
+    xlim([min(xloads)-0.5 max(xloads)+0.5]);
+    set(gca, 'XTick', xloads, 'XTickLabel', cond_labels, 'FontSize', fontSize - 2);
+    xlabel('WM load', 'Interpreter', 'none');
+    ylabel(follow_ylab{oi}, 'Interpreter', 'none');
+    title(follow_names{oi}, 'Interpreter', 'none');
+    legend('Location', 'best', 'Box', 'off');
+    grid on
+    box off
+    hold off
+end
+sgtitle('Alpha & gaze deviation (dB) by WM load: Reduction vs Amplification', 'FontSize', fontSize + 2, 'Interpreter', 'none');
+fig_load = fullfile(fig_dir, 'AOC_splitAlpha_load_profiles_Alpha_GazeDev_dB.png');
+saveas(gcf, fig_load);
+fprintf('Saved: %s\n', fig_load);
 
-%% Local functions
+%% ========================= Local Functions =========================
+function [metrics_out, spl_tc_out, dev_tc_out, vel_tc_out, bcea_tc_out] = exclude_outliers_tukey(metrics_in, spl_tc_in, dev_tc_in, vel_tc_in, bcea_tc_in)
+% Apply Tukey 1.5*IQR rule per metric per condition. Set outliers to NaN.
+% Also excludes corresponding time-course data for SPL, Dev, Vel, BCEA.
+metrics_out = metrics_in;
+spl_tc_out = spl_tc_in;
+dev_tc_out = dev_tc_in;
+vel_tc_out = vel_tc_in;
+bcea_tc_out = bcea_tc_in;
+
+metric_fields = {'Alpha', 'SPL', 'Vel', 'Dev', 'BCEA'};
+tc_map = containers.Map({'SPL', 'Dev', 'Vel', 'BCEA'}, {1, 2, 3, 4});  % index for spl/dev/vel/bcea
+tc_cells = {spl_tc_out, dev_tc_out, vel_tc_out, bcea_tc_out};
+
+for m = 1:numel(metric_fields)
+    key = metric_fields{m};
+    X = metrics_out.(key);
+    nOut = 0;
+    for c = 1:3
+        vals = X(:, c);
+        vals_f = vals(isfinite(vals));
+        if numel(vals_f) < 4
+            continue
+        end
+        q1 = prctile(vals_f, 25);
+        q3 = prctile(vals_f, 75);
+        iqr_val = q3 - q1;
+        if iqr_val <= 0
+            continue
+        end
+        lo = q1 - 1.5 * iqr_val;
+        hi = q3 + 1.5 * iqr_val;
+        out_mask = (vals < lo) | (vals > hi);
+        nOut = nOut + sum(out_mask);
+        X(out_mask, c) = NaN;
+        % Exclude corresponding time course for gaze metrics
+        if isKey(tc_map, key)
+            tc_idx = tc_map(key);
+            tc = tc_cells{tc_idx};
+            tc(out_mask, c, :) = NaN;
+            tc_cells{tc_idx} = tc;
+        end
+    end
+    metrics_out.(key) = X;
+    if nOut > 0
+        fprintf('  %s: %d outlier(s) excluded\n', key, nOut);
+    end
+end
+spl_tc_out = tc_cells{1};
+dev_tc_out = tc_cells{2};
+vel_tc_out = tc_cells{3};
+bcea_tc_out = tc_cells{4};
+end
+
 function conds = parse_trialinfo_conds(trialinfo)
 conds = [];
 if isempty(trialinfo)
@@ -249,6 +705,19 @@ elseif size(trialinfo, 2) >= 1
 end
 end
 
+function ch = occ_channels_from_labels(labels)
+ch = {};
+for i = 1:numel(labels)
+    lab = labels{i};
+    if contains(lab, {'O'}) || contains(lab, {'I'}) || contains(lab, {'PO'})
+        ch{end+1} = lab; %#ok<AGROW>
+    end
+end
+if isempty(ch)
+    ch = labels;
+end
+end
+
 function subj_folder = resolve_subject_folder(subjects, sid)
 subj_folder = '';
 for i = 1:numel(subjects)
@@ -257,5 +726,1220 @@ for i = 1:numel(subjects)
         subj_folder = subjects{i};
         return
     end
+end
+end
+
+function [vx, vy] = clean_velocity_components(vx, vy)
+halfwin = 11; % SG edge region for framelen=21
+if numel(vx) > 2*halfwin
+    vx(1:halfwin) = NaN;
+    vx(end-halfwin+1:end) = NaN;
+    vy(1:halfwin) = NaN;
+    vy(end-halfwin+1:end) = NaN;
+end
+zvx = (vx - nanmean(vx)) ./ (nanstd(vx) + eps);
+zvy = (vy - nanmean(vy)) ./ (nanstd(vy) + eps);
+bad = abs(zvx) > 4 | abs(zvy) > 4;
+vx(bad) = NaN;
+vy(bad) = NaN;
+end
+
+function bcea_t = compute_bcea_timecourse(x, y, tt, t_plot, win_half)
+% BCEA time course: 95% bivariate contour ellipse area in sliding windows.
+% x, y: gaze coordinates; tt: time vector; t_plot: output time points;
+% win_half: half-window in s (e.g. 0.1 for 200 ms total).
+% Returns row vector of BCEA [px²] at each t_plot (NaN if insufficient samples).
+k95 = -log(1 - 0.95);
+nT = numel(t_plot);
+bcea_t = nan(1, nT);
+for j = 1:nT
+    t0 = t_plot(j);
+    idx = tt >= t0 - win_half & tt <= t0 + win_half;
+    xw = x(idx);
+    yw = y(idx);
+    valid = isfinite(xw) & isfinite(yw);
+    xw = xw(valid);
+    yw = yw(valid);
+    if numel(xw) < 10
+        continue
+    end
+    sx = std(xw);
+    sy = std(yw);
+    if sx <= 0 || sy <= 0
+        continue
+    end
+    r = corrcoef(xw, yw);
+    rho = r(1, 2);
+    if ~isfinite(rho)
+        continue
+    end
+    rho2 = max(0, min(1, rho^2));  % guard for numerical issues
+    bcea_t(j) = 2 * k95 * pi * sx * sy * sqrt(1 - rho2);
+end
+end
+
+function plot_group_power_spectrum_combined(pow_red, pow_amp, channels, colors, cond_labels, out_file, fig_pos, fsz)
+if any(cellfun(@isempty, pow_red)) || any(cellfun(@isempty, pow_amp))
+    warning('Skipping power spectrum (incomplete condition data).');
+    return
+end
+ga_red = cell(1, 3);
+ga_amp = cell(1, 3);
+for c = 1:3
+    ga_red{c} = ft_freqgrandaverage([], pow_red{c}{:});
+    ga_amp{c} = ft_freqgrandaverage([], pow_amp{c}{:});
+end
+
+elecs = ismember(ga_red{1}.label, channels);
+freqs = ga_red{1}.freq;
+
+% Compute spectra and determine shared ylim (FOOOFed data in dB)
+% Restrict to 5-30 Hz for ylim (matches xlim)
+freq_idx_plot = freqs >= 5 & freqs <= 30;
+all_m = [];
+all_se = [];
+pw = {pow_red, pow_amp};
+for grp = 1:2
+    pow_cells = pw{grp};
+    for c = 1:3
+        subj_n = numel(pow_cells{c});
+        subj_spec = nan(subj_n, numel(freqs));
+        for s = 1:subj_n
+            p = pow_cells{c}{s};
+            subj_spec(s, :) = mean(p.powspctrm(elecs, :), 1, 'omitnan');
+        end
+        m = mean(subj_spec, 1, 'omitnan');
+        se = std(subj_spec, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(subj_spec), 1)), 1);
+        all_m = [all_m; m]; all_se = [all_se; se]; %#ok<AGROW>
+    end
+end
+% Absolute max centered around 0: ylim = [-ymax, ymax] (5-30 Hz only)
+m_plot = all_m(:, freq_idx_plot);
+se_plot = all_se(:, freq_idx_plot);
+all_vals = [reshape(m_plot, [], 1); reshape(m_plot - se_plot, [], 1); reshape(m_plot + se_plot, [], 1)];
+all_vals = all_vals(isfinite(all_vals));
+if isempty(all_vals)
+    ymax_abs = 1;
+else
+    ymax_abs = max(abs(all_vals));
+    ymax_abs = max(ymax_abs, 0.1);
+end
+ylim_shared = [-ymax_abs, ymax_abs];
+
+figure('Position', fig_pos, 'Color', 'w');
+tiledlayout(1, 2, 'TileSpacing', 'compact');
+
+pw2 = {pow_red, pow_amp};
+ttls = {'Reduction', 'Amplification'};
+for grp = 1:2
+    nexttile; hold on
+    pow_cells = pw2{grp};
+    ttl = ttls{grp};
+    for c = 1:3
+        subj_n = numel(pow_cells{c});
+        subj_spec = nan(subj_n, numel(freqs));
+        for s = 1:subj_n
+            p = pow_cells{c}{s};
+            subj_spec(s, :) = mean(p.powspctrm(elecs, :), 1, 'omitnan');
+        end
+        m = mean(subj_spec, 1, 'omitnan');
+        se = std(subj_spec, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(subj_spec), 1)), 1);
+        eb(c) = shadedErrorBar(freqs, m, se, 'lineProps', {'-'}, 'transparent', true);
+        set(eb(c).mainLine, 'Color', colors(c, :), 'LineWidth', 3);
+        set(eb(c).patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
+        set(eb(c).edge(1), 'Color', colors(c, :));
+        set(eb(c).edge(2), 'Color', colors(c, :));
+    end
+    xlim([5 30]);
+    yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1);
+    ylim(ylim_shared);
+    xlabel('Frequency [Hz]');
+    ylabel('Power [dB]');
+    title(ttl, 'FontSize', fsz + 4);
+    legend([eb.mainLine], cond_labels, 'FontSize', fsz - 2, 'Location', 'best', 'Box', 'off');
+    set(gca, 'FontSize', fsz);
+    box on
+end
+saveas(gcf, out_file);
+close(gcf);
+end
+
+function plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, color_map, fig_dir, fig_pos, fsz, winsor_cfg)
+if any(cellfun(@isempty, tfr_red)) || any(cellfun(@isempty, tfr_amp))
+    warning('Skipping TFR plot (incomplete condition data).');
+    return
+end
+
+if nargin < 11 || isempty(winsor_cfg)
+    winsor_cfg = struct('enable', false, 'prctile', [2 98]);
+end
+
+ga_red = cell(1, 3);
+ga_amp = cell(1, 3);
+for c = 1:3
+    cfg = [];
+    cfg.keepindividual = 'yes';
+    ga_red{c} = ft_freqgrandaverage(cfg, tfr_red{c}{:});
+    ga_amp{c} = ft_freqgrandaverage(cfg, tfr_amp{c}{:});
+    if winsor_cfg.enable
+        ga_red{c} = winsorize_freq_subjects(ga_red{c}, winsor_cfg.prctile);
+        ga_amp{c} = winsorize_freq_subjects(ga_amp{c}, winsor_cfg.prctile);
+    end
+end
+
+% Shared clim for Reduction and Amplification
+[~, ch_idx] = ismember(channels, ga_red{1}.label);
+ch_idx = ch_idx(ch_idx > 0);
+if isempty(ch_idx)
+    warning('Skipping TFR plot (none of the requested channels found in TFR labels).');
+    return
+end
+freq_idx = ga_red{1}.freq >= 5 & ga_red{1}.freq <= 30;
+time_idx = ga_red{1}.time >= -0.5 & ga_red{1}.time <= 3;
+mx = 0;
+for c = 1:3
+    Ared = mean_over_channels_tfr(ga_red{c}, ch_idx);
+    Aamp = mean_over_channels_tfr(ga_amp{c}, ch_idx);
+    mx = max(mx, max(abs(Ared(freq_idx, time_idx)), [], 'all'));
+    mx = max(mx, max(abs(Aamp(freq_idx, time_idx)), [], 'all'));
+end
+clim_abs = [-mx*0.9 mx*0.9]
+
+cfg = [];
+cfg.channel = channels;
+cfg.colorbar = 'no';
+cfg.zlim = 'maxabs';
+cfg.xlim = [-.5 3];
+cfg.ylim = [5 30];
+cfg.layout = headmodel.layANThead;
+
+% Single 3x2 figure: column 1 = Reduction, column 2 = Amplification
+fsz_tfr = round(fsz * 0.8);  % ~20% reduction
+% target_ticks = 9;
+% tick_step = 0.05 * ceil(((2 * mx) / max(target_ticks - 1, 1)) / 0.05);
+% tick_step = max(tick_step, 0.05);
+% tick_max = tick_step * ceil(mx / tick_step);
+% cb_ticks = -tick_max:tick_step:tick_max;
+% clim_abs = [-tick_max tick_max];
+figure('Position', fig_pos, 'Color', 'w');
+for c = 1:3
+    % Column 1: Reduction (rows 1–3)
+    ax = subplot(3, 2, (c-1)*2 + 1);
+    cfg.figure = ax;
+    ft_singleplotTFR(cfg, ga_red{c});
+    colormap(ax, color_map);
+    set(ax, 'CLim', clim_abs);
+    cbar = colorbar(ax);
+    xlabel(ax, 'Time [s]', 'FontSize', fsz_tfr);
+    ylabel(ax, 'Frequency [Hz]', 'FontSize', fsz_tfr);
+    set(ax, 'FontSize', fsz_tfr);
+    cbar.FontSize = fsz_tfr - 4;
+    %cbar.Ticks = cb_ticks;
+    cbar.Label.String = 'Power [dB]';
+    cbar.Label.FontSize = fsz_tfr;
+    title(ax, sprintf('Reduction - %s', cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
+
+    % Column 2: Amplification (rows 1–3)
+    ax = subplot(3, 2, (c-1)*2 + 2);
+    cfg.figure = ax;
+    ft_singleplotTFR(cfg, ga_amp{c});
+    colormap(ax, color_map);
+    set(ax, 'CLim', clim_abs);
+    cbar = colorbar(ax);
+    xlabel(ax, 'Time [s]', 'FontSize', fsz_tfr);
+    ylabel(ax, 'Frequency [Hz]', 'FontSize', fsz_tfr);
+    set(ax, 'FontSize', fsz_tfr);
+    cbar.FontSize = fsz_tfr - 4;
+    %cbar.Ticks = cb_ticks;
+    cbar.Label.String = 'Power [dB]';
+    cbar.Label.FontSize = fsz_tfr;
+    title(ax, sprintf('Amplification - %s', cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
+end
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_tfr_all.png'));
+close(gcf);
+end
+
+function A = mean_over_channels_tfr(T, ch_idx)
+% Return freq x time map averaged across selected channels and subjects (if present).
+P = T.powspctrm;
+if isempty(P)
+    A = nan(numel(T.freq), numel(T.time));
+    return
+end
+
+Psize = size(P);
+chan_dim = find(Psize == numel(T.label), 1, 'first');
+if isempty(chan_dim)
+    if ndims(P) >= 2
+        chan_dim = 2; % Common FieldTrip keepindividual layout: rpt x chan x freq x time
+    else
+        chan_dim = 1;
+    end
+end
+
+switch ndims(P)
+    case 4
+        if chan_dim == 1
+            A = squeeze(mean(P(ch_idx, :, :, :), 1, 'omitnan')); % rpt x freq x time
+        elseif chan_dim == 2
+            A = squeeze(mean(P(:, ch_idx, :, :), 2, 'omitnan')); % rpt x freq x time
+        else
+            error('Unsupported channel dimension in 4D TFR data.');
+        end
+        if ndims(A) == 3
+            A = squeeze(mean(A, 1, 'omitnan')); % freq x time
+        end
+    case 3
+        if chan_dim == 1
+            A = squeeze(mean(P(ch_idx, :, :), 1, 'omitnan')); % freq x time
+        elseif chan_dim == 2
+            A = squeeze(mean(P(:, ch_idx, :), 2, 'omitnan'));
+            if ndims(A) == 2 && size(A, 1) == numel(T.time)
+                A = A'; % enforce freq x time
+            end
+        else
+            error('Unsupported channel dimension in 3D TFR data.');
+        end
+    otherwise
+        error('Unsupported TFR powspctrm dimensionality.');
+end
+end
+
+function freq_out = winsorize_freq_subjects(freq_in, prct_bounds)
+freq_out = freq_in;
+if ~isfield(freq_in, 'powspctrm') || isempty(freq_in.powspctrm)
+    return
+end
+
+P = freq_in.powspctrm;
+if size(P, 1) < 3
+    % Too few subjects for stable percentile clipping.
+    return
+end
+
+P_size = size(P);
+P_2d = reshape(P, P_size(1), []);
+lo = prctile(P_2d, prct_bounds(1), 1);
+hi = prctile(P_2d, prct_bounds(2), 1);
+P_2d = min(max(P_2d, lo), hi);
+freq_out.powspctrm = reshape(P_2d, P_size);
+end
+
+function plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, fig_dir, fig_pos, fsz)
+if any(cellfun(@isempty, pow_red)) || any(cellfun(@isempty, pow_amp))
+    warning('Skipping topoplots (missing power data).');
+    return
+end
+
+ga_red = cell(1, 3);
+ga_amp = cell(1, 3);
+for c = 1:3
+    ga_red{c} = ft_freqgrandaverage([], pow_red{c}{:});
+    ga_amp{c} = ft_freqgrandaverage([], pow_amp{c}{:});
+end
+
+cfg = [];
+cfg.layout = headmodel.layANThead;
+allch = cfg.layout.label;
+cfg.channel = allch(1:end-2);
+cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M1'));
+cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M2'));
+cfg.marker = 'off';
+cfg.highlight = 'on';
+cfg.highlightchannel = channels;
+cfg.highlightsymbol = '.';
+cfg.highlightsize = 10;
+cfg.figure = 'gcf';
+cfg.gridscale = 300;
+cfg.comment = 'no';
+cfg.xlim = [8 14];
+
+cfg.colormap = rdbu_cmap(64);  % Blue-white-red diverging
+freq_idx = ga_red{1}.freq >= 8 & ga_red{1}.freq <= 14;
+all_alpha = [];
+for c = 1:3
+    Ared = mean(ga_red{c}.powspctrm(:, freq_idx), 2, 'omitnan');
+    Aamp = mean(ga_amp{c}.powspctrm(:, freq_idx), 2, 'omitnan');
+    all_alpha = [all_alpha; Ared(:); Aamp(:)]; %#ok<AGROW>
+end
+all_alpha = all_alpha(isfinite(all_alpha));
+if isempty(all_alpha)
+    cfg.zlim = 'maxabs';
+else
+    mx = prctile(abs(all_alpha), 95);
+    if mx <= 0
+        mx = max(abs(all_alpha));
+    end
+    cfg.zlim = [-mx mx];  % Symmetric for blue-white-red diverging
+end
+
+% Single 2x3 figure: row 1 = Reduction, row 2 = Amplification
+figure('Position', fig_pos, 'Color', 'w');
+for c = 1:3
+    % Row 1: Reduction (cols 1–3)
+    ax = subplot(2, 3, c);
+    cfg.figure = ax;
+    ft_topoplotER(cfg, ga_red{c});
+    colorbar(ax);
+    set(ax, 'FontSize', fsz);
+    title(ax, sprintf('Reduction - %s', cond_labels{c}), 'Interpreter', 'none');
+
+    % Row 2: Amplification (cols 1–3)
+    ax = subplot(2, 3, 3 + c);
+    cfg.figure = ax;
+    ft_topoplotER(cfg, ga_amp{c});
+    colorbar(ax);
+    set(ax, 'FontSize', fsz);
+    title(ax, sprintf('Amplification - %s', cond_labels{c}), 'Interpreter', 'none');
+end
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_topo_all.png'));
+close(gcf);
+end
+
+function plot_group_tfrs_collapsed(tfr_red, tfr_amp, channels, headmodel, color_map, fig_dir, fig_pos, fsz, winsor_cfg)
+if any(cellfun(@isempty, tfr_red)) || any(cellfun(@isempty, tfr_amp))
+    warning('Skipping collapsed TFR plot (incomplete condition data).');
+    return
+end
+
+if nargin < 9 || isempty(winsor_cfg)
+    winsor_cfg = struct('enable', false, 'prctile', [2 98]);
+end
+
+% Pool all subject-level TFRs across conditions within each group.
+tfr_red_all = [tfr_red{1}, tfr_red{2}, tfr_red{3}];
+tfr_amp_all = [tfr_amp{1}, tfr_amp{2}, tfr_amp{3}];
+if isempty(tfr_red_all) || isempty(tfr_amp_all)
+    warning('Skipping collapsed TFR plot (no pooled TFR data).');
+    return
+end
+
+cfg = [];
+cfg.keepindividual = 'yes';
+ga_red = ft_freqgrandaverage(cfg, tfr_red_all{:});
+ga_amp = ft_freqgrandaverage(cfg, tfr_amp_all{:});
+if winsor_cfg.enable
+    ga_red = winsorize_freq_subjects(ga_red, winsor_cfg.prctile);
+    ga_amp = winsorize_freq_subjects(ga_amp, winsor_cfg.prctile);
+end
+
+[~, ch_idx] = ismember(channels, ga_red.label);
+ch_idx = ch_idx(ch_idx > 0);
+if isempty(ch_idx)
+    warning('Skipping collapsed TFR plot (none of requested channels found).');
+    return
+end
+freq_idx = ga_red.freq >= 5 & ga_red.freq <= 30;
+time_idx = ga_red.time >= -0.5 & ga_red.time <= 3;
+Ared = mean_over_channels_tfr(ga_red, ch_idx);
+Aamp = mean_over_channels_tfr(ga_amp, ch_idx);
+mx = max([max(abs(Ared(freq_idx, time_idx)), [], 'all'), max(abs(Aamp(freq_idx, time_idx)), [], 'all')]);
+if ~isfinite(mx) || mx <= 0
+    mx = 0.1;
+end
+clim_abs = [-0.9 * mx, 0.9 * mx];
+
+cfg = [];
+cfg.channel = channels;
+cfg.colorbar = 'no';
+cfg.zlim = 'maxabs';
+cfg.xlim = [-0.5 3];
+cfg.ylim = [5 30];
+cfg.layout = headmodel.layANThead;
+
+fsz_tfr = round(fsz * 0.8);
+figure('Position', [0 0 1512*0.666 982], 'Color', 'w');
+ax = subplot(2, 1, 1);
+cfg.figure = ax;
+ft_singleplotTFR(cfg, ga_red);
+colormap(ax, color_map);
+set(ax, 'CLim', clim_abs);
+cbar = colorbar(ax);
+xlabel(ax, 'Time [s]', 'FontSize', fsz_tfr);
+ylabel(ax, 'Frequency [Hz]', 'FontSize', fsz_tfr);
+set(ax, 'FontSize', fsz_tfr);
+rectangle('Position', [0 8 3 6], 'EdgeColor', 'k', 'LineWidth', 2);
+cbar.FontSize = fsz_tfr - 4;
+cbar.Label.String = 'Power [dB]';
+cbar.Label.FontSize = fsz_tfr;
+title(ax, 'Reduction', 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
+
+ax = subplot(2, 1, 2);
+cfg.figure = ax;
+ft_singleplotTFR(cfg, ga_amp);
+colormap(ax, color_map);
+set(ax, 'CLim', clim_abs);
+cbar = colorbar(ax);
+xlabel(ax, 'Time [s]', 'FontSize', fsz_tfr);
+ylabel(ax, 'Frequency [Hz]', 'FontSize', fsz_tfr);
+set(ax, 'FontSize', fsz_tfr);
+rectangle('Position', [0 8 3 6], 'EdgeColor', 'k', 'LineWidth', 2);
+cbar.FontSize = fsz_tfr - 4;
+cbar.Label.String = 'Power [dB]';
+cbar.Label.FontSize = fsz_tfr;
+title(ax, 'Amplification', 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
+
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_tfr_collapsedConditions.png'));
+end
+
+function plot_group_topos_collapsed(pow_red, pow_amp, channels, headmodel, fig_dir, fig_pos, fsz)
+if any(cellfun(@isempty, pow_red)) || any(cellfun(@isempty, pow_amp))
+    warning('Skipping collapsed topoplots (missing power data).');
+    return
+end
+
+% Pool all subject-level power spectra across conditions within each group.
+pow_red_all = [pow_red{1}, pow_red{2}, pow_red{3}];
+pow_amp_all = [pow_amp{1}, pow_amp{2}, pow_amp{3}];
+if isempty(pow_red_all) || isempty(pow_amp_all)
+    warning('Skipping collapsed topoplots (no pooled power data).');
+    return
+end
+
+ga_red = ft_freqgrandaverage([], pow_red_all{:});
+ga_amp = ft_freqgrandaverage([], pow_amp_all{:});
+
+cfg = [];
+cfg.layout = headmodel.layANThead;
+allch = cfg.layout.label;
+cfg.channel = allch(1:end-2);
+cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M1'));
+cfg.channel = cfg.channel(~strcmp(cfg.channel, 'M2'));
+cfg.marker = 'off';
+cfg.highlight = 'on';
+cfg.highlightchannel = channels;
+cfg.highlightsymbol = '.';
+cfg.highlightsize = 10;
+cfg.figure = 'gcf';
+cfg.gridscale = 300;
+cfg.comment = 'no';
+cfg.xlim = [8 14];
+cfg.colormap = rdbu_cmap(64);
+
+freq_idx = ga_red.freq >= 8 & ga_red.freq <= 14;
+Ared = mean(ga_red.powspctrm(:, freq_idx), 2, 'omitnan');
+Aamp = mean(ga_amp.powspctrm(:, freq_idx), 2, 'omitnan');
+all_alpha = [Ared(:); Aamp(:)];
+all_alpha = all_alpha(isfinite(all_alpha));
+if isempty(all_alpha)
+    cfg.zlim = 'maxabs';
+else
+    mx = prctile(abs(all_alpha), 95);
+    if mx <= 0
+        mx = max(abs(all_alpha));
+    end
+    if ~isfinite(mx) || mx <= 0
+        cfg.zlim = 'maxabs';
+    else
+        cfg.zlim = [-mx mx];
+    end
+end
+
+figure('Position', fig_pos, 'Color', 'w');
+ax = subplot(1, 2, 1);
+cfg.figure = ax;
+ft_topoplotER(cfg, ga_red);
+colorbar(ax);
+set(ax, 'FontSize', fsz);
+title(ax, 'Reduction - collapsed over conditions', 'Interpreter', 'none');
+
+ax = subplot(1, 2, 2);
+cfg.figure = ax;
+ft_topoplotER(cfg, ga_amp);
+colorbar(ax);
+set(ax, 'FontSize', fsz);
+title(ax, 'Amplification - collapsed over conditions', 'Interpreter', 'none');
+
+saveas(gcf, fullfile(fig_dir, 'AOC_splitAlpha_topo_collapsedConditions.png'));
+close(gcf);
+end
+
+function plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_pos, fsz)
+metric_defs = { ...
+    'Alpha', 'AlphaPower_FOOOF_bl', false; ...
+    'SPL', 'Scan path length', true; ...
+    'Vel', 'Velocity', true; ...
+    'Dev', 'Gaze deviation', true; ...
+    'BCEA', 'BCEA', true; ...
+    };
+
+for m = 1:size(metric_defs, 1)
+    key = metric_defs{m, 1};
+    varname = metric_defs{m, 2};
+    is_dB = metric_defs{m, 3};
+    X = metrics.(key);
+
+    % Shared ymax for both groups, centered around 0; add margin for density curve
+    all_vals = X(isfinite(X));
+    if isempty(all_vals)
+        ymax = 1;
+    else
+        ymax = max(abs(all_vals));
+        if ymax <= 0
+            ymax = 1;
+        end
+        ymax = ymax * 1.15;  % accommodate full density curve
+    end
+    ylim_shared = [-ymax ymax];
+
+    if is_dB
+        ylab = [varname ' [dB]'];
+    else
+        ylab = varname;
+    end
+
+    figure('Position', fig_pos, 'Color', 'w');
+    tiledlayout(1, 2, 'TileSpacing', 'compact');
+
+    nexttile; hold on
+    for c = 1:3
+        draw_one_cloud(X(is_red, c), c, colors(c,:), 0.3, 96, 0.45);
+    end
+    yline(0, '--', 'Color', [0.4 0.4 0.4]);
+    ylim(ylim_shared);
+    set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
+    title('Reduction', 'Interpreter', 'none');
+    ylabel(ylab, 'Interpreter', 'none');
+    box off
+
+    nexttile; hold on
+    for c = 1:3
+        draw_one_cloud(X(is_amp, c), c, colors(c,:), 0.3, 96, 0.45);
+    end
+    yline(0, '--', 'Color', [0.4 0.4 0.4]);
+    ylim(ylim_shared);
+    set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
+    title('Amplification', 'Interpreter', 'none');
+    ylabel(ylab, 'Interpreter', 'none');
+    box off
+
+    sgtitle(varname, 'FontSize', fsz+2, 'Interpreter', 'none');
+    saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_raincloud_%s.png', lower(key))));
+    close(gcf);
+end
+end
+
+function draw_one_cloud(yvals, xpos, col, box_w, dot_size, dot_alpha, density_offset, box_offset, dot_jitter_halfwidth)
+y = yvals(isfinite(yvals));
+if numel(y) < 3
+    return
+end
+[f, xi] = ksdensity(y, 'NumPoints', 120);
+if nargin < 7 || isempty(density_offset), density_offset = 0.08; end
+if nargin < 8 || isempty(box_offset), box_offset = 0.03; end
+if nargin < 9 || isempty(dot_jitter_halfwidth), dot_jitter_halfwidth = box_w / 2; end
+if max(f) > 0
+    f = f / max(f) * 0.35;
+else
+    f = zeros(size(f));
+end
+x_den = xpos - density_offset;
+x_box = xpos + box_offset;
+fill([x_den - f, fliplr(repmat(x_den, 1, numel(f)))], [xi, fliplr(xi)], col, ...
+    'FaceAlpha', 0.30, 'EdgeColor', col, 'LineWidth', 1);
+q1 = prctile(y, 25);
+q3 = prctile(y, 75);
+med = median(y);
+p5 = prctile(y, 5);
+p95 = prctile(y, 95);
+plot([x_box x_box], [p5 q1], '-k', 'LineWidth', 1.2);
+plot([x_box x_box], [q3 p95], '-k', 'LineWidth', 1.2);
+rectangle('Position', [x_box-box_w/2, q1, box_w, q3-q1], ...
+    'FaceColor', [col 0.08], 'EdgeColor', 'k', 'LineWidth', 1.2);
+plot(x_box + [-box_w/2 box_w/2], [med med], '-k', 'LineWidth', 2);
+jit = dot_jitter_halfwidth * 2 * (rand(numel(y),1)-0.5);
+scatter(x_box + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, ...
+    'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
+end
+
+% Cluster-based permutation test
+function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, cond_labels, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, eeg_tc, addEEG_TC, eeg_ylab)
+if nargin < 12, eeg_tc = []; end
+if nargin < 13, addEEG_TC = ~isempty(eeg_tc); end
+if nargin < 14, eeg_ylab = 'Alpha Power [dB]'; end
+dt = 1 / fs;
+nT = size(tc, 3);
+t_plot = linspace(-0.5 + dt, 3, nT);
+tc(~isfinite(tc)) = NaN;
+Rall = squeeze(mean(tc(is_red, :, :), 2, 'omitnan'));
+Aall = squeeze(mean(tc(is_amp, :, :), 2, 'omitnan'));
+win_sm = max(1, round(0.05 * fs));
+if win_sm > 1
+    Rall = movmean(Rall, win_sm, 2, 'omitnan');
+    Aall = movmean(Aall, win_sm, 2, 'omitnan');
+end
+figure('Position', fig_pos, 'Color', 'w');
+nR = size(Rall, 1);
+nA = size(Aall, 1);
+has_eeg = addEEG_TC && ~isempty(eeg_tc) && size(eeg_tc, 1) >= (nR + nA) && size(eeg_tc, 2) >= 1 && size(eeg_tc, 3) >= nT;
+if has_eeg
+    tiledlayout(5, 1, 'TileSpacing', 'compact');
+else
+    tiledlayout(3, 1, 'TileSpacing', 'compact');
+end
+ax_gaze = nexttile([2 1]); hold on
+mR = mean(Rall, 1, 'omitnan');
+mA = mean(Aall, 1, 'omitnan');
+nR_fin = sum(isfinite(Rall), 1);
+nA_fin = sum(isfinite(Aall), 1);
+sR = std(Rall, 0, 1, 'omitnan') ./ max(sqrt(nR_fin), 1);
+sA = std(Aall, 0, 1, 'omitnan') ./ max(sqrt(nA_fin), 1);
+sR(~isfinite(sR)) = NaN;
+sA(~isfinite(sA)) = NaN;
+e1 = shadedErrorBar(t_plot, mR, sR, 'lineProps', {'-'}, 'transparent', true);
+e2 = shadedErrorBar(t_plot, mA, sA, 'lineProps', {'-'}, 'transparent', true);
+set(e1.mainLine, 'Color', colors(1,:), 'LineWidth', 3.5);
+set(e2.mainLine, 'Color', colors(3,:), 'LineWidth', 3.5);
+set(e1.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.25);
+set(e2.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.25);
+xline(0, '--k');
+ylabel(ylab);
+xlim([-0.5 3]);
+box on
+set(gca, 'FontSize', fsz-4);
+% Legend with colored patch boxes (clearer than thin lines)
+leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
+leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
+legend([leg_p1 leg_p2], {'Reduction', 'Amplification'}, 'Location', 'northeast', 'FontSize', fsz-2, 'Box', 'off');
+if any(strcmp(save_tag, {'gaze_deviation_dB', 'gaze_deviation_pct'}))
+    % ylim from shaded envelopes (mean ± SEM), not just the main lines
+    upper = max(mR + sR, mA + sA);
+    lower = min(mR - sR, mA - sA);
+    y_hi = max(upper, [], 'omitnan');
+    y_lo = min(lower, [], 'omitnan');
+    if isfinite(y_hi) && isfinite(y_lo) && y_hi > y_lo
+        pad = max(0.15, 0.05 * (y_hi - y_lo));
+        ylim([y_lo - pad, y_hi + pad]);
+    end
+end
+nexttile; hold on
+n_perm = 10000;
+min_per_group = 3;
+d = nan(1, nT);
+for t = 1:nT
+    x = Rall(:, t); y = Aall(:, t);
+    x = x(isfinite(x)); y = y(isfinite(y));
+    if numel(x) < min_per_group || numel(y) < min_per_group, continue, end
+    sp = sqrt(((numel(x)-1)*var(x) + (numel(y)-1)*var(y)) / max(numel(x)+numel(y)-2, 1));
+    d(t) = (mean(y) - mean(x)) / max(sp, eps);
+end
+ds_factor = 10;
+Rall_ds = Rall(:, 1:ds_factor:end);
+Aall_ds = Aall(:, 1:ds_factor:end);
+nT_ds = size(Rall_ds, 2);
+t_plot_ds = t_plot(1:ds_factor:end);
+dt_ds = ds_factor * dt;
+[clusters, tvals_cl, thr, maxMassNull, maxExtentNull] = ft_cluster_permutation_1d(Rall_ds, Aall_ds, n_perm, 0.05, 'onetail_pos', t_plot_ds);
+nAbove = sum(tvals_cl > thr.tcrit & isfinite(tvals_cl));
+maxClMass = max([0, arrayfun(@(k) clusters(k).mass, 1:numel(clusters))]);
+maxClExtent = max([0, arrayfun(@(k) clusters(k).extent, 1:numel(clusters))]);
+fprintf('  [%s] n_red=%d n_amp=%d tcrit=%.2f (one-tailed Red>Amp) t>tcrit at %d timepts; max cluster mass=%.1f; max cluster extent=%d\n', ...
+    save_tag, nR, nA, thr.tcrit, nAbove, maxClMass, maxClExtent);
+if ~isempty(maxMassNull)
+    fprintf('    CBPT gaze: nT_ds=%d (%.0f ms bins); null mass: median=%.1f, 90th=%.1f, 95th=%.1f; null extent: median=%d, 90th=%d, 95th=%d\n', ...
+        nT_ds, ds_factor*1000/fs, median(maxMassNull), prctile(maxMassNull, 90), prctile(maxMassNull, 95), ...
+        median(maxExtentNull), prctile(maxExtentNull, 90), prctile(maxExtentNull, 95));
+else
+    fprintf('    CBPT gaze: nT_ds=%d (%.0f ms bins); FieldTrip ft_timelockstatistics (cluster mass)\n', nT_ds, ds_factor*1000/fs);
+end
+if ~isempty(clusters)
+    bin_width_ms = dt_ds * 1000;
+    for k = 1:numel(clusters)
+        t_lo = t_plot_ds(clusters(k).idx(1));
+        t_hi = t_plot_ds(clusters(k).idx(end));
+        t_start = t_lo - dt_ds/2;  % leading edge of first bin (post-stimulus)
+        t_end = t_hi + dt_ds/2;    % trailing edge of last bin
+        duration_ms = clusters(k).extent * bin_width_ms;
+        pass_p = clusters(k).p < 0.05;
+        status = 'n.s.';
+        if pass_p
+            status = 'SIGNIFICANT';
+        end
+        fprintf('    Cluster %d: window [%.3f, %.3f]s post-stim (duration=%d ms, %d bins @ %.0f ms); mass=%.1f; p=%.4f; %s\n', ...
+            k, t_start, t_end, round(duration_ms), clusters(k).extent, bin_width_ms, clusters(k).mass, clusters(k).p, status);
+    end
+    if isfinite(thr.mass)
+        fprintf('    Gap to significance: mass need +%.1f (have %.1f, need %.1f); extent need +%d (have %d, need %d)\n', ...
+            thr.mass - maxClMass, maxClMass, thr.mass, thr.extent - maxClExtent, maxClExtent, thr.extent);
+    end
+else
+    t_fin = tvals_cl(isfinite(tvals_cl));
+    if ~isempty(t_fin)
+        [t_max, idx_max] = max(tvals_cl);
+        fprintf('    No clusters formed (no contiguous t>tcrit); largest t=%.2f at t=%.2fs\n', ...
+            t_max, t_plot_ds(idx_max));
+    else
+        fprintf('    No clusters; no valid t-values\n');
+    end
+end
+sig_cluster = false(1, nT_ds);
+for k = 1:numel(clusters)
+    if clusters(k).p < 0.05
+        sig_cluster(clusters(k).idx) = true;
+    end
+end
+sig_uncorr = (tvals_cl > thr.tcrit) & isfinite(tvals_cl);
+sig = sig_cluster;
+if ~any(sig) && any(sig_uncorr)
+    sig = sig_uncorr;
+    fprintf('  [%s] (cluster n.s.; shading uncorrected t>tcrit)\n', save_tag);
+end
+d_ds = d(1:ds_factor:end);
+if any(sig_cluster)
+    sig = sig & isfinite(d_ds);
+end
+run_start = [false, diff(sig) == 1];
+run_end = [diff(sig) == -1, false];
+if sig(1), run_start(1) = true; end
+if sig(end), run_end(end) = true; end
+starts = find(run_start);
+ends = find(run_end);
+d_fin = d(isfinite(d));
+mx = max(abs(d_fin), [], 'omitnan');
+if isempty(d_fin) || ~isfinite(mx) || mx == 0
+    ylims = [-0.6 0.6];
+else
+    ylims = [-max(mx + 0.1, 0.6), max(mx + 0.1, 0.6)];
+end
+patch_alpha = 0.4 * ~any(sig_cluster) + 0.25 * any(sig_cluster);
+for k = 1:numel(starts)
+    t1 = max(0, t_plot_ds(starts(k)) - dt_ds/2);
+    t2 = t_plot_ds(ends(k)) + dt_ds/2;
+    patch([t1 t2 t2 t1], [ylims(1) ylims(1) ylims(2) ylims(2)], [0.5 0.5 0.5], 'FaceAlpha', patch_alpha, 'EdgeColor', 'none');
+end
+ylim(ylims);
+plot(t_plot, d, 'k-', 'LineWidth', 3.5);
+yline(0, '--');
+xline(0, '--k');
+xlabel('Time [s]');
+ylabel('Cohen''s d');
+xlim([-0.5 3]);
+if any(strcmp(save_tag, {'gaze_deviation_dB', 'gaze_deviation_pct'}))
+    yticks([-0.5, -0.25, 0, 0.25, 0.5])
+end
+box on
+set(gca, 'FontSize', fsz-4);
+if ~any(sig_cluster) && any(sig_uncorr)
+    text(0.75, ylims(2) - 0.08*diff(ylims), 'WARNING: No significant clusters; shading shows uncorrected t>t_{crit}', ...
+        'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'HorizontalAlignment', 'center');
+end
+
+% Alpha power time course panel (4th row when has_eeg) - two lines with shaded error bars
+% Error bars: between-subject SEM = std(sample) / sqrt(n) at each time point.
+if has_eeg
+    EegR = squeeze(mean(eeg_tc(is_red, :, :), 2, 'omitnan'));
+    EegA = squeeze(mean(eeg_tc(is_amp, :, :), 2, 'omitnan'));
+    if win_sm > 1
+        EegR = movmean(EegR, win_sm, 2, 'omitnan');
+        EegA = movmean(EegA, win_sm, 2, 'omitnan');
+    end
+    mR_eeg = mean(EegR, 1, 'omitnan');
+    mA_eeg = mean(EegA, 1, 'omitnan');
+    nR_fin_eeg = sum(isfinite(EegR), 1);
+    nA_fin_eeg = sum(isfinite(EegA), 1);
+    sR_eeg = std(EegR, 0, 1, 'omitnan') ./ max(sqrt(nR_fin_eeg), 1);
+    sA_eeg = std(EegA, 0, 1, 'omitnan') ./ max(sqrt(nA_fin_eeg), 1);
+    sR_eeg(~isfinite(sR_eeg)) = NaN;
+    sA_eeg(~isfinite(sA_eeg)) = NaN;
+    nexttile; hold on
+    ebR = shadedErrorBar(t_plot, mR_eeg, sR_eeg, 'lineProps', {'-'}, 'transparent', true);
+    ebA = shadedErrorBar(t_plot, mA_eeg, sA_eeg, 'lineProps', {'-'}, 'transparent', true);
+    set(ebR.mainLine, 'Color', colors(1,:), 'LineWidth', 3.5);
+    set(ebA.mainLine, 'Color', colors(3,:), 'LineWidth', 3.5);
+    set(ebR.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.25);
+    set(ebA.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.25);
+    yline(0, '--');
+    xline(0, '--k');
+    all_eeg_vals = [mR_eeg(:); mA_eeg(:); mR_eeg(:)-sR_eeg(:); mR_eeg(:)+sR_eeg(:); mA_eeg(:)-sA_eeg(:); mA_eeg(:)+sA_eeg(:)];
+    all_eeg_vals = all_eeg_vals(isfinite(all_eeg_vals));
+    ymax_eeg = max(abs(all_eeg_vals), [], 'omitnan') * 1.1;
+    if isempty(all_eeg_vals) || ~isfinite(ymax_eeg) || ymax_eeg == 0
+        ymax_eeg = 0.1;
+    end
+    ylim([-ymax_eeg ymax_eeg]);
+    ax_eeg = gca;
+    ylabel(eeg_ylab);
+    xlabel('Time [s]');
+    xlim([-0.5 3]);
+    box on
+    set(gca, 'FontSize', fsz-4);
+    leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
+    leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
+    % Align y-labels to same horizontal position
+    drawnow;
+    pos_g = get(ax_gaze, 'Position');
+    pos_e = get(ax_eeg, 'Position');
+    left_min = min(pos_g(1), pos_e(1));
+    set(ax_gaze, 'Position', [left_min, pos_g(2), pos_g(3) + (pos_g(1) - left_min), pos_g(4)]);
+    set(ax_eeg,  'Position', [left_min, pos_e(2), pos_e(3) + (pos_e(1) - left_min), pos_e(4)]);
+
+    % EEG effect-size strip (same logic as gaze panel above)
+    nexttile; hold on
+    d_eeg = nan(1, nT);
+    for t = 1:nT
+        x = EegR(:, t); y = EegA(:, t);
+        x = x(isfinite(x)); y = y(isfinite(y));
+        if numel(x) < min_per_group || numel(y) < min_per_group, continue, end
+        sp = sqrt(((numel(x)-1)*var(x) + (numel(y)-1)*var(y)) / max(numel(x)+numel(y)-2, 1));
+        d_eeg(t) = (mean(y) - mean(x)) / max(sp, eps);
+    end
+
+    EegR_ds = EegR(:, 1:ds_factor:end);
+    EegA_ds = EegA(:, 1:ds_factor:end);
+    [clusters_eeg, tvals_cl_eeg, thr_eeg] = ft_cluster_permutation_1d(EegR_ds, EegA_ds, n_perm, 0.05, 'onetail_pos', t_plot_ds);
+    sig_cluster_eeg = false(1, nT_ds);
+    for k = 1:numel(clusters_eeg)
+        if clusters_eeg(k).p < 0.05
+            sig_cluster_eeg(clusters_eeg(k).idx) = true;
+        end
+    end
+    sig_uncorr_eeg = (tvals_cl_eeg > thr_eeg.tcrit) & isfinite(tvals_cl_eeg);
+    sig_eeg = sig_cluster_eeg;
+    if ~any(sig_eeg) && any(sig_uncorr_eeg)
+        sig_eeg = sig_uncorr_eeg;
+        fprintf('  [%s EEG] (cluster n.s.; shading uncorrected t>tcrit)\n', save_tag);
+    end
+
+    d_eeg_ds = d_eeg(1:ds_factor:end);
+    if any(sig_cluster_eeg)
+        sig_eeg = sig_eeg & isfinite(d_eeg_ds);
+    end
+    run_start_eeg = [false, diff(sig_eeg) == 1];
+    run_end_eeg = [diff(sig_eeg) == -1, false];
+    if sig_eeg(1), run_start_eeg(1) = true; end
+    if sig_eeg(end), run_end_eeg(end) = true; end
+    starts_eeg = find(run_start_eeg);
+    ends_eeg = find(run_end_eeg);
+
+    d_eeg_fin = d_eeg(isfinite(d_eeg));
+    mx_eeg = max(abs(d_eeg_fin), [], 'omitnan');
+    if isempty(d_eeg_fin) || ~isfinite(mx_eeg) || mx_eeg == 0
+        ylims_eeg = [-0.6 0.6];
+    else
+        ylims_eeg = [-max(mx_eeg + 0.1, 0.6), max(mx_eeg + 0.1, 0.6)];
+    end
+
+    patch_alpha_eeg = 0.4 * ~any(sig_cluster_eeg) + 0.25 * any(sig_cluster_eeg);
+    for k = 1:numel(starts_eeg)
+        t1 = max(0, t_plot_ds(starts_eeg(k)) - dt_ds/2);
+        t2 = t_plot_ds(ends_eeg(k)) + dt_ds/2;
+        patch([t1 t2 t2 t1], [ylims_eeg(1) ylims_eeg(1) ylims_eeg(2) ylims_eeg(2)], [0.5 0.5 0.5], 'FaceAlpha', patch_alpha_eeg, 'EdgeColor', 'none');
+    end
+
+    ylim(ylims_eeg);
+    plot(t_plot, d_eeg, 'k-', 'LineWidth', 3.5);
+    yline(0, '--');
+    xline(0, '--k');
+    xlabel('Time [s]');
+    ylabel('EEG Cohen''s d');
+    xlim([-0.5 3]);
+    box on
+    set(gca, 'FontSize', fsz-4);
+end
+
+saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlpha_timecourse_%s_CBPT.png', save_tag)));
+end
+
+function [clusters, tvals, thr, maxMassNull, maxExtentNull] = ft_cluster_permutation_1d(Rall, Aall, nPerm, alpha, tail, t_plot_ds)
+% FT_CLUSTER_PERMUTATION_1D  Cluster-based permutation test using FieldTrip.
+%
+% Uses ft_timelockstatistics (Maris & Oostenveld, 2007) for two-sample
+% independent-samples cluster permutation on 1D time-series data.
+%
+% Inputs:
+%   Rall      - nR x nT matrix (group 1, e.g. Reduction)
+%   Aall      - nA x nT matrix (group 2, e.g. Amplification)
+%   nPerm     - number of permutations (e.g. 2000)
+%   alpha     - significance level (e.g. 0.05)
+%   tail      - 'onetail_pos' (H1: group1 > group2, i.e. t > 0; use for Red > Amp)
+%               'onetail_neg' (H1: group1 < group2, i.e. t < 0)
+%               or 'twotail' (H1: group1 ~= group2)
+%   t_plot_ds - (optional) 1 x nT actual time vector. If provided, uses cfg.latency=[0 3]
+%               to restrict clustering to post-stimulus only (avoids baseline clusters).
+%
+% Outputs (compatible with previous cluster_permutation_2sample_1d):
+%   clusters     - struct array with .idx, .mass, .extent, .p, .p_extent
+%   tvals        - 1 x nT t-values (group1 - group2; FT indepsamplesT)
+%   thr          - struct with .tcrit, .mass, .extent
+%   maxMassNull  - []; FieldTrip does not expose null distribution
+%   maxExtentNull - []
+%
+% Requires: FieldTrip (startup must add it to path).
+%
+% Reference: Maris & Oostenveld (2007). J Neurosci Methods 164:177-190.
+
+if nargin < 5
+    tail = 'twotail';
+end
+if nargin < 6
+    t_plot_ds = [];
+end
+
+nR = size(Rall, 1);
+nA = size(Aall, 1);
+nT = size(Rall, 2);
+df = nR + nA - 2;
+
+% Replace NaN with condition mean at that time (conservative imputation for FieldTrip)
+for t = 1:nT
+    r = Rall(:, t);
+    a = Aall(:, t);
+    mr = mean(r(isfinite(r)), 'omitnan');
+    ma = mean(a(isfinite(a)), 'omitnan');
+    if ~isfinite(mr), mr = 0; end
+    if ~isfinite(ma), ma = 0; end
+    r(~isfinite(r)) = mr;
+    a(~isfinite(a)) = ma;
+    Rall(:, t) = r;
+    Aall(:, t) = a;
+end
+
+% Build FieldTrip timelock structures (rpt_chan_time)
+chan_label = 'metric';
+if ~isempty(t_plot_ds) && numel(t_plot_ds) == nT
+    time_vec = t_plot_ds;
+else
+    time_vec = (0:nT-1) / 500;
+end
+
+tl1 = struct();
+tl1.label = {chan_label};
+tl1.time = time_vec;
+tl1.dimord = 'rpt_chan_time';
+tl1.trial = reshape(Rall, [nR, 1, nT]);  % nR x 1 x nT
+
+tl2 = struct();
+tl2.label = {chan_label};
+tl2.time = time_vec;
+tl2.dimord = 'rpt_chan_time';
+tl2.trial = reshape(Aall, [nA, 1, nT]);
+
+% Neighbours: single channel, no spatial neighbours (temporal clustering only)
+cfg_neigh = struct();
+cfg_neigh(1).label = chan_label;
+cfg_neigh(1).neighblabel = {};
+
+% Statistics config
+cfg = struct();
+cfg.method = 'montecarlo';
+cfg.statistic = 'ft_statfun_indepsamplesT';
+cfg.correctm = 'cluster';
+cfg.clusteralpha = alpha;
+cfg.clusterstatistic = 'maxsum';
+cfg.minnbchan = 0;
+cfg.neighbours = cfg_neigh;
+cfg.numrandomization = nPerm;
+if ~isempty(t_plot_ds) && numel(t_plot_ds) == nT
+    cfg.latency = [0 3];  % restrict to post-stimulus only
+else
+    cfg.latency = 'all';
+end
+cfg.channel = chan_label;
+
+if strcmpi(tail, 'onetail_pos')
+    % H1: group1 > group2  =>  t = (mean1 - mean2)/se > 0
+    cfg.tail = 1;
+    cfg.clustertail = 1;
+    cfg.alpha = alpha;  % one-tailed
+elseif strcmpi(tail, 'onetail_neg')
+    % H1: group1 < group2  =>  t = (mean1 - mean2)/se < 0
+    cfg.tail = -1;
+    cfg.clustertail = -1;
+    cfg.alpha = alpha;  % one-tailed
+else
+    cfg.tail = 0;
+    cfg.clustertail = 0;
+    cfg.alpha = alpha / 2;  % two-tailed: split alpha
+end
+
+cfg.design = [ones(1, nR), 2*ones(1, nA)];
+cfg.ivar = 1;
+
+% Run FieldTrip cluster permutation
+stat = ft_timelockstatistics(cfg, tl1, tl2);
+
+% Extract t-values (stat is chan x time)
+tvals = stat.stat(1, :);
+
+% When we used cfg.latency=[0 3], stat has fewer time points; map back to full range
+post_idx = [];
+if ~isempty(t_plot_ds) && numel(t_plot_ds) == nT
+    post_idx = find(t_plot_ds >= 0);
+    if size(tvals, 2) < nT && ~isempty(post_idx)
+        tvals_full = nan(1, nT);
+        n_sel = min(size(tvals, 2), numel(post_idx));
+        tvals_full(post_idx(1:n_sel)) = tvals(1:n_sel);
+        tvals = tvals_full;
+    end
+end
+
+% Map to our cluster format (FieldTrip uses chan x time; we have 1 chan)
+clusters = struct('idx', {}, 'mass', {}, 'extent', {}, 'p', {}, 'p_extent', {});
+
+% FieldTrip may omit negclusters/posclusters when no clusters found
+has_neg = isfield(stat, 'negclusters') && ~isempty(stat.negclusters);
+has_pos = isfield(stat, 'posclusters') && ~isempty(stat.posclusters);
+
+if strcmpi(tail, 'onetail_pos')
+    if has_pos
+        clist = stat.posclusters;
+        lmat = stat.posclusterslabelmat;
+    else
+        clist = struct('prob', {});
+        lmat = zeros(1, nT);
+    end
+elseif strcmpi(tail, 'onetail_neg')
+    if has_neg
+        clist = stat.negclusters;
+        lmat = stat.negclusterslabelmat;
+    else
+        clist = struct('prob', {});
+        lmat = zeros(1, nT);
+    end
+else
+    % Two-tailed: collect from both pos and neg (use FT structs directly to match fields)
+    clist = [];
+    lmat = zeros(1, nT);
+    if has_pos
+        clist = stat.posclusters(:);
+        lmat = stat.posclusterslabelmat;
+    end
+    if has_neg
+        lmat_neg = stat.negclusterslabelmat;
+        npos = numel(clist);
+        lmat(lmat_neg > 0) = npos + lmat_neg(lmat_neg > 0);
+        if isempty(clist)
+            clist = stat.negclusters(:);
+        else
+            clist = [clist; stat.negclusters(:)];
+        end
+    end
+end
+
+for k = 1:numel(clist)
+    idx = find(lmat(1, :) == k);
+    if isempty(idx)
+        continue
+    end
+    idx = idx(1):idx(end);  % ensure contiguous
+    if ~isempty(post_idx)
+        valid = idx <= numel(post_idx);
+        idx = post_idx(idx(valid));  % map to full time indices
+        if isempty(idx), continue; end
+    end
+    clusters(end+1).idx = idx; %#ok<AGROW>
+    clusters(end).mass = sum(abs(tvals(idx)), 'omitnan');
+    clusters(end).extent = numel(idx);
+    clusters(end).p = clist(k).prob;
+    clusters(end).p_extent = clist(k).prob;
+end
+
+% Threshold for uncorrected shading
+if strcmpi(tail, 'onetail_pos') || strcmpi(tail, 'onetail_neg')
+    thr.tcrit = tinv(1 - alpha, df);  % one-tailed upper critical value
+else
+    thr.tcrit = tinv(1 - alpha/2, df);  % two-tailed
+end
+% FT does not expose explicit mass/extent thresholds
+thr.mass = NaN;
+thr.extent = NaN;
+
+maxMassNull = [];
+maxExtentNull = [];
+end
+
+function [vx, vy] = compute_velocity_sg(X, Y, fs, polyOrd)
+Ts = 1 / fs;
+L = numel(X);
+framelen = min(21, L);
+if mod(framelen, 2) == 0
+    framelen = framelen - 1;
+end
+minLegal = polyOrd + 3;
+if mod(minLegal, 2) == 0
+    minLegal = minLegal + 1;
+end
+if framelen < minLegal
+    framelen = minLegal;
+end
+if framelen > L
+    framelen = L - mod(L, 2) + 1;
+end
+useFallback = framelen < 5;
+
+if ~useFallback
+    Xs = sgolayfilt(X, polyOrd, framelen);
+    Ys = sgolayfilt(Y, polyOrd, framelen);
+    [~, G] = sgolay(polyOrd, framelen);
+    d1 = (factorial(1) / Ts) * G(:, 2)';
+    vx = conv(Xs, d1, 'same');
+    vy = conv(Ys, d1, 'same');
+else
+    vx = gradient(X) * fs;
+    vy = gradient(Y) * fs;
+end
+end
+
+function cmap = rdbu_cmap(n)
+% RDBU_CMAP - Red-Blue diverging colormap (no external deps, ColorBrewer RdBu-like).
+% Usage: cmap = rdbu_cmap(n);  returns n x 3 RGB matrix.
+rdbu_11 = [33 102 172; 67 147 195; 146 197 222; 209 229 240; 247 247 247; ...
+    253 219 199; 244 165 130; 214 96 77; 178 24 43] / 255;
+x = linspace(0, 1, size(rdbu_11, 1));
+xi = linspace(0, 1, n);
+cmap = interp1(x, rdbu_11, xi, 'linear');
+end
+
+function eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_subj, nSubj, channels, Tf, t_target)
+% Extract alpha power (8-14 Hz) over occipital channels from TFR, per subject x condition.
+% tfr_*_subj: subject indices (1..nSubj) for each TFR in the cell arrays; required for correct
+%   variance when some subjects have missing TFR (otherwise j-th TFR may not match j-th in group).
+% Returns eeg_tc: nSubj x 3 x Tf.
+eeg_tc = nan(nSubj, 3, Tf);
+alpha_freq = [8 14];
+for c = 1:3
+    for j = 1:numel(tfr_red_subj)
+        if j > numel(tfr_red{c}), break, end
+        T = tfr_red{c}{j};
+        s = tfr_red_subj(j);
+        if ~isfield(T, 'powspctrm') || ~isfield(T, 'label'), continue, end
+        ch_idx = find(ismember(T.label, channels));
+        freq_idx = T.freq >= alpha_freq(1) & T.freq <= alpha_freq(2);
+        if isempty(ch_idx) || ~any(freq_idx), continue, end
+        alpha_raw = squeeze(mean(mean(T.powspctrm(ch_idx, freq_idx, :), 1, 'omitnan'), 2, 'omitnan'));
+        if numel(alpha_raw) ~= numel(T.time), alpha_raw = alpha_raw(:); end
+        try
+            eeg_tc(s, c, :) = interp1(T.time(:), alpha_raw(:), t_target(:), 'linear', NaN);
+        catch
+        end
+    end
+    for j = 1:numel(tfr_amp_subj)
+        if j > numel(tfr_amp{c}), break, end
+        T = tfr_amp{c}{j};
+        s = tfr_amp_subj(j);
+        if ~isfield(T, 'powspctrm') || ~isfield(T, 'label'), continue, end
+        ch_idx = find(ismember(T.label, channels));
+        freq_idx = T.freq >= alpha_freq(1) & T.freq <= alpha_freq(2);
+        if isempty(ch_idx) || ~any(freq_idx), continue, end
+        alpha_raw = squeeze(mean(mean(T.powspctrm(ch_idx, freq_idx, :), 1, 'omitnan'), 2, 'omitnan'));
+        if numel(alpha_raw) ~= numel(T.time), alpha_raw = alpha_raw(:); end
+        try
+            eeg_tc(s, c, :) = interp1(T.time(:), alpha_raw(:), t_target(:), 'linear', NaN);
+        catch
+        end
+    end
+end
+end
+
+function [lme, used_formula] = fitlme_with_random_slope_fallback(tbl_in, fixed_formula)
+% Try random slopes for Load; fall back to random intercept if needed.
+formula_rs = sprintf('%s + (Load|Subject)', fixed_formula);
+formula_ri = sprintf('%s + (1|Subject)', fixed_formula);
+try
+    lme = fitlme(tbl_in, formula_rs);
+    used_formula = formula_rs;
+catch
+    lme = fitlme(tbl_in, formula_ri);
+    used_formula = formula_ri;
 end
 end

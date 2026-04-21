@@ -18,12 +18,10 @@ import pandas as pd
 from scipy import stats
 import statsmodels.formula.api as smf
 from statsmodels.stats.anova import anova_lm
-import statsmodels.api as sm
 
 
 BASE_DIR = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC"
 INPUT_CSV = f"{BASE_DIR}/data/stats/splits/AOC_splitAmpRed_sternberg_stats_input.csv"
-FOLLOWUP_CSV = f"{BASE_DIR}/data/stats/splits/AOC_splitAmpRed_followup_model_input.csv"
 
 LOAD_ORDER = [2, 4, 6]
 LOAD_LABELS = {2: "WM load 2", 4: "WM load 4", 6: "WM load 6"}
@@ -142,90 +140,6 @@ def print_descriptives(df_incl: pd.DataFrame, value_col: str, label: str) -> Non
             print(f"    {LOAD_LABELS[lv]}: n={len(vals)}, mean={np.mean(vals):.6g}, SEM={sem:.6g}")
 
 
-def run_followup_models() -> None:
-    print("\n=== Follow-up models from CSV ===")
-    print(f"Loading: {FOLLOWUP_CSV}")
-    dff = pd.read_csv(FOLLOWUP_CSV)
-
-    req = [
-        "Subject", "Group", "LoadValue", "GazeTOI_z",
-        "AlphaPower_FOOOF_bl", "ReactionTime", "Accuracy", "NTrials",
-    ]
-    missing = [c for c in req if c not in dff.columns]
-    if missing:
-        raise ValueError(f"Missing required follow-up columns: {missing}")
-
-    dff = dff.copy()
-    dff["Subject"] = dff["Subject"].astype(str)
-    dff["Group"] = pd.Categorical(dff["Group"], categories=GROUP_ORDER, ordered=True)
-    dff["LoadValue"] = pd.to_numeric(dff["LoadValue"], errors="coerce")
-    dff = dff[dff["LoadValue"].isin(LOAD_ORDER)].copy()
-    dff["LoadLabel"] = pd.Categorical(
-        dff["LoadValue"].map(LOAD_LABELS),
-        categories=[LOAD_LABELS[x] for x in LOAD_ORDER],
-        ordered=True,
-    )
-
-    print("\n--- Model 1: AlphaPower_FOOOF_bl ~ GazeTOI_z * Load ---")
-    d1 = dff[["Subject", "LoadLabel", "LoadValue", "GazeTOI_z", "AlphaPower_FOOOF_bl"]].dropna().copy()
-    if len(d1) < 15:
-        print("Insufficient observations for Model 1.")
-    else:
-        try:
-            m1, fml1 = fit_mixedlm_with_fallback("AlphaPower_FOOOF_bl ~ GazeTOI_z * C(LoadLabel)", d1)
-            print(f"Formula: {fml1}")
-            print(m1.summary())
-        except Exception as exc:
-            print(f"Model 1 failed ({exc})")
-
-    print("\n--- Model 2: ReactionTime ~ GazeTOI_z * Load + Group ---")
-    d2 = dff[["Subject", "Group", "LoadLabel", "LoadValue", "GazeTOI_z", "ReactionTime"]].dropna().copy()
-    if len(d2) < 15:
-        print("Insufficient observations for Model 2.")
-    else:
-        try:
-            m2, fml2 = fit_mixedlm_with_fallback("ReactionTime ~ GazeTOI_z * C(LoadLabel) + C(Group)", d2)
-            print(f"Formula: {fml2}")
-            print(m2.summary())
-        except Exception as exc:
-            print(f"Model 2 failed ({exc})")
-
-    print("\n--- Model 3: Accuracy binomial model ---")
-    d3 = dff[["Subject", "Group", "LoadLabel", "GazeTOI_z", "Accuracy", "NTrials"]].dropna().copy()
-    if len(d3) < 15:
-        print("Insufficient observations for Model 3.")
-        return
-
-    if np.nanmax(d3["Accuracy"].to_numpy()) > 1.5:
-        d3["AccProp"] = np.clip(d3["Accuracy"] / 100.0, 0, 1)
-    else:
-        d3["AccProp"] = np.clip(d3["Accuracy"], 0, 1)
-
-    ntr = pd.to_numeric(d3["NTrials"], errors="coerce")
-    if ntr.notna().sum() == 0:
-        d3["BinomialSize"] = 100.0
-        print("No usable NTrials found; BinomialSize=100.")
-    else:
-        med_n = float(np.nanmedian(ntr))
-        if not np.isfinite(med_n) or med_n <= 0:
-            med_n = 100.0
-        d3["BinomialSize"] = ntr.where((ntr > 0) & np.isfinite(ntr), med_n)
-        print(f"BinomialSize uses NTrials (median fallback={med_n:.1f}).")
-
-    try:
-        glm = smf.glm(
-            "AccProp ~ GazeTOI_z * C(LoadLabel) + C(Group) + C(Subject)",
-            data=d3,
-            family=sm.families.Binomial(),
-            freq_weights=d3["BinomialSize"],
-        ).fit(cov_type="cluster", cov_kwds={"groups": d3["Subject"]})
-        print("Formula: AccProp ~ GazeTOI_z * C(LoadLabel) + C(Group) + C(Subject)")
-        print(glm.summary())
-        print("Note: GLM+clustered SE used as GLMM approximation in statsmodels.")
-    except Exception as exc:
-        print(f"Model 3 failed ({exc})")
-
-
 def main() -> None:
     print("=== AOC stats splits Amp/Red (Python) ===")
     print(f"Loading: {INPUT_CSV}")
@@ -294,9 +208,6 @@ def main() -> None:
     gaze_follow_df = df[["Subject", "Group", "LoadValue", "LoadLabel", "GazeFollowup"]].rename(columns={"GazeFollowup": "Value"}).dropna()
     run_group_load_anova_like(gaze_follow_df, gaze_followup_label)
     run_lmm(gaze_follow_df, gaze_followup_label)
-
-    # Additional follow-up models from dedicated CSV.
-    run_followup_models()
 
 
 if __name__ == "__main__":

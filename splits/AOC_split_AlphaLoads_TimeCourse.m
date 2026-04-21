@@ -594,6 +594,22 @@ obs = struct('idx', {}, 'mass', {}, 'extent', {}, 'onset', {}, 'offset', {}, 'p'
 if ~any(sig_obs)
     return
 end
+run_start = [false, diff(sig_obs) == 1];
+run_end = [diff(sig_obs) == -1, false];
+if sig_obs(1), run_start(1) = true; end
+if sig_obs(end), run_end(end) = true; end
+starts = find(run_start);
+ends = find(run_end);
+for k = 1:numel(starts)
+    idx = starts(k):ends(k);
+    obs(k).idx = idx; %#ok<AGROW>
+    obs(k).mass = sum(tvals(idx), 'omitnan');
+    obs(k).extent = numel(idx);
+    obs(k).onset = max(0, t_plot_ds(idx(1)) - dt_ds/2);
+    obs(k).offset = t_plot_ds(idx(end)) + dt_ds/2;
+    obs(k).p = NaN; % gets filled if matched to FT cluster output
+end
+end
 
 function cand = get_candidate_clusters(tvals, t_plot_ds, dt_ds, min_t)
 % Candidate clusters for diagnostics, independent of cluster-forming threshold.
@@ -618,7 +634,7 @@ df_approx = max(sum(isfinite(tvals)) - 2, 1);
 for k = 1:numel(starts)
     idx = starts(k):ends(k);
     seg = tvals(idx);
-    [peak_t, peak_i] = max(seg, [], 'omitnan');
+    [peak_t, ~] = max(seg, [], 'omitnan');
     if isempty(peak_t) || ~isfinite(peak_t)
         peak_t = NaN;
         p_unc = NaN;
@@ -632,21 +648,5 @@ for k = 1:numel(starts)
     cand(k).offset = t_plot_ds(idx(end)) + dt_ds/2;
     cand(k).peak_t = peak_t;
     cand(k).peak_p_unc = p_unc;
-end
-end
-run_start = [false, diff(sig_obs) == 1];
-run_end = [diff(sig_obs) == -1, false];
-if sig_obs(1), run_start(1) = true; end
-if sig_obs(end), run_end(end) = true; end
-starts = find(run_start);
-ends = find(run_end);
-for k = 1:numel(starts)
-    idx = starts(k):ends(k);
-    obs(k).idx = idx; %#ok<AGROW>
-    obs(k).mass = sum(tvals(idx), 'omitnan');
-    obs(k).extent = numel(idx);
-    obs(k).onset = max(0, t_plot_ds(idx(1)) - dt_ds/2);
-    obs(k).offset = t_plot_ds(idx(end)) + dt_ds/2;
-    obs(k).p = NaN; % gets filled if matched to FT cluster output
 end
 end

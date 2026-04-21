@@ -29,6 +29,28 @@ from functions.mixedlm_helpers import (
     fit_mixedlm, drop1_lrt, pairwise_condition_contrasts_at_mean_gaze, mixedlm_fixed_effects_to_df, lr_effect_sizes
 )
 
+# %% Raw alpha definition
+# Task-specific raw-alpha source:
+# - nback: entire window (`AlphaPowerFull`)
+# - sternberg: late window (`AlphaPowerLate`)
+RAW_ALPHA_BY_TASK = {
+    "nback": "AlphaPowerFull",
+    "sternberg": "AlphaPowerLate",
+}
+
+def enforce_task_raw_alpha(df: pd.DataFrame, task_name: str) -> pd.DataFrame:
+    """Ensure canonical `AlphaPower` follows the task-specific raw-window definition."""
+    source_col = RAW_ALPHA_BY_TASK.get(task_name)
+    if source_col is None:
+        print(f"[{task_name}] WARNING: no raw-alpha mapping configured; using existing AlphaPower.")
+        return df
+
+    if source_col in df.columns:
+        df["AlphaPower"] = pd.to_numeric(df[source_col], errors="coerce")
+    else:
+        print(f"[{task_name}] WARNING: {source_col} missing; using existing AlphaPower.")
+    return df
+
 # %% Parameters
 
 # Colours
@@ -67,10 +89,22 @@ anova_dir = f"{base_dir}/data/stats/anova"
 
 # %% Variables and labelling
 
-variables  = ["Accuracy", "ReactionTime", "GazeDeviation", "MSRate", "Fixations", "Saccades", "PupilSize", "AlphaPower", "IAF"]
-titles     = ["Accuracy", "Reaction Time", "Gaze Deviation", "Microsaccade Rate", "Fixations", "Saccades", "Pupil Size", "Alpha Power", "IAF"]
-y_labels   = ["Accuracy [%]", "Reaction Time [s]", "Gaze Deviation [px]", "Microsaccade Rate [MS/s]", "Fixations", "Saccades", "Pupil Size [a.u.]", "Alpha Power [\u03BCV²/Hz]", "IAF [Hz]"]
-save_names = ["acc", "rt", "gazedev", "ms", "fix", "sacc", "pupil", "pow", "iaf"]
+variables  = [
+    "Accuracy", "ReactionTime", "GazeDeviation", "MSRate", "Fixations", "Saccades", "PupilSize", "AlphaPower", "IAF",
+    "GazeDeviationFullBL", "MSRateFullBL", "PupilSizeFullBL", "AlphaPowerFullBL", "AlphaPower_FOOOF_bl",
+]
+titles     = [
+    "Accuracy", "Reaction Time", "Gaze Deviation", "Microsaccade Rate", "Fixations", "Saccades", "Pupil Size", "Alpha Power", "IAF",
+    "Gaze Deviation (BL)", "Microsaccade Rate (BL)", "Pupil Size (BL)", "Alpha Power (BL)", "Alpha Power (SpecParam BL)",
+]
+y_labels   = [
+    "Accuracy [%]", "Reaction Time [s]", "Gaze Deviation [px]", "Microsaccade Rate [MS/s]", "Fixations", "Saccades", "Pupil Size [a.u.]", "Alpha Power [\u03BCV²/Hz]", "IAF [Hz]",
+    "Gaze Deviation [%]", "Microsaccade Rate [%]", "Pupil Size [%]", "Alpha Power [dB]", "Alpha Power [dB]",
+]
+save_names = [
+    "acc", "rt", "gazedev", "ms", "fix", "sacc", "pupil", "pow", "iaf",
+    "gazedev_bl", "ms_bl", "pupil_bl", "pow_bl", "pow_specparam_bl",
+]
 
 # Manual y ticks and ylims per variable
 yticks_map = {
@@ -81,8 +115,13 @@ yticks_map = {
     "Fixations"     : np.arange(0, 6, 1),
     "Saccades"      : np.arange(0, 4.25, 1),
     "PupilSize"     : np.arange(0, 5.5, 1),
-    "AlphaPower"    : np.arange(0, 1.52, 0.25),
+    "AlphaPower"    : np.arange(0, 6.2, 0.5),
     "IAF"           : np.arange(8, 14, 1),
+    "GazeDeviationFullBL" : np.arange(0, 401, 50),
+    "MSRateFullBL"        : np.arange(-100, 5, 5),
+    "PupilSizeFullBL"     : np.arange(-20, 121, 20),
+    "AlphaPowerFullBL"    : np.arange(-3, 3.1, 1),
+    "AlphaPower_FOOOF_bl" : np.arange(-0.3, 0.31, 0.1),
 }
 ylims_map = {
     "Accuracy"      : (60, 102),
@@ -92,8 +131,13 @@ ylims_map = {
     "Fixations"     : (0, 6),
     "Saccades"      : (0, 4.25),
     "PupilSize"     : (0, 5.5),
-    "AlphaPower"    : (0, 1.6),
+    "AlphaPower"    : (0, 6),
     "IAF"           : (8, 14.1),
+    "GazeDeviationFullBL" : (0, 400),
+    "MSRateFullBL"        : (-100, 0),
+    "PupilSizeFullBL"     : (-20, 120),
+    "AlphaPowerFullBL"    : (-3, 3),
+    "AlphaPower_FOOOF_bl" : (-0.325, 0.325),
 }
 
 # %% Task configurations
@@ -124,6 +168,7 @@ global_upper = {var: np.nan for var in variables}
 
 for _task in tasks:
     _dat = pd.read_csv(_task["input_csv"])
+    _dat = enforce_task_raw_alpha(_dat, _task["name"])
     _dat.loc[_dat["Accuracy"] > 100, "Accuracy"] = np.nan  # same impossible-value rule
 
     # normalise/label Condition exactly like in the main loop
@@ -145,11 +190,14 @@ for _task in tasks:
     if _dat["ID"].dtype != "O":
         _dat["ID"] = _dat["ID"].astype(str)
 
-    # apply the same outlier filter as the main pipeline
-    _dat = iqr_outlier_filter(_dat, variables, by="Condition")
+    # apply the same outlier filter as the main pipeline (existing columns only)
+    vars_present = [v for v in variables if v in _dat.columns]
+    _dat = iqr_outlier_filter(_dat, vars_present, by="Condition")
 
     # update global upper bounds
     for var in variables:
+        if var not in _dat.columns:
+            continue
         vmax = pd.to_numeric(_dat[var], errors="coerce").max()
         if np.isfinite(vmax):
             if not np.isfinite(global_upper[var]) or (vmax > global_upper[var]):
@@ -162,6 +210,7 @@ for task in tasks:
 
     # %% Load
     dat = pd.read_csv(task["input_csv"])
+    dat = enforce_task_raw_alpha(dat, task["name"])
 
     # Remove impossible values
     dat.loc[dat["Accuracy"] > 100, "Accuracy"] = np.nan
@@ -189,7 +238,8 @@ for task in tasks:
         dat["ID"] = dat["ID"].astype(str)
 
     # Outlier removal per condition & variable (1.5×IQR)
-    dat = iqr_outlier_filter(dat, variables, by="Condition")
+    vars_present = [v for v in variables if v in dat.columns]
+    dat = iqr_outlier_filter(dat, vars_present, by="Condition")
 
     # %% Descriptive statistics per condition (save as CSV)
     desc_rows = []
@@ -248,6 +298,8 @@ for task in tasks:
 
     # %% Loop variables
     for var, ttl, ylab, sname in zip(variables, titles, y_labels, save_names):
+        if var not in dat.columns:
+            continue
 
         dvar = dat.loc[~dat[var].isna(), ["ID", "Condition", var]].copy()
         if dvar.empty:
@@ -607,12 +659,13 @@ for task in tasks:
     outputs[f"pairwise_effect_sizes_{task['name']}"] = pw_eff_df.copy()
     print(f"Saved pairwise effect sizes → {pw_csv}")
 
-# %% Alpha ~ Gaze * Condition + (1|ID) — run twice (GazeDeviation, MSRate)
-print("\n=== Alpha ~ Gaze * Condition mixed models (per task) ===")
+# %% Alpha variants ~ Gaze variants * Condition + (1|ID)
+print("\n=== Alpha variants ~ Gaze variants * Condition mixed models (per task) ===")
 
 for task in tasks:
     print(f"\nTask: {task['name']}")
     dat = pd.read_csv(task["input_csv"])
+    dat = enforce_task_raw_alpha(dat, task["name"])
     dat.loc[dat["Accuracy"] > 100, "Accuracy"] = np.nan
 
     # Harmonise Condition labels and order (same logic as above)
@@ -636,202 +689,184 @@ for task in tasks:
         dat["ID"] = dat["ID"].astype(str)
 
     # Apply same outlier handling
-    dat = iqr_outlier_filter(dat, variables, by="Condition")
+    vars_present = [v for v in variables if v in dat.columns]
+    dat = iqr_outlier_filter(dat, vars_present, by="Condition")
 
     # Keep essential columns
-    cols_needed = ["ID", "Condition", "AlphaPower", "GazeDeviation", "MSRate"]
+    alpha_vars = ["AlphaPower", "AlphaPowerFullBL", "AlphaPower_FOOOF_bl"]
+    gaze_vars = ["GazeDeviation", "MSRate", "GazeDeviationFullBL", "MSRateFullBL"]
+    cols_needed = ["ID", "Condition"] + alpha_vars + gaze_vars
     dat = dat[[c for c in cols_needed if c in dat.columns]].copy()
 
-    # Drop rows with missing DV or predictors
-    # We'll do this separately for each gaze predictor
-    for gaze_var in ["GazeDeviation", "MSRate"]:
-        if gaze_var not in dat.columns:
-            print(f" - {gaze_var} not present. Skipping.")
+    # Drop rows with missing DV or predictors, separately for each alpha/gaze combination
+    for alpha_var in alpha_vars:
+        if alpha_var not in dat.columns:
             continue
 
-        sub = dat[["ID", "Condition", "AlphaPower", gaze_var]].dropna().copy()
+        for gaze_var in gaze_vars:
+            if gaze_var not in dat.columns:
+                continue
 
-        # Ensure we have all condition levels for at least some subjects
-        if sub.empty or sub["ID"].nunique() < 2:
-            print(f" - Not enough data for {gaze_var}. Skipping.")
-            continue
+            sub = dat[["ID", "Condition", alpha_var, gaze_var]].dropna().copy()
 
-        # Mean-centre gaze within task (keeps units; recommended to reduce collinearity)
-        sub[gaze_var + "_c"] = sub[gaze_var] - sub[gaze_var].mean()
+            # Ensure we have all condition levels for at least some subjects
+            if sub.empty or sub["ID"].nunique() < 2:
+                print(f" - Not enough data for {alpha_var} ~ {gaze_var}. Skipping.")
+                continue
 
-        # MixedLM (REML=False for LRT comparability)
-        # Full model with interaction
-        formula_full = (
-            f'AlphaPower ~ {gaze_var}_c * C(Condition, Treatment(reference="{ref_level}"))'
-        )
-        try:
-            full_res = fit_mixedlm(formula_full, data=sub, group="ID", reml=False)
-        except Exception as e:
-            # Fallback: try different optimiser
-            full_res = fit_mixedlm(formula_full, data=sub, group="ID", reml=False, method="nm", maxiter=800)
+            # Mean-centre gaze within task (keeps units; recommended to reduce collinearity)
+            sub[gaze_var + "_c"] = sub[gaze_var] - sub[gaze_var].mean()
 
-        # Reduced (drop interaction)
-        formula_red = (
-            f'AlphaPower ~ {gaze_var}_c + C(Condition, Treatment(reference="{ref_level}"))'
-        )        
-        try:
-            red_res = fit_mixedlm(formula_red, data=sub, group="ID", reml=False)
-        except Exception as e:
-            red_res = fit_mixedlm(formula_red, data=sub, group="ID", reml=False, method="nm", maxiter=800)
+            # MixedLM (REML=False for LRT comparability)
+            formula_full = (
+                f'{alpha_var} ~ {gaze_var}_c * C(Condition, Treatment(reference="{ref_level}"))'
+            )
+            try:
+                full_res = fit_mixedlm(formula_full, data=sub, group="ID", reml=False)
+            except Exception:
+                full_res = fit_mixedlm(formula_full, data=sub, group="ID", reml=False, method="nm", maxiter=800)
 
-        # drop1-style LRT for interaction
-        lrt = drop1_lrt(full_res, red_res)
-        lrt_df = pd.DataFrame([{
-            "Task": task["name"],
-            "GazePredictor": gaze_var,
-            "LL_full": lrt["LL_full"], "LL_reduced": lrt["LL_reduced"],
-            "df_full": lrt["df_full"], "df_reduced": lrt["df_reduced"],
-            "df_diff": lrt["df_diff"], "LR": lrt["LR"], "p": lrt["p"]
-        }])
+            formula_red = (
+                f'{alpha_var} ~ {gaze_var}_c + C(Condition, Treatment(reference="{ref_level}"))'
+            )
+            try:
+                red_res = fit_mixedlm(formula_red, data=sub, group="ID", reml=False)
+            except Exception:
+                red_res = fit_mixedlm(formula_red, data=sub, group="ID", reml=False, method="nm", maxiter=800)
 
-        # Select final model based on LRT
-        if np.isfinite(lrt["p"]) and (lrt["p"] < 0.05):
-            final_res = full_res
-            final_formula = formula_full
-            interaction_kept = True
-        else:
-            final_res = red_res
-            final_formula = formula_red
-            interaction_kept = False
+            # drop1-style LRT for interaction
+            lrt = drop1_lrt(full_res, red_res)
+            lrt_df = pd.DataFrame([{
+                "Task": task["name"],
+                "AlphaDV": alpha_var,
+                "GazePredictor": gaze_var,
+                "LL_full": lrt["LL_full"], "LL_reduced": lrt["LL_reduced"],
+                "df_full": lrt["df_full"], "df_reduced": lrt["df_reduced"],
+                "df_diff": lrt["df_diff"], "LR": lrt["LR"], "p": lrt["p"]
+            }])
 
-        # LRT "ANOVA" style tests (all based on the no-interaction model red_res)
-        # - Interaction: already tested via lrt (full_res vs red_res)
-        # - Condition main effect: red_res vs model without Condition
-        # - Gaze main effect: red_res vs model without gaze
-        #
-        # red_res is the no-interaction model that is already fitted.
-        # lrt is still the LRT for the interaction (full_res vs red_res).
-        # lrt_cond and lrt_gaze are LRTs on the reduced model:
-        # Condition: compare AlphaPower ~ gaze_c + Condition vs AlphaPower ~ gaze_c
-        # Gaze: compare AlphaPower ~ gaze_c + Condition vs AlphaPower ~ Condition
+            # Select final model based on LRT
+            if np.isfinite(lrt["p"]) and (lrt["p"] < 0.05):
+                final_res = full_res
+                final_formula = formula_full
+                interaction_kept = True
+            else:
+                final_res = red_res
+                final_formula = formula_red
+                interaction_kept = False
 
-        # Model without Condition (keeps gaze only)
-        formula_nocond = (
-            f'AlphaPower ~ {gaze_var}_c'
-        )
-        try:
-            res_nocond = fit_mixedlm(formula_nocond, data=sub, group="ID", reml=False)
-        except Exception:
-            res_nocond = fit_mixedlm(formula_nocond, data=sub, group="ID",
-                                     reml=False, method="nm", maxiter=800)
+            # Model without Condition (keeps gaze only)
+            formula_nocond = f'{alpha_var} ~ {gaze_var}_c'
+            try:
+                res_nocond = fit_mixedlm(formula_nocond, data=sub, group="ID", reml=False)
+            except Exception:
+                res_nocond = fit_mixedlm(formula_nocond, data=sub, group="ID", reml=False, method="nm", maxiter=800)
+            lrt_cond = drop1_lrt(red_res, res_nocond)
 
-        lrt_cond = drop1_lrt(red_res, res_nocond)
+            # Model without gaze (keeps Condition only)
+            formula_nogaze = f'{alpha_var} ~ C(Condition, Treatment(reference="{ref_level}"))'
+            try:
+                res_nogaze = fit_mixedlm(formula_nogaze, data=sub, group="ID", reml=False)
+            except Exception:
+                res_nogaze = fit_mixedlm(formula_nogaze, data=sub, group="ID", reml=False, method="nm", maxiter=800)
+            lrt_gaze = drop1_lrt(red_res, res_nogaze)
 
-        # Model without gaze (keeps Condition only)
-        formula_nogaze = (
-            f'AlphaPower ~ C(Condition, Treatment(reference="{ref_level}"))'
-        )
-        try:
-            res_nogaze = fit_mixedlm(formula_nogaze, data=sub, group="ID", reml=False)
-        except Exception:
-            res_nogaze = fit_mixedlm(formula_nogaze, data=sub, group="ID",
-                                     reml=False, method="nm", maxiter=800)
+            # Build LRT table with LR-based effect sizes
+            rows_lrt = []
+            n_obs = sub.shape[0]
 
-        lrt_gaze = drop1_lrt(red_res, res_nogaze)
-
-        # Build LRT table with LR-based effect sizes
-        rows_lrt = []
-        n_obs = sub.shape[0]
-
-        R2_cond, f2_cond = lr_effect_sizes(lrt_cond["LR"], lrt_cond["df_diff"], n_obs)
-        rows_lrt.append({
-            "Term": "Condition",
-            "df":   lrt_cond["df_diff"],
-            "LR_Chi2": lrt_cond["LR"],
-            "p":    lrt_cond["p"],
-            "R2_LR": R2_cond,
-            "f2_LR": f2_cond
-        })
-
-        R2_gaze, f2_gaze = lr_effect_sizes(lrt_gaze["LR"], lrt_gaze["df_diff"], n_obs)
-        rows_lrt.append({
-            "Term": f"{gaze_var}_c",
-            "df":   lrt_gaze["df_diff"],
-            "LR_Chi2": lrt_gaze["LR"],
-            "p":    lrt_gaze["p"],
-            "R2_LR": R2_gaze,
-            "f2_LR": f2_gaze
-        })
-
-        # Interaction row
-        if interaction_kept and np.isfinite(lrt["p"]):
-            R2_int, f2_int = lr_effect_sizes(lrt["LR"], lrt["df_diff"], n_obs)
+            R2_cond, f2_cond = lr_effect_sizes(lrt_cond["LR"], lrt_cond["df_diff"], n_obs)
             rows_lrt.append({
-                "Term": "Interaction",
-                "df":   lrt["df_diff"],
-                "LR_Chi2": lrt["LR"],
-                "p":    lrt["p"],
-                "R2_LR": R2_int,
-                "f2_LR": f2_int
+                "Term": "Condition",
+                "df": lrt_cond["df_diff"],
+                "LR_Chi2": lrt_cond["LR"],
+                "p": lrt_cond["p"],
+                "R2_LR": R2_cond,
+                "f2_LR": f2_cond
             })
 
-        for row in rows_lrt:
-            row["N_obs"] = int(n_obs)
+            R2_gaze, f2_gaze = lr_effect_sizes(lrt_gaze["LR"], lrt_gaze["df_diff"], n_obs)
+            rows_lrt.append({
+                "Term": f"{gaze_var}_c",
+                "df": lrt_gaze["df_diff"],
+                "LR_Chi2": lrt_gaze["LR"],
+                "p": lrt_gaze["p"],
+                "R2_LR": R2_gaze,
+                "f2_LR": f2_gaze
+            })
 
-        lrtTbl_df = pd.DataFrame(rows_lrt, columns=["Term", "df", "LR_Chi2", "p", "R2_LR", "f2_LR"])
-        lrtTbl_df.insert(0, "Task", task["name"])
-        lrtTbl_df.insert(1, "GazePredictor", gaze_var)
+            if interaction_kept and np.isfinite(lrt["p"]):
+                R2_int, f2_int = lr_effect_sizes(lrt["LR"], lrt["df_diff"], n_obs)
+                rows_lrt.append({
+                    "Term": "Interaction",
+                    "df": lrt["df_diff"],
+                    "LR_Chi2": lrt["LR"],
+                    "p": lrt["p"],
+                    "R2_LR": R2_int,
+                    "f2_LR": f2_int
+                })
 
-        # Pairwise contrasts across Condition at mean gaze (centred = 0)
-        cond_levels = list(sub["Condition"].cat.categories)
-        design_prefix = f'C(Condition, Treatment(reference="{ref_level}"))'
-        contrast_df = pairwise_condition_contrasts_at_mean_gaze(
-            final_res, cond_levels, design_prefix=design_prefix
-        )        
-        contrast_df.insert(0, "Task", task["name"])
-        contrast_df.insert(1, "GazePredictor", gaze_var)
+            for row in rows_lrt:
+                row["N_obs"] = int(n_obs)
 
-        # Export model table (DOCX)
-        doc_name = f"AOC_alpha_mixedlm_{gaze_var.lower()}_{task['name']}.docx"
-        doc_path = os.path.join(output_dir_stats, doc_name)
-        export_model_table(final_res, doc_path)
-        print(f"Saved model table → {doc_name}")
+            lrtTbl_df = pd.DataFrame(rows_lrt, columns=["Term", "df", "LR_Chi2", "p", "R2_LR", "f2_LR"])
+            lrtTbl_df.insert(0, "Task", task["name"])
+            lrtTbl_df.insert(1, "AlphaDV", alpha_var)
+            lrtTbl_df.insert(2, "GazePredictor", gaze_var)
 
-        # Print Alpha ~ Gaze model to console
-        print(f"\n{'─'*60}")
-        print(f"  Alpha ~ {gaze_var} * Condition  [{task['name']}]")
-        print(f"  Final formula: {final_formula}")
-        print(f"  Interaction kept: {interaction_kept}")
-        print(f"{'─'*60}")
-        try:
-            print(final_res.summary())
-        except Exception:
-            pass
-        print(f"\n  LRT table:")
-        print(lrtTbl_df.to_string(index=False))
-        if not contrast_df.empty:
-            print(f"\n  Pairwise condition contrasts at mean gaze:")
-            print(contrast_df.to_string(index=False))
+            # Pairwise contrasts across Condition at mean gaze (centred = 0)
+            cond_levels = list(sub["Condition"].cat.categories)
+            design_prefix = f'C(Condition, Treatment(reference="{ref_level}"))'
+            contrast_df = pairwise_condition_contrasts_at_mean_gaze(
+                final_res, cond_levels, design_prefix=design_prefix
+            )
+            contrast_df.insert(0, "Task", task["name"])
+            contrast_df.insert(1, "AlphaDV", alpha_var)
+            contrast_df.insert(2, "GazePredictor", gaze_var)
 
-        # Also save fixed effects for the alpha ~ gaze * Condition model
-        fe_alpha_df = mixedlm_fixed_effects_to_df(
-            final_res,
-            task=task["name"],
-            variable="AlphaPower",
-            model_label=f"AlphaPower ~ {gaze_var}_c * Condition + (1|ID)" if interaction_kept
-                        else f"AlphaPower ~ {gaze_var}_c + Condition + (1|ID)"
-        )
-        fe_alpha_csv = os.path.join(output_dir_stats, f"AOC_alpha_fixed_{gaze_var.lower()}_{task['name']}.csv")
-        fe_alpha_df.to_csv(fe_alpha_csv, index=False)
-        outputs[f"alpha_fixed_{gaze_var.lower()}_{task['name']}"] = fe_alpha_df.copy()
-        print(f"Saved alpha fixed-effects → {os.path.basename(fe_alpha_csv)}")
+            # Export model table (DOCX)
+            doc_name = f"AOC_alpha_mixedlm_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}.docx"
+            doc_path = os.path.join(output_dir_stats, doc_name)
+            export_model_table(final_res, doc_path)
+            print(f"Saved model table → {doc_name}")
 
-        # Save LRT, lrtTbl table, and contrasts
-        lrt_csv = os.path.join(output_dir_stats, f"AOC_alpha_drop1_{gaze_var.lower()}_{task['name']}.csv")
-        lrtTbl_csv = os.path.join(output_dir_stats, f"AOC_alpha_lrtTbl_{gaze_var.lower()}_{task['name']}.csv")
-        con_csv  = os.path.join(output_dir_stats, f"AOC_alpha_contrasts_{gaze_var.lower()}_{task['name']}.csv")
-        lrt_df.to_csv(lrt_csv, index=False)
-        lrtTbl_df.to_csv(lrtTbl_csv, index=False)
-        contrast_df.to_csv(con_csv, index=False)
-        outputs[f"alpha_drop1_{gaze_var.lower()}_{task['name']}"] = lrt_df.copy()
-        outputs[f"alpha_lrtTbl_{gaze_var.lower()}_{task['name']}"] = lrtTbl_df.copy()
-        outputs[f"alpha_contrasts_{gaze_var.lower()}_{task['name']}"] = contrast_df.copy()
-        print(f"Saved LRT/LRT Table/Contrasts → {os.path.basename(lrt_csv)}, {os.path.basename(lrtTbl_csv)}, {os.path.basename(con_csv)}")
+            print(f"\n{'─'*60}")
+            print(f"  {alpha_var} ~ {gaze_var} * Condition  [{task['name']}]")
+            print(f"  Final formula: {final_formula}")
+            print(f"  Interaction kept: {interaction_kept}")
+            print(f"{'─'*60}")
+            try:
+                print(final_res.summary())
+            except Exception:
+                pass
+            print(f"\n  LRT table:")
+            print(lrtTbl_df.to_string(index=False))
+            if not contrast_df.empty:
+                print(f"\n  Pairwise condition contrasts at mean gaze:")
+                print(contrast_df.to_string(index=False))
+
+            fe_alpha_df = mixedlm_fixed_effects_to_df(
+                final_res,
+                task=task["name"],
+                variable=alpha_var,
+                model_label=f"{alpha_var} ~ {gaze_var}_c * Condition + (1|ID)" if interaction_kept
+                else f"{alpha_var} ~ {gaze_var}_c + Condition + (1|ID)"
+            )
+            fe_alpha_csv = os.path.join(output_dir_stats, f"AOC_alpha_fixed_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}.csv")
+            fe_alpha_df.to_csv(fe_alpha_csv, index=False)
+            outputs[f"alpha_fixed_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}"] = fe_alpha_df.copy()
+            print(f"Saved alpha fixed-effects → {os.path.basename(fe_alpha_csv)}")
+
+            lrt_csv = os.path.join(output_dir_stats, f"AOC_alpha_drop1_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}.csv")
+            lrtTbl_csv = os.path.join(output_dir_stats, f"AOC_alpha_lrtTbl_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}.csv")
+            con_csv = os.path.join(output_dir_stats, f"AOC_alpha_contrasts_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}.csv")
+            lrt_df.to_csv(lrt_csv, index=False)
+            lrtTbl_df.to_csv(lrtTbl_csv, index=False)
+            contrast_df.to_csv(con_csv, index=False)
+            outputs[f"alpha_drop1_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}"] = lrt_df.copy()
+            outputs[f"alpha_lrtTbl_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}"] = lrtTbl_df.copy()
+            outputs[f"alpha_contrasts_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}"] = contrast_df.copy()
+            print(f"Saved LRT/LRT Table/Contrasts → {os.path.basename(lrt_csv)}, {os.path.basename(lrtTbl_csv)}, {os.path.basename(con_csv)}")
 
 # %% Display all stored dataframes
 pd.set_option("display.max_rows", None)

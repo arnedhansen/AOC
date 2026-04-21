@@ -1,4 +1,4 @@
-%% AOC Split Alpha Amp/Red (Sternberg) - Export-Only
+%% AOC Split Alpha Amp/Red (Sternberg)
 % Creates a CSV with split labels and per-subject/per-load metrics
 % for downstream statistics in Python.
 
@@ -19,7 +19,7 @@ if ~isfolder(out_dir)
     mkdir(out_dir);
 end
 
-fprintf('\n=== AOC Split Alpha Amp/Red (Sternberg) - Export Only ===\n');
+fprintf('\n=== AOC Split Alpha Amp/Red (Sternberg) ===\n');
 
 %% Task definition (Sternberg only)
 task_tag = 'sternberg';

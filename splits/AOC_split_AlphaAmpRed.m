@@ -37,8 +37,12 @@ addpath(seb_path);
 
 feat_dir = fullfile(base_data, 'data', 'features');
 fig_dir = fullfile(base_data, 'figures', 'splits', 'SplitAlphaAmpRed');
+stats_dir = fullfile(base_data, 'data', 'stats', 'splits');
 if ~isfolder(fig_dir)
     mkdir(fig_dir);
+end
+if ~isfolder(stats_dir)
+    mkdir(stats_dir);
 end
 fprintf('\n=== AOC Split Alpha Amp/Red (Sternberg) ===\n');
 fprintf('Figure directory: %s\n', fig_dir);
@@ -423,298 +427,58 @@ fprintf('Missing EEG power (%s): %d\n', tk.power_missing_label, numel(unique(mis
 fprintf('Missing TFR files: %d\n', numel(unique(missing_tfr)));
 fprintf('Missing gaze files/fields: %d\n', numel(unique(missing_gaze)));
 fprintf('Figures saved to: %s\n', fig_dir);
-%% Group comparison: Reduction vs Amplification (gaze deviation)
-fprintf('\n=== Parametric group comparison (reduction > amp) ===\n');
-metric_names = {'Dev'};
 
-for m = 1:numel(metric_names)
-    key = metric_names{m};
-    X = metrics.(key);
-    subj_mean = mean(X, 2, 'omitnan');
-
-    red_vals = subj_mean(is_red);
-    amp_vals = subj_mean(is_amp);
-    red_vals = red_vals(isfinite(red_vals));
-    amp_vals = amp_vals(isfinite(amp_vals));
-
-    if numel(red_vals) < 2 || numel(amp_vals) < 2
-        fprintf('  %s: insufficient data (n_red=%d, n_amp=%d)\n', key, numel(red_vals), numel(amp_vals));
-        continue
-    end
-
-    [~, p_one, ~, stats] = ttest2(red_vals, amp_vals, 'Tail', 'right');  % H1: reduction > amp
-    [~, p_two] = ttest2(red_vals, amp_vals);
-    d = (mean(red_vals) - mean(amp_vals)) / sqrt(((numel(red_vals)-1)*var(red_vals) + (numel(amp_vals)-1)*var(amp_vals)) / (numel(red_vals)+numel(amp_vals)-2));
-    fprintf('  %s: Red mean=%.2f (SD=%.2f), Amp mean=%.2f (SD=%.2f); diff=%.2f; one-tailed p(reduction>amp)=%.4f; two-tailed p=%.4f; d=%.3f; t(%d)=%.2f; n_red=%d, n_amp=%d\n', ...
-        key, mean(red_vals), std(red_vals), mean(amp_vals), std(amp_vals), mean(red_vals)-mean(amp_vals), p_one, p_two, d, stats.df, stats.tstat, numel(red_vals), numel(amp_vals));
-end
-
-%% Mixed ANOVA: Group × Condition
-fprintf('\n=== Mixed ANOVA (Group × Condition) on gaze deviation ===\n');
-% Repeated measures: Condition (within-Ss), Group (between-Ss). Use fitrm + ranova.
-incl = is_red | is_amp;
-subj_idx = find(incl);
-n_incl = numel(subj_idx);
-
-for m = 1:numel(metric_names)
-    key = metric_names{m};
-    X = metrics.(key);
-    X_incl = X(incl, :);
-
-    % Exclude subjects with < 2 valid conditions (fitrm needs enough repeated measures)
-    n_valid_per_subj = sum(isfinite(X_incl), 2);
-    keep = n_valid_per_subj >= 2;
-    if sum(keep) < 4
-        fprintf('  %s: insufficient subjects for repeated-measures ANOVA (n=%d)\n', key, sum(keep));
-        continue
-    end
-
-    X_use = X_incl(keep, :);
-    grp_use = 1 + is_amp(subj_idx(keep));  % 1=reduction, 2=amplification
-
-    % fitrm expects wide format: rows = subjects, cols = condition values
-    t = array2table(X_use, 'VariableNames', {'C1', 'C2', 'C3'});
-    t.Group = categorical(grp_use, [1 2], {'Reduction', 'Amplification'});
-    within = table(cond_vals(:), 'VariableNames', {'Load'});
-
-    try
-        rm = fitrm(t, 'C1-C3~Group', 'WithinDesign', within);
-        % Between-Ss (Group): from anova(rm), which uses Within/Between columns
-        anovatbl = anova(rm);
-        idx_grp = strcmp(string(anovatbl.Between), 'Group');
-        p_grp = anovatbl.pValue(idx_grp);
-        if isempty(p_grp), p_grp = NaN; elseif numel(p_grp) > 1, p_grp = p_grp(1); end
-        % Within-Ss (Load, Load:Group): from ranova(rm), row names like (Intercept):Load, Group:Load
-        ranovatbl = ranova(rm);
-        rn = ranovatbl.Properties.RowNames;
-        p_cond = ranovatbl.pValue(1);  % (Intercept):Load = main effect of Load
-        idx_int = cellfun(@(x) contains(x, 'Group') && contains(x, ':'), rn);
-        p_int = ranovatbl.pValue(idx_int);
-        if isempty(p_int), p_int = NaN; elseif numel(p_int) > 1, p_int = p_int(1); end
-        fprintf('  %s: Condition (Load) p=%.4f; Group p=%.4f; Condition×Group p=%.4f; n=%d\n', ...
-            key, p_cond, p_grp, p_int, sum(keep));
-    catch ME
-        fprintf('  %s: Mixed ANOVA failed (%s)\n', key, ME.message);
-    end
-end
-
-%% Linear mixed models (LMM): Group × Condition + (1|Subject)
-fprintf('\n=== Linear mixed models (Value ~ Group * Condition + (1|Subject)) ===\n');
-% Long-format table: Subject, Condition, Group, Value. Random intercept by subject.
-incl = is_red | is_amp;
-subj_idx = find(incl);
-
-for m = 1:numel(metric_names)
-    key = metric_names{m};
-    X = metrics.(key);
-    X_incl = X(incl, :);
-
-    % Stack to long format
-    rows = [];
-    for s = 1:numel(subj_idx)
-        for c = 1:3
-            val = X_incl(s, c);
-            if isfinite(val)
-                grp = 1 + is_amp(subj_idx(s));
-                rows(end+1, :) = [subj_idx(s), c, grp, val];
-            end
-        end
-    end
-
-    if size(rows, 1) < 15
-        fprintf('  %s: insufficient data for LMM (n_obs=%d)\n', key, size(rows, 1));
-        continue
-    end
-
-    tbl = array2table(rows, 'VariableNames', {'Subject', 'Condition', 'Group', 'Value'});
-    tbl.Subject = categorical(tbl.Subject);
-    tbl.Condition = categorical(tbl.Condition, [1 2 3], cond_labels);
-    tbl.Group = categorical(tbl.Group, [1 2], {'Reduction', 'Amplification'});
-
-    try
-        lme = fitlme(tbl, 'Value ~ Group * Condition + (1|Subject)');
-        aov = anova(lme);
-        terms = aov.Term;
-        get_p = @(t) aov.pValue(strcmp(terms, t));
-        p_grp = get_p('Group');
-        p_cond = get_p('Condition');
-        p_int = get_p('Condition:Group');
-        if isempty(p_int), p_int = get_p('Group:Condition'); end
-        if isempty(p_grp), p_grp = NaN; end
-        if isempty(p_cond), p_cond = NaN; end
-        if isempty(p_int), p_int = NaN; end
-        fprintf('  %s: Group p=%.4f; Condition p=%.4f; Group×Condition p=%.4f; n_obs=%d, n_subj=%d\n', ...
-            key, p_grp, p_cond, p_int, size(rows, 1), numel(unique(tbl.Subject)));
-    catch ME
-        fprintf('  %s: LMM failed (%s)\n', key, ME.message);
-    end
-end
-
-%% Follow-up: Alpha & gaze deviation (%) vs load (Group × Load)
-fprintf('Alpha: mean AlphaPower_FOOOF_bl [dB] per load condition.\n');
-fprintf('Gaze: mean gaze deviation [%%] per load condition from dev_tc_pct, averaged [0 2] s (task window).\n');
-
+%% Export CSV for Python statistics script
+fprintf('\n=== Exporting CSV for Python stats ===\n');
 t_win_lo = 0;
 t_win_hi = 2;
 task_idx_gaze = (t_vec >= t_win_lo) & (t_vec <= t_win_hi);
 dev_pct_by_load = squeeze(mean(dev_tc_pct(:, :, task_idx_gaze), 3, 'omitnan'));
 
-follow_names = {'Alpha', 'GazeDev_pct'};
-follow_X = {metrics.Alpha, dev_pct_by_load};
-follow_ylab = {'Alpha power [dB]', 'Gaze deviation [%]'};
+n_rows = nSubj * numel(cond_vals);
+ID_col = nan(n_rows, 1);
+LoadValue_col = nan(n_rows, 1);
+LoadLabel_col = strings(n_rows, 1);
+Group_col = strings(n_rows, 1);
+Included_col = false(n_rows, 1);
+Alpha_col = nan(n_rows, 1);
+GazeDev_col = nan(n_rows, 1);
+GazeDevPct_col = nan(n_rows, 1);
 
-col_red_line = [0.20 0.42 0.85];
-col_amp_line = [0.88 0.32 0.38];
+r = 0;
+for s = 1:nSubj
+    for c = 1:numel(cond_vals)
+        r = r + 1;
+        ID_col(r) = uIDs(s);
+        LoadValue_col(r) = cond_vals(c);
+        LoadLabel_col(r) = string(cond_labels{c});
+        Alpha_col(r) = metrics.Alpha(s, c);
+        GazeDev_col(r) = metrics.Dev(s, c);
+        GazeDevPct_col(r) = dev_pct_by_load(s, c);
 
-incl_gl = is_red | is_amp;
-subj_idx_gl = find(incl_gl);
-
-fprintf('\n--- Descriptive: mean (SEM) by group and load; n = finite values per cell ---\n');
-for oi = 1:numel(follow_names)
-    X = follow_X{oi};
-    oname = follow_names{oi};
-    fprintf('\n  %s (%s)\n', oname, follow_ylab{oi});
-    for gi = 1:2
-        if gi == 1
-            mask = is_red;
-            gstr = 'Reduction';
+        if is_red(s)
+            Group_col(r) = "Reduction";
+            Included_col(r) = true;
+        elseif is_amp(s)
+            Group_col(r) = "Amplification";
+            Included_col(r) = true;
         else
-            mask = is_amp;
-            gstr = 'Amplification';
-        end
-        fprintf('    %s:\n', gstr);
-        for c = 1:3
-            v = X(mask, c);
-            v = v(isfinite(v));
-            nv = numel(v);
-            if nv > 0
-                m = mean(v);
-                se = std(v) / sqrt(nv);
-                fprintf('      %s: n=%d, mean=%.6g, SEM=%.6g\n', cond_labels{c}, nv, m, se);
-            else
-                fprintf('      %s: n=0\n', cond_labels{c});
-            end
+            Group_col(r) = "Excluded";
+            Included_col(r) = false;
         end
     end
 end
 
-fprintf('\n--- Mixed ANOVA (fitrm + ranova): full tables ---\n');
-for oi = 1:numel(follow_names)
-    X = follow_X{oi};
-    oname = follow_names{oi};
-    X_incl = X(incl_gl, :);
-    n_valid_per_subj = sum(isfinite(X_incl), 2);
-    keep = n_valid_per_subj >= 2;
-    if sum(keep) < 4
-        fprintf('\n  %s: insufficient subjects for repeated-measures ANOVA (n=%d)\n', oname, sum(keep));
-        continue
-    end
-    X_use = X_incl(keep, :);
-    grp_use = 1 + is_amp(subj_idx_gl(keep));
-    t_rm = array2table(X_use, 'VariableNames', {'C1', 'C2', 'C3'});
-    t_rm.Group = categorical(grp_use, [1 2], {'Reduction', 'Amplification'});
-    within_design = table(cond_vals(:), 'VariableNames', {'Load'});
-    try
-        rm = fitrm(t_rm, 'C1-C3 ~ Group', 'WithinDesign', within_design);
-        fprintf('\n  ----- %s: anova(rm) (between-subject) -----\n', oname);
-        anovatbl = anova(rm);
-        disp(anovatbl);
-        fprintf('  ----- %s: ranova(rm) (within / interaction) -----\n', oname);
-        ranovatbl = ranova(rm);
-        disp(ranovatbl);
-    catch ME
-        fprintf('\n  %s: Mixed ANOVA failed (%s)\n', oname, ME.message);
-    end
-end
+stats_tbl = table( ...
+    ID_col, LoadValue_col, LoadLabel_col, Group_col, Included_col, ...
+    Alpha_col, GazeDev_col, GazeDevPct_col, ...
+    'VariableNames', { ...
+    'ID', 'LoadValue', 'LoadLabel', 'Group', 'Included', ...
+    'AlphaPower_FOOOF_bl', 'GazeDeviationFullBL', 'GazeDev_pct_0_2s'});
 
-fprintf('\n--- Linear mixed models: Value ~ Group * Load + random effects (fallback: see formula line) ---\n');
-for oi = 1:numel(follow_names)
-    X = follow_X{oi};
-    oname = follow_names{oi};
-    rows_lme = [];
-    for s = 1:numel(subj_idx_gl)
-        sid = subj_idx_gl(s);
-        for c = 1:3
-            val = X(sid, c);
-            if isfinite(val)
-                grp = 1 + is_amp(sid);
-                rows_lme(end+1, :) = [sid, cond_vals(c), grp, val];
-            end
-        end
-    end
-    if size(rows_lme, 1) < 15
-        fprintf('\n  %s: insufficient observations for LME (n_obs=%d)\n', oname, size(rows_lme, 1));
-        continue
-    end
-    tbl_lme = array2table(rows_lme, 'VariableNames', {'Subject', 'Load', 'Group', 'Value'});
-    tbl_lme.Subject = categorical(tbl_lme.Subject);
-    tbl_lme.Load = categorical(tbl_lme.Load, cond_vals, cond_labels);
-    tbl_lme.Group = categorical(tbl_lme.Group, [1 2], {'Reduction', 'Amplification'});
-    try
-        [lme_gl, fml_gl] = fitlme_with_random_slope_fallback(tbl_lme, 'Value ~ Group * Load');
-        fprintf('\n  ----- %s -----\n', oname);
-        fprintf('  Formula: %s\n', fml_gl);
-        fprintf('  ANOVA (marginal tests):\n');
-        disp(anova(lme_gl));
-        fprintf('  Fixed-effect coefficients:\n');
-        disp(lme_gl.Coefficients);
-        fprintf('  95%% CI for fixed effects (coefCI):\n');
-        try
-            disp(coefCI(lme_gl));
-        catch MEc
-            fprintf('  coefCI not available (%s)\n', MEc.message);
-        end
-    catch ME
-        fprintf('\n  %s: LME failed (%s)\n', oname, ME.message);
-    end
-end
-
-fprintf('\n--- Figure: load profiles (mean ± SEM) ---\n');
-figure('Position', fig_pos, 'Color', 'w');
-tiledlayout(1, 2, 'TileSpacing', 'compact', 'Padding', 'compact');
-for oi = 1:numel(follow_names)
-    X = follow_X{oi};
-    nexttile; hold on
-    xloads = cond_vals;
-    for gi = 1:2
-        if gi == 1
-            mask = is_red;
-            col = col_red_line;
-            gstr = 'Reduction';
-        else
-            mask = is_amp;
-            col = col_amp_line;
-            gstr = 'Amplification';
-        end
-        m = nan(1, 3);
-        se = nan(1, 3);
-        for c = 1:3
-            v = X(mask, c);
-            v = v(isfinite(v));
-            if ~isempty(v)
-                m(c) = mean(v);
-                se(c) = std(v) / sqrt(numel(v));
-            end
-        end
-        errorbar(xloads, m, se, '-o', 'Color', col, 'LineWidth', 2, 'CapSize', 10, ...
-            'MarkerFaceColor', col, 'MarkerSize', 7, 'DisplayName', gstr);
-    end
-    xlim([min(xloads)-0.5 max(xloads)+0.5]);
-    set(gca, 'XTick', xloads, 'XTickLabel', cond_labels, 'FontSize', fontSize - 2);
-    xlabel('WM load', 'Interpreter', 'none');
-    ylabel(follow_ylab{oi}, 'Interpreter', 'none');
-    title(follow_names{oi}, 'Interpreter', 'none');
-    legend('Location', 'best', 'Box', 'off');
-    grid on
-    box off
-    hold off
-end
-sgtitle(sprintf('Alpha & gaze deviation (%%): Reduction vs Amplification'), ...
-    'FontSize', fontSize + 2, 'Interpreter', 'none');
-fig_load = fullfile(fig_dir, sprintf('%s_load_profiles_Alpha_GazeDev_pct.png', fig_prefix));
-saveas(gcf, fig_load);
-fprintf('Saved: %s\n', fig_load);
-close(gcf);
+csv_out = fullfile(stats_dir, sprintf('AOC_splitAmpRed_%s_stats_input.csv', task_tag));
+writetable(stats_tbl, csv_out);
+fprintf('CSV saved to: %s\n', csv_out);
 
 end % task loop
 
@@ -779,7 +543,7 @@ function ch = occ_channels_from_labels(labels)
 ch = {};
 for i = 1:numel(labels)
     lab = labels{i};
-    if contains(lab, {'O'}) || contains(lab, {'I'}) || contains(lab, {'PO'})
+    if contains(lab, {'O'}) || contains(lab, {'I'})
         ch{end+1} = lab;
     end
 end
@@ -1926,19 +1690,6 @@ for c = 1:3
         catch
         end
     end
-end
-end
-
-function [lme, used_formula] = fitlme_with_random_slope_fallback(tbl_in, fixed_formula)
-% Try random slopes for Load; fall back to random intercept if needed.
-formula_rs = sprintf('%s + (Load|Subject)', fixed_formula);
-formula_ri = sprintf('%s + (1|Subject)', fixed_formula);
-try
-    lme = fitlme(tbl_in, formula_rs);
-    used_formula = formula_rs;
-catch
-    lme = fitlme(tbl_in, formula_ri);
-    used_formula = formula_ri;
 end
 end
 

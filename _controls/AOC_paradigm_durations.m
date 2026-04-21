@@ -18,7 +18,7 @@ durationSternberg = [];
 %% Read N-back data
 for subj = 1:length(subjects)
     try
-    datapath = strcat(path, subjects{subj});
+    datapath = fullfile(path, subjects{subj});
     cd(datapath)
 
     %% Read blocks
@@ -38,7 +38,7 @@ end
 %% Read Sternberg data
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path, subjects{subj});
+        datapath = fullfile(path, subjects{subj});
         cd(datapath)
 
         %% Read blocks

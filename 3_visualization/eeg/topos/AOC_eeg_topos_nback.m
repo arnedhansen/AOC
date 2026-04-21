@@ -14,15 +14,15 @@ subjects = setdiff(subjects, {'361'});
 
 %% Load raw powerspctrm data
 for subj = 1:length(subjects)
-    datapath = strcat(path,subjects{subj}, filesep, 'eeg');
+    datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
     clc
     disp('LOADING DATA...')
     disp(subj)
-    load power_nback
-    powl1{subj} = powload1;
-    powl2{subj} = powload2;
-    powl3{subj} = powload3;
+    load power_nback_windows
+    powl1{subj} = pow1_full;
+    powl2{subj} = pow2_full;
+    powl3{subj} = pow3_full;
 end
 
 % Compute grand avg of raw powspctrm data
@@ -32,14 +32,14 @@ gapow3 = ft_freqgrandaverage([],powl3{:});
 
 %% Define channels
 subj = 1;
-datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+datapath = fullfile(path, subjects{subj}, 'eeg');
 cd(datapath);
 load('power_nback.mat');
 % Occipital channels
 occ_channels = {};
-for i = 1:length(powload1.label)
-    label = powload1.label{i};
-    if contains(label, {'O'}) || contains(label, {'I'}) || contains(label, {'PO'})
+for i = 1:length(pow1_full.label)
+    label = pow1_full.label{i};
+    if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
 end
@@ -132,36 +132,40 @@ A2 = mean(gapow2.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
 A3 = mean(gapow3.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
 all_alpha = [A1(:); A2(:); A3(:)];
 global_max = prctile(all_alpha,99);
+global_max = 2
 cfg.zlim = [0 global_max];
 
 % Plot 1-back
 figure('Color', 'w');
-set(gcf, 'Position', [0, 0, 2000, 2000]);
+set(gcf, 'Position', [0, 0, 1512, 982]);
 ft_topoplotER(cfg, gapow1);
 cb = colorbar;
 set(findall(gcf,'Type','axes'),'FontSize',fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');
 title('1-back');
+drawnow;
 saveas(gcf, fullfile(figDir, 'AOC_eeg_topos_nback_load1.png'));
 
 % Plot 2-back
 figure('Color', 'w');
-set(gcf, 'Position', [0, 0, 2000, 2000]);
+set(gcf, 'Position', [0, 0, 1512, 982]);
 ft_topoplotER(cfg, gapow2);
 cb = colorbar;
 set(findall(gcf,'Type','axes'),'FontSize',fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');
 title('2-back');
+drawnow;
 saveas(gcf, fullfile(figDir, 'AOC_eeg_topos_nback_load2.png'));
 
 % Plot 3-back
 figure('Color', 'w');
-set(gcf, 'Position', [0, 0, 2000, 2000]);
+set(gcf, 'Position', [0, 0, 1512, 982]);
 ft_topoplotER(cfg, gapow3);
 cb = colorbar;
 set(findall(gcf,'Type','axes'),'FontSize',fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');
 title('3-back');
+drawnow;
 saveas(gcf, fullfile(figDir, 'AOC_eeg_topos_nback_load3.png'));
 
 %% Plot alpha power TOPOS DIFFERENCE

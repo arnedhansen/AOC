@@ -21,7 +21,7 @@ subjects = exclude_subjects(subjects, 'AOC');
 clc
 for subj = 1:length(subjects)
     disp(['Loading data for Subject ', num2str(subj)])
-    datapath = strcat(path, subjects{subj}, '/gaze');
+    datapath = fullfile(path, subjects{subj}, 'gaze');
     load([datapath, filesep, 'gaze_series_sternberg_trials'])
     meanMSSeriesSubs(subj, :) = nanmean(MSSeries, 1);
 end

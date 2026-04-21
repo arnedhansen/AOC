@@ -18,7 +18,7 @@ end
 %  STERNBERG — Load data
 %  ========================================================================
 for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj}, '/eeg');
+    datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
     load tfr_stern
     stern_raw2{subj} = tfr2;
@@ -269,7 +269,7 @@ saveas(gcf, [figpath 'AOC_tfr_sternberg_diff_fooof_bl_abs.png']);
 %  N-BACK — Load data
 %  ========================================================================
 for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj}, '/eeg');
+    datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
     load tfr_nback
     nb_raw1{subj} = tfr1;
@@ -295,7 +295,7 @@ ga_n_f3 = ft_freqgrandaverage([], nb_fooof3{:});
 occ_channels = {};
 for i = 1:length(tfr1.label)
     label = tfr1.label{i};
-    if contains(label, 'O') || contains(label, 'I')
+    if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
 end

@@ -15,7 +15,7 @@ end
 
 %% Compute grand average time and frequency data GATFR
 for subj = 1:length(subjects)
-    datapath = strcat(path,subjects{subj}, '/eeg');
+    datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
     load tfr_stern
     tfr2_all{subj} = tfr2_fooof;

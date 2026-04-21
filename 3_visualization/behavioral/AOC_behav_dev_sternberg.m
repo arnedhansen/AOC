@@ -17,7 +17,7 @@ subjects = {folders.name};
 
 %% Load RT and Acc data
 for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj}, '/behavioral');
+    datapath = fullfile(path, subjects{subj}, 'behavioral');
     cd(datapath);
     load('acc_sternberg.mat');
     load('rt_sternberg.mat');

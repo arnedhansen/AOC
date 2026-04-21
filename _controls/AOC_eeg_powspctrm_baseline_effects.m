@@ -28,13 +28,13 @@ startup
 path = paths.features;
 
 %% Define occipital channels (from first subject)
-datapath = strcat(path, subjects{1}, filesep, 'eeg');
+datapath = fullfile(path, subjects{1}, 'eeg');
 cd(datapath);
 load('tfr_nback.mat', 'tfr1');
 occ_channels = {};
 for i = 1:length(tfr1.label)
     lab = tfr1.label{i};
-    if contains(lab, 'O') || contains(lab, 'I')
+    if contains(lab, {'O'}) || contains(lab, {'I'})
         occ_channels{end+1} = lab;
     end
 end
@@ -73,7 +73,7 @@ for t = 1:numel(tasks)
         clc
         fprintf('%s — Loading TFR for Subject %s (%d/%d)\n', ...
             upper(task.name), subjects{subj}, subj, nSubj);
-        datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+        datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath);
 
         % Load all TFR variables (raw + FOOOF + baselined)

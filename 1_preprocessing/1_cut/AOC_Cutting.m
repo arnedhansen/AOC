@@ -24,9 +24,9 @@ clc
 %% Define path, cut data and convert asc to mat files.
 tic
 if ispc == 1
-    d = dir(strcat('V:\OCC\AOC\data\*\', '*cnt'));
+    d = dir(fullfile('V:\OCC\AOC\data', '*', '*cnt'));
 else
-    d = dir(strcat('/Volumes/methlab_data/OCC/AOC/data/*/', '*cnt'));
+    d = dir(fullfile('/Volumes/methlab_data/OCC/AOC/data', '*', '*cnt'));
 end
 disp(upper([num2str(size(d, 1)), ' subjects to compute']))
 ids = {};

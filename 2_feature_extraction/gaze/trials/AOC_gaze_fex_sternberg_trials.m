@@ -51,7 +51,7 @@ t_series = [-0.5 2]; % for scan-path time series
 
 %% Load all eye movements
 for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj}, '/gaze');
+    datapath = fullfile(path, subjects{subj}, 'gaze');
     load([datapath, filesep, 'dataET_sternberg'])
     nTrials = size(dataETlong.trialinfo,1);
 
@@ -597,7 +597,7 @@ for subj = 1:length(subjects)
         'BCEALatFullBL', num2cell(BCEALatFullBL));
 
     %% Save data
-    savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
+    savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', subjects{subj}, 'gaze');
     mkdir(savepath)
     cd(savepath)
     save gaze_matrix_sternberg_trials subj_data_gaze_trials

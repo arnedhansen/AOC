@@ -27,7 +27,7 @@ for subj = 1:length(subjects)
     try
     clc
     fprintf('Processing Subject AOC %.3s \n', subjects{subj});
-    datapath = strcat(path, subjects{subj}, '/archive');
+    datapath = fullfile(path, subjects{subj}, 'archive');
     cd(datapath);
 
     if str2double(subjects{subj}) == 319 || str2double(subjects{subj}) == 320 || str2double(subjects{subj}) == 378 || str2double(subjects{subj}) == 412
@@ -132,7 +132,7 @@ for subjIdx = 1:numSubjects
             'EdgeColor', 'none', 'FontSize', 15);
 
         % Save
-        savepath = strcat('/Volumes/methlab/Students/Arne/AOC/data/controls/ET_validations/');
+        savepath = fullfile('/Volumes/methlab/Students/Arne/AOC/data/controls/ET_validations');
         mkdir(savepath)
         cd(savepath)
         saveName = [savepath, filesep, num2str(subjects{subjIdx}) '_validations.png'];

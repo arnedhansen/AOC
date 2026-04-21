@@ -42,7 +42,7 @@ for s = 1:length(subjects)
         tmp = load(eeg_file, 'dataTFR');
         for i = 1:length(tmp.dataTFR.label)
             lb = tmp.dataTFR.label{i};
-            if contains(lb, 'O') || contains(lb, 'I')
+            if contains(lb, {'O'}) || contains(lb, {'I'})
                 occ_channels{end+1} = lb;
             end
         end

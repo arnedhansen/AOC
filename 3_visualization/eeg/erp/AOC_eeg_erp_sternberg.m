@@ -13,7 +13,7 @@ if ~isfolder(figDir), mkdir(figDir); end
 
 %% Define channels
 subj = 1;
-datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+datapath = fullfile(path, subjects{subj}, 'eeg');
 cd(datapath);
 load('power_stern.mat');
 % Occipital channels
@@ -29,7 +29,7 @@ channels = occ_channels;
 %% Load data and compute ERPs
 for subj = 1:length(subjects)
     % Load data
-    datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+    datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath);
     load('dataEEG_TFR_sternberg.mat');
 

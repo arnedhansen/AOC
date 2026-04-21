@@ -12,15 +12,15 @@ if ~isfolder(figDir), mkdir(figDir); end
 
 %% Load raw powerspctrm data
 for subj = 1:length(subjects)
-    datapath = strcat(path,subjects{subj}, filesep, 'eeg');
+    datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
     clc
     disp('LOADING DATA...')
     disp(subj)
-    load power_stern_raw
-    powl2{subj} = powload2;
-    powl4{subj} = powload4;
-    powl6{subj} = powload6;
+    load power_stern_windows
+    powl2{subj} = pow2_late;
+    powl4{subj} = pow4_late;
+    powl6{subj} = pow6_late;
 end
 
 % Compute grand avg of raw powspctrm data
@@ -30,14 +30,14 @@ gapow6 = ft_freqgrandaverage([],powl6{:});
 
 %% Define channels
 subj = 1;
-datapath = strcat(path, subjects{subj}, filesep, 'eeg');
+datapath = fullfile(path, subjects{subj}, 'eeg');
 cd(datapath);
 load('power_stern_raw.mat');
 % Occipital channels
 occ_channels = {};
-for i = 1:length(powload2.label)
-    label = powload2.label{i};
-    if contains(label, {'O'}) || contains(label, {'I'}) || contains(label, {'PO'})
+for i = 1:length(pow2_late.label)
+    label = pow2_late.label{i};
+    if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
 end
@@ -82,32 +82,35 @@ cfg.zlim = [0 global_max];
 
 % Plot WM load 2
 figure('Color', 'w');
-set(gcf, 'Position', [0, 0, 2000, 2000]);
+set(gcf, 'Position', [0, 0, 1512, 982]);
 ft_topoplotER(cfg, gapow2);
 cb = colorbar;
 set(gca, 'FontSize', fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');
 title('WM load 2');
+drawnow;
 saveas(gcf, fullfile(figDir, 'AOC_eeg_topos_sternberg_load2.png'));
 
 % Plot WM load 4
 figure('Color', 'w');
-set(gcf, 'Position', [0, 0, 2000, 2000]);
+set(gcf, 'Position', [0, 0, 1512, 982]);
 ft_topoplotER(cfg, gapow4);
 cb = colorbar;
 set(gca, 'FontSize', fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');
 title('WM load 4');
+drawnow;
 saveas(gcf, fullfile(figDir, 'AOC_eeg_topos_sternberg_load4.png'));
 
 % Plot WM load 6
 figure('Color', 'w');
-set(gcf, 'Position', [0, 0, 2000, 2000]);
+set(gcf, 'Position', [0, 0, 1512, 982]);
 ft_topoplotER(cfg, gapow6);
 cb = colorbar;
 set(gca, 'FontSize', fontSize)
 ylabel(cb, 'Power [\muV^2/Hz]');
 title('WM load 6');
+drawnow;
 saveas(gcf, fullfile(figDir, 'AOC_eeg_topos_sternberg_load6.png'));
 
 %% Plot alpha power TOPOS DIFFERENCE

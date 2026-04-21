@@ -90,9 +90,9 @@ for subjects = 1 : length(subjectIDs)
                 %% Save merge info as image
                 % set(gcf, "Position", [0 0 1200 800], "Color", "W")
                 % if ispc == 1
-                %     savepath = strcat('W:\Students\Arne\AOC\data\controls\mergeInfo\', subjectID);
+                %     savepath = fullfile('W:\Students\Arne\AOC\data\controls\mergeInfo', subjectID);
                 % else
-                %     savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/mergeInfo/', subjectID);
+                %     savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/mergeInfo', subjectID);
                 % end
                 % mkdir(savepath)
                 % if strcmp(task, 'Resting') == 1

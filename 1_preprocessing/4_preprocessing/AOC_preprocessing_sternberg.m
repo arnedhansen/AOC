@@ -28,7 +28,7 @@ scriptName = 'AOC_preprocessing_sternberg';
 tic;
 for subj = 1:length(subjects)
     try
-    datapath = strcat(path,subjects{subj});
+    datapath = fullfile(path, subjects{subj});
     cd(datapath)
 
     % Only process new data
@@ -358,9 +358,9 @@ for subj = 1:length(subjects)
         %% Save data
         clc
         if ispc == 1
-            savepathEEG = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\');
+            savepathEEG = fullfile('W:\Students\Arne\AOC\data\features', subjects{subj}, 'eeg');
         else
-            savepathEEG = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/');
+            savepathEEG = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', subjects{subj}, 'eeg');
         end
         mkdir(savepathEEG)
         cd(savepathEEG)
@@ -369,9 +369,9 @@ for subj = 1:length(subjects)
         disp('SAVING dataEEG_TFR_sternberg...')
         save dataEEG_TFR_sternberg dataTFR
         if ispc == 1
-            savepathET = strcat('W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\gaze\');
+            savepathET = fullfile('W:\Students\Arne\AOC\data\features', subjects{subj}, 'gaze');
         else
-            savepathET = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/');
+            savepathET = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', subjects{subj}, 'gaze');
         end
         mkdir(savepathET)
         cd(savepathET)

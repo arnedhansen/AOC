@@ -502,7 +502,7 @@ function ch = occ_channels_from_labels(labels)
 ch = {};
 for i = 1:numel(labels)
     lab = labels{i};
-    if contains(lab, {'O'}) || contains(lab, {'I'}) || contains(lab, {'PO'})
+    if contains(lab, {'O'}) || contains(lab, {'I'})
         ch{end+1} = lab; %#ok<AGROW>
     end
 end

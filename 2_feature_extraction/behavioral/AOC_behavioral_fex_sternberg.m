@@ -25,7 +25,7 @@ scriptName = 'AOC_behavioral_fex_sternberg';
 %% Read data
 for subj = 1:length(subjects)
     try
-        datapath = strcat(path, subjects{subj});
+        datapath = fullfile(path, subjects{subj});
         cd(datapath)
 
         % Initialize subject-specific arrays
@@ -97,7 +97,7 @@ for subj = 1:length(subjects)
         subj_data_behav = struct('ID', num2cell([subject_id{1}; subject_id{1}; subject_id{1}]), 'Condition', num2cell([2; 4; 6]), 'Accuracy', num2cell([l2acc; l4acc; l6acc]), 'ReactionTime', num2cell([l2rt; l4rt; l6rt]));
 
         %% Save
-        savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/',subjects{subj}, '/behavioral/');
+        savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', subjects{subj}, 'behavioral');
         mkdir(savepath)
         cd(savepath)
         save behavioral_matrix_sternberg_subj_trials subj_data_behav_trials

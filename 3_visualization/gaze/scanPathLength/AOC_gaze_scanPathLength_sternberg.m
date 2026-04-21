@@ -32,7 +32,7 @@ scanpath_all_WM6      = nan(length(subjects), T);
 % Aggregate per subject
 % ----------------------
 for subj = 1:length(subjects)
-    datapath = strcat(basepath, subjects{subj}, '/gaze/gaze_series_sternberg_trials.mat');
+    datapath = fullfile(basepath, subjects{subj}, 'gaze', 'gaze_series_sternberg_trials.mat');
     if ~isfile(datapath)
         warning('Missing file for subject %s, skipping.', subjects{subj})
         continue

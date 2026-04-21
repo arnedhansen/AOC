@@ -20,7 +20,7 @@ behav_data_nback_trials = struct('Trial', {}, 'ID', {}, 'Condition', {}, 'Accura
 
 %% Read data
 for subj = 1:length(subjects)
-    datapath = strcat(path, subjects{subj});
+    datapath = fullfile(path, subjects{subj});
     cd(datapath)
 
     % Initialize subject-specific arrays
@@ -95,7 +95,7 @@ for subj = 1:length(subjects)
         'Accuracy', num2cell([l1acc; l2acc; l3acc]), 'ReactionTime', num2cell([l1rt; l2rt; l3rt]));
 
     %% Save
-    savepath = strcat('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/',subjects{subj}, '/behavioral/');
+    savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', subjects{subj}, 'behavioral');
     mkdir(savepath)
     cd(savepath)
     save behavioral_matrix_nback_subj_trials subj_data_behav_trials

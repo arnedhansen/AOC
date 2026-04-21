@@ -15,7 +15,7 @@ end
 
 %% Compute grand average time and frequency data GATFR
 for subj= 1:length(subjects)
-    datapath = strcat(path,subjects{subj}, '/eeg');
+    datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
     load tfr_nback
     l1{subj} = tfr1;
@@ -35,7 +35,7 @@ load('power_nback.mat');
 occ_channels = {};
 for i = 1:length(powload2.label)
     label = powload2.label{i};
-    if contains(label, 'O') || contains(label, 'I')
+    if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
 end

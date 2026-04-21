@@ -13,7 +13,7 @@ if ~isfolder(figDir), mkdir(figDir); end
 
 %% Load data
 for subj = 1:length(subjects)
-    datapath = strcat(path,subjects{subj}, '/gaze');
+    datapath = fullfile(path, subjects{subj}, 'gaze');
     load([datapath, filesep 'dataET_nback'])
     clc
     disp(upper(['Loading ET data for Subject ' num2str(subj) '/' num2str(length(subjects)) '...']))

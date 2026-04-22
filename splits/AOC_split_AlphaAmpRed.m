@@ -465,22 +465,12 @@ eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_su
 fprintf('\n=== Computing baselined time courses ===\n');
 t_vec = linspace(-0.5, 3, Tf);
 bl_idx = (t_vec >= -0.5) & (t_vec <= -0.25);
-tc_smooth_sec = 0.10; % smoothing window used in px-space before baseline normalization
-baseline_floor_px = 7.5; % guard against small baselines inflating percent normalization
 
-% Smooth in px space before baseline normalization (subject x condition level).
-win_sm_pre = max(1, round(tc_smooth_sec * fs));
-if win_sm_pre > 1
-    dev_tc_px = movmean(dev_tc, win_sm_pre, 3, 'omitnan');
-else
-    dev_tc_px = dev_tc;
-end
-
-dev_bl = mean(dev_tc_px(:, :, bl_idx), 3, 'omitnan');
+dev_bl = mean(dev_tc(:, :, bl_idx), 3, 'omitnan');
 dev_bl_3d = repmat(dev_bl, [1, 1, Tf]);
-dev_bl_3d(dev_bl_3d <= baseline_floor_px | ~isfinite(dev_bl_3d)) = NaN;
+dev_bl_3d(dev_bl_3d <= 0 | ~isfinite(dev_bl_3d)) = NaN;
 % Percent baseline: (value/baseline - 1) * 100.
-dev_tc_pct = (dev_tc_px ./ dev_bl_3d - 1) * 100;
+dev_tc_pct = (dev_tc ./ dev_bl_3d - 1) * 100;
 dev_tc_pct(~isfinite(dev_tc_pct)) = NaN;
 
 % Plot time courses (always save both: gaze-only and combined EEG+gaze)
@@ -494,8 +484,8 @@ ds_factor = 50; % downsampling to 100ms windows
 % >=99.5% finite samples in [0, 3] s.
 tc_window_idx = (t_vec >= 0) & (t_vec <= 3);
 tc_complete_min_frac = 0.995;
-tc_finite_frac = squeeze(mean(isfinite(dev_tc_px(:, :, tc_window_idx)), 3));
-tc_has_endpoint = squeeze(isfinite(dev_tc_px(:, :, end)));
+tc_finite_frac = squeeze(mean(isfinite(dev_tc(:, :, tc_window_idx)), 3));
+tc_has_endpoint = squeeze(isfinite(dev_tc(:, :, end)));
 tc_complete_by_cond = (tc_finite_frac >= tc_complete_min_frac) & tc_has_endpoint;
 tc_complete_subj = all(tc_complete_by_cond, 2);
 tc_excluded_subj = ~tc_complete_subj;
@@ -508,13 +498,6 @@ if any(tc_excluded_subj & (is_red | is_amp))
     excl_ids = uIDs(tc_excluded_subj & (is_red | is_amp));
     fprintf('Excluded IDs: %s\n', sprintf('%d ', excl_ids));
 end
-
-% Baseline diagnostics after px-space smoothing and floor guard.
-bl_vals = dev_bl(:);
-bl_vals = bl_vals(isfinite(bl_vals));
-fprintf('Baseline floor guard: %.2f px\n', baseline_floor_px);
-fprintf('Baselines <= floor: %d / %d cells\n', ...
-    sum(bl_vals <= baseline_floor_px), numel(bl_vals));
 
 % Keep collapsed-across-conditions time course output
 plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red_tc, is_amp_tc, colors, ...

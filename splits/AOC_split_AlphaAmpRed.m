@@ -53,8 +53,8 @@ fprintf('Figure directory: %s\n', fig_dir);
 fig_pos = [0 0 1512 982];
 
 % Task/split definitions:
-% 1) Sternberg split at 0 (legacy behavior)
-% 2) N-back split at median alpha
+% 1) Sternberg split at 0
+% 2) N-back split
 % 3) Sternberg split at median alpha
 tasks(1).tag = 'sternberg';
 tasks(1).split_mode = 'zero';
@@ -72,8 +72,18 @@ tasks(1).gaze_fname = 'gaze_series_sternberg_trials.mat';
 tasks(1).power_missing_label = 'power_stern_fooof_TFR.mat';
 
 tasks(2).tag = 'nback';
-tasks(2).split_mode = 'median';
-tasks(2).split_label = 'splitMedian';
+% N-back split configuration:
+nback_split_mode = 'fixed';
+nback_split_fixed_value = -0.05;
+tasks(2).split_mode = nback_split_mode;
+if strcmpi(nback_split_mode, 'fixed')
+    tasks(2).split_label = sprintf('splitFixed_%s', strrep(sprintf('%.3f', nback_split_fixed_value), '.', 'p'));
+    tasks(2).split_fixed_value = nback_split_fixed_value;
+elseif strcmpi(nback_split_mode, 'median')
+    tasks(2).split_label = 'splitMedian';
+else
+    error('Unsupported nback_split_mode: %s', nback_split_mode);
+end
 tasks(2).merged_file = 'AOC_merged_data_nback.mat';
 tasks(2).merged_var = 'merged_data_nback';
 tasks(2).cond_vals = [1 2 3];
@@ -179,6 +189,16 @@ switch lower(split_mode)
         zero_ids = [];
         invalid_ids = uIDs(~split_valid);
         split_info_str = sprintf('Median split at %.4f', alpha_split_threshold);
+    case 'fixed'
+        if ~isfield(tk, 'split_fixed_value') || ~isfinite(tk.split_fixed_value)
+            error('Task %s uses split_mode=fixed but split_fixed_value is missing/invalid.', task_tag);
+        end
+        alpha_split_threshold = tk.split_fixed_value;
+        reduction_ids = uIDs(split_valid & (alpha_mean < alpha_split_threshold));
+        amplification_ids = uIDs(split_valid & (alpha_mean >= alpha_split_threshold));
+        zero_ids = [];
+        invalid_ids = uIDs(~split_valid);
+        split_info_str = sprintf('Fixed split at %.4f', alpha_split_threshold);
     otherwise
         alpha_abs_ref = prctile(abs(valid_alpha_mean), alpha_ref_percentile);
         alpha_zero_margin = (alpha_zero_pct / 100) * alpha_abs_ref;
@@ -196,6 +216,9 @@ fprintf('%s\n', split_info_str);
 if strcmpi(split_mode, 'median')
     fprintf('Reduction (< median %.4f): %d\n', alpha_split_threshold, numel(reduction_ids));
     fprintf('Amplification (>= median %.4f): %d\n', alpha_split_threshold, numel(amplification_ids));
+elseif strcmpi(split_mode, 'fixed')
+    fprintf('Reduction (< fixed %.4f): %d\n', alpha_split_threshold, numel(reduction_ids));
+    fprintf('Amplification (>= fixed %.4f): %d\n', alpha_split_threshold, numel(amplification_ids));
 else
     fprintf('Reduction (< -%.4f): %d\n', alpha_zero_margin, numel(reduction_ids));
     fprintf('Amplification (> %.4f): %d\n', alpha_zero_margin, numel(amplification_ids));
@@ -217,7 +240,7 @@ figure('Position', fig_pos, 'Color', 'w');
 hold on
 % Grey yline at 0
 yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 2);
-if strcmpi(split_mode, 'median')
+if strcmpi(split_mode, 'median') || strcmpi(split_mode, 'fixed')
     yline(alpha_split_threshold, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
 else
     % Red ylines at thresholds

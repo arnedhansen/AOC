@@ -1323,7 +1323,7 @@ set(e2.edge(2), 'Color', 'none');
 xline(0, '--k');
 ylabel(ylab);
 xlim([-0.5 3]);
-box off
+box on
 set(gca, 'FontSize', fsz-4);
 % Legend with colored patch boxes (clearer than thin lines)
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
@@ -1441,7 +1441,7 @@ xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Effect Size [Cohen''s d]');
 xlim([-0.5 3]);
-box off
+box on
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)
     text(0.75, ylims(2) - 0.08*diff(ylims), 'WARNING: No significant clusters; shading shows uncorrected t>t_{crit}', ...
@@ -1561,7 +1561,7 @@ if show_eeg
     xlabel('Time [s]');
     ylabel('EEG Cohen''s d');
     xlim([-0.5 3]);
-    box off
+    box on
     set(gca, 'FontSize', fsz-4);
 end
 

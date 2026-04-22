@@ -200,14 +200,12 @@ switch lower(split_mode)
         invalid_ids = uIDs(~split_valid);
         split_info_str = sprintf('Fixed split at %.4f', alpha_split_threshold);
     otherwise
-        alpha_abs_ref = prctile(abs(valid_alpha_mean), alpha_ref_percentile);
-        alpha_zero_margin = (alpha_zero_pct / 100) * alpha_abs_ref;
-        reduction_ids = uIDs(split_valid & (alpha_mean < -alpha_zero_margin));
-        amplification_ids = uIDs(split_valid & (alpha_mean > alpha_zero_margin));
-        zero_ids = uIDs(split_valid & (abs(alpha_mean) <= alpha_zero_margin));
+        alpha_split_threshold = 0;
+        reduction_ids = uIDs(split_valid & (alpha_mean < alpha_split_threshold));
+        amplification_ids = uIDs(split_valid & (alpha_mean >= alpha_split_threshold));
+        zero_ids = [];
         invalid_ids = uIDs(~split_valid);
-        split_info_str = sprintf('Zero-band: %.2f%% of %dth-percentile |alpha| (ref=%.4f, cutoff=%.4f)', ...
-            alpha_zero_pct, alpha_ref_percentile, alpha_abs_ref, alpha_zero_margin);
+        split_info_str = 'Split at 0.0000 (no near-zero exclusion)';
 end
 
 fprintf('\n=== Split Summary [%s | %s] (AlphaPower_FOOOF_bl, full window) ===\n', task_tag, split_mode);
@@ -220,9 +218,8 @@ elseif strcmpi(split_mode, 'fixed')
     fprintf('Reduction (< fixed %.4f): %d\n', alpha_split_threshold, numel(reduction_ids));
     fprintf('Amplification (>= fixed %.4f): %d\n', alpha_split_threshold, numel(amplification_ids));
 else
-    fprintf('Reduction (< -%.4f): %d\n', alpha_zero_margin, numel(reduction_ids));
-    fprintf('Amplification (> %.4f): %d\n', alpha_zero_margin, numel(amplification_ids));
-    fprintf('Excluded (|alpha| <= %.4f): %d\n', alpha_zero_margin, numel(zero_ids));
+    fprintf('Reduction (< 0.0000): %d\n', numel(reduction_ids));
+    fprintf('Amplification (>= 0.0000): %d\n', numel(amplification_ids));
 end
 if ~isempty(invalid_ids)
     fprintf('Excluded (invalid/pathological alpha): %d\n', numel(invalid_ids));
@@ -243,9 +240,7 @@ yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 2);
 if strcmpi(split_mode, 'median') || strcmpi(split_mode, 'fixed')
     yline(alpha_split_threshold, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
 else
-    % Red ylines at thresholds
-    yline(alpha_zero_margin, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
-    yline(-alpha_zero_margin, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
+    yline(0, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
 end
 % Plot subjects: reduction blue, amplification red, excluded grey
 x_vals = (1:nSubj)';

@@ -489,6 +489,26 @@ fontSizeTC = 25;
 rng(123)
 ds_factor = 50; % downsampling to 100ms windows
 
+% Exclude subjects with incomplete gaze time courses in analysis window.
+% Criterion: for each condition, signal must be finite at t=3 s and have
+% >=99.5% finite samples in [0, 3] s.
+tc_window_idx = (t_vec >= 0) & (t_vec <= 3);
+tc_complete_min_frac = 0.995;
+tc_finite_frac = squeeze(mean(isfinite(dev_tc_px(:, :, tc_window_idx)), 3));
+tc_has_endpoint = squeeze(isfinite(dev_tc_px(:, :, end)));
+tc_complete_by_cond = (tc_finite_frac >= tc_complete_min_frac) & tc_has_endpoint;
+tc_complete_subj = all(tc_complete_by_cond, 2);
+tc_excluded_subj = ~tc_complete_subj;
+dev_tc_pct(tc_excluded_subj, :, :) = NaN;
+is_red_tc = is_red & tc_complete_subj;
+is_amp_tc = is_amp & tc_complete_subj;
+fprintf('Time-course completeness filter: finite frac >= %.3f in [0,3]s + finite endpoint at 3s\n', tc_complete_min_frac);
+fprintf('Excluded incomplete gaze time-course subjects: %d\n', sum(tc_excluded_subj & (is_red | is_amp)));
+if any(tc_excluded_subj & (is_red | is_amp))
+    excl_ids = uIDs(tc_excluded_subj & (is_red | is_amp));
+    fprintf('Excluded IDs: %s\n', sprintf('%d ', excl_ids));
+end
+
 % Baseline diagnostics after px-space smoothing and floor guard.
 bl_vals = dev_bl(:);
 bl_vals = bl_vals(isfinite(bl_vals));
@@ -497,9 +517,9 @@ fprintf('Baselines <= floor: %d / %d cells\n', ...
     sum(bl_vals <= baseline_floor_px), numel(bl_vals));
 
 % Keep collapsed-across-conditions time course output
-plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, colors, ...
+plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red_tc, is_amp_tc, colors, ...
     'Gaze Deviation [%]', sprintf('%s_%s_gaze_deviation_pct', task_tag, split_label), fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]', 0);
-plot_timecourse_individuals(dev_tc_pct, is_red, is_amp, colors, ...
+plot_timecourse_individuals(dev_tc_pct, is_red_tc, is_amp_tc, colors, ...
     'Gaze Deviation [%]', 'Collapsed over conditions', ...
     sprintf('%s_%s_gaze_deviation_pct_individuals_collapsed', task_tag, split_label), ...
     fig_dir_task, fig_pos, fontSizeTC, fs);
@@ -509,9 +529,9 @@ for c = 1:numel(cond_vals)
     tc_cond = dev_tc_pct(:, c, :);
     eeg_tc_cond = eeg_tc(:, c, :);
     save_tag_cond = sprintf('%s_%s_gaze_deviation_pct_%s', task_tag, split_label, sanitize_label_for_fname(cond_labels{c}));
-    plot_timecourse_with_effect_CBPT(tc_cond, is_red, is_amp, colors, ...
+    plot_timecourse_with_effect_CBPT(tc_cond, is_red_tc, is_amp_tc, colors, ...
         'Gaze Deviation [%]', save_tag_cond, fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'Alpha Power [dB]', 0);
-    plot_timecourse_individuals(tc_cond, is_red, is_amp, colors, ...
+    plot_timecourse_individuals(tc_cond, is_red_tc, is_amp_tc, colors, ...
         'Gaze Deviation [%]', cond_labels{c}, ...
         sprintf('%s_individuals', save_tag_cond), ...
         fig_dir_task, fig_pos, fontSizeTC, fs);
@@ -554,10 +574,10 @@ for s = 1:nSubj
 
         if is_red(s)
             Group_col(r) = "Reduction";
-            Included_col(r) = true;
+            Included_col(r) = is_red_tc(s);
         elseif is_amp(s)
             Group_col(r) = "Amplification";
-            Included_col(r) = true;
+            Included_col(r) = is_amp_tc(s);
         else
             Group_col(r) = "Excluded";
             Included_col(r) = false;

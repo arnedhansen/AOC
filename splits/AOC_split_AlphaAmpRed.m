@@ -1248,19 +1248,19 @@ tiledlayout(2, 1, 'TileSpacing', 'compact');
 nexttile; hold on
 if ~isempty(R)
     plot(t_plot, R', 'Color', colR_light, 'LineWidth', 0.8);
-    plot(t_plot, mean(R, 1, 'omitnan'), 'Color', colors(1, :), 'LineWidth', 3);
+    plot(t_plot, mean(R, 1, 'omitnan'), 'Color', colors(1, :), 'LineWidth', 2.5);
 end
 xline(0, '--k');
 xlim([-0.5 3]);
 ylabel(ylab);
 title(sprintf('Reduction (n=%d) - %s', size(R, 1), title_tag), 'Interpreter', 'none');
 set(gca, 'FontSize', fsz - 6);
-box on
+box off
 
 nexttile; hold on
 if ~isempty(A)
     plot(t_plot, A', 'Color', colA_light, 'LineWidth', 0.8);
-    plot(t_plot, mean(A, 1, 'omitnan'), 'Color', colors(3, :), 'LineWidth', 3);
+    plot(t_plot, mean(A, 1, 'omitnan'), 'Color', colors(3, :), 'LineWidth', 2.5);
 end
 xline(0, '--k');
 xlim([-0.5 3]);
@@ -1268,7 +1268,7 @@ xlabel('Time [s]');
 ylabel(ylab);
 title(sprintf('Amplification (n=%d) - %s', size(A, 1), title_tag), 'Interpreter', 'none');
 set(gca, 'FontSize', fsz - 6);
-box on
+box off
 
 saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlphaAmpRed_timecourse_%s.png', save_tag)));
 close(gcf);
@@ -1312,14 +1312,14 @@ sR(~isfinite(sR)) = NaN;
 sA(~isfinite(sA)) = NaN;
 e1 = shadedErrorBar(t_plot, mR, sR, 'lineProps', {'-'}, 'transparent', true);
 e2 = shadedErrorBar(t_plot, mA, sA, 'lineProps', {'-'}, 'transparent', true);
-set(e1.mainLine, 'Color', colors(1,:), 'LineWidth', 3.5);
-set(e2.mainLine, 'Color', colors(3,:), 'LineWidth', 3.5);
-set(e1.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.25);
-set(e2.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.25);
+set(e1.mainLine, 'Color', colors(1,:), 'LineWidth', 2.5);
+set(e2.mainLine, 'Color', colors(3,:), 'LineWidth', 2.5);
+set(e1.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.20);
+set(e2.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.20);
 xline(0, '--k');
 ylabel(ylab);
 xlim([-0.5 3]);
-box on
+box off
 set(gca, 'FontSize', fsz-4);
 % Legend with colored patch boxes (clearer than thin lines)
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
@@ -1437,7 +1437,7 @@ xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Effect Size [Cohen''s d]');
 xlim([-0.5 3]);
-box on
+box off
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)
     text(0.75, ylims(2) - 0.08*diff(ylims), 'WARNING: No significant clusters; shading shows uncorrected t>t_{crit}', ...
@@ -1464,10 +1464,10 @@ if show_eeg
     nexttile; hold on
     ebR = shadedErrorBar(t_plot, mR_eeg, sR_eeg, 'lineProps', {'-'}, 'transparent', true);
     ebA = shadedErrorBar(t_plot, mA_eeg, sA_eeg, 'lineProps', {'-'}, 'transparent', true);
-    set(ebR.mainLine, 'Color', colors(1,:), 'LineWidth', 3.5);
-    set(ebA.mainLine, 'Color', colors(3,:), 'LineWidth', 3.5);
-    set(ebR.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.25);
-    set(ebA.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.25);
+    set(ebR.mainLine, 'Color', colors(1,:), 'LineWidth', 2.5);
+    set(ebA.mainLine, 'Color', colors(3,:), 'LineWidth', 2.5);
+    set(ebR.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.20);
+    set(ebA.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.20);
     yline(0, '--');
     xline(0, '--k');
     all_eeg_vals = [mR_eeg(:); mA_eeg(:); mR_eeg(:)-sR_eeg(:); mR_eeg(:)+sR_eeg(:); mA_eeg(:)-sA_eeg(:); mA_eeg(:)+sA_eeg(:)];
@@ -1481,7 +1481,7 @@ if show_eeg
     ylabel(eeg_ylab);
     xlabel('Time [s]');
     xlim([-0.5 3]);
-    box on
+    box off
     set(gca, 'FontSize', fsz-4);
     leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
     leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
@@ -1553,7 +1553,7 @@ if show_eeg
     xlabel('Time [s]');
     ylabel('EEG Cohen''s d');
     xlim([-0.5 3]);
-    box on
+    box off
     set(gca, 'FontSize', fsz-4);
 end
 

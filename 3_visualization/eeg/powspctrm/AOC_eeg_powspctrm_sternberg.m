@@ -61,7 +61,7 @@ gapow6 = gapow6_raw;
 
 % Configs
 cfg = [];
-figure('Position',[0,0,800,1600],'Color','w');
+set(gcf, 'Position', [0, 0, 1512*0.4, 982], 'Color', 'w');
 cfg.channel   = channels;
 cfg.figure    = 'gcf';
 cfg.linewidth = 3;
@@ -102,20 +102,25 @@ for k = 1:numel(ebs)
         'Color',     colors(k,:) );
     set( ebs(k).patch,    ...
         'FaceColor', colors(k,:), ...
-        'FaceAlpha', 0.25 );
+        'FaceAlpha', 0.20 );
+    set( ebs(k).edge(1), 'Color', 'none' );
+    set( ebs(k).edge(2), 'Color', 'none' );
 end
 
 % Aesthetics
 set(gca,'FontSize',20);
-box on
+box off
 xlim([5 20]);
 %ylim([0 1])
 ylabel('Power [\muV^2/Hz]');
 xlabel('Frequency [Hz]');
-legend([eb2.mainLine, eb4.mainLine, eb6.mainLine], ...
+leg_p2 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
+leg_p4 = patch(NaN, NaN, colors(2,:), 'EdgeColor', 'none');
+leg_p6 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
+legend([leg_p2, leg_p4, leg_p6], ...
     {'WM load 2','WM load 4','WM load 6'}, ...
-    'FontName','Arial','FontSize',20);
-title('Sternberg Power Spectrum', 'FontSize', 30);
+    'FontName','Arial','FontSize',20, 'Box', 'off');
+title('Sternberg Power Spectrum', 'FontSize', 25);
 
 % Save
 saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_raw.png'));

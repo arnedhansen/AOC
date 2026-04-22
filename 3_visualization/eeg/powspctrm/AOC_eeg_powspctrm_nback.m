@@ -58,21 +58,6 @@ gapow1_raw = ft_freqgrandaverage([],powl1{:});
 gapow2_raw = ft_freqgrandaverage([],powl2{:});
 gapow3_raw = ft_freqgrandaverage([],powl3{:});
 
-% Load baselined powspctrm data
-% for subj = 1:length(subjects)
-%     datapath = fullfile(path, subjects{subj}, 'eeg');
-%     cd(datapath)
-%     load power_nback_bl
-%     powl1_bl{subj} = powload1_bl;
-%     powl2_bl{subj} = powload2_bl;
-%     powl3_bl{subj} = powload3_bl;
-% end
-%
-% % Compute grand avg of baselined powspctrm data
-% gapow1_bl = ft_freqgrandaverage([], powl1_bl{:});
-% gapow2_bl = ft_freqgrandaverage([], powl2_bl{:});
-% gapow3_bl = ft_freqgrandaverage([], powl3_bl{:});
-
 %% Plot alpha power grand average POWERSPECTRUM
 % Loop over analysis conditions
 gapow1 = gapow1_raw;
@@ -84,16 +69,12 @@ savePath = fullfile(fig_dir_pow, 'AOC_powspctrm_nback_raw.png');
 % Create figure
 close all
 figure;
-set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
+set(gcf, 'Position', [0, 0, 1512*0.4, 982], 'Color', 'w');
 conditions = {'1-back', '2-back', '3-back'};
 
 % Plot
 cfg = [];
-if strcmp(electrodes, 'occ_cluster')
-    cfg.channel = channels;
-elseif strcmp(electrodes, 'POz')
-    cfg.channel = 'POz';
-end
+cfg.channel = channels;
 cfg.figure = 'gcf';
 cfg.linewidth = 3;
 hold on;
@@ -110,7 +91,7 @@ se3 = std(gapow3.powspctrm(channels_seb, :), 0, 1) / sqrt(size(gapow3.powspctrm(
 % Light display-only smoothing (does not alter source data)
 freqs = gapow1.freq;
 freqs_plot = linspace(min(freqs), max(freqs), 250);
-gauss_win = 11;
+gauss_win = 20;
 m1s  = smoothdata(interp1(freqs, m1,  freqs_plot, 'pchip'), 'gaussian', gauss_win);
 se1s = smoothdata(interp1(freqs, se1, freqs_plot, 'pchip'), 'gaussian', gauss_win);
 m2s  = smoothdata(interp1(freqs, m2,  freqs_plot, 'pchip'), 'gaussian', gauss_win);
@@ -130,15 +111,15 @@ eb3.patch.FaceColor = colors(3, :);
 set(eb1.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
 set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
 set(eb3.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
-set(eb1.edge(1), 'Color', colors(1, :));
-set(eb1.edge(2), 'Color', colors(1, :));
-set(eb2.edge(1), 'Color', colors(2, :));
-set(eb2.edge(2), 'Color', colors(2, :));
-set(eb3.edge(1), 'Color', colors(3, :));
-set(eb3.edge(2), 'Color', colors(3, :));
-set(eb1.patch, 'FaceAlpha', 0.5);
-set(eb2.patch, 'FaceAlpha', 0.5);
-set(eb3.patch, 'FaceAlpha', 0.5);
+set(eb1.edge(1), 'Color', 'none');
+set(eb1.edge(2), 'Color', 'none');
+set(eb2.edge(1), 'Color', 'none');
+set(eb2.edge(2), 'Color', 'none');
+set(eb3.edge(1), 'Color', 'none');
+set(eb3.edge(2), 'Color', 'none');
+set(eb1.patch, 'FaceAlpha', 0.20);
+set(eb2.patch, 'FaceAlpha', 0.20);
+set(eb3.patch, 'FaceAlpha', 0.20);
 
 % Adjust plotting
 set(gcf,'color','w');
@@ -146,20 +127,17 @@ set(gca,'Fontsize',20);
 [~, channel_idx] = ismember(cfg.channel, gapow1.label);
 freq_idx = find(gapow1.freq >= 8 & gapow1.freq <= 14);
 max_spctrm = max([mean(gapow1.powspctrm(channel_idx, freq_idx), 2); mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow3.powspctrm(channel_idx, freq_idx), 2)]);
-if strcmp(electrodes, 'occ_cluster')
-    ylim([0 max_spctrm*1.25])
-elseif strcmp(electrodes, 'POz')
-    ylim([0 0.45])
-end
-box on
+ylim([0 max_spctrm*1.25])
+box off
 xlim([5 20]);
 xlabel('Frequency [Hz]');
 ylabel(yLabel);
-legend([eb1.mainLine, eb2.mainLine, eb3.mainLine], {'1 back', '2 back', '3 back'}, 'FontName', 'Arial', 'FontSize', 20);
-title(figTitle, 'FontSize', 30)
-if strcmp(electrodes, 'POz')
-    text(25, max_spctrm*1.5, ['Electrodes: ', electrodes]);
-end
+leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
+leg_p2 = patch(NaN, NaN, colors(2,:), 'EdgeColor', 'none');
+leg_p3 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
+legend([leg_p1, leg_p2, leg_p3], {'1 back', '2 back', '3 back'}, ...
+    'FontName', 'Arial', 'FontSize', 20, 'Box', 'off');
+title(figTitle, 'FontSize', 25)
 hold off;
 
 % Save

@@ -36,20 +36,29 @@ addpath(seb_path);
 feat_dir = fullfile(base_data, 'data', 'features');
 fig_dir = fullfile(base_data, 'figures', 'splits', 'SplitAlphaAmpRed');
 stats_dir = fullfile(base_data, 'data', 'stats', 'splits');
+fig_dir_sternberg_median = fullfile(base_data, 'figures', 'splits', 'SplitAlphaAmpRed', 'SternbergMedianSplit');
 if ~isfolder(fig_dir)
     mkdir(fig_dir);
+end
+if ~isfolder(fig_dir_sternberg_median)
+    mkdir(fig_dir_sternberg_median);
 end
 if ~isfolder(stats_dir)
     mkdir(stats_dir);
 end
-fprintf('\n=== AOC Split Alpha Amp/Red (Sternberg) ===\n');
+fprintf('\n=== AOC Split Alpha Amp/Red (Sternberg + N-back variants) ===\n');
 fprintf('Figure directory: %s\n', fig_dir);
 
 % Keep canonical figure size requested.
 fig_pos = [0 0 1512 982];
 
-% Task definition (Sternberg)
+% Task/split definitions:
+% 1) Sternberg split at 0 (legacy behavior)
+% 2) N-back split at median alpha
+% 3) Sternberg split at median alpha
 tasks(1).tag = 'sternberg';
+tasks(1).split_mode = 'zero';
+tasks(1).split_label = 'split0';
 tasks(1).merged_file = 'AOC_merged_data_sternberg.mat';
 tasks(1).merged_var = 'merged_data_sternberg';
 tasks(1).cond_vals = [2 4 6];
@@ -62,6 +71,36 @@ tasks(1).tfr_vars = {'tfr2_fooof_bl', 'tfr4_fooof_bl', 'tfr6_fooof_bl'};
 tasks(1).gaze_fname = 'gaze_series_sternberg_trials.mat';
 tasks(1).power_missing_label = 'power_stern_fooof_TFR.mat';
 
+tasks(2).tag = 'nback';
+tasks(2).split_mode = 'median';
+tasks(2).split_label = 'splitMedian';
+tasks(2).merged_file = 'AOC_merged_data_nback.mat';
+tasks(2).merged_var = 'merged_data_nback';
+tasks(2).cond_vals = [1 2 3];
+tasks(2).cond_codes = [21 22 23];
+tasks(2).cond_labels = {'1-back', '2-back', '3-back'};
+tasks(2).power_fname = 'power_nback_fooof.mat';
+tasks(2).pow_vars = {'pow1_fooof_bl', 'pow2_fooof_bl', 'pow3_fooof_bl'};
+tasks(2).tfr_fname = 'tfr_nback.mat';
+tasks(2).tfr_vars = {'tfr1_fooof_bl', 'tfr2_fooof_bl', 'tfr3_fooof_bl'};
+tasks(2).gaze_fname = 'gaze_series_nback_trials.mat';
+tasks(2).power_missing_label = 'power_nback_fooof.mat';
+
+tasks(3).tag = 'sternberg';
+tasks(3).split_mode = 'median';
+tasks(3).split_label = 'splitMedian';
+tasks(3).merged_file = 'AOC_merged_data_sternberg.mat';
+tasks(3).merged_var = 'merged_data_sternberg';
+tasks(3).cond_vals = [2 4 6];
+tasks(3).cond_codes = [22 24 26];
+tasks(3).cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
+tasks(3).power_fname = 'power_stern_fooof_TFR.mat';
+tasks(3).pow_vars = {'pow2_fooof_bl', 'pow4_fooof_bl', 'pow6_fooof_bl'};
+tasks(3).tfr_fname = 'tfr_stern.mat';
+tasks(3).tfr_vars = {'tfr2_fooof_bl', 'tfr4_fooof_bl', 'tfr6_fooof_bl'};
+tasks(3).gaze_fname = 'gaze_series_sternberg_trials.mat';
+tasks(3).power_missing_label = 'power_stern_fooof_TFR.mat';
+
 fontSize = 20;
 alpha_zero_pct = 5; % Exclude near-zero alpha within this % of robust |alpha| reference
 alpha_ref_percentile = 95; % Use this percentile of |alpha| for reference (outlier-resistant)
@@ -72,10 +111,16 @@ tfr_winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
 for ti = 1:numel(tasks)
 tk = tasks(ti);
 task_tag = tk.tag;
+split_mode = tk.split_mode;
+split_label = tk.split_label;
 cond_vals = tk.cond_vals;
 cond_codes = tk.cond_codes;
 cond_labels = tk.cond_labels;
-fig_prefix = sprintf('AOC_splitAlphaAmpRed_%s', task_tag);
+fig_prefix = sprintf('AOC_splitAlphaAmpRed_%s_%s', task_tag, split_label);
+fig_dir_task = fig_dir;
+if strcmpi(task_tag, 'sternberg') && strcmpi(split_mode, 'median')
+    fig_dir_task = fig_dir_sternberg_median;
+end
 
 fprintf('\n\n========== TASK: %s ==========\n', upper(task_tag));
 
@@ -124,21 +169,38 @@ valid_alpha_mean = alpha_mean(split_valid);
 if isempty(valid_alpha_mean)
     error('No finite subject-level alpha values found for split.');
 end
-alpha_abs_ref = prctile(abs(valid_alpha_mean), alpha_ref_percentile);
-alpha_zero_margin = (alpha_zero_pct / 100) * alpha_abs_ref;
+alpha_split_threshold = NaN;
+split_info_str = '';
+switch lower(split_mode)
+    case 'median'
+        alpha_split_threshold = median(valid_alpha_mean, 'omitnan');
+        reduction_ids = uIDs(split_valid & (alpha_mean < alpha_split_threshold));
+        amplification_ids = uIDs(split_valid & (alpha_mean >= alpha_split_threshold));
+        zero_ids = [];
+        invalid_ids = uIDs(~split_valid);
+        split_info_str = sprintf('Median split at %.4f', alpha_split_threshold);
+    otherwise
+        alpha_abs_ref = prctile(abs(valid_alpha_mean), alpha_ref_percentile);
+        alpha_zero_margin = (alpha_zero_pct / 100) * alpha_abs_ref;
+        reduction_ids = uIDs(split_valid & (alpha_mean < -alpha_zero_margin));
+        amplification_ids = uIDs(split_valid & (alpha_mean > alpha_zero_margin));
+        zero_ids = uIDs(split_valid & (abs(alpha_mean) <= alpha_zero_margin));
+        invalid_ids = uIDs(~split_valid);
+        split_info_str = sprintf('Zero-band: %.2f%% of %dth-percentile |alpha| (ref=%.4f, cutoff=%.4f)', ...
+            alpha_zero_pct, alpha_ref_percentile, alpha_abs_ref, alpha_zero_margin);
+end
 
-reduction_ids = uIDs(split_valid & (alpha_mean < -alpha_zero_margin));
-amplification_ids = uIDs(split_valid & (alpha_mean > alpha_zero_margin));
-zero_ids = uIDs(split_valid & (abs(alpha_mean) <= alpha_zero_margin));
-invalid_ids = uIDs(~split_valid);
-
-fprintf('\n=== Split Summary [%s] (AlphaPower_FOOOF_bl, full window) ===\n', task_tag);
+fprintf('\n=== Split Summary [%s | %s] (AlphaPower_FOOOF_bl, full window) ===\n', task_tag, split_mode);
 fprintf('Subjects total: %d\n', nSubj);
-fprintf('Zero-band setting: %.2f%% of %dth-percentile |alpha| (ref=%.4f, cutoff=%.4f)\n', ...
-    alpha_zero_pct, alpha_ref_percentile, alpha_abs_ref, alpha_zero_margin);
-fprintf('Reduction (< -%.4f): %d\n', alpha_zero_margin, numel(reduction_ids));
-fprintf('Amplification (> %.4f): %d\n', alpha_zero_margin, numel(amplification_ids));
-fprintf('Excluded (|alpha| <= %.4f): %d\n', alpha_zero_margin, numel(zero_ids));
+fprintf('%s\n', split_info_str);
+if strcmpi(split_mode, 'median')
+    fprintf('Reduction (< median %.4f): %d\n', alpha_split_threshold, numel(reduction_ids));
+    fprintf('Amplification (>= median %.4f): %d\n', alpha_split_threshold, numel(amplification_ids));
+else
+    fprintf('Reduction (< -%.4f): %d\n', alpha_zero_margin, numel(reduction_ids));
+    fprintf('Amplification (> %.4f): %d\n', alpha_zero_margin, numel(amplification_ids));
+    fprintf('Excluded (|alpha| <= %.4f): %d\n', alpha_zero_margin, numel(zero_ids));
+end
 if ~isempty(invalid_ids)
     fprintf('Excluded (invalid/pathological alpha): %d\n', numel(invalid_ids));
 end
@@ -155,9 +217,13 @@ figure('Position', fig_pos, 'Color', 'w');
 hold on
 % Grey yline at 0
 yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 2);
-% Red ylines at thresholds
-yline(alpha_zero_margin, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
-yline(-alpha_zero_margin, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
+if strcmpi(split_mode, 'median')
+    yline(alpha_split_threshold, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
+else
+    % Red ylines at thresholds
+    yline(alpha_zero_margin, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
+    yline(-alpha_zero_margin, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
+end
 % Plot subjects: reduction blue, amplification red, excluded grey
 x_vals = (1:nSubj)';
 idx_red = ismember(uIDs, reduction_ids);
@@ -168,11 +234,11 @@ scatter(x_vals(idx_red), alpha_mean(idx_red), 80, [0.2 0.4 0.8], 'filled', 'Mark
 scatter(x_vals(idx_amp), alpha_mean(idx_amp), 80, [0.8 0.2 0.2], 'filled', 'MarkerFaceAlpha', 0.8);
 xlabel('Participant (index)');
 ylabel('Alpha Power [dB]');
-title(sprintf('Alpha Split [%s]: Reduction (blue), Amplification (red), Excluded (grey)', task_tag), 'Interpreter', 'none');
+title(sprintf('Alpha Split [%s | %s]: Reduction (blue), Amplification (red), Excluded (grey)', task_tag, split_mode), 'Interpreter', 'none');
 legend({'Excluded', 'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
 set(gca, 'FontSize', fontSize);
 box on
-saveas(gcf, fullfile(fig_dir, sprintf('%s_inclusion.png', fig_prefix)));
+saveas(gcf, fullfile(fig_dir_task, sprintf('%s_inclusion.png', fig_prefix)));
 close(gcf);
 
 %% Preallocate containers
@@ -364,31 +430,31 @@ end
 close all
 fprintf('\n=== Plotting power spectra ===\n');
 plot_group_power_spectrum_combined(pow_red, pow_amp, channels, colors, cond_labels, ...
-    fullfile(fig_dir, sprintf('%s_powspctrm.png', fig_prefix)), fig_pos, fontSize);
+    fullfile(fig_dir_task, sprintf('%s_powspctrm.png', fig_prefix)), fig_pos, fontSize);
 
 %% TFRs per condition (both groups + diff, 3x3)
 fprintf('\n=== Plotting TFRs ===\n');
 color_map_tfr = customcolormap_preset('red-white-blue');
 
 plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, ...
-    color_map_tfr, fig_dir, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg);
+    color_map_tfr, fig_dir_task, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg);
 
 %% TFRs collapsed over conditions (both groups)
 fprintf('\n=== Plotting collapsed TFRs (across conditions) ===\n');
 plot_group_tfrs_collapsed(tfr_red, tfr_amp, channels, headmodel, color_map_tfr, ...
-    fig_dir, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg);
+    fig_dir_task, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg);
 
 %% Topoplots per condition (both groups + differences)
 fprintf('\n=== Plotting topoplots ===\n');
-plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, fig_dir, fig_prefix, fig_pos, fontSize);
+plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, fig_dir_task, fig_prefix, fig_pos, fontSize);
 
 %% Topoplots collapsed over conditions (both groups)
 fprintf('\n=== Plotting collapsed topoplots (across conditions) ===\n');
-plot_group_topos_collapsed(pow_red, pow_amp, channels, headmodel, fig_dir, fig_prefix, fig_pos, fontSize);
+plot_group_topos_collapsed(pow_red, pow_amp, channels, headmodel, fig_dir_task, fig_prefix, fig_pos, fontSize);
 
 %% Rainclouds
 fprintf('\n=== Plotting rainclouds ===\n');
-plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_prefix, fig_pos, fontSize);
+plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir_task, fig_prefix, fig_pos, fontSize);
 
 %% EEG and Gaze time courses with effect-size
 close all
@@ -414,8 +480,18 @@ close all
 fontSizeTC = 25;
 rng(123)
 ds_factor = 50; % downsampling to 100ms windows
+% Keep collapsed-across-conditions time course output
 plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, colors, ...
-    'Gaze Deviation [%]', sprintf('%s_gaze_deviation_pct', task_tag), fig_dir, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]');
+    'Gaze Deviation [%]', sprintf('%s_%s_gaze_deviation_pct', task_tag, split_label), fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]');
+
+% Additional condition-wise time course outputs
+for c = 1:numel(cond_vals)
+    tc_cond = dev_tc_pct(:, c, :);
+    eeg_tc_cond = eeg_tc(:, c, :);
+    save_tag_cond = sprintf('%s_%s_gaze_deviation_pct_%s', task_tag, split_label, sanitize_label_for_fname(cond_labels{c}));
+    plot_timecourse_with_effect_CBPT(tc_cond, is_red, is_amp, colors, ...
+        'Gaze Deviation [%]', save_tag_cond, fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'Alpha Power [dB]');
+end
 %plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, colors, ...
 %    'Gaze Deviation [%]', sprintf('%s_gaze_deviation_pct_COMBINED', task_tag), fig_dir, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, true, 'Alpha Power [dB]');
 
@@ -424,7 +500,7 @@ fprintf('\n=== Data Diagnostics [%s] ===\n', task_tag);
 fprintf('Missing EEG power (%s): %d\n', tk.power_missing_label, numel(unique(missing_eeg)));
 fprintf('Missing TFR files: %d\n', numel(unique(missing_tfr)));
 fprintf('Missing gaze files/fields: %d\n', numel(unique(missing_gaze)));
-fprintf('Figures saved to: %s\n', fig_dir);
+fprintf('Figures saved to: %s\n', fig_dir_task);
 
 %% Export CSV for Python statistics script
 fprintf('\n=== Exporting CSV for Python stats ===\n');
@@ -474,7 +550,7 @@ stats_tbl = table( ...
     'ID', 'LoadValue', 'LoadLabel', 'Group', 'Included', ...
     'AlphaPower_FOOOF_bl', 'GazeDeviationFullBL', 'GazeDev_pct_0_2s'});
 
-csv_out = fullfile(stats_dir, sprintf('AOC_splitAmpRed_%s_stats_input.csv', task_tag));
+csv_out = fullfile(stats_dir, sprintf('AOC_splitAmpRed_%s_%s_stats_input.csv', task_tag, split_label));
 writetable(stats_tbl, csv_out);
 fprintf('CSV saved to: %s\n', csv_out);
 
@@ -521,6 +597,13 @@ for i = 1:numel(subjects)
         return
     end
 end
+end
+
+function txt = sanitize_label_for_fname(label)
+txt = lower(label);
+txt = regexprep(txt, '[^a-z0-9]+', '_');
+txt = regexprep(txt, '_+', '_');
+txt = regexprep(txt, '^_|_$', '');
 end
 
 

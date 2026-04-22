@@ -52,6 +52,8 @@ def fit_mixedlm_with_fallback(formula_fixed: str, data: pd.DataFrame):
                 re_formula=spec["re_formula"],
             )
             res = model.fit(reml=False, method="lbfgs", maxiter=500, disp=False)
+            if not bool(getattr(res, "converged", False)):
+                raise RuntimeError(f"Did not converge with {spec['label']}")
             return res, spec["label"]
         except Exception as exc:
             last_err = exc

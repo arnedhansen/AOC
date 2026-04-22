@@ -32,16 +32,23 @@ def pooled_cohens_d(x: np.ndarray, y: np.ndarray) -> float:
 
 
 def fit_mixedlm_with_fallback(formula_fixed: str, data: pd.DataFrame):
-    formulas = [
-        f"{formula_fixed} + (LoadValue|Subject)",
-        f"{formula_fixed} + (1|Subject)",
+    model_specs = [
+        {"label": "random intercept + slope", "re_formula": "~LoadValue"},
+        {"label": "random intercept", "re_formula": "1"},
     ]
     last_err = None
-    for fml in formulas:
+    for spec in model_specs:
         try:
-            model = smf.mixedlm(fml, data=data, groups=data["Subject"])
+            model = smf.mixedlm(
+                formula_fixed,
+                data=data,
+                groups=data["Subject"],
+                re_formula=spec["re_formula"],
+            )
             res = model.fit(reml=False, method="lbfgs", maxiter=500, disp=False)
-            return res, fml
+            if not bool(getattr(res, "converged", False)):
+                raise RuntimeError(f"Did not converge with {spec['label']}")
+            return res, spec["label"]
         except Exception as exc:
             last_err = exc
             continue
@@ -51,7 +58,7 @@ def fit_mixedlm_with_fallback(formula_fixed: str, data: pd.DataFrame):
 def run_group_comparison(df_incl: pd.DataFrame) -> None:
     print("\n=== Parametric group comparison (Decrease vs Increase) ===")
     subj = (
-        df_incl.groupby(["ID", "Group"], as_index=False)["DevMetric"]
+        df_incl.groupby(["ID", "Group"], as_index=False, observed=False)["DevMetric"]
         .mean(numeric_only=True)
         .rename(columns={"DevMetric": "SubjMeanDev"})
     )
@@ -109,7 +116,7 @@ def run_lmm(df_metric: pd.DataFrame, metric_name: str) -> None:
         return
     try:
         res, formula_used = fit_mixedlm_with_fallback("Value ~ C(Group) * C(LoadLabel)", df_metric)
-        print(f"{metric_name}: Formula: {formula_used}")
+        print(f"{metric_name}: Random effects: {formula_used}")
         print(res.summary())
         print(f"n_obs={len(df_metric)}, n_subj={df_metric['Subject'].nunique()}")
     except Exception as exc:
@@ -168,7 +175,7 @@ def main() -> None:
     print(f"Included observations: {len(df)}")
     print(f"Included subjects: {df['Subject'].nunique()}")
     print("Group sizes (subjects):")
-    print(df.groupby("Group")["Subject"].nunique().to_string())
+    print(df.groupby("Group", observed=False)["Subject"].nunique().to_string())
 
     run_group_comparison(df)
 

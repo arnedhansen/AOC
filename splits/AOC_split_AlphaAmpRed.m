@@ -35,13 +35,13 @@ addpath(seb_path);
 
 feat_dir = fullfile(base_data, 'data', 'features');
 fig_dir = fullfile(base_data, 'figures', 'splits', 'SplitAlphaAmpRed');
+fig_dir_nback = fullfile(base_data, 'figures', 'splits', 'SplitAlphaAmpRed', 'Nback');
 stats_dir = fullfile(base_data, 'data', 'stats', 'splits');
-fig_dir_sternberg_median = fullfile(base_data, 'figures', 'splits', 'SplitAlphaAmpRed', 'SternbergMedianSplit');
 if ~isfolder(fig_dir)
     mkdir(fig_dir);
 end
-if ~isfolder(fig_dir_sternberg_median)
-    mkdir(fig_dir_sternberg_median);
+if ~isfolder(fig_dir_nback)
+    mkdir(fig_dir_nback);
 end
 if ~isfolder(stats_dir)
     mkdir(stats_dir);
@@ -55,7 +55,6 @@ fig_pos = [0 0 1512 982];
 % Task/split definitions:
 % 1) Sternberg split at 0
 % 2) N-back split
-% 3) Sternberg split at median alpha
 tasks(1).tag = 'sternberg';
 tasks(1).split_mode = 'zero';
 tasks(1).split_label = 'split0';
@@ -96,21 +95,6 @@ tasks(2).tfr_vars = {'tfr1_fooof_bl', 'tfr2_fooof_bl', 'tfr3_fooof_bl'};
 tasks(2).gaze_fname = 'gaze_series_nback_trials.mat';
 tasks(2).power_missing_label = 'power_nback_fooof.mat';
 
-tasks(3).tag = 'sternberg';
-tasks(3).split_mode = 'median';
-tasks(3).split_label = 'splitMedian';
-tasks(3).merged_file = 'AOC_merged_data_sternberg.mat';
-tasks(3).merged_var = 'merged_data_sternberg';
-tasks(3).cond_vals = [2 4 6];
-tasks(3).cond_codes = [22 24 26];
-tasks(3).cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
-tasks(3).power_fname = 'power_stern_fooof_TFR.mat';
-tasks(3).pow_vars = {'pow2_fooof_bl', 'pow4_fooof_bl', 'pow6_fooof_bl'};
-tasks(3).tfr_fname = 'tfr_stern.mat';
-tasks(3).tfr_vars = {'tfr2_fooof_bl', 'tfr4_fooof_bl', 'tfr6_fooof_bl'};
-tasks(3).gaze_fname = 'gaze_series_sternberg_trials.mat';
-tasks(3).power_missing_label = 'power_stern_fooof_TFR.mat';
-
 fontSize = 20;
 alpha_zero_pct = 5; % Exclude near-zero alpha within this % of robust |alpha| reference
 alpha_ref_percentile = 95; % Use this percentile of |alpha| for reference (outlier-resistant)
@@ -128,8 +112,8 @@ cond_codes = tk.cond_codes;
 cond_labels = tk.cond_labels;
 fig_prefix = sprintf('AOC_splitAlphaAmpRed_%s_%s', task_tag, split_label);
 fig_dir_task = fig_dir;
-if strcmpi(task_tag, 'sternberg') && strcmpi(split_mode, 'median')
-    fig_dir_task = fig_dir_sternberg_median;
+if strcmpi(task_tag, 'nback')
+    fig_dir_task = fig_dir_nback;
 end
 
 fprintf('\n\n========== TASK: %s ==========\n', upper(task_tag));
@@ -498,9 +482,10 @@ close all
 fontSizeTC = 25;
 rng(123)
 ds_factor = 50; % downsampling to 100ms windows
+tc_smooth_sec = 0.10; % mild display smoothing for gaze/EEG traces
 % Keep collapsed-across-conditions time course output
 plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, colors, ...
-    'Gaze Deviation [%]', sprintf('%s_%s_gaze_deviation_pct', task_tag, split_label), fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]');
+    'Gaze Deviation [%]', sprintf('%s_%s_gaze_deviation_pct', task_tag, split_label), fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]', tc_smooth_sec);
 
 % Additional condition-wise time course outputs
 for c = 1:numel(cond_vals)
@@ -508,7 +493,7 @@ for c = 1:numel(cond_vals)
     eeg_tc_cond = eeg_tc(:, c, :);
     save_tag_cond = sprintf('%s_%s_gaze_deviation_pct_%s', task_tag, split_label, sanitize_label_for_fname(cond_labels{c}));
     plot_timecourse_with_effect_CBPT(tc_cond, is_red, is_amp, colors, ...
-        'Gaze Deviation [%]', save_tag_cond, fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'Alpha Power [dB]');
+        'Gaze Deviation [%]', save_tag_cond, fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'Alpha Power [dB]', tc_smooth_sec);
 end
 %plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, colors, ...
 %    'Gaze Deviation [%]', sprintf('%s_gaze_deviation_pct_COMBINED', task_tag), fig_dir, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, true, 'Alpha Power [dB]');
@@ -1208,18 +1193,19 @@ scatter(x_box + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, .
 end
 
 % Cluster-based permutation test
-function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, ds_factor, eeg_tc, addEEG_TC, eeg_ylab)
+function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, ds_factor, eeg_tc, addEEG_TC, eeg_ylab, smooth_sec)
 if nargin < 11 || isempty(ds_factor), ds_factor = 50; end
 if nargin < 12, eeg_tc = []; end
 if nargin < 13, addEEG_TC = ~isempty(eeg_tc); end
 if nargin < 14, eeg_ylab = 'Alpha Power [dB]'; end
+if nargin < 15 || isempty(smooth_sec), smooth_sec = 0.05; end
 dt = 1 / fs;
 nT = size(tc, 3);
 t_plot = linspace(-0.5 + dt, 3, nT);
 tc(~isfinite(tc)) = NaN;
 Rall = squeeze(mean(tc(is_red, :, :), 2, 'omitnan'));
 Aall = squeeze(mean(tc(is_amp, :, :), 2, 'omitnan'));
-win_sm = max(1, round(0.05 * fs));
+win_sm = max(1, round(smooth_sec * fs));
 if win_sm > 1
     Rall = movmean(Rall, win_sm, 2, 'omitnan');
     Aall = movmean(Aall, win_sm, 2, 'omitnan');

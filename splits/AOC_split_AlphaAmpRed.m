@@ -1,11 +1,9 @@
 %% AOC Split Alpha Amp/Red (Subject-Level) — Sternberg
 % Subject-level split (fixed across conditions) using merged_data_<task>:
 %   mean AlphaPower_FOOOF_bl across load levels (baselined, FOOOFed alpha)
-%   < -cutoff  -> reduction group
-%   > cutoff   -> amplification group
-%   |alpha| <= cutoff -> excluded (percentage-based band around zero)
-%
-% Cutoff = alpha_zero_pct of the alpha_ref_percentile of |alpha| (default: 5% of 95th percentile).
+%   split0 mode: < 0 -> reduction, >= 0 -> amplification
+%   fixed mode:  < threshold -> reduction, >= threshold -> amplification
+%   median mode: < median -> reduction, >= median -> amplification
 %
 % Uses split-pipeline FOOOF sources:
 %   Sternberg: power_stern_fooof_TFR.mat
@@ -17,7 +15,7 @@
 % - TFRs per condition for both groups + group differences
 % - Topoplots per condition for both groups + group-difference topoplots
 % - Rainclouds for Alpha and gaze deviation
-% - Time-course panels for gaze deviation (percent baseline) and combined EEG+gaze view
+% - Time-course panels for gaze deviation (percent baseline): collapsed and per condition
 
 %% Setup
 startup
@@ -96,8 +94,6 @@ tasks(2).gaze_fname = 'gaze_series_nback_trials.mat';
 tasks(2).power_missing_label = 'power_nback_fooof.mat';
 
 fontSize = 20;
-alpha_zero_pct = 5; % Exclude near-zero alpha within this % of robust |alpha| reference
-alpha_ref_percentile = 95; % Use this percentile of |alpha| for reference (outlier-resistant)
 tfr_winsor_cfg = struct();
 tfr_winsor_cfg.enable = true;
 tfr_winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
@@ -231,13 +227,13 @@ x_vals = (1:nSubj)';
 idx_red = ismember(uIDs, reduction_ids);
 idx_amp = ismember(uIDs, amplification_ids);
 idx_excl = ismember(uIDs, zero_ids) | ismember(uIDs, invalid_ids);
-scatter(x_vals(idx_excl), alpha_mean(idx_excl), 80, [0.5 0.5 0.5], 'filled', 'MarkerFaceAlpha', 0.7);
-scatter(x_vals(idx_red), alpha_mean(idx_red), 80, [0.2 0.4 0.8], 'filled', 'MarkerFaceAlpha', 0.8);
-scatter(x_vals(idx_amp), alpha_mean(idx_amp), 80, [0.8 0.2 0.2], 'filled', 'MarkerFaceAlpha', 0.8);
+h_excl = scatter(x_vals(idx_excl), alpha_mean(idx_excl), 80, [0.5 0.5 0.5], 'filled', 'MarkerFaceAlpha', 0.7);
+h_red = scatter(x_vals(idx_red), alpha_mean(idx_red), 80, [0.2 0.4 0.8], 'filled', 'MarkerFaceAlpha', 0.8);
+h_amp = scatter(x_vals(idx_amp), alpha_mean(idx_amp), 80, [0.8 0.2 0.2], 'filled', 'MarkerFaceAlpha', 0.8);
 xlabel('Participant (index)');
 ylabel('Alpha Power [dB]');
-title(sprintf('Alpha Split [%s | %s]: Reduction (blue), Amplification (red), Excluded (grey)', task_tag, split_mode), 'Interpreter', 'none');
-legend({'Excluded', 'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
+title(sprintf('Alpha Split [%s | %s]', task_tag, split_mode), 'Interpreter', 'none');
+legend([h_excl, h_red, h_amp], {'Excluded', 'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
 set(gca, 'FontSize', fontSize);
 box on
 saveas(gcf, fullfile(fig_dir_task, sprintf('%s_inclusion.png', fig_prefix)));
@@ -469,12 +465,22 @@ eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_su
 fprintf('\n=== Computing baselined time courses ===\n');
 t_vec = linspace(-0.5, 3, Tf);
 bl_idx = (t_vec >= -0.5) & (t_vec <= -0.25);
+tc_smooth_sec = 0.10; % smoothing window used in px-space before baseline normalization
+baseline_floor_px = 7.5; % guard against small baselines inflating percent normalization
 
-dev_bl = mean(dev_tc(:, :, bl_idx), 3, 'omitnan');
+% Smooth in px space before baseline normalization (subject x condition level).
+win_sm_pre = max(1, round(tc_smooth_sec * fs));
+if win_sm_pre > 1
+    dev_tc_px = movmean(dev_tc, win_sm_pre, 3, 'omitnan');
+else
+    dev_tc_px = dev_tc;
+end
+
+dev_bl = mean(dev_tc_px(:, :, bl_idx), 3, 'omitnan');
 dev_bl_3d = repmat(dev_bl, [1, 1, Tf]);
-dev_bl_3d(dev_bl_3d <= 0 | ~isfinite(dev_bl_3d)) = NaN;
+dev_bl_3d(dev_bl_3d <= baseline_floor_px | ~isfinite(dev_bl_3d)) = NaN;
 % Percent baseline: (value/baseline - 1) * 100.
-dev_tc_pct = (dev_tc ./ dev_bl_3d - 1) * 100;
+dev_tc_pct = (dev_tc_px ./ dev_bl_3d - 1) * 100;
 dev_tc_pct(~isfinite(dev_tc_pct)) = NaN;
 
 % Plot time courses (always save both: gaze-only and combined EEG+gaze)
@@ -482,10 +488,17 @@ close all
 fontSizeTC = 25;
 rng(123)
 ds_factor = 50; % downsampling to 100ms windows
-tc_smooth_sec = 0.10; % mild display smoothing for gaze/EEG traces
+
+% Baseline diagnostics after px-space smoothing and floor guard.
+bl_vals = dev_bl(:);
+bl_vals = bl_vals(isfinite(bl_vals));
+fprintf('Baseline floor guard: %.2f px\n', baseline_floor_px);
+fprintf('Baselines <= floor: %d / %d cells\n', ...
+    sum(bl_vals <= baseline_floor_px), numel(bl_vals));
+
 % Keep collapsed-across-conditions time course output
 plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, colors, ...
-    'Gaze Deviation [%]', sprintf('%s_%s_gaze_deviation_pct', task_tag, split_label), fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]', tc_smooth_sec);
+    'Gaze Deviation [%]', sprintf('%s_%s_gaze_deviation_pct', task_tag, split_label), fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]', 0);
 
 % Additional condition-wise time course outputs
 for c = 1:numel(cond_vals)
@@ -493,10 +506,8 @@ for c = 1:numel(cond_vals)
     eeg_tc_cond = eeg_tc(:, c, :);
     save_tag_cond = sprintf('%s_%s_gaze_deviation_pct_%s', task_tag, split_label, sanitize_label_for_fname(cond_labels{c}));
     plot_timecourse_with_effect_CBPT(tc_cond, is_red, is_amp, colors, ...
-        'Gaze Deviation [%]', save_tag_cond, fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'Alpha Power [dB]', tc_smooth_sec);
+        'Gaze Deviation [%]', save_tag_cond, fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'Alpha Power [dB]', 0);
 end
-%plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, colors, ...
-%    'Gaze Deviation [%]', sprintf('%s_gaze_deviation_pct_COMBINED', task_tag), fig_dir, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, true, 'Alpha Power [dB]');
 
 %% Sanity checks
 fprintf('\n=== Data Diagnostics [%s] ===\n', task_tag);
@@ -1355,9 +1366,6 @@ xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Effect Size [Cohen''s d]');
 xlim([-0.5 3]);
-if contains(save_tag, 'gaze_deviation_pct_COMBINED')
-    yticks([-0.25, 0, 0.25])
-end
 box on
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)

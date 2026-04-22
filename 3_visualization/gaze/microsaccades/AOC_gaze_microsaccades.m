@@ -19,11 +19,8 @@
 
 %% Setup
 startup
-[~, paths, ~, ~] = setup('AOC', 0);
+[~, paths, ~, ~] = setup('AOC');
 featPath = paths.features;
-clear
-close all
-clc
 
 datapath = featPath;
 figpath  = fullfile(paths.figures, 'gaze', 'microsaccades');
@@ -226,7 +223,6 @@ for iTask = 1:2
     hold on
 
     % Per-condition lines with SEM shading
-    h = gobjects(nConds, 1);
     for c = 1:nConds
         mu  = grandMean(:, c);
         sem = grandSEM(:, c);
@@ -237,7 +233,7 @@ for iTask = 1:2
              colors(c, :), 'FaceAlpha', 0.2, 'EdgeColor', 'none', ...
              'HandleVisibility', 'off');
 
-        h(c) = plot(t_vec, mu, '-', 'Color', colors(c, :), 'LineWidth', 2.5);
+        plot(t_vec, mu, '-', 'Color', colors(c, :), 'LineWidth', 2.5);
     end
 
     xline(0, 'k--', 'LineWidth', 1.5, 'HandleVisibility', 'off');
@@ -245,8 +241,13 @@ for iTask = 1:2
     xlabel('Time [s]');
     ylabel('Microsaccade Rate [Hz]');
     title([upper(tName(1)), tName(2:end), ' — Microsaccade Rate Time Course']);
-    legend(h, cLabels, 'Location', 'best', 'FontSize', fontSize - 4);
+    leg_p = gobjects(nConds, 1);
+    for c = 1:nConds
+        leg_p(c) = patch(NaN, NaN, colors(c, :), 'EdgeColor', 'none');
+    end
+    legend(leg_p, cLabels, 'Location', 'best', 'FontSize', fontSize - 4, 'Box', 'off');
     set(gca, 'FontSize', fontSize);
+    box off
     hold off
 
     saveas(gcf, fullfile(figpath, ['AOC_gaze_microsaccades_rate_', tName, '.png']));
@@ -258,7 +259,6 @@ for iTask = 1:2
     hold on
 
     % Per-condition lines with SEM shading
-    h_pct = gobjects(nConds, 1);
     for c = 1:nConds
         mu  = grandMean_pct(:, c);
         sem = grandSEM_pct(:, c);
@@ -269,7 +269,7 @@ for iTask = 1:2
              colors(c, :), 'FaceAlpha', 0.2, 'EdgeColor', 'none', ...
              'HandleVisibility', 'off');
 
-        h_pct(c) = plot(t_vec, mu, '-', 'Color', colors(c, :), 'LineWidth', 2.5);
+        plot(t_vec, mu, '-', 'Color', colors(c, :), 'LineWidth', 2.5);
     end
 
     xline(0, 'k--', 'LineWidth', 1.5, 'HandleVisibility', 'off');
@@ -278,8 +278,13 @@ for iTask = 1:2
     xlabel('Time [s]');
     ylabel('Microsaccade Rate [% change]');
     title([upper(tName(1)), tName(2:end), ' — Microsaccade Rate (Percentage Change)']);
-    legend(h_pct, cLabels, 'Location', 'best', 'FontSize', fontSize - 4);
+    leg_p_pct = gobjects(nConds, 1);
+    for c = 1:nConds
+        leg_p_pct(c) = patch(NaN, NaN, colors(c, :), 'EdgeColor', 'none');
+    end
+    legend(leg_p_pct, cLabels, 'Location', 'best', 'FontSize', fontSize - 4, 'Box', 'off');
     set(gca, 'FontSize', fontSize);
+    box off
     hold off
 
     saveas(gcf, fullfile(figpath, ['AOC_gaze_microsaccades_rate_pct_', tName, '.png']));
@@ -397,8 +402,13 @@ for iTask = 1:2
     xlim(t_win);
     ylabel('MS Rate [Hz]');
     title([upper(tName(1)), tName(2:end), ' — Microsaccade Dynamics']);
-    legend(cLabels, 'Location', 'best', 'FontSize', fontSize - 4);
+    leg_comb = gobjects(nConds, 1);
+    for c = 1:nConds
+        leg_comb(c) = patch(NaN, NaN, colors(c, :), 'EdgeColor', 'none');
+    end
+    legend(leg_comb, cLabels, 'Location', 'best', 'FontSize', fontSize - 4, 'Box', 'off');
     set(gca, 'FontSize', fontSize, 'XTickLabel', []);
+    box off
     hold off
 
     % --- Bottom panel: Raster grouped by condition ---
@@ -462,8 +472,13 @@ for iTask = 1:2
     xlim(t_win);
     ylabel('MS Rate [% change]');
     title([upper(tName(1)), tName(2:end), ' — Microsaccade Dynamics (Percentage Change)']);
-    legend(cLabels, 'Location', 'best', 'FontSize', fontSize - 4);
+    leg_comb_pct = gobjects(nConds, 1);
+    for c = 1:nConds
+        leg_comb_pct(c) = patch(NaN, NaN, colors(c, :), 'EdgeColor', 'none');
+    end
+    legend(leg_comb_pct, cLabels, 'Location', 'best', 'FontSize', fontSize - 4, 'Box', 'off');
     set(gca, 'FontSize', fontSize, 'XTickLabel', []);
+    box off
     hold off
 
     % --- Bottom panel: Raster grouped by condition ---

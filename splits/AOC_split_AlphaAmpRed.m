@@ -478,6 +478,7 @@ close all
 fontSizeTC = 25;
 rng(123)
 ds_factor = 50; % downsampling to 100ms windows
+tc_viz_smooth_sec = 0.05; % slight display-only smoothing for time-course plots
 
 % Exclude subjects with incomplete gaze time courses in analysis window.
 % Criterion: for each condition, signal must be finite at t=3 s and have
@@ -501,11 +502,11 @@ end
 
 % Keep collapsed-across-conditions time course output
 plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red_tc, is_amp_tc, colors, ...
-    'Gaze Deviation [%]', sprintf('%s_%s_gaze_deviation_pct', task_tag, split_label), fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]', 0);
+    'Gaze Deviation [%]', sprintf('%s_%s_gaze_deviation_pct', task_tag, split_label), fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]', tc_viz_smooth_sec);
 plot_timecourse_individuals(dev_tc_pct, is_red_tc, is_amp_tc, colors, ...
     'Gaze Deviation [%]', 'Collapsed over conditions', ...
     sprintf('%s_%s_gaze_deviation_pct_individuals_collapsed', task_tag, split_label), ...
-    fig_dir_task, fig_pos, fontSizeTC, fs);
+    fig_dir_task, fig_pos, fontSizeTC, fs, tc_viz_smooth_sec);
 
 % Additional condition-wise time course outputs
 for c = 1:numel(cond_vals)
@@ -513,11 +514,11 @@ for c = 1:numel(cond_vals)
     eeg_tc_cond = eeg_tc(:, c, :);
     save_tag_cond = sprintf('%s_%s_gaze_deviation_pct_%s', task_tag, split_label, sanitize_label_for_fname(cond_labels{c}));
     plot_timecourse_with_effect_CBPT(tc_cond, is_red_tc, is_amp_tc, colors, ...
-        'Gaze Deviation [%]', save_tag_cond, fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'Alpha Power [dB]', 0);
+        'Gaze Deviation [%]', save_tag_cond, fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'Alpha Power [dB]', tc_viz_smooth_sec);
     plot_timecourse_individuals(tc_cond, is_red_tc, is_amp_tc, colors, ...
         'Gaze Deviation [%]', cond_labels{c}, ...
         sprintf('%s_individuals', save_tag_cond), ...
-        fig_dir_task, fig_pos, fontSizeTC, fs);
+        fig_dir_task, fig_pos, fontSizeTC, fs, tc_viz_smooth_sec);
 end
 
 %% Sanity checks
@@ -1214,10 +1215,14 @@ scatter(x_box + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, .
     'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
 end
 
-function plot_timecourse_individuals(tc, is_red, is_amp, colors, ylab, title_tag, save_tag, fig_dir, fig_pos, fsz, fs)
+function plot_timecourse_individuals(tc, is_red, is_amp, colors, ylab, title_tag, save_tag, fig_dir, fig_pos, fsz, fs, smooth_sec)
 dt = 1 / fs;
 nT = size(tc, 3);
 t_plot = linspace(-0.5 + dt, 3, nT);
+if nargin < 12 || isempty(smooth_sec)
+    smooth_sec = 0;
+end
+win_sm = max(1, round(smooth_sec * fs));
 
 % Collapse over conditions if multiple condition slices are present.
 tc_subj = squeeze(mean(tc, 2, 'omitnan')); % nSubj x nT
@@ -1229,6 +1234,10 @@ R = tc_subj(is_red, :);
 A = tc_subj(is_amp, :);
 R(~isfinite(R)) = NaN;
 A(~isfinite(A)) = NaN;
+if win_sm > 1
+    R = movmean(R, win_sm, 2, 'omitnan');
+    A = movmean(A, win_sm, 2, 'omitnan');
+end
 colR_light = colors(1, :) * 0.35 + 0.65;
 colA_light = colors(3, :) * 0.35 + 0.65;
 

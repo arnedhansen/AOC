@@ -499,6 +499,10 @@ fprintf('Baselines <= floor: %d / %d cells\n', ...
 % Keep collapsed-across-conditions time course output
 plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red, is_amp, colors, ...
     'Gaze Deviation [%]', sprintf('%s_%s_gaze_deviation_pct', task_tag, split_label), fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]', 0);
+plot_timecourse_individuals(dev_tc_pct, is_red, is_amp, colors, ...
+    'Gaze Deviation [%]', 'Collapsed over conditions', ...
+    sprintf('%s_%s_gaze_deviation_pct_individuals_collapsed', task_tag, split_label), ...
+    fig_dir_task, fig_pos, fontSizeTC, fs);
 
 % Additional condition-wise time course outputs
 for c = 1:numel(cond_vals)
@@ -507,6 +511,10 @@ for c = 1:numel(cond_vals)
     save_tag_cond = sprintf('%s_%s_gaze_deviation_pct_%s', task_tag, split_label, sanitize_label_for_fname(cond_labels{c}));
     plot_timecourse_with_effect_CBPT(tc_cond, is_red, is_amp, colors, ...
         'Gaze Deviation [%]', save_tag_cond, fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'Alpha Power [dB]', 0);
+    plot_timecourse_individuals(tc_cond, is_red, is_amp, colors, ...
+        'Gaze Deviation [%]', cond_labels{c}, ...
+        sprintf('%s_individuals', save_tag_cond), ...
+        fig_dir_task, fig_pos, fontSizeTC, fs);
 end
 
 %% Sanity checks
@@ -1201,6 +1209,57 @@ plot(x_box + [-box_w/2 box_w/2], [med med], '-k', 'LineWidth', 2);
 jit = dot_jitter_halfwidth * 2 * (rand(numel(y),1)-0.5);
 scatter(x_box + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, ...
     'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
+end
+
+function plot_timecourse_individuals(tc, is_red, is_amp, colors, ylab, title_tag, save_tag, fig_dir, fig_pos, fsz, fs)
+dt = 1 / fs;
+nT = size(tc, 3);
+t_plot = linspace(-0.5 + dt, 3, nT);
+
+% Collapse over conditions if multiple condition slices are present.
+tc_subj = squeeze(mean(tc, 2, 'omitnan')); % nSubj x nT
+if isvector(tc_subj)
+    tc_subj = tc_subj(:)';
+end
+
+R = tc_subj(is_red, :);
+A = tc_subj(is_amp, :);
+R(~isfinite(R)) = NaN;
+A(~isfinite(A)) = NaN;
+colR_light = colors(1, :) * 0.35 + 0.65;
+colA_light = colors(3, :) * 0.35 + 0.65;
+
+figure('Position', [0 0 1512 982]);
+set(gcf, 'Color', 'w');
+tiledlayout(2, 1, 'TileSpacing', 'compact');
+
+nexttile; hold on
+if ~isempty(R)
+    plot(t_plot, R', 'Color', colR_light, 'LineWidth', 0.8);
+    plot(t_plot, mean(R, 1, 'omitnan'), 'Color', colors(1, :), 'LineWidth', 3);
+end
+xline(0, '--k');
+xlim([-0.5 3]);
+ylabel(ylab);
+title(sprintf('Reduction (n=%d) - %s', size(R, 1), title_tag), 'Interpreter', 'none');
+set(gca, 'FontSize', fsz - 6);
+box on
+
+nexttile; hold on
+if ~isempty(A)
+    plot(t_plot, A', 'Color', colA_light, 'LineWidth', 0.8);
+    plot(t_plot, mean(A, 1, 'omitnan'), 'Color', colors(3, :), 'LineWidth', 3);
+end
+xline(0, '--k');
+xlim([-0.5 3]);
+xlabel('Time [s]');
+ylabel(ylab);
+title(sprintf('Amplification (n=%d) - %s', size(A, 1), title_tag), 'Interpreter', 'none');
+set(gca, 'FontSize', fsz - 6);
+box on
+
+saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlphaAmpRed_timecourse_%s.png', save_tag)));
+close(gcf);
 end
 
 % Cluster-based permutation test

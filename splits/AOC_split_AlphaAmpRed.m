@@ -707,8 +707,8 @@ for grp = 1:2
         eb(c) = shadedErrorBar(freqs, m, se, 'lineProps', {'-'}, 'transparent', true);
         set(eb(c).mainLine, 'Color', colors(c, :), 'LineWidth', 3);
         set(eb(c).patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
-        set(eb(c).edge(1), 'Color', colors(c, :));
-        set(eb(c).edge(2), 'Color', colors(c, :));
+        set(eb(c).edge(1), 'Color', 'none');
+        set(eb(c).edge(2), 'Color', 'none');
     end
     xlim([5 30]);
     yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 1);
@@ -1316,6 +1316,10 @@ set(e1.mainLine, 'Color', colors(1,:), 'LineWidth', 2.5);
 set(e2.mainLine, 'Color', colors(3,:), 'LineWidth', 2.5);
 set(e1.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.20);
 set(e2.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.20);
+set(e1.edge(1), 'Color', 'none');
+set(e1.edge(2), 'Color', 'none');
+set(e2.edge(1), 'Color', 'none');
+set(e2.edge(2), 'Color', 'none');
 xline(0, '--k');
 ylabel(ylab);
 xlim([-0.5 3]);
@@ -1468,6 +1472,10 @@ if show_eeg
     set(ebA.mainLine, 'Color', colors(3,:), 'LineWidth', 2.5);
     set(ebR.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.20);
     set(ebA.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.20);
+    set(ebR.edge(1), 'Color', 'none');
+    set(ebR.edge(2), 'Color', 'none');
+    set(ebA.edge(1), 'Color', 'none');
+    set(ebA.edge(2), 'Color', 'none');
     yline(0, '--');
     xline(0, '--k');
     all_eeg_vals = [mR_eeg(:); mA_eeg(:); mR_eeg(:)-sR_eeg(:); mR_eeg(:)+sR_eeg(:); mA_eeg(:)-sA_eeg(:); mA_eeg(:)+sA_eeg(:)];

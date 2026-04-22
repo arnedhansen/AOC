@@ -477,7 +477,7 @@ dev_tc_pct(~isfinite(dev_tc_pct)) = NaN;
 close all
 fontSizeTC = 25;
 rng(123)
-ds_factor = 50; % downsampling to 100ms windows
+ds_factor = 10; % downsampling to ds_factor*2ms windows
 tc_viz_smooth_sec = 0.05; % slight display-only smoothing for time-course plots
 
 % Exclude subjects with incomplete gaze time courses in analysis window.

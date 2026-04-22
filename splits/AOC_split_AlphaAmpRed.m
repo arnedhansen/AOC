@@ -11,8 +11,6 @@
 %   Sternberg: power_stern_fooof_TFR.mat
 % plus merged gaze/behavioral metrics.
 %
-% Outliers excluded via Tukey 1.5*IQR (per metric per condition) before visualization/analyses.
-%
 % Generates (per task):
 % - Alpha split inclusion figure (participants by alpha, thresholds, group assignment)
 % - Power spectra (3 conditions) for both groups
@@ -483,44 +481,6 @@ fprintf('CSV saved to: %s\n', csv_out);
 end % task loop
 
 %% ========================= Local Functions =========================
-function [metrics_out, dev_tc_out] = exclude_outliers_tukey(metrics_in, dev_tc_in)
-% Apply Tukey 1.5*IQR rule per metric per condition. Set outliers to NaN.
-% Also excludes corresponding gaze deviation time-course rows.
-metrics_out = metrics_in;
-dev_tc_out = dev_tc_in;
-metric_fields = {'Alpha', 'Dev'};
-
-for m = 1:numel(metric_fields)
-    key = metric_fields{m};
-    X = metrics_out.(key);
-    nOut = 0;
-    for c = 1:3
-        vals = X(:, c);
-        vals_f = vals(isfinite(vals));
-        if numel(vals_f) < 4
-            continue
-        end
-        q1 = prctile(vals_f, 25);
-        q3 = prctile(vals_f, 75);
-        iqr_val = q3 - q1;
-        if iqr_val <= 0
-            continue
-        end
-        lo = q1 - 1.5 * iqr_val;
-        hi = q3 + 1.5 * iqr_val;
-        out_mask = (vals < lo) | (vals > hi);
-        nOut = nOut + sum(out_mask);
-        X(out_mask, c) = NaN;
-        % Exclude corresponding time course for gaze deviation.
-        if strcmp(key, 'Dev')
-            dev_tc_out(out_mask, c, :) = NaN;
-        end
-    end
-    metrics_out.(key) = X;
-    fprintf('  %s: %d outlier(s) excluded\n', key, nOut);
-end
-end
-
 function conds = parse_trialinfo_conds(trialinfo)
 conds = [];
 if isempty(trialinfo)
@@ -1306,7 +1266,7 @@ plot(t_plot, d, 'k-', 'LineWidth', 3.5);
 yline(0, '--');
 xline(0, '--k');
 xlabel('Time [s]');
-ylabel('Cohen''s d');
+ylabel('Effect Size [Cohen''s d]');
 xlim([-0.5 3]);
 if contains(save_tag, 'gaze_deviation_pct_COMBINED')
     yticks([-0.25, 0, 0.25])
@@ -1451,12 +1411,10 @@ function [clusters, tvals, thr, maxMassNull, maxExtentNull] = ft_cluster_permuta
 %   t_plot_ds - (optional) 1 x nT actual time vector. If provided, uses cfg.latency=[0 3]
 %               to restrict clustering to post-stimulus only (avoids baseline clusters).
 %
-% Outputs (compatible with previous cluster_permutation_2sample_1d):
+% Outputs:
 %   clusters     - struct array with .idx, .mass, .extent, .p, .p_extent
 %   tvals        - 1 x nT t-values (group1 - group2; FT indepsamplesT)
 %   thr          - struct with .tcrit, .mass, .extent
-%   maxMassNull  - []; FieldTrip does not expose null distribution
-%   maxExtentNull - []
 %
 % Requires: FieldTrip (startup must add it to path).
 %

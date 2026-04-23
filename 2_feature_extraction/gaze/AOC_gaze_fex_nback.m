@@ -82,16 +82,19 @@ for subj = 1:length(subjects)
         %% Extract gaze data and pupil size
         gaze_x{subj, trl} = data(1, :);
         gaze_y{subj, trl} = data(2, :);
-        pupil_size{subj, trl} = mean(data(3, :), 'omitnan') / 1000;
+        % Raw metrics should match the task window (0-2 s).
+        pupil_size{subj, trl} = mean(data(3, idx_full), 'omitnan') / 1000;
         pups = pupil_size{subj, trl};
 
         %% Compute gaze deviation as euclidean distances from the center
         x_coords = gaze_x{subj, trl};
         y_coords = gaze_y{subj, trl};
+        x_full = data(1, idx_full);
+        y_full = data(2, idx_full);
 
         % Calculate Euclidean distances
-        dx = x_coords - 400; % Distance from center of the screen
-        dy = y_coords - 300; % Distance from center of the screen
+        dx = x_full - 400; % Distance from center of the screen
+        dy = y_full - 300; % Distance from center of the screen
         gaze_euclidean_dev = sqrt(dx.^2 + dy.^2);
 
         % Calculate the mean Euclidean distance
@@ -101,19 +104,19 @@ for subj = 1:length(subjects)
 
         %% Compute microsaccades
         fsample = 500; % Sample rate of 500 Hz
-        velData = [gaze_x{subj, trl}; gaze_y{subj, trl}]; % Concatenate x and y gaze coordinates to compute the velocity of eye movements in a 2D space
+        velData = [x_full; y_full]; % Compute raw MS rate in the same 0-2 s window
         trlLength = size(velData, 2);
         [microsaccade_rate, microsaccade_details] = detect_microsaccades(fsample, velData, trlLength);
         ms_data(trl) = microsaccade_details;
 
         %% Compute Scan Path Length
-        dxf_s = diff(x_coords);
-        dyf_s = diff(y_coords);
+        dxf_s = diff(x_full);
+        dyf_s = diff(y_full);
         spl = sum(sqrt(dxf_s.^2 + dyf_s.^2), 'omitnan');
 
         %% Compute BCEA (95%) and Lateralization
-        valid_bcea = isfinite(x_coords) & isfinite(y_coords);
-        x_bv = double(x_coords(valid_bcea)); y_bv = double(y_coords(valid_bcea));
+        valid_bcea = isfinite(x_full) & isfinite(y_full);
+        x_bv = double(x_full(valid_bcea)); y_bv = double(y_full(valid_bcea));
         if numel(x_bv) >= 10
             sx_b = std(x_bv); sy_b = std(y_bv);
             rho_b = corr(x_bv(:), y_bv(:));

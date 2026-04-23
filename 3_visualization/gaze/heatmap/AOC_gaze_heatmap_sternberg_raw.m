@@ -73,7 +73,7 @@ centerY = 300;
 rawColMap = customcolormap_preset('white-red');
 diffColMap = customcolormap_preset('red-white-blue');
 robustMax = prctile([map2(:); map4(:); map6(:)], 99.5);
-robustLim = prctile(abs(diffMap(:)), 99.95);
+robustLim = prctile(abs(diffMap(:)), 99.9);
 
 % plotRawMap(map2, x_centers, y_centers, rawColMap, [0 robustMax], centerX, centerY, overallFontSize, ...
 %     'WM load 2 Gaze Heatmap (Raw, 1-2 s)', fullfile(figDir, 'AOC_gaze_heatmap_sternberg_raw_WM2.png'));

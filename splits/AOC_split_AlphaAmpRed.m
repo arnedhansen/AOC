@@ -70,14 +70,16 @@ tasks(1).power_missing_label = 'power_stern_fooof_TFR.mat';
 
 tasks(2).tag = 'nback';
 % N-back split configuration:
-nback_split_mode = 'fixed';
-nback_split_fixed_value = -0.05;
+nback_split_mode = 'load13';
+%nback_split_fixed_value = -0.05;
 tasks(2).split_mode = nback_split_mode;
 if strcmpi(nback_split_mode, 'fixed')
     tasks(2).split_label = sprintf('splitFixed_%s', strrep(sprintf('%.3f', nback_split_fixed_value), '.', 'p'));
     tasks(2).split_fixed_value = nback_split_fixed_value;
 elseif strcmpi(nback_split_mode, 'median')
     tasks(2).split_label = 'splitMedian';
+elseif strcmpi(nback_split_mode, 'load13')
+    tasks(2).split_label = 'splitLoad1vs3';
 else
     error('Unsupported nback_split_mode: %s', nback_split_mode);
 end
@@ -113,6 +115,7 @@ if strcmpi(task_tag, 'nback')
 end
 
 fprintf('\n\n========== TASK: %s ==========\n', upper(task_tag));
+is_load13_mode = strcmpi(task_tag, 'nback') && strcmpi(split_mode, 'load13');
 
 %% Load subject-level merged data and define alpha split
 fprintf('\n=== Loading merged data (%s) ===\n', task_tag);
@@ -161,37 +164,48 @@ if isempty(valid_alpha_mean)
 end
 alpha_split_threshold = NaN;
 split_info_str = '';
-switch lower(split_mode)
-    case 'median'
-        alpha_split_threshold = median(valid_alpha_mean, 'omitnan');
-        reduction_ids = uIDs(split_valid & (alpha_mean < alpha_split_threshold));
-        amplification_ids = uIDs(split_valid & (alpha_mean >= alpha_split_threshold));
-        zero_ids = [];
-        invalid_ids = uIDs(~split_valid);
-        split_info_str = sprintf('Median split at %.4f', alpha_split_threshold);
-    case 'fixed'
-        if ~isfield(tk, 'split_fixed_value') || ~isfinite(tk.split_fixed_value)
-            error('Task %s uses split_mode=fixed but split_fixed_value is missing/invalid.', task_tag);
-        end
-        alpha_split_threshold = tk.split_fixed_value;
-        reduction_ids = uIDs(split_valid & (alpha_mean < alpha_split_threshold));
-        amplification_ids = uIDs(split_valid & (alpha_mean >= alpha_split_threshold));
-        zero_ids = [];
-        invalid_ids = uIDs(~split_valid);
-        split_info_str = sprintf('Fixed split at %.4f', alpha_split_threshold);
-    otherwise
-        alpha_split_threshold = 0;
-        reduction_ids = uIDs(split_valid & (alpha_mean < alpha_split_threshold));
-        amplification_ids = uIDs(split_valid & (alpha_mean >= alpha_split_threshold));
-        zero_ids = [];
-        invalid_ids = uIDs(~split_valid);
-        split_info_str = 'Split at 0.0000 (no near-zero exclusion)';
+if is_load13_mode
+    reduction_ids = uIDs(split_valid);
+    amplification_ids = uIDs(split_valid);
+    zero_ids = [];
+    invalid_ids = uIDs(~split_valid);
+    split_info_str = 'Condition split for N-back: 1-back (blue) vs 3-back (red), pooled across subjects';
+else
+    switch lower(split_mode)
+        case 'median'
+            alpha_split_threshold = median(valid_alpha_mean, 'omitnan');
+            reduction_ids = uIDs(split_valid & (alpha_mean < alpha_split_threshold));
+            amplification_ids = uIDs(split_valid & (alpha_mean >= alpha_split_threshold));
+            zero_ids = [];
+            invalid_ids = uIDs(~split_valid);
+            split_info_str = sprintf('Median split at %.4f', alpha_split_threshold);
+        case 'fixed'
+            if ~isfield(tk, 'split_fixed_value') || ~isfinite(tk.split_fixed_value)
+                error('Task %s uses split_mode=fixed but split_fixed_value is missing/invalid.', task_tag);
+            end
+            alpha_split_threshold = tk.split_fixed_value;
+            reduction_ids = uIDs(split_valid & (alpha_mean < alpha_split_threshold));
+            amplification_ids = uIDs(split_valid & (alpha_mean >= alpha_split_threshold));
+            zero_ids = [];
+            invalid_ids = uIDs(~split_valid);
+            split_info_str = sprintf('Fixed split at %.4f', alpha_split_threshold);
+        otherwise
+            alpha_split_threshold = 0;
+            reduction_ids = uIDs(split_valid & (alpha_mean < alpha_split_threshold));
+            amplification_ids = uIDs(split_valid & (alpha_mean >= alpha_split_threshold));
+            zero_ids = [];
+            invalid_ids = uIDs(~split_valid);
+            split_info_str = 'Split at 0.0000 (no near-zero exclusion)';
+    end
 end
 
 fprintf('\n=== Split Summary [%s | %s] (AlphaPower_FOOOF_bl, full window) ===\n', task_tag, split_mode);
 fprintf('Subjects total: %d\n', nSubj);
 fprintf('%s\n', split_info_str);
-if strcmpi(split_mode, 'median')
+if is_load13_mode
+    fprintf('1-back pooled subjects: %d\n', numel(reduction_ids));
+    fprintf('3-back pooled subjects: %d\n', numel(amplification_ids));
+elseif strcmpi(split_mode, 'median')
     fprintf('Reduction (< median %.4f): %d\n', alpha_split_threshold, numel(reduction_ids));
     fprintf('Amplification (>= median %.4f): %d\n', alpha_split_threshold, numel(amplification_ids));
 elseif strcmpi(split_mode, 'fixed')
@@ -233,7 +247,11 @@ h_amp = scatter(x_vals(idx_amp), alpha_mean(idx_amp), 80, [0.8 0.2 0.2], 'filled
 xlabel('Participant (index)');
 ylabel('Alpha Power [dB]');
 title(sprintf('Alpha Split [%s | %s]', task_tag, split_mode), 'Interpreter', 'none');
-legend([h_excl, h_red, h_amp], {'Excluded', 'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
+if is_load13_mode
+    legend([h_excl, h_red, h_amp], {'Excluded', 'Pooled for 1-back', 'Pooled for 3-back'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
+else
+    legend([h_excl, h_red, h_amp], {'Excluded', 'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
+end
 set(gca, 'FontSize', fontSize);
 box on
 saveas(gcf, fullfile(fig_dir_task, sprintf('%s_inclusion.png', fig_prefix)));
@@ -407,59 +425,64 @@ end
 is_red = ismember(uIDs, reduction_ids);
 is_amp = ismember(uIDs, amplification_ids);
 
-%% Determine occipital channels (from first available power file)
-channels = {};
-for c = 1:3
-    if ~isempty(pow_red{c})
-        p0 = pow_red{c}{1};
-        channels = occ_channels_from_labels(p0.label);
-        break
-    elseif ~isempty(pow_amp{c})
-        p0 = pow_amp{c}{1};
-        channels = occ_channels_from_labels(p0.label);
-        break
+eeg_tc = [];
+if ~is_load13_mode
+    %% Determine occipital channels (from first available power file)
+    channels = {};
+    for c = 1:3
+        if ~isempty(pow_red{c})
+            p0 = pow_red{c}{1};
+            channels = occ_channels_from_labels(p0.label);
+            break
+        elseif ~isempty(pow_amp{c})
+            p0 = pow_amp{c}{1};
+            channels = occ_channels_from_labels(p0.label);
+            break
+        end
     end
+    if isempty(channels)
+        error('No power data available for channel definition.');
+    end
+
+    %% Power spectra (both groups, single figure)
+    close all
+    fprintf('\n=== Plotting power spectra ===\n');
+    plot_group_power_spectrum_combined(pow_red, pow_amp, channels, colors, cond_labels, ...
+        fullfile(fig_dir_task, sprintf('%s_powspctrm.png', fig_prefix)), fig_pos, fontSize);
+
+    %% TFRs per condition (both groups + diff, 3x3)
+    fprintf('\n=== Plotting TFRs ===\n');
+    color_map_tfr = customcolormap_preset('red-white-blue');
+
+    plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, ...
+        color_map_tfr, fig_dir_task, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg);
+
+    %% TFRs collapsed over conditions (both groups)
+    fprintf('\n=== Plotting collapsed TFRs (across conditions) ===\n');
+    plot_group_tfrs_collapsed(tfr_red, tfr_amp, channels, headmodel, color_map_tfr, ...
+        fig_dir_task, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg);
+
+    %% Topoplots per condition (both groups + differences)
+    fprintf('\n=== Plotting topoplots ===\n');
+    plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, fig_dir_task, fig_prefix, fig_pos, fontSize);
+
+    %% Topoplots collapsed over conditions (both groups)
+    fprintf('\n=== Plotting collapsed topoplots (across conditions) ===\n');
+    plot_group_topos_collapsed(pow_red, pow_amp, channels, headmodel, fig_dir_task, fig_prefix, fig_pos, fontSize);
+
+    %% Rainclouds
+    fprintf('\n=== Plotting rainclouds ===\n');
+    plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir_task, fig_prefix, fig_pos, fontSize);
+
+    %% EEG and Gaze time courses with effect-size
+    close all
+    Tf = size(dev_tc, 3);
+    t_full_eeg = linspace(-0.5, 3, Tf);
+    fprintf('\n=== Extracting EEG alpha time course from TFR ===\n');
+    eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_subj, nSubj, channels, Tf, t_full_eeg);
+else
+    fprintf('\n=== N-back load13 mode: skipping alpha split spectra/TFR/topo/raincloud panels ===\n');
 end
-if isempty(channels)
-    error('No power data available for channel definition.');
-end
-
-%% Power spectra (both groups, single figure)
-close all
-fprintf('\n=== Plotting power spectra ===\n');
-plot_group_power_spectrum_combined(pow_red, pow_amp, channels, colors, cond_labels, ...
-    fullfile(fig_dir_task, sprintf('%s_powspctrm.png', fig_prefix)), fig_pos, fontSize);
-
-%% TFRs per condition (both groups + diff, 3x3)
-fprintf('\n=== Plotting TFRs ===\n');
-color_map_tfr = customcolormap_preset('red-white-blue');
-
-plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, ...
-    color_map_tfr, fig_dir_task, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg);
-
-%% TFRs collapsed over conditions (both groups)
-fprintf('\n=== Plotting collapsed TFRs (across conditions) ===\n');
-plot_group_tfrs_collapsed(tfr_red, tfr_amp, channels, headmodel, color_map_tfr, ...
-    fig_dir_task, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg);
-
-%% Topoplots per condition (both groups + differences)
-fprintf('\n=== Plotting topoplots ===\n');
-plot_group_topos(pow_red, pow_amp, channels, headmodel, cond_labels, cond_vals, fig_dir_task, fig_prefix, fig_pos, fontSize);
-
-%% Topoplots collapsed over conditions (both groups)
-fprintf('\n=== Plotting collapsed topoplots (across conditions) ===\n');
-plot_group_topos_collapsed(pow_red, pow_amp, channels, headmodel, fig_dir_task, fig_prefix, fig_pos, fontSize);
-
-%% Rainclouds
-fprintf('\n=== Plotting rainclouds ===\n');
-plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir_task, fig_prefix, fig_pos, fontSize);
-
-%% EEG and Gaze time courses with effect-size
-close all
-Tf = size(dev_tc, 3);
-t_full_eeg = linspace(-0.5, 3, Tf);
-fprintf('\n=== Extracting EEG alpha time course from TFR ===\n');
-eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_subj, nSubj, channels, Tf, t_full_eeg);
 
 % Baselined gaze deviation time course: percent change from baseline (-0.5 to -0.25 s).
 fprintf('\n=== Computing baselined time courses ===\n');
@@ -501,24 +524,41 @@ if any(tc_excluded_subj & (is_red | is_amp))
 end
 
 % Keep collapsed-across-conditions time course output
-plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red_tc, is_amp_tc, colors, ...
-    'Gaze Deviation [%]', sprintf('%s_%s_gaze_deviation_pct', task_tag, split_label), fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]', tc_viz_smooth_sec);
-plot_timecourse_individuals(dev_tc_pct, is_red_tc, is_amp_tc, colors, ...
-    'Gaze Deviation [%]', 'Collapsed over conditions', ...
-    sprintf('%s_%s_gaze_deviation_pct_individuals_collapsed', task_tag, split_label), ...
-    fig_dir_task, fig_pos, fontSizeTC, fs, tc_viz_smooth_sec);
-
-% Additional condition-wise time course outputs
-for c = 1:numel(cond_vals)
-    tc_cond = dev_tc_pct(:, c, :);
-    eeg_tc_cond = eeg_tc(:, c, :);
-    save_tag_cond = sprintf('%s_%s_gaze_deviation_pct_%s', task_tag, split_label, sanitize_label_for_fname(cond_labels{c}));
-    plot_timecourse_with_effect_CBPT(tc_cond, is_red_tc, is_amp_tc, colors, ...
-        'Gaze Deviation [%]', save_tag_cond, fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'Alpha Power [dB]', tc_viz_smooth_sec);
-    plot_timecourse_individuals(tc_cond, is_red_tc, is_amp_tc, colors, ...
-        'Gaze Deviation [%]', cond_labels{c}, ...
-        sprintf('%s_individuals', save_tag_cond), ...
+if is_load13_mode
+    cond_1_idx = find(cond_vals == 1, 1, 'first');
+    cond_3_idx = find(cond_vals == 3, 1, 'first');
+    if isempty(cond_1_idx) || isempty(cond_3_idx)
+        error('N-back load13 mode requires cond_vals to contain 1 and 3.');
+    end
+    tc_1back = squeeze(dev_tc_pct(:, cond_1_idx, :));
+    tc_3back = squeeze(dev_tc_pct(:, cond_3_idx, :));
+    tc_1back = tc_1back(tc_complete_subj, :);
+    tc_3back = tc_3back(tc_complete_subj, :);
+    fprintf('Plotting pooled n-back comparison (1-back vs 3-back), n=%d subjects.\n', size(tc_1back, 1));
+    plot_timecourse_load_compare(tc_1back, tc_3back, colors(1, :), colors(3, :), ...
+        '1-back', '3-back', 'Gaze Deviation [%]', ...
+        sprintf('%s_%s_gaze_deviation_pct_1back_vs_3back', task_tag, split_label), ...
         fig_dir_task, fig_pos, fontSizeTC, fs, tc_viz_smooth_sec);
+else
+    plot_timecourse_with_effect_CBPT(dev_tc_pct, is_red_tc, is_amp_tc, colors, ...
+        'Gaze Deviation [%]', sprintf('%s_%s_gaze_deviation_pct', task_tag, split_label), fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]', tc_viz_smooth_sec);
+    plot_timecourse_individuals(dev_tc_pct, is_red_tc, is_amp_tc, colors, ...
+        'Gaze Deviation [%]', 'Collapsed over conditions', ...
+        sprintf('%s_%s_gaze_deviation_pct_individuals_collapsed', task_tag, split_label), ...
+        fig_dir_task, fig_pos, fontSizeTC, fs, tc_viz_smooth_sec);
+
+    % Additional condition-wise time course outputs
+    for c = 1:numel(cond_vals)
+        tc_cond = dev_tc_pct(:, c, :);
+        eeg_tc_cond = eeg_tc(:, c, :);
+        save_tag_cond = sprintf('%s_%s_gaze_deviation_pct_%s', task_tag, split_label, sanitize_label_for_fname(cond_labels{c}));
+        plot_timecourse_with_effect_CBPT(tc_cond, is_red_tc, is_amp_tc, colors, ...
+            'Gaze Deviation [%]', save_tag_cond, fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'Alpha Power [dB]', tc_viz_smooth_sec);
+        plot_timecourse_individuals(tc_cond, is_red_tc, is_amp_tc, colors, ...
+            'Gaze Deviation [%]', cond_labels{c}, ...
+            sprintf('%s_individuals', save_tag_cond), ...
+            fig_dir_task, fig_pos, fontSizeTC, fs, tc_viz_smooth_sec);
+    end
 end
 
 %% Sanity checks
@@ -556,7 +596,10 @@ for s = 1:nSubj
         GazeDev_col(r) = metrics.Dev(s, c);
         GazeDevPct_col(r) = dev_pct_by_load(s, c);
 
-        if is_red(s)
+        if is_load13_mode
+            Group_col(r) = "Pooled";
+            Included_col(r) = tc_complete_subj(s);
+        elseif is_red(s)
             Group_col(r) = "Reduction";
             Included_col(r) = is_red_tc(s);
         elseif is_amp(s)
@@ -1213,6 +1256,55 @@ plot(x_box + [-box_w/2 box_w/2], [med med], '-k', 'LineWidth', 2);
 jit = dot_jitter_halfwidth * 2 * (rand(numel(y),1)-0.5);
 scatter(x_box + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, ...
     'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
+end
+
+function plot_timecourse_load_compare(tc_a, tc_b, col_a, col_b, label_a, label_b, ylab, save_tag, fig_dir, fig_pos, fsz, fs, smooth_sec)
+if nargin < 13 || isempty(smooth_sec)
+    smooth_sec = 0.05;
+end
+tc_a(~isfinite(tc_a)) = NaN;
+tc_b(~isfinite(tc_b)) = NaN;
+nT = size(tc_a, 2);
+dt = 1 / fs;
+t_plot = linspace(-0.5 + dt, 3, nT);
+win_sm = max(1, round(smooth_sec * fs));
+if win_sm > 1
+    tc_a = movmean(tc_a, win_sm, 2, 'omitnan');
+    tc_b = movmean(tc_b, win_sm, 2, 'omitnan');
+end
+mA = mean(tc_a, 1, 'omitnan');
+mB = mean(tc_b, 1, 'omitnan');
+nA_fin = sum(isfinite(tc_a), 1);
+nB_fin = sum(isfinite(tc_b), 1);
+sA = std(tc_a, 0, 1, 'omitnan') ./ max(sqrt(nA_fin), 1);
+sB = std(tc_b, 0, 1, 'omitnan') ./ max(sqrt(nB_fin), 1);
+sA(~isfinite(sA)) = NaN;
+sB(~isfinite(sB)) = NaN;
+
+figure('Position', fig_pos, 'Color', 'w');
+hold on
+e1 = shadedErrorBar(t_plot, mA, sA, 'lineProps', {'-'}, 'transparent', true);
+e2 = shadedErrorBar(t_plot, mB, sB, 'lineProps', {'-'}, 'transparent', true);
+set(e1.mainLine, 'Color', col_a, 'LineWidth', 2.5);
+set(e2.mainLine, 'Color', col_b, 'LineWidth', 2.5);
+set(e1.patch, 'FaceColor', col_a, 'FaceAlpha', 0.20);
+set(e2.patch, 'FaceColor', col_b, 'FaceAlpha', 0.20);
+set(e1.edge(1), 'Color', 'none');
+set(e1.edge(2), 'Color', 'none');
+set(e2.edge(1), 'Color', 'none');
+set(e2.edge(2), 'Color', 'none');
+xline(0, '--k');
+xlim([-0.5 3]);
+ylabel(ylab);
+xlabel('Time [s]');
+title(sprintf('%s vs %s (pooled over subjects)', label_a, label_b), 'Interpreter', 'none');
+legend([e1.mainLine, e2.mainLine], ...
+    {sprintf('%s (n=%d)', label_a, size(tc_a, 1)), sprintf('%s (n=%d)', label_b, size(tc_b, 1))}, ...
+    'Location', 'northeast', 'FontSize', fsz-2, 'Box', 'off');
+set(gca, 'FontSize', fsz-4);
+box on
+saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlphaAmpRed_timecourse_%s.png', save_tag)));
+close(gcf);
 end
 
 function plot_timecourse_individuals(tc, is_red, is_amp, colors, ylab, title_tag, save_tag, fig_dir, fig_pos, fsz, fs, smooth_sec)

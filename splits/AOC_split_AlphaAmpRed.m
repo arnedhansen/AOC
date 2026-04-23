@@ -1341,18 +1341,18 @@ tc_a_ds = tc_a(:, 1:ds_factor:end);
 tc_b_ds = tc_b(:, 1:ds_factor:end);
 t_plot_ds = t_plot(1:ds_factor:end);
 dt_ds = ds_factor * dt;
-[clusters, tvals_cl, thr] = ft_cluster_permutation_1d(tc_a_ds, tc_b_ds, n_perm, 0.05, 'onetail_pos', t_plot_ds);
+[clusters, tvals_cl, thr] = ft_cluster_permutation_1d(tc_a_ds, tc_b_ds, n_perm, 0.05, 'onetail_neg', t_plot_ds);
 sig_cluster = false(1, numel(t_plot_ds));
 for k = 1:numel(clusters)
     if clusters(k).p < 0.05
         sig_cluster(clusters(k).idx) = true;
     end
 end
-sig_uncorr = (tvals_cl > thr.tcrit) & isfinite(tvals_cl);
+sig_uncorr = (tvals_cl < -thr.tcrit) & isfinite(tvals_cl);
 sig = sig_cluster;
 if ~any(sig) && any(sig_uncorr)
     sig = sig_uncorr;
-    fprintf('  [%s] (cluster n.s.; shading uncorrected t>tcrit)\n', save_tag);
+    fprintf('  [%s] (cluster n.s.; shading uncorrected t<-tcrit for 3-back > 1-back)\n', save_tag);
 end
 d_ds = d(1:ds_factor:end);
 if any(sig_cluster)
@@ -1387,7 +1387,7 @@ xlim([-0.5 3]);
 box on
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)
-    text(0.75, ylims(2) - 0.08*diff(ylims), 'WARNING: No significant clusters; shading shows uncorrected t>t_{crit}', ...
+    text(0.75, ylims(2) - 0.08*diff(ylims), 'WARNING: No significant clusters; shading shows uncorrected t<-t_{crit} (3-back > 1-back)', ...
         'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'HorizontalAlignment', 'center');
 end
 saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlphaAmpRed_timecourse_%s.png', save_tag)));

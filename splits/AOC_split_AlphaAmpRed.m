@@ -51,8 +51,6 @@ fprintf('Figure directory: %s\n', fig_dir);
 fig_pos = [0 0 1512 982];
 
 % Task/split definitions:
-% 1) Sternberg split at 0
-% 2) N-back split
 tasks(1).tag = 'sternberg';
 tasks(1).split_mode = 'zero';
 tasks(1).split_label = 'split0';
@@ -118,7 +116,8 @@ end
 
 fprintf('\n\n========== TASK: %s ==========\n', upper(task_tag));
 is_load13_mode = strcmpi(task_tag, 'nback') && strcmpi(split_mode, 'load13');
-use_unbaselined_gaze = isfield(tk, 'use_unbaselined_gaze') && tk.use_unbaselined_gaze;
+use_unbaselined_gaze = isfield(tk, 'use_unbaselined_gaze') && ...
+    ~isempty(tk.use_unbaselined_gaze) && logical(tk.use_unbaselined_gaze(1));
 
 %% Load subject-level merged data and define alpha split
 fprintf('\n=== Loading merged data (%s) ===\n', task_tag);

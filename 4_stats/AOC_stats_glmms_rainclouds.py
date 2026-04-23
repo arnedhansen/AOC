@@ -1,11 +1,12 @@
 # %% AOC Stats Rainclouds — Combined (Sternberg + N-Back)
-# Loads merged CSV for both tasks, runs ANOVAs and mixed models, generates raincloud plots. Saves figures and model/ANOVA tables.
+# Loads merged CSV for both tasks, runs mixed models, generates raincloud plots. Saves figures and model/LRT tables.
 #
 # Key outputs:
-#   Raincloud figures; ANOVA/mixed-model tables
+#   Raincloud figures; mixed-model/LRT tables
 
 # %% Imports
 import sys, os
+import warnings
 sys.path.insert(0, os.path.expanduser("/Users/Arne/Documents/GitHub"))
 import numpy as np
 import pandas as pd
@@ -13,11 +14,11 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import gaussian_kde
-from statsmodels.stats.anova import AnovaRM
 import statsmodels.formula.api as smf
+from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 from functions.stats_helpers import (
-    iqr_outlier_filter, mixedlm_pairwise_contrasts, p_to_signif
+    iqr_outlier_filter, p_to_signif
 )
 
 from functions.rainclouds_plotting_helpers import add_stat_brackets
@@ -27,6 +28,15 @@ from functions.aoc_feature_files import feature_file
 
 from functions.mixedlm_helpers import (
     fit_mixedlm, drop1_lrt, pairwise_condition_contrasts_at_mean_gaze, mixedlm_fixed_effects_to_df, lr_effect_sizes
+)
+
+# Suppress known, non-fatal statsmodels optimizer warnings to keep logs readable.
+warnings.filterwarnings("ignore", category=ConvergenceWarning, module="statsmodels")
+warnings.filterwarnings(
+    "ignore",
+    message="Random effects covariance is singular",
+    category=UserWarning,
+    module="statsmodels"
 )
 
 # %% Raw alpha definition
@@ -85,17 +95,16 @@ sns.set_style("white")  # clean white background, no grey panel
 base_dir   = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC"
 output_dir = f"{base_dir}/figures/stats/rainclouds"
 output_dir_stats = f"{base_dir}/data/stats"
-anova_dir = f"{base_dir}/data/stats/anova"
+lrt_dir = f"{base_dir}/data/stats/lrt"
+os.makedirs(output_dir, exist_ok=True)
+os.makedirs(output_dir_stats, exist_ok=True)
+os.makedirs(lrt_dir, exist_ok=True)
 
 # %% Variables and labelling
 
 variables  = [
     "Accuracy", "ReactionTime", "GazeDeviation", "MSRate", "Fixations", "Saccades", "PupilSize", "AlphaPower", "IAF",
     "GazeDeviationFullBL", "MSRateFullBL", "PupilSizeFullBL", "AlphaPowerFullBL", "AlphaPower_FOOOF_bl",
-]
-titles     = [
-    "Accuracy", "Reaction Time", "Gaze Deviation", "Microsaccade Rate", "Fixations", "Saccades", "Pupil Size", "Alpha Power", "IAF",
-    "Gaze Deviation (BL)", "Microsaccade Rate (BL)", "Pupil Size (BL)", "Alpha Power (BL)", "Alpha Power (SpecParam BL)",
 ]
 y_labels   = [
     "Accuracy [%]", "Reaction Time [s]", "Gaze Deviation [px]", "Microsaccade Rate [MS/s]", "Fixations", "Saccades", "Pupil Size [a.u.]", "Alpha Power [\u03BCV²/Hz]", "IAF [Hz]",
@@ -293,11 +302,11 @@ for task in tasks:
     condition_order = list(dat["Condition"].dropna().unique())
     pal_dict = dict(zip(condition_order, pal))
 
-    anova_rows = []               # collects ANOVA rows for this task
+    condition_lrt_rows = []       # omnibus Condition test from MixedLM (LRT)
     pairwise_effsize_rows = []    # collects pairwise effect sizes for this task
 
     # %% Loop variables
-    for var, ttl, ylab, sname in zip(variables, titles, y_labels, save_names):
+    for var, ylab, sname in zip(variables, y_labels, save_names):
         if var not in dat.columns:
             continue
 
@@ -308,54 +317,78 @@ for task in tasks:
         # Ensure categorical ordering
         dvar["Condition"] = pd.Categorical(dvar["Condition"], categories=condition_order, ordered=True)
 
-        # %% Repeated-measures ANOVA (within-subject: Condition)
-        # balance subjects: keep only subjects present in all conditions for this var
-        present = dvar.groupby('ID')['Condition'].nunique()
-        keep_ids = present[present == len(condition_order)].index
-        dvar_bal = dvar[dvar['ID'].isin(keep_ids)].copy()
+        # %% Fit mixed model to export as a Word table
+        # Random-intercept model (subjects), Condition as fixed effect.
+        dvar_m = dvar.rename(columns={var: "value"}).copy()
+        # Ensure Condition is categorical with your order (already set above)
+        dvar_m["Condition"] = pd.Categorical(dvar_m["Condition"],
+                                            categories=condition_order, ordered=True)
 
-        # run ANOVA on the balanced panel
-        if dvar_bal['ID'].nunique() >= 2:
-            aov = AnovaRM(data=dvar_bal, depvar=var, subject='ID', within=['Condition']).fit()
-            aov_tab = aov.anova_table.reset_index().rename(columns={'index': 'Effect'})
-            for _, r in aov_tab.iterrows():
-                F   = float(r['F Value'])
-                df1 = float(r['Num DF'])
-                df2 = float(r['Den DF'])
-                p   = float(r['Pr > F'])
-                etap = (F * df1) / (F * df1 + df2) if np.isfinite(F) else np.nan
-                anova_rows.append([task['name'], var, r['Effect'], df1, df2, F, p, etap])
-            # Print ANOVA to console
-            print(f"\n  rm-ANOVA: {var} [{task['name']}]")
-            print(f"    F({df1:.0f},{df2:.0f}) = {F:.3f}, p = {p:.4f}, η²p = {etap:.3f}")
-        else:
-            anova_rows.append([task['name'], var, 'Condition', np.nan, np.nan, np.nan, np.nan, np.nan])
+        # Use treatment coding with the FIRST level as reference (your ordered categories)
+        # reml=False -> so the reported log-likelihood is comparable across models.
+        # If it struggles to converge, it will fall back to random-intercepts only and try a different optimizer.
+        model_result = None
+        try:
+            # Random intercepts only
+            m = smf.mixedlm(
+                f'value ~ C(Condition, Treatment(reference="{condition_order[0]}"))',
+                data=dvar_m, groups=dvar_m["ID"]
+            )
+            model_result = m.fit(method="lbfgs", reml=False, maxiter=200, disp=False)
+        except Exception:
+            try:
+                # Try Nelder-Mead as a fallback
+                model_result = m.fit(method="nm", reml=False, maxiter=400, disp=False)
+            except Exception:
+                print(f"WARNING: MixedLM failed for {var} [{task['name']}]; skipping variable.")
+                condition_lrt_rows.append([task["name"], var, np.nan, np.nan, np.nan, np.nan, int(dvar_m.shape[0])])
+                continue
 
-        # Data bounds (used to size violins and brackets)
-        lower_bound = float(dvar[var].min())
-        upper_bound = float(dvar[var].max())
+        # Omnibus Condition test from the same model family via LRT:
+        # full model (Condition) vs intercept-only model.
+        try:
+            m_null = smf.mixedlm("value ~ 1", data=dvar_m, groups=dvar_m["ID"])
+            null_result = m_null.fit(method="lbfgs", reml=False, maxiter=200, disp=False)
+        except Exception:
+            null_result = m_null.fit(method="nm", reml=False, maxiter=400, disp=False)
 
-        # Mixed model + FDR-BH pairwise
-        pw = mixedlm_pairwise_contrasts(
-            dvar.rename(columns={var: "value"}),
-            value_col="value",
-            group_col="Condition",
-            id_col="ID",
-            p_adjust="fdr_bh"
+        lrt_cond = drop1_lrt(model_result, null_result)
+        condition_lrt_rows.append([
+            task["name"], var,
+            lrt_cond["df_diff"], lrt_cond["LR"], lrt_cond["p"],
+            lr_effect_sizes(lrt_cond["LR"], lrt_cond["df_diff"], int(dvar_m.shape[0]))[0],
+            int(dvar_m.shape[0])
+        ])
+
+        # Export to Word
+        doc_name = f"AOC_modeltable_{sname}_{task['name']}.docx"
+        doc_path = os.path.join(output_dir_stats, doc_name)
+        export_model_table(model_result, doc_path)
+        print(f"Saved model table    → {doc_name}")
+
+        # Print GLMM summary to console
+        print(f"\n{'─'*60}")
+        print(f"  GLMM: {var} ~ Condition + (1|ID)  [{task['name']}]")
+        print(f"{'─'*60}")
+        try:
+            print(model_result.summary())
+        except Exception:
+            print(model_result.summary2())
+        print(f"  Omnibus Condition LRT: χ²({int(lrt_cond['df_diff'])}) = {lrt_cond['LR']:.3f}, p = {lrt_cond['p']:.4f}")
+
+        # Pairwise contrasts from the SAME fitted MixedLM
+        design_prefix = f'C(Condition, Treatment(reference="{condition_order[0]}"))'
+        pw = pairwise_condition_contrasts_at_mean_gaze(
+            model_result,
+            condition_order,
+            design_prefix=design_prefix
         )
-
-        # Print pairwise contrasts to console
         if not pw.empty:
             print(f"  Pairwise contrasts (FDR-BH): {var} [{task['name']}]")
             for _, r in pw.iterrows():
-                sig = p_to_signif(float(r['p_adj'])) if 'p_adj' in r else ''
-                coef_val = r.get('coef', r.get('Coef.', ''))
-                try:
-                    coef_str = f"{float(coef_val):.3f}"
-                except (ValueError, TypeError):
-                    coef_str = str(coef_val)
-                print(f"    {r['group1']} vs {r['group2']}: "
-                      f"β = {coef_str}, "
+                sig = p_to_signif(float(r["p_adj"]))
+                print(f"    {r['Group1']} vs {r['Group2']}: "
+                      f"β = {float(r['Estimate']):.3f}, "
                       f"p_adj = {float(r['p_adj']):.4f} {sig}")
 
         # %% Pairwise within-subject effect sizes (Cohen's dz) + 95% CI of mean difference
@@ -378,9 +411,9 @@ for task in tasks:
                 else:
                     md = dz = ci_lo = ci_hi = np.nan
                     n = int(n)
-                # attach adjusted p if available
+                # attach adjusted p from model-based pairwise contrasts
                 padj = np.nan
-                row = pw.loc[(pw["group1"] == g1) & (pw["group2"] == g2)]
+                row = pw.loc[(pw["Group1"] == g1) & (pw["Group2"] == g2)]
                 if not row.empty and "p_adj" in row:
                     try:
                         padj = float(row["p_adj"].iloc[0])
@@ -390,50 +423,7 @@ for task in tasks:
                     task["name"], var, g1, g2, n, md, dz, ci_lo, ci_hi, padj
                 ])
 
-        # %% Fit mixed model to export as a Word table
-        # Random-intercept model (subjects), Condition as fixed effect.
-        dvar_m = dvar.rename(columns={var: "value"}).copy()
-        # Ensure Condition is categorical with your order (already set above)
-        dvar_m["Condition"] = pd.Categorical(dvar_m["Condition"],
-                                            categories=condition_order, ordered=True)
-
-        # Use treatment coding with the FIRST level as reference (your ordered categories)
-        # reml=False -> so the reported log-likelihood is comparable across models.
-        # If it struggles to converge, it will fall back to random-intercepts only and try a different optimizer.
-        model_result = None
-        try:
-            # Random intercepts only
-            m = smf.mixedlm("value ~ C(Condition, Treatment(reference=condition_order[0]))",
-                            data=dvar_m, groups=dvar_m["ID"])
-            model_result = m.fit(method="lbfgs", reml=False, maxiter=200, disp=False)
-        except Exception as e1:
-            try:
-                # Try Nelder-Mead as a fallback
-                model_result = m.fit(method="nm", reml=False, maxiter=400, disp=False)
-            except Exception as e2:
-                # Final fallback: simple OLS (no random effects), so you still get a table
-                m_ols = smf.ols("value ~ C(Condition, Treatment(reference=condition_order[0]))",
-                                data=dvar_m).fit()
-                model_result = m_ols
-
-        # Export to Word
-        doc_name = f"AOC_modeltable_{sname}_{task['name']}.docx"
-        doc_path = os.path.join(output_dir_stats, doc_name)
-        export_model_table(model_result, doc_path)
-        print(f"Saved model table    → {doc_name}")
-
-        # Print GLMM summary to console
-        print(f"\n{'─'*60}")
-        print(f"  GLMM: {var} ~ Condition + (1|ID)  [{task['name']}]")
-        print(f"{'─'*60}")
-        try:
-            print(model_result.summary())
-        except Exception:
-            print(model_result.summary2())
-
         # Also save fixed effects (β, SE, z/t, p, CI) to CSV and outputs
-        from functions.mixedlm_helpers import mixedlm_fixed_effects_to_df
-
         fe_df = mixedlm_fixed_effects_to_df(
             model_result,
             task=task["name"],
@@ -486,7 +476,7 @@ for task in tasks:
             y_grid_top = ymin_cap + yr + pad_top
 
             # build KDE
-            kde = gaussian_kde(yvals, bw_method=bw_method)  # <-- REINSERT THIS LINE
+            kde = gaussian_kde(yvals, bw_method=bw_method)
 
             # grid
             y_grid = np.linspace(ymin_cap, y_grid_top, 400)
@@ -564,7 +554,6 @@ for task in tasks:
 
         range_y = max(ymax_cap - ymin, 1.0)
 
-        head = 0.02 * range_y
         step = 0.10 * range_y
 
         y_positions = []
@@ -594,7 +583,7 @@ for task in tasks:
         # Signif labels
         labels = []
         for (g1, g2) in task["comparisons"]:
-            row = pw.loc[(pw["group1"] == g1) & (pw["group2"] == g2)]
+            row = pw.loc[(pw["Group1"] == g1) & (pw["Group2"] == g2)]
             labels.append("n.s." if row.empty else p_to_signif(float(row["p_adj"].iloc[0])))
 
         # %% slightly increase bracket spacing only for Accuracy in N-back
@@ -639,15 +628,15 @@ for task in tasks:
         saveNameFig = os.path.join(f"AOC_stats_rainclouds_{sname}_{task['name']}.png")
         print(f"Saved raincloud fig. → {saveNameFig}")
 
-    # Save ANOVA for this task
-    anova_df = pd.DataFrame(
-        anova_rows,
-        columns=["Task", "Variable", "Effect", "DF_num", "DF_den", "F", "p", "eta_p2"]
+    # Save omnibus Condition test (MixedLM LRT) for this task
+    lrt_df = pd.DataFrame(
+        condition_lrt_rows,
+        columns=["Task", "Variable", "df_diff", "LR_Chi2", "p", "R2_LR", "N_obs"]
     )
-    anova_csv = os.path.join(anova_dir, f"AOC_anova_{task['name']}.csv")
-    anova_df.to_csv(anova_csv, index=False)
-    outputs[f"anova_{task['name']}"] = anova_df.copy()
-    print(f"Saved ANOVA → {anova_csv}")
+    lrt_csv = os.path.join(lrt_dir, f"AOC_condition_lrt_{task['name']}.csv")
+    lrt_df.to_csv(lrt_csv, index=False)
+    outputs[f"condition_lrt_{task['name']}"] = lrt_df.copy()
+    print(f"Saved Condition LRT → {lrt_csv}")
 
     # Save pairwise effect sizes for this task
     pw_eff_df = pd.DataFrame(

@@ -1,0 +1,208 @@
+%% AOC Power Spectrum — N-back (FOOOFed + baselined)
+% Loads FOOOFed/baselined n-back power (pow*_fooof_bl), grand-averages across
+% 1/2/3-back, plots power spectra, and saves figures.
+
+%% Setup
+startup
+[subjects, paths, colors, ~] = setup('AOC');
+path = paths.features;
+max_load_retries = 3;
+retry_pause_s = 0.2;
+
+fig_dir_pow = fullfile(paths.figures, 'eeg', 'powspctrm');
+if ~isfolder(fig_dir_pow), mkdir(fig_dir_pow); end
+
+%% Define channels
+subj = 1;
+datapath = fullfile(path, subjects{subj}, 'eeg');
+cd(datapath);
+ok_ref = false;
+for subj = 1:length(subjects)
+    datapath = fullfile(path, subjects{subj}, 'eeg');
+    cd(datapath);
+    nback_power_file = resolve_nback_power_file(datapath);
+    if isempty(nback_power_file)
+        continue
+    end
+    [ok_ref, D0] = load_with_retry(nback_power_file, {'pow1_fooof_bl'}, max_load_retries, retry_pause_s);
+    if ok_ref && isfield(D0, 'pow1_fooof_bl')
+        pow1_fooof_bl = D0.pow1_fooof_bl;
+        break
+    end
+end
+if ~ok_ref
+    error('Could not load pow1_fooof_bl from any subject n-back FOOOF power file.');
+end
+occ_channels = {};
+for i = 1:length(pow1_fooof_bl.label)
+    label = pow1_fooof_bl.label{i};
+    if contains(label, {'O'}) || contains(label, {'I'})
+        occ_channels{end+1} = label;
+    end
+end
+channels = occ_channels;
+
+%% Load data
+clc
+disp('LOADING FOOOF+BL DATA...')
+for subj = 1:length(subjects)
+    datapath = fullfile(path, subjects{subj}, 'eeg');
+    cd(datapath)
+    clc
+    disp('LOADING FOOOF+BL DATA...')
+    disp(subj)
+    nback_power_file = resolve_nback_power_file(datapath);
+    if isempty(nback_power_file)
+        powl1{subj} = [];
+        powl2{subj} = [];
+        powl3{subj} = [];
+        continue
+    end
+    [ok_load, D] = load_with_retry(nback_power_file, {'pow1_fooof_bl', 'pow2_fooof_bl', 'pow3_fooof_bl'}, max_load_retries, retry_pause_s);
+    if ok_load
+        powl1{subj} = D.pow1_fooof_bl;
+        powl2{subj} = D.pow2_fooof_bl;
+        powl3{subj} = D.pow3_fooof_bl;
+    else
+        powl1{subj} = [];
+        powl2{subj} = [];
+        powl3{subj} = [];
+    end
+end
+
+% Exclude subjects with any empty condition before grand-average.
+is_empty1 = cellfun(@isempty, powl1);
+is_empty2 = cellfun(@isempty, powl2);
+is_empty3 = cellfun(@isempty, powl3);
+exclude_mask = is_empty1 | is_empty2 | is_empty3;
+exclude_idx = find(exclude_mask);
+keep_idx = find(~exclude_mask);
+
+fprintf('Excluded subjects (any empty condition): %d\n', numel(exclude_idx));
+if ~isempty(exclude_idx)
+    fprintf('Excluded subject indices: %s\n', mat2str(exclude_idx));
+    fprintf('Excluded subject IDs: %s\n', strjoin(subjects(exclude_idx), ', '));
+end
+fprintf('Included subjects for grand average: %d\n', numel(keep_idx));
+
+if isempty(keep_idx)
+    error('No valid subjects remain after excluding empty condition data.');
+end
+
+powl1 = powl1(keep_idx);
+powl2 = powl2(keep_idx);
+powl3 = powl3(keep_idx);
+
+gapow1 = grandavg_omitnan(powl1);
+gapow2 = grandavg_omitnan(powl2);
+gapow3 = grandavg_omitnan(powl3);
+
+%% Plot grand-average power spectrum
+close all
+figure('Position', [0 0 1512/2 982], 'Color', 'w');
+cfg = [];
+cfg.channel = channels;
+cfg.figure = 'gcf';
+cfg.linewidth = 3;
+hold on;
+yline(0, '--')
+
+channels_seb = ismember(gapow1.label, cfg.channel);
+pow1_e = gapow1.powspctrm(channels_seb, :);
+pow2_e = gapow2.powspctrm(channels_seb, :);
+pow3_e = gapow3.powspctrm(channels_seb, :);
+
+m1 = mean(pow1_e, 1, 'omitnan');
+n1 = sum(isfinite(pow1_e), 1);
+se1 = std(pow1_e, 0, 1, 'omitnan') ./ sqrt(n1);
+m2 = mean(pow2_e, 1, 'omitnan');
+n2 = sum(isfinite(pow2_e), 1);
+se2 = std(pow2_e, 0, 1, 'omitnan') ./ sqrt(n2);
+m3 = mean(pow3_e, 1, 'omitnan');
+n3 = sum(isfinite(pow3_e), 1);
+se3 = std(pow3_e, 0, 1, 'omitnan') ./ sqrt(n3);
+
+se1(n1 < 2) = NaN;
+se2(n2 < 2) = NaN;
+se3(n3 < 2) = NaN;
+
+freqs = gapow1.freq;
+eb1 = shadedErrorBar(freqs, m1, se1, 'lineProps', {'-','Color',colors(1,:)});
+eb2 = shadedErrorBar(freqs, m2, se2, 'lineProps', {'-','Color',colors(2,:)});
+eb3 = shadedErrorBar(freqs, m3, se3, 'lineProps', {'-','Color',colors(3,:)});
+
+set(eb1.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
+set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
+set(eb3.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
+set(eb1.patch, 'FaceColor', colors(1, :), 'FaceAlpha', 0.20);
+set(eb2.patch, 'FaceColor', colors(2, :), 'FaceAlpha', 0.20);
+set(eb3.patch, 'FaceColor', colors(3, :), 'FaceAlpha', 0.20);
+set(eb1.edge(1), 'Color', 'none');
+set(eb1.edge(2), 'Color', 'none');
+set(eb2.edge(1), 'Color', 'none');
+set(eb2.edge(2), 'Color', 'none');
+set(eb3.edge(1), 'Color', 'none');
+set(eb3.edge(2), 'Color', 'none');
+
+set(gca, 'Fontsize', 20);
+box off
+xlim([5 20]);
+ylim([-.16 .16])
+xlabel('Frequency [Hz]');
+ylabel('Power [dB]');
+leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
+leg_p2 = patch(NaN, NaN, colors(2,:), 'EdgeColor', 'none');
+leg_p3 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
+legend([leg_p1, leg_p2, leg_p3], {'1 back', '2 back', '3 back'}, ...
+    'FontName', 'Arial', 'FontSize', 20, 'Box', 'off');
+title('')
+
+saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_nback_fooof_bl.png'));
+
+function ga = grandavg_omitnan(pow_cells)
+S0 = pow_cells{1};
+nSub = numel(pow_cells);
+[nCh, nFq] = size(S0.powspctrm);
+stack = nan(nCh, nFq, nSub);
+for i = 1:nSub
+    Xi = pow_cells{i}.powspctrm;
+    if ~isequal(size(Xi), [nCh nFq])
+        error('Inconsistent powspctrm size across subjects.');
+    end
+    stack(:, :, i) = Xi;
+end
+ga = S0;
+ga.powspctrm = mean(stack, 3, 'omitnan');
+ga.dimord = 'chan_freq';
+if isfield(ga, 'time')
+    ga = rmfield(ga, 'time');
+end
+end
+
+function f = resolve_nback_power_file(datapath)
+f_tfr = fullfile(datapath, 'power_nback_fooof_TFR.mat');
+f_legacy = fullfile(datapath, 'power_nback_fooof.mat');
+if isfile(f_tfr)
+    f = f_tfr;
+elseif isfile(f_legacy)
+    f = f_legacy;
+else
+    f = '';
+end
+end
+
+function [ok, D] = load_with_retry(matfile, varnames, max_retries, retry_pause_s)
+ok = false;
+D = struct();
+for att = 1:max_retries
+    try
+        D = load(matfile, varnames{:});
+        ok = true;
+        return
+    catch
+        if att < max_retries
+            pause(retry_pause_s);
+        end
+    end
+end
+end

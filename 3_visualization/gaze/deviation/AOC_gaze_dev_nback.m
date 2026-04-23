@@ -1,255 +1,171 @@
-%% AOC Gaze Deviation — N-Back
-% Loads dataET_nback, computes mean gaze position and SEM over time per condition. Plots time series of gaze X/Y. Saves figures.
-%
-% Key outputs:
-%   Gaze deviation time-series figures (per condition)
+%% AOC Gaze Deviation — N-back conditions
 
 %% Setup
 startup
 [subjects, paths, colors, ~] = setup('AOC');
-path = paths.features;
-figDir = fullfile(paths.figures, 'gaze', 'deviation');
-if ~isfolder(figDir), mkdir(figDir); end
 
-%% Compute gaze metrics
-numSubjects = length(subjects);
-allGazeX = cell(1, numSubjects);
-allGazeY = cell(1, numSubjects);
-allErrorGazeX = cell(1, numSubjects);
-allErrorGazeY = cell(1, numSubjects);
+if ispc
+    seb_path = 'W:\Students\Arne\toolboxes\shadedErrorBar';
+else
+    seb_path = '/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/shadedErrorBar';
+end
+addpath(seb_path);
 
-for subj = 1:numSubjects
-    gazePath = fullfile(path, subjects{subj}, 'gaze');
-    load(fullfile(gazePath, 'dataET_nback.mat')); % Load dataet variable
+feat_dir = paths.features;
+fig_dir = fullfile(paths.figures, 'gaze', 'deviation');
+if ~isfolder(fig_dir), mkdir(fig_dir); end
 
-    numTrials = length(dataet.trial);
-    % Preallocate cell arrays for each trials gaze data
-    lGazeX = cell(1, numTrials);
-    lGazeY = cell(1, numTrials);
+fontSize = 25;
+fs = 500;
+t_full = -0.5:1/fs:3;
+t_plot = t_full(2:end);
+Tf = numel(t_plot);
+smooth_sec = 0.05;
 
-    for i = 1:numTrials
-        lGazeX{i} = dataet.trial{i}(1, :);
-        lGazeY{i} = dataet.trial{i}(2, :);
+cond_codes = [21 22 23];
+cond_labels = {'1-back', '2-back', '3-back'};
+et_fname = 'dataET_nback.mat';
+blink_win = 50; % 100 ms at 500 Hz
+
+%% Aggregate subject data using feature-extraction-comparable preprocessing
+merged_file = fullfile(feat_dir, 'AOC_merged_data_nback.mat');
+S = load(merged_file, 'merged_data_nback');
+T = struct2table(S.merged_data_nback);
+uIDs = unique(T.ID);
+nSubj = numel(uIDs);
+gaze_tc = nan(nSubj, 3, Tf);
+
+for s = 1:nSubj
+    sid = uIDs(s);
+    sid_str = num2str(sid);
+    subj_folder = resolve_subject_folder(subjects, sid);
+    if isempty(subj_folder)
+        subj_folder = sid_str;
     end
 
-    % Get unique conditions (adjust as needed)
-    conditions = unique(dataet.trialinfo);
-    timePoints = length(dataet.time{1});
+    et_file = fullfile(feat_dir, subj_folder, 'gaze', et_fname);
+    if ~isfile(et_file)
+        continue
+    end
 
-    subjectAverageGazeX = cell(1, length(conditions));
-    subjectAverageGazeY = cell(1, length(conditions));
-    subjectErrorGazeX = cell(1, length(conditions));
-    subjectErrorGazeY = cell(1, length(conditions));
+    D = load(et_file, 'dataETlong');
+    if ~isfield(D, 'dataETlong') || ~isfield(D.dataETlong, 'trial') || ~isfield(D.dataETlong, 'trialinfo')
+        continue
+    end
+    dataETlong = D.dataETlong;
+    conds = parse_trialinfo_conds(dataETlong.trialinfo);
+    if isempty(conds)
+        continue
+    end
 
-    for condIdx = 1:length(conditions)
-        cond = conditions(condIdx);
-        condTrialsIdx = find(dataet.trialinfo == cond);
-
-        condGazeX = zeros(length(condTrialsIdx), timePoints);
-        condGazeY = zeros(length(condTrialsIdx), timePoints);
-
-        for j = 1:length(condTrialsIdx)
-            condGazeX(j, :) = lGazeX{condTrialsIdx(j)};
-            condGazeY(j, :) = lGazeY{condTrialsIdx(j)};
+    for c = 1:3
+        tr_idx = find(conds == cond_codes(c));
+        if isempty(tr_idx)
+            continue
         end
+        tc_trials = nan(numel(tr_idx), Tf);
+        for k = 1:numel(tr_idx)
+            tr = tr_idx(k);
+            if tr > numel(dataETlong.trial) || tr > numel(dataETlong.time)
+                continue
+            end
 
-        subjectAverageGazeX{condIdx} = mean(condGazeX, 1);
-        subjectErrorGazeX{condIdx} = std(condGazeX, 0, 1) / sqrt(length(condTrialsIdx));
-        subjectAverageGazeY{condIdx} = mean(condGazeY, 1);
-        subjectErrorGazeY{condIdx} = std(condGazeY, 0, 1) / sqrt(length(condTrialsIdx));
-    end
+            data = double(dataETlong.trial{tr});
+            t = double(dataETlong.time{tr});
+            if size(data, 1) < 3 || isempty(t) || numel(t) ~= size(data, 2)
+                continue
+            end
 
-    allGazeX{subj} = subjectAverageGazeX;
-    allGazeY{subj} = subjectAverageGazeY;
-    allErrorGazeX{subj} = subjectErrorGazeX;
-    allErrorGazeY{subj} = subjectErrorGazeY;
-end
+            % Match feature extraction preprocessing.
+            valid_idx = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
+            data = data(1:3, valid_idx);
+            t = t(valid_idx);
+            if isempty(t)
+                continue
+            end
+            data(2, :) = 600 - data(2, :);
+            data = remove_blinks(data, blink_win);
 
-% Compute grand average and standard error for each condition
-grandAverageGazeX = cell(1, length(conditions));
-grandErrorGazeX = cell(1, length(conditions));
-grandAverageGazeY = cell(1, length(conditions));
-grandErrorGazeY = cell(1, length(conditions));
+            idx_base = (t >= -0.5) & (t <= -0.25);
+            if ~any(idx_base)
+                continue
+            end
 
-for condIdx = 1:length(conditions)
-    allSubjectGazeX = zeros(numSubjects, timePoints);
-    allSubjectGazeY = zeros(numSubjects, timePoints);
+            dev = sqrt((data(1, :) - 400).^2 + (data(2, :) - 300).^2);
+            gd_base = mean(dev(idx_base), 'omitnan');
+            if ~isfinite(gd_base) || gd_base <= 0
+                continue
+            end
 
-    for subj = 1:numSubjects
-        allSubjectGazeX(subj, :) = allGazeX{subj}{condIdx};
-        allSubjectGazeY(subj, :) = allGazeY{subj}{condIdx};
-    end
-
-    grandAverageGazeX{condIdx} = mean(allSubjectGazeX, 1);
-    grandErrorGazeX{condIdx} = std(allSubjectGazeX, 0, 1) / sqrt(numSubjects);
-    grandAverageGazeY{condIdx} = mean(allSubjectGazeY, 1);
-    grandErrorGazeY{condIdx} = std(allSubjectGazeY, 0, 1) / sqrt(numSubjects);
-end
-
-% Optionally convert gaze positions to percentage deviation from centre (400,300)
-for subj = 1:numSubjects
-    for condIdx = 1:length(conditions)
-        allGazeX{subj}{condIdx} = ((allGazeX{subj}{condIdx} / 400) - 1) * 100;
-        allGazeY{subj}{condIdx} = ((allGazeY{subj}{condIdx} / 300) - 1) * 100;
-        allErrorGazeX{subj}{condIdx} = (allErrorGazeX{subj}{condIdx} / 400) * 100;
-        allErrorGazeY{subj}{condIdx} = (allErrorGazeY{subj}{condIdx} / 300) * 100;
+            dev_pct = 100 * (dev - gd_base) ./ gd_base;
+            tc_trials(k, :) = interp1(t, dev_pct, t_plot, 'linear', NaN);
+        end
+        gaze_tc(s, c, :) = mean(tc_trials, 1, 'omitnan');
     end
 end
 
-grandAverageGazeX = cellfun(@(x) ((x / 400) - 1) * 100, grandAverageGazeX, 'UniformOutput', false);
-grandAverageGazeY = cellfun(@(y) ((y / 300) - 1) * 100, grandAverageGazeY, 'UniformOutput', false);
-grandErrorGazeX = cellfun(@(x) (x / 400) * 100, grandErrorGazeX, 'UniformOutput', false);
-grandErrorGazeY = cellfun(@(y) (y / 300) * 100, grandErrorGazeY, 'UniformOutput', false);
+%% Plot
+win_sm = max(1, round(smooth_sec * fs));
+figure('Position', [0 0 1512 982], 'Color', 'w');
+hold on
+line_handles = gobjects(1, 3);
+for c = 1:3
+    X = squeeze(gaze_tc(:, c, :));
+    X(~isfinite(X)) = NaN;
+    if win_sm > 1
+        X = movmean(X, win_sm, 2, 'omitnan');
+    end
 
-% Define sliding window parameters
-windowLength = 0.05; % 100 ms
-dt = dataet.time{1}(2) - dataet.time{1}(1);
-windowPoints = round(windowLength / dt);
-moving_average = @(data, win_length) movmean(data, win_length, 2);
-timeVec = dataet.time{1};
+    m = mean(X, 1, 'omitnan');
+    n_fin = sum(isfinite(X), 1);
+    se = std(X, 0, 1, 'omitnan') ./ max(sqrt(n_fin), 1);
+    se(~isfinite(se)) = NaN;
 
-%% Grand Average
-close all
-figure;
-set(gcf, 'Position', [100, 100, 1800, 1000], 'Color', 'W');
-
-% X-Axis
-subplot(2,1,1);
-hold on;
-eb_x = cell(1, length(conditions));
-
-for condIdx = 1:length(conditions)
-    grandGazeX_smoothed = moving_average(grandAverageGazeX{condIdx}, windowPoints);
-    grandErrorX_smoothed = moving_average(grandErrorGazeX{condIdx}, windowPoints);
-
-    % Create the shaded error bar without preset colour options
-    eb_x{condIdx} = shadedErrorBar(timeVec, grandGazeX_smoothed, grandErrorX_smoothed, {'-'}, 0);
-
-    % Set colours for the main line, patch and edges using the corresponding row in colors
-    eb_x{condIdx}.mainLine.Color = colors(condIdx, :);
-    eb_x{condIdx}.patch.FaceColor = colors(condIdx, :);
-    set(eb_x{condIdx}.mainLine, 'LineWidth', 1, 'Color', colors(condIdx, :));
-    set(eb_x{condIdx}.edge(1), 'Color', colors(condIdx, :));
-    set(eb_x{condIdx}.edge(2), 'Color', colors(condIdx, :));
-    set(eb_x{condIdx}.patch, 'FaceAlpha', 0.5);
+    eb = shadedErrorBar(t_plot, m, se, 'lineProps', {'-'}, 'transparent', true);
+    set(eb.mainLine, 'Color', colors(c, :), 'LineWidth', 2.5);
+    set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.20);
+    set(eb.edge(1), 'Color', 'none');
+    set(eb.edge(2), 'Color', 'none');
+    line_handles(c) = eb.mainLine;
 end
 
-% Adjust plot aesthetics
-yline(0, 'Color', [0.5, 0.5, 0.5], 'LineStyle', '--');
-title('N-back Grand Average X Deviation', 'FontSize', 18);
+yline(0, '--');
+xline(0, '--k');
 xlabel('Time [s]');
-ylabel('X Gaze Deviation [%]');
-ylim([-30 30]);
-text(0.05, -5, 'LEFT', 'FontSize', 20, 'FontWeight', 'bold');
-text(0.05, 5, 'RIGHT', 'FontSize', 20, 'FontWeight', 'bold');
-set(gca, 'FontSize', 20)
+ylabel('Gaze Deviation [%]');
+xlim([-0.5 3]);
+set(gca, 'FontSize', fontSize - 4);
+box on
+legend(line_handles, cond_labels, 'Location', 'northeast', 'FontSize', fontSize - 2, 'Box', 'off');
 
-% Construct legend using only the three main lines
-legend([eb_x{1}.mainLine, eb_x{2}.mainLine, eb_x{3}.mainLine], {'1 back', '2 back', '3 back'}, ...
-    'FontName', 'Arial', 'FontSize', 20);
-hold off;
+saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_nback_conditions.png'));
+close(gcf);
 
-% Y-Axis
-subplot(2,1,2);
-hold on;
-eb_y = cell(1, length(conditions));
-
-for condIdx = 1:length(conditions)
-    grandGazeY_smoothed = moving_average(grandAverageGazeY{condIdx}, windowPoints);
-    grandErrorY_smoothed = moving_average(grandErrorGazeY{condIdx}, windowPoints);
-
-    % Create the shaded error bar without preset colour options
-    eb_y{condIdx} = shadedErrorBar(timeVec, grandGazeY_smoothed, grandErrorY_smoothed, {'-'}, 0);
-
-    % Set colours for the main line, patch and edges using the corresponding row in colors
-    eb_y{condIdx}.mainLine.Color = colors(condIdx, :);
-    eb_y{condIdx}.patch.FaceColor = colors(condIdx, :);
-    set(eb_y{condIdx}.mainLine, 'LineWidth', 1, 'Color', colors(condIdx, :));
-    set(eb_y{condIdx}.edge(1), 'Color', colors(condIdx, :));
-    set(eb_y{condIdx}.edge(2), 'Color', colors(condIdx, :));
-    set(eb_y{condIdx}.patch, 'FaceAlpha', 0.5);
+function conds = parse_trialinfo_conds(trialinfo)
+conds = [];
+if isempty(trialinfo)
+    return
+end
+if isvector(trialinfo)
+    conds = trialinfo(:);
+elseif size(trialinfo, 2) >= 1
+    if size(trialinfo, 2) == 2
+        conds = trialinfo(:, 1);
+    elseif size(trialinfo, 1) == 2
+        conds = trialinfo(1, :)';
+    else
+        conds = trialinfo(:, 1);
+    end
+end
 end
 
-% Adjust plot aesthetics
-yline(0, 'Color', [0.5, 0.5, 0.5], 'LineStyle', '--');
-title('N-back Grand Average Y Deviation', 'FontSize', 18);
-xlabel('Time [s]');
-ylabel('Y Deviation [%]');
-ylim([-20 20]);
-text(0.05, -5, 'DOWN', 'FontSize', 20, 'FontWeight', 'bold');
-text(0.05, 5, 'UP', 'FontSize', 20, 'FontWeight', 'bold');
-set(gca, 'FontSize', 20)
-
-% Construct legend using only the three main lines
-legend([eb_y{1}.mainLine, eb_y{2}.mainLine, eb_y{3}.mainLine], {'1 back', '2 back', '3 back'}, ...
-    'FontName', 'Arial', 'FontSize', 20);
-
-hold off;
-
-% Save
-saveas(gcf, fullfile(figDir, 'AOC_dev_nback_all.png'));
-
-%% INDIVIDUAL PLOTS
-for subj = 1:numSubjects
-    close all
-    figure;
-    set(gcf, 'Position', [100, 100, 1800, 1000], 'Color', 'W');
-
-    % X-Axis Plot
-    subplot(2,1,1);
-    hold on;
-    eb = cell(1, length(conditions)); % to store handles for each condition
-    for condIdx = 1:length(conditions)
-        subjectGazeX = moving_average(allGazeX{subj}{condIdx}, windowPoints);
-        subjectErrorX = moving_average(allErrorGazeX{subj}{condIdx}, windowPoints);
-        % Create the shaded error bar without predefined colour options
-        eb{condIdx} = shadedErrorBar(timeVec, subjectGazeX, subjectErrorX, {'-'}, 0);
-
-        % Manually set the colour for the main line and the patch
-        eb{condIdx}.mainLine.Color = colors(condIdx, :);
-        eb{condIdx}.patch.FaceColor = colors(condIdx, :);
-        set(eb{condIdx}.mainLine, 'LineWidth', 1, 'Color', colors(condIdx, :));
-        set(eb{condIdx}.edge(1), 'Color', colors(condIdx, :));
-        set(eb{condIdx}.edge(2), 'Color', colors(condIdx, :));
-        set(eb{condIdx}.patch, 'FaceAlpha', 0.5);
+function subj_folder = resolve_subject_folder(subjects, sid)
+subj_folder = '';
+for i = 1:numel(subjects)
+    sval = str2double(subjects{i});
+    if isfinite(sval) && sval == sid
+        subj_folder = subjects{i};
+        return
     end
-    yline(0, 'Color', [0.5, 0.5, 0.5], 'LineStyle', '--');
-    title(['Average X Deviation - Subject ' subjects{subj}], 'FontSize', 18);
-    xlabel('Time [s]');
-    ylabel('X Deviation [%]');
-    text(0.05, -5, 'LEFT', 'FontSize', 20, 'FontWeight', 'bold');
-    text(0.05, 5, 'RIGHT', 'FontSize', 20, 'FontWeight', 'bold');
-    set(gca, 'FontSize', 20)
-    legend([eb{1}.mainLine, eb{2}.mainLine, eb{3}.mainLine], {'1 back', '2 back', '3 back'}, ...
-        'FontName', 'Arial', 'FontSize', 20);
-    hold off;
-
-    % Y-Axis Plot
-    subplot(2,1,2);
-    hold on;
-    eb = cell(1, length(conditions));
-    for condIdx = 1:length(conditions)
-        subjectGazeY = moving_average(allGazeY{subj}{condIdx}, windowPoints);
-        subjectErrorY = moving_average(allErrorGazeY{subj}{condIdx}, windowPoints);
-        eb{condIdx} = shadedErrorBar(timeVec, subjectGazeY, subjectErrorY, {'-'}, 0);
-        eb{condIdx}.mainLine.Color = colors(condIdx, :);
-        eb{condIdx}.patch.FaceColor = colors(condIdx, :);
-        set(eb{condIdx}.mainLine, 'LineWidth', 1, 'Color', colors(condIdx, :));
-        set(eb{condIdx}.edge(1), 'Color', colors(condIdx, :));
-        set(eb{condIdx}.edge(2), 'Color', colors(condIdx, :));
-        set(eb{condIdx}.patch, 'FaceAlpha', 0.5);
-    end
-    yline(0, 'Color', [0.5, 0.5, 0.5], 'LineStyle', '--');
-    title(['Average Y Deviation - Subject ' subjects{subj}], 'FontSize', 18);
-    xlabel('Time [s]');
-    ylabel('Y Deviation [%]');
-    text(0.05, -5, 'DOWN', 'FontSize', 20, 'FontWeight', 'bold');
-    text(0.05, 5, 'UP', 'FontSize', 20, 'FontWeight', 'bold');
-    set(gca, 'FontSize', 20)
-    legend([eb{1}.mainLine, eb{2}.mainLine, eb{3}.mainLine], {'1 back', '2 back', '3 back'}, ...
-        'FontName', 'Arial', 'FontSize', 20);
-    hold off;
-
-    % Save
-    saveas(gcf, fullfile(figDir, ['AOC_dev_nback_subj' subjects{subj} '.png']));
+end
 end

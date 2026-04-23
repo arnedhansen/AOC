@@ -32,6 +32,7 @@ cond_vals = [1 2 3];
 cond_codes = [21 22 23];
 cond_labels = {'1-back', '2-back', '3-back'}; %#ok<NASGU>
 gaze_fname = 'gaze_series_nback_trials.mat';
+tfr_fname_primary = 'tfr_nback.mat';
 tfr_fname_long = 'tfr_nback_long.mat';
 tfr_vars = {'tfr1_fooof_bl', 'tfr2_fooof_bl', 'tfr3_fooof_bl'};
 split_label = 'splitLoad1vs3';
@@ -74,7 +75,11 @@ for s = 1:nSubj
 
     %% EEG (long TFR required for 3 s coverage)
     eeg_dir = fullfile(pathAOC, subj_folder, 'eeg');
-    tfr_file = fullfile(eeg_dir, tfr_fname_long);
+    tfr_file = fullfile(eeg_dir, tfr_fname_primary);
+    if ~isfile(tfr_file)
+        % Optional fallback for setups that store an explicit long file.
+        tfr_file = fullfile(eeg_dir, tfr_fname_long);
+    end
     if ~isfile(tfr_file)
         missing_tfr_long{end+1} = sid_str; %#ok<AGROW>
     else
@@ -140,7 +145,7 @@ for s = 1:nSubj
 end
 
 if isempty(channels)
-    error('No long N-back EEG data could be loaded from %s.', tfr_fname_long);
+    error('No N-back EEG data could be loaded from %s (or fallback %s).', tfr_fname_primary, tfr_fname_long);
 end
 
 %% Gaze representation: percent baseline
@@ -190,7 +195,7 @@ plot_timecourse_load_compare_with_eeg(tc_1back, tc_3back, eeg_1back, eeg_3back, 
 
 %% Diagnostics
 fprintf('\n=== Data Diagnostics [nback load13] ===\n');
-fprintf('Missing long EEG TFR (%s): %d\n', tfr_fname_long, numel(unique(missing_tfr_long)));
+fprintf('Missing EEG TFR (%s; fallback %s): %d\n', tfr_fname_primary, tfr_fname_long, numel(unique(missing_tfr_long)));
 fprintf('Missing gaze files/fields: %d\n', numel(unique(missing_gaze)));
 fprintf('Figures saved to: %s\n', fig_dir);
 

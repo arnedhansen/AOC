@@ -2,10 +2,8 @@
 % Computes TFR-based FOOOF outputs and builds FOOOF-only EEG products:
 % `eeg_data_sternberg_FOOOF` (MAT + CSV).
 % IAF is loaded from non-FOOOF CSV (`AOC_eeg_matrix_sternberg.csv`).
-% If IAF is missing/invalid for a subject-condition, FOOOF alpha is computed
-% with fallback band [8 14] Hz (aligned with normal non-FOOOF scripts).
-clear; close all; clc
 
+%%
 startup
 [subjects, paths, ~, ~] = setup('AOC');
 path = paths.features;

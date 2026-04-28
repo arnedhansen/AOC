@@ -276,7 +276,7 @@ for iTask = 1:2
     yline(0, 'k:', 'LineWidth', 1, 'HandleVisibility', 'off');
     xlim(t_win);
     xlabel('Time [s]');
-    ylabel('Microsaccade Rate [% change]');
+    ylabel('Microsaccade Rate [%]');
     title([upper(tName(1)), tName(2:end), ' — Microsaccade Rate (Percentage Change)']);
     leg_p_pct = gobjects(nConds, 1);
     for c = 1:nConds
@@ -470,7 +470,7 @@ for iTask = 1:2
     xline(0, 'k--', 'LineWidth', 1.5, 'HandleVisibility', 'off');
     yline(0, 'k:', 'LineWidth', 1, 'HandleVisibility', 'off');
     xlim(t_win);
-    ylabel('MS Rate [% change]');
+    ylabel('MS Rate [%]');
     title([upper(tName(1)), tName(2:end), ' — Microsaccade Dynamics (Percentage Change)']);
     leg_comb_pct = gobjects(nConds, 1);
     for c = 1:nConds

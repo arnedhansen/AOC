@@ -19,14 +19,14 @@ ok_ref = false;
 for subj = 1:length(subjects)
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath);
-    [ok_ref, D0] = load_with_retry(fullfile(datapath, 'tfr_stern.mat'), {'tfr2_fooof_bl'}, max_load_retries, retry_pause_s);
-    if ok_ref && isfield(D0, 'tfr2_fooof_bl')
-        ref_tfr = D0.tfr2_fooof_bl;
+    [ok_ref, D0] = load_with_retry(fullfile(datapath, 'tfr_stern.mat'), {'tfr2_fooof'}, max_load_retries, retry_pause_s);
+    if ok_ref && isfield(D0, 'tfr2_fooof')
+        ref_tfr = D0.tfr2_fooof;
         break
     end
 end
 if ~ok_ref
-    error('Could not load tfr2_fooof_bl from any subject tfr_stern.mat');
+    error('Could not load tfr2_fooof from any subject tfr_stern.mat');
 end
 
 occ_channels = {};
@@ -46,13 +46,13 @@ for subj = 1:length(subjects)
     cd(datapath);
     stern_file = fullfile(datapath, 'tfr_stern.mat');
     [ok_load, D] = load_with_retry(stern_file, ...
-        {'tfr2_fooof_bl', 'tfr4_fooof_bl', 'tfr6_fooof_bl'}, ...
+        {'tfr2_fooof', 'tfr4_fooof', 'tfr6_fooof'}, ...
         max_load_retries, retry_pause_s);
 
     if ok_load
-        powl2{subj} = tfr_to_pow_baseline(D.tfr2_fooof_bl, baseline_window, freq_range);
-        powl4{subj} = tfr_to_pow_baseline(D.tfr4_fooof_bl, baseline_window, freq_range);
-        powl6{subj} = tfr_to_pow_baseline(D.tfr6_fooof_bl, baseline_window, freq_range);
+        powl2{subj} = tfr_to_pow_baseline(D.tfr2_fooof, baseline_window, freq_range);
+        powl4{subj} = tfr_to_pow_baseline(D.tfr4_fooof, baseline_window, freq_range);
+        powl6{subj} = tfr_to_pow_baseline(D.tfr6_fooof, baseline_window, freq_range);
     else
         powl2{subj} = [];
         powl4{subj} = [];
@@ -109,7 +109,7 @@ end
 set(gca, 'FontSize', 20);
 box off
 xlim([5 20]);
-ylim([-.16 .16]);
+%ylim([-.16 .16]);
 xlabel('Frequency [Hz]');
 ylabel('Power [dB]');
 leg_p2 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
@@ -119,7 +119,7 @@ legend([leg_p2, leg_p4, leg_p6], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
     'FontName', 'Arial', 'FontSize', 20, 'Box', 'off');
 title('');
 
-saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_fooof_bl_baselineWindow.png'));
+saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_fooof_baselineWindow.png'));
 
 %% N-back: load baseline-window power from tfr_nback
 clc
@@ -129,13 +129,13 @@ for subj = 1:length(subjects)
     cd(datapath);
     nback_file = fullfile(datapath, 'tfr_nback.mat');
     [ok_load, D] = load_with_retry(nback_file, ...
-        {'tfr1_fooof_bl', 'tfr2_fooof_bl', 'tfr3_fooof_bl'}, ...
+        {'tfr1_fooof', 'tfr2_fooof', 'tfr3_fooof'}, ...
         max_load_retries, retry_pause_s);
 
     if ok_load
-        powl1{subj} = tfr_to_pow_baseline(D.tfr1_fooof_bl, baseline_window, freq_range);
-        powl2_nb{subj} = tfr_to_pow_baseline(D.tfr2_fooof_bl, baseline_window, freq_range);
-        powl3{subj} = tfr_to_pow_baseline(D.tfr3_fooof_bl, baseline_window, freq_range);
+        powl1{subj} = tfr_to_pow_baseline(D.tfr1_fooof, baseline_window, freq_range);
+        powl2_nb{subj} = tfr_to_pow_baseline(D.tfr2_fooof, baseline_window, freq_range);
+        powl3{subj} = tfr_to_pow_baseline(D.tfr3_fooof, baseline_window, freq_range);
     else
         powl1{subj} = [];
         powl2_nb{subj} = [];
@@ -192,7 +192,7 @@ end
 set(gca, 'FontSize', 20);
 box off
 xlim([5 20]);
-ylim([-.16 .16]);
+%ylim([-.16 .16]);
 xlabel('Frequency [Hz]');
 ylabel('Power [dB]');
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
@@ -202,7 +202,7 @@ legend([leg_p1, leg_p2, leg_p3], {'1 back', '2 back', '3 back'}, ...
     'FontName', 'Arial', 'FontSize', 20, 'Box', 'off');
 title('');
 
-saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_nback_fooof_bl_baselineWindow.png'));
+saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_nback_fooof_baselineWindow.png'));
 
 fprintf('Sternberg included N = %d subjects\n', numel(keep_idx_stern));
 fprintf('N-back included N = %d subjects\n', numel(keep_idx_nback));

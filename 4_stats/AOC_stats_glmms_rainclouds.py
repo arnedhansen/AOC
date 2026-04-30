@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import gaussian_kde
 import statsmodels.formula.api as smf
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from patsy import dmatrix
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
 from functions.stats_helpers import (
@@ -304,6 +306,8 @@ for task in tasks:
 
     condition_lrt_rows = []       # omnibus Condition test from MixedLM (LRT)
     pairwise_effsize_rows = []    # collects pairwise effect sizes for this task
+    condition_pairwise_rows = []  # model-based pairwise contrasts for this task
+    condition_fixed_rows = []     # pooled fixed-effect rows for this task
 
     # %% Loop variables
     for var, ylab, sname in zip(variables, y_labels, save_names):
@@ -389,7 +393,16 @@ for task in tasks:
                 sig = p_to_signif(float(r["p_adj"]))
                 print(f"    {r['Group1']} vs {r['Group2']}: "
                       f"β = {float(r['Estimate']):.3f}, "
+                      f"95% CI [{float(r['CI95_low']):.3f}, {float(r['CI95_high']):.3f}], "
                       f"p_adj = {float(r['p_adj']):.4f} {sig}")
+
+            # keep a long-format table for manuscript value checks
+            pw_long = pw.copy()
+            pw_long.insert(0, "Task", task["name"])
+            pw_long.insert(1, "Variable", var)
+            pw_long.insert(2, "ModelLabel", "DV ~ Condition + (1|ID)")
+            pw_long.insert(3, "N_obs", int(dvar_m.shape[0]))
+            condition_pairwise_rows.extend(pw_long.to_dict("records"))
 
         # %% Pairwise within-subject effect sizes (Cohen's dz) + 95% CI of mean difference
         # build wide table to get paired diffs
@@ -430,6 +443,9 @@ for task in tasks:
             variable=var,
             model_label="DV ~ Condition + (1|ID)"
         )
+        fe_long = fe_df.copy()
+        fe_long.insert(3, "N_obs", int(dvar_m.shape[0]))
+        condition_fixed_rows.extend(fe_long.to_dict("records"))
         fe_csv = os.path.join(output_dir_stats, f"AOC_mixedlm_fixed_{sname}_{task['name']}.csv")
         fe_df.to_csv(fe_csv, index=False)
         outputs[f"mixedlm_fixed_{sname}_{task['name']}"] = fe_df.copy()
@@ -648,8 +664,28 @@ for task in tasks:
     outputs[f"pairwise_effect_sizes_{task['name']}"] = pw_eff_df.copy()
     print(f"Saved pairwise effect sizes → {pw_csv}")
 
+    # Save pooled model-based pairwise contrasts for task
+    pw_model_df = pd.DataFrame(condition_pairwise_rows)
+    pw_model_csv = os.path.join(output_dir_stats, f"AOC_pairwise_mixedlm_{task['name']}.csv")
+    pw_model_df.to_csv(pw_model_csv, index=False)
+    outputs[f"pairwise_mixedlm_{task['name']}"] = pw_model_df.copy()
+    print(f"Saved model-based pairwise contrasts → {pw_model_csv}")
+
+    # Save pooled fixed effects for all confirmatory outcomes in task
+    fixed_all_df = pd.DataFrame(condition_fixed_rows)
+    fixed_all_csv = os.path.join(output_dir_stats, f"AOC_mixedlm_fixed_allvars_{task['name']}.csv")
+    fixed_all_df.to_csv(fixed_all_csv, index=False)
+    outputs[f"mixedlm_fixed_allvars_{task['name']}"] = fixed_all_df.copy()
+    print(f"Saved pooled fixed effects → {fixed_all_csv}")
+
 # %% Alpha variants ~ Gaze variants * Condition + (1|ID)
 print("\n=== Alpha variants ~ Gaze variants * Condition mixed models (per task) ===")
+
+exploratory_drop1_all = []
+exploratory_lrtTbl_all = []
+exploratory_contrasts_all = []
+exploratory_fixed_all = []
+exploratory_vif_all = []
 
 for task in tasks:
     print(f"\nTask: {task['name']}")
@@ -705,10 +741,31 @@ for task in tasks:
 
             # Mean-centre gaze within task (keeps units; recommended to reduce collinearity)
             sub[gaze_var + "_c"] = sub[gaze_var] - sub[gaze_var].mean()
+            rhs_full = f'{gaze_var}_c * C(Condition, Treatment(reference="{ref_level}"))'
+
+            # VIF diagnostics for alpha~gaze*condition predictors (registration-aligned check)
+            vif_df = pd.DataFrame()
+            try:
+                X_vif = dmatrix(rhs_full, data=sub, return_type="dataframe")
+                vif_cols = [c for c in X_vif.columns if c != "Intercept"]
+                if len(vif_cols) > 0:
+                    X_num = X_vif[vif_cols].to_numpy(dtype=float)
+                    vif_rows = []
+                    for i, col in enumerate(vif_cols):
+                        vif_rows.append({
+                            "Task": task["name"],
+                            "AlphaDV": alpha_var,
+                            "GazePredictor": gaze_var,
+                            "Predictor": col,
+                            "VIF": float(variance_inflation_factor(X_num, i))
+                        })
+                    vif_df = pd.DataFrame(vif_rows)
+            except Exception as e:
+                print(f"  WARNING: VIF diagnostics failed for {alpha_var} ~ {gaze_var} [{task['name']}]: {e}")
 
             # MixedLM (REML=False for LRT comparability)
             formula_full = (
-                f'{alpha_var} ~ {gaze_var}_c * C(Condition, Treatment(reference="{ref_level}"))'
+                f'{alpha_var} ~ {rhs_full}'
             )
             try:
                 full_res = fit_mixedlm(formula_full, data=sub, group="ID", reml=False)
@@ -856,6 +913,55 @@ for task in tasks:
             outputs[f"alpha_lrtTbl_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}"] = lrtTbl_df.copy()
             outputs[f"alpha_contrasts_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}"] = contrast_df.copy()
             print(f"Saved LRT/LRT Table/Contrasts → {os.path.basename(lrt_csv)}, {os.path.basename(lrtTbl_csv)}, {os.path.basename(con_csv)}")
+
+            if not vif_df.empty:
+                vif_csv = os.path.join(output_dir_stats, f"AOC_alpha_vif_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}.csv")
+                vif_df.to_csv(vif_csv, index=False)
+                outputs[f"alpha_vif_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}"] = vif_df.copy()
+                print(f"Saved VIF diagnostics → {os.path.basename(vif_csv)}")
+
+            exploratory_drop1_all.append(lrt_df.copy())
+            exploratory_lrtTbl_all.append(lrtTbl_df.copy())
+            exploratory_contrasts_all.append(contrast_df.copy())
+            exploratory_fixed_all.append(fe_alpha_df.copy())
+            if not vif_df.empty:
+                exploratory_vif_all.append(vif_df.copy())
+
+# Save pooled exploratory tables for manuscript-wide checks
+if exploratory_drop1_all:
+    pooled_drop1 = pd.concat(exploratory_drop1_all, ignore_index=True)
+    pooled_drop1_csv = os.path.join(output_dir_stats, "AOC_alpha_drop1_all.csv")
+    pooled_drop1.to_csv(pooled_drop1_csv, index=False)
+    outputs["alpha_drop1_all"] = pooled_drop1.copy()
+    print(f"Saved pooled exploratory drop1 → {pooled_drop1_csv}")
+
+if exploratory_lrtTbl_all:
+    pooled_lrtTbl = pd.concat(exploratory_lrtTbl_all, ignore_index=True)
+    pooled_lrtTbl_csv = os.path.join(output_dir_stats, "AOC_alpha_lrtTbl_all.csv")
+    pooled_lrtTbl.to_csv(pooled_lrtTbl_csv, index=False)
+    outputs["alpha_lrtTbl_all"] = pooled_lrtTbl.copy()
+    print(f"Saved pooled exploratory LRT tables → {pooled_lrtTbl_csv}")
+
+if exploratory_contrasts_all:
+    pooled_contrasts = pd.concat(exploratory_contrasts_all, ignore_index=True)
+    pooled_contrasts_csv = os.path.join(output_dir_stats, "AOC_alpha_contrasts_all.csv")
+    pooled_contrasts.to_csv(pooled_contrasts_csv, index=False)
+    outputs["alpha_contrasts_all"] = pooled_contrasts.copy()
+    print(f"Saved pooled exploratory contrasts → {pooled_contrasts_csv}")
+
+if exploratory_fixed_all:
+    pooled_fixed = pd.concat(exploratory_fixed_all, ignore_index=True)
+    pooled_fixed_csv = os.path.join(output_dir_stats, "AOC_alpha_fixed_all.csv")
+    pooled_fixed.to_csv(pooled_fixed_csv, index=False)
+    outputs["alpha_fixed_all"] = pooled_fixed.copy()
+    print(f"Saved pooled exploratory fixed effects → {pooled_fixed_csv}")
+
+if exploratory_vif_all:
+    pooled_vif = pd.concat(exploratory_vif_all, ignore_index=True)
+    pooled_vif_csv = os.path.join(output_dir_stats, "AOC_alpha_vif_all.csv")
+    pooled_vif.to_csv(pooled_vif_csv, index=False)
+    outputs["alpha_vif_all"] = pooled_vif.copy()
+    print(f"Saved pooled exploratory VIF diagnostics → {pooled_vif_csv}")
 
 # %% Display all stored dataframes
 pd.set_option("display.max_rows", None)

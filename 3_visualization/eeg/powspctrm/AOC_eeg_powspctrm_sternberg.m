@@ -53,8 +53,6 @@ gapow6_raw = ft_freqgrandaverage([],powl6{:});
 
 %% Plot alpha power grand average POWERSPECTRUM
 close all
-
-% Prepare your data-sets
 gapow2 = gapow2_raw;
 gapow4 = gapow4_raw;
 gapow6 = gapow6_raw;
@@ -111,7 +109,7 @@ end
 set(gca,'FontSize',20);
 box off
 xlim([5 20]);
-%ylim([0 1])
+ylim([0 3.75])
 ylabel('Power [\muV^2/Hz]');
 xlabel('Frequency [Hz]');
 leg_p2 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
@@ -119,174 +117,9 @@ leg_p4 = patch(NaN, NaN, colors(2,:), 'EdgeColor', 'none');
 leg_p6 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
 legend([leg_p2, leg_p4, leg_p6], ...
     {'WM load 2','WM load 4','WM load 6'}, ...
-    'FontName','Arial','FontSize',20, 'Box', 'off');
-title('Sternberg Power Spectrum', 'FontSize', 25);
+    'FontName','Arial','FontSize', 20, 'Box', 'off');
+title('');
 
 % Save
-saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_raw.png'));
-
-%% Plot INDIVIDUAL power spectra
-% close all
-% output_dir = [fig_dir_ind filesep];
-% load(fullfile(paths.features, 'AOC_eeg_matrix_sternberg.mat'))
-% 
-% for subj = 1:length(subjects)
-%     close all;
-%     figure;
-%     set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
-% 
-%     % Extract participant data
-%     pow2 = powl2{subj};
-%     pow4 = powl4{subj};
-%     pow6 = powl6{subj};
-% 
-%     % Figure common config
-%     cfg = [];
-%     cfg.channel = channels;
-%     cfg.figure = 'gcf';
-%     cfg.linewidth = 1;
-% 
-%     % Plot power spectrum for low and high contrast
-%     ft_singleplotER(cfg, pow2, pow4, pow6);
-%     hold on;
-% 
-%     % Add shaded error bars
-%     channels_seb = ismember(pow2.label, cfg.channel);
-%     eb2 = shadedErrorBar(pow2.freq, mean(pow2.powspctrm(channels_seb, :), 1), ...
-%         std(pow2.powspctrm(channels_seb, :)) / sqrt(size(pow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-%     eb4 = shadedErrorBar(pow4.freq, mean(pow4.powspctrm(channels_seb, :), 1), ...
-%         std(pow4.powspctrm(channels_seb, :)) / sqrt(size(pow4.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-%     eb6 = shadedErrorBar(pow6.freq, mean(pow6.powspctrm(channels_seb, :), 1), ...
-%         std(pow6.powspctrm(channels_seb, :)) / sqrt(size(pow6.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-%     eb2.mainLine.Color = colors(1, :);
-%     eb4.mainLine.Color = colors(2, :);
-%     eb6.mainLine.Color = colors(3, :);
-%     eb2.patch.FaceColor = colors(1, :);
-%     eb4.patch.FaceColor = colors(2, :);
-%     eb6.patch.FaceColor = colors(3, :);
-%     set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
-%     set(eb4.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
-%     set(eb6.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
-%     set(eb2.edge(1), 'Color', colors(1, :));
-%     set(eb2.edge(2), 'Color', colors(1, :));
-%     set(eb4.edge(1), 'Color', colors(2, :));
-%     set(eb4.edge(2), 'Color', colors(2, :));
-%     set(eb6.edge(1), 'Color', colors(3, :));
-%     set(eb6.edge(2), 'Color', colors(3, :));
-%     set(eb2.patch, 'FaceAlpha', 0.5);
-%     set(eb4.patch, 'FaceAlpha', 0.5);
-%     set(eb6.patch, 'FaceAlpha', 0.5);
-% 
-%     % Add lines for IAF and AlphaPower for each condition
-%     currentSubj = str2double(subjects{subj});
-%     C1 = eeg_data_sternberg([eeg_data_sternberg.ID] == currentSubj & [eeg_data_sternberg.Condition] == 2);
-%     if ~isempty(C1)
-%         xIAF = C1.IAF;
-%         yAlpha = C1.AlphaPower;
-%         line([xIAF, xIAF], [0, yAlpha], 'LineStyle', '--', 'Color', colors(1, :), 'LineWidth', 2);
-%         line([5, xIAF], [yAlpha, yAlpha], 'LineStyle', '--', 'Color', colors(1, :), 'LineWidth', 2);
-%     end
-%     C2 = eeg_data_sternberg([eeg_data_sternberg.ID] == currentSubj & [eeg_data_sternberg.Condition] == 4);
-%     if ~isempty(C2)
-%         xIAF = C2.IAF;
-%         yAlpha = C2.AlphaPower;
-%         line([xIAF, xIAF], [0, yAlpha], 'LineStyle', '--', 'Color', colors(2, :), 'LineWidth', 2);
-%         line([5, xIAF], [yAlpha, yAlpha], 'LineStyle', '--', 'Color', colors(2, :), 'LineWidth', 2);
-%     end
-%     C3 = eeg_data_sternberg([eeg_data_sternberg.ID] == currentSubj & [eeg_data_sternberg.Condition] == 6);
-%     if ~isempty(C3)
-%         xIAF = C3.IAF;
-%         yAlpha = C3.AlphaPower;
-%         line([xIAF, xIAF], [0, yAlpha], 'LineStyle', '--', 'Color', colors(3, :), 'LineWidth', 2);
-%         line([5, xIAF], [yAlpha, yAlpha], 'LineStyle', '--', 'Color', colors(3, :), 'LineWidth', 2);
-%     end
-% 
-%     % Adjust plot aesthetics
-%     set(gca, 'FontSize', 20);
-%     max_spctrm = max([max(max(pow2.powspctrm(channels_seb, :))), max(max(pow4.powspctrm(channels_seb, :))), max(max(pow6.powspctrm(channels_seb, :)))]);
-%     ylim([0 max_spctrm*0.75]);
-%     xlim([5 30]);
-%     xlabel('Frequency [Hz]');
-%     ylabel('Power [a.u.]');
-%     legend([eb2.mainLine, eb4.mainLine eb6.mainLine], {'WM Load 2', 'WM Load 4', 'WM Load 6'}, 'FontName', 'Arial', 'FontSize', 20);
-%     title(sprintf('Subject %s: Power Spectrum', subjects{subj}), 'FontSize', 30);
-%     hold off;
-% 
-%     % Save individual plot
-%     save_path = fullfile(output_dir, sprintf('AOC_powspctrm_sternberg_subj%s.png', subjects{subj}));
-%     saveas(gcf, save_path);
-%end
-
-%% Plot SUBPLOT of INDIVIDUAL powerspectra
-% close all;
-% output_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/eeg/alpha_power/powspctrm/';
-% num_subj = length(subjects);
-%
-% % Determine subplot grid size
-% default_cols = 5;
-% nrows = ceil(num_subj / default_cols);
-% ncols = min(num_subj, default_cols);
-%
-% % Create figure
-% figure;
-% set(gcf, 'Color', 'w', 'Position', [0, 0, 300 * ncols, 300 * nrows]);
-%
-% for subj = 1:num_subj
-%     % Extract participant data
-%     pow2 = powl2{subj};
-%     pow4 = powl4{subj};
-%     pow6 = powl6{subj};
-%
-%     % Select subplot position
-%     subplot(nrows, ncols, subj);
-%     hold on;
-%
-%     % Figure common config
-%     cfg = [];
-%     cfg.channel = channels;
-%     cfg.figure = 'gcf';
-%     cfg.linewidth = 1;
-%
-%     % Plot power spectrum for low and high contrast
-%     ft_singleplotER(cfg, pow2, pow4, pow6);
-%
-%     % Add shaded error bars
-%     channels_seb = ismember(pow2.label, cfg.channel);
-%     eb2 = shadedErrorBar(pow2.freq, mean(pow2.powspctrm(channels_seb, :), 1), ...
-%         std(pow2.powspctrm(channels_seb, :)) / sqrt(size(pow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-%     eb4 = shadedErrorBar(pow4.freq, mean(pow4.powspctrm(channels_seb, :), 1), ...
-%         std(pow4.powspctrm(channels_seb, :)) / sqrt(size(pow4.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-%     eb6 = shadedErrorBar(pow6.freq, mean(pow6.powspctrm(channels_seb, :), 1), ...
-%         std(pow6.powspctrm(channels_seb, :)) / sqrt(size(pow6.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-%
-%     eb2.mainLine.Color = colors(1, :);
-%     eb4.mainLine.Color = colors(2, :);
-%     eb6.mainLine.Color = colors(3, :);
-%     eb2.patch.FaceColor = colors(1, :);
-%     eb4.patch.FaceColor = colors(2, :);
-%     eb6.patch.FaceColor = colors(3, :);
-%     set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
-%     set(eb4.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
-%     set(eb6.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
-%     set(eb2.patch, 'FaceAlpha', 0.5);
-%     set(eb4.patch, 'FaceAlpha', 0.5);
-%     set(eb6.patch, 'FaceAlpha', 0.5);
-%
-%     % Adjust plot aesthetics
-%     set(gca, 'FontSize', 12);
-%     max_spctrm = max([max(max(pow2.powspctrm(channels_seb, :))), max(max(pow4.powspctrm(channels_seb, :))), max(max(pow6.powspctrm(channels_seb, :))) ]);
-%     ylim([0 max_spctrm * 0.75]);
-%     xlim([5 30]);
-%     xlabel('Frequency [Hz]');
-%     ylabel('Power [a.u.]');
-%     if subj == 1
-%         legend([eb2.mainLine, eb4.mainLine eb6.mainLine], {'WM Load 2', 'WM Load 4', 'WM Load 6'}, 'FontName', 'Arial', 'FontSize', 15, 'Location', 'best');
-%     end
-%     title(sprintf('Subject %s', subjects{subj}), 'FontSize', 14);
-%     hold off;
-% end
-%
-% % Save combined figure
-% save_path = fullfile(output_dir, 'AOC_powspctrm_sternberg_all_subs.png');
-% saveas(gcf, save_path);
-
+drawnow;
+exportgraphics(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_raw.png'), 'Resolution', 600);

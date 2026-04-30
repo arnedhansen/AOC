@@ -59,13 +59,11 @@ gapow2_raw = ft_freqgrandaverage([],powl2{:});
 gapow3_raw = ft_freqgrandaverage([],powl3{:});
 
 %% Plot alpha power grand average POWERSPECTRUM
-% Loop over analysis conditions
 gapow1 = gapow1_raw;
 gapow2 = gapow2_raw;
 gapow3 = gapow3_raw;
 yLabel = 'Power [\muV^2/Hz]';
-figTitle = 'N-back Power Spectrum';
-savePath = fullfile(fig_dir_pow, 'AOC_powspctrm_nback_raw.png');
+
 % Create figure
 close all
 figure;
@@ -130,6 +128,7 @@ max_spctrm = max([mean(gapow1.powspctrm(channel_idx, freq_idx), 2); mean(gapow2.
 ylim([0 max_spctrm*1.25])
 box off
 xlim([5 20]);
+ylim([0 3.75])
 xlabel('Frequency [Hz]');
 ylabel(yLabel);
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
@@ -137,174 +136,9 @@ leg_p2 = patch(NaN, NaN, colors(2,:), 'EdgeColor', 'none');
 leg_p3 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
 legend([leg_p1, leg_p2, leg_p3], {'1 back', '2 back', '3 back'}, ...
     'FontName', 'Arial', 'FontSize', 20, 'Box', 'off');
-title(figTitle, 'FontSize', 25)
+title('');
 hold off;
 
 % Save
-saveas(gcf, savePath);
-
-%% Plot INDIVIDUAL power spectra
-% close all
-% output_dir = [fig_dir_ind filesep];
-% load(fullfile(paths.features, 'AOC_eeg_matrix_nback.mat'))
-%
-% for subj = 1:length(subjects)
-%     clear pow1 pow2 pow3
-%     close all;
-%     figure;
-%     set(gcf, 'Position', [0, 0, 800, 1600], 'Color', 'w');
-%
-%     % Extract participant data
-%     pow1 = powl1{subj};
-%     pow2 = powl2{subj};
-%     pow3 = powl3{subj};
-%
-%     % Figure common config
-%     cfg = [];
-%     cfg.channel = channels;
-%     cfg.figure = 'gcf';
-%     cfg.linewidth = 1;
-%
-%     % Plot power spectrum for low and high contrast
-%     ft_singleplotER(cfg, pow1, pow2, pow3);
-%     hold on;
-%
-%     % Add shaded error bars
-%     channels_seb = ismember(pow1.label, cfg.channel);
-%     eb1 = shadedErrorBar(pow1.freq, mean(pow1.powspctrm(channels_seb, :), 1), ...
-%         std(pow1.powspctrm(channels_seb, :)) / sqrt(size(pow1.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-%     eb2 = shadedErrorBar(pow2.freq, mean(pow2.powspctrm(channels_seb, :), 1), ...
-%         std(pow2.powspctrm(channels_seb, :)) / sqrt(size(pow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-%     eb3 = shadedErrorBar(pow3.freq, mean(pow3.powspctrm(channels_seb, :), 1), ...
-%         std(pow3.powspctrm(channels_seb, :)) / sqrt(size(pow3.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-%     eb1.mainLine.Color = colors(1, :);
-%     eb2.mainLine.Color = colors(2, :);
-%     eb3.mainLine.Color = colors(3, :);
-%     eb1.patch.FaceColor = colors(1, :);
-%     eb2.patch.FaceColor = colors(2, :);
-%     eb3.patch.FaceColor = colors(3, :);
-%     set(eb1.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
-%     set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
-%     set(eb3.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
-%     set(eb1.edge(1), 'Color', colors(1, :));
-%     set(eb1.edge(2), 'Color', colors(1, :));
-%     set(eb2.edge(1), 'Color', colors(2, :));
-%     set(eb2.edge(2), 'Color', colors(2, :));
-%     set(eb3.edge(1), 'Color', colors(3, :));
-%     set(eb3.edge(2), 'Color', colors(3, :));
-%     set(eb1.patch, 'FaceAlpha', 0.5);
-%     set(eb2.patch, 'FaceAlpha', 0.5);
-%     set(eb3.patch, 'FaceAlpha', 0.5);
-%
-%     % Add lines for IAF and AlphaPower for each condition
-%     currentSubj = str2double(subjects{subj});
-%     C1 = eeg_data_nback([eeg_data_nback.ID] == currentSubj & [eeg_data_nback.Condition] == 1);
-%     if ~isempty(C1)
-%         xIAF = C1.IAF;
-%         yAlpha = C1.AlphaPower;
-%         line([xIAF, xIAF], [0, yAlpha], 'LineStyle', '--', 'Color', colors(1, :), 'LineWidth', 2);
-%         line([5, xIAF], [yAlpha, yAlpha], 'LineStyle', '--', 'Color', colors(1, :), 'LineWidth', 2);
-%     end
-%     C2 = eeg_data_nback([eeg_data_nback.ID] == currentSubj & [eeg_data_nback.Condition] == 2);
-%     if ~isempty(C2)
-%         xIAF = C2.IAF;
-%         yAlpha = C2.AlphaPower;
-%         line([xIAF, xIAF], [0, yAlpha], 'LineStyle', '--', 'Color', colors(2, :), 'LineWidth', 2);
-%         line([5, xIAF], [yAlpha, yAlpha], 'LineStyle', '--', 'Color', colors(2, :), 'LineWidth', 2);
-%     end
-%     C3 = eeg_data_nback([eeg_data_nback.ID] == currentSubj & [eeg_data_nback.Condition] == 3);
-%     if ~isempty(C3)
-%         xIAF = C3.IAF;
-%         yAlpha = C3.AlphaPower;
-%         line([xIAF, xIAF], [0, yAlpha], 'LineStyle', '--', 'Color', colors(3, :), 'LineWidth', 2);
-%         line([5, xIAF], [yAlpha, yAlpha], 'LineStyle', '--', 'Color', colors(3, :), 'LineWidth', 2);
-%     end
-%
-%     % Adjust plot aesthetics
-%     set(gca, 'FontSize', 20);
-%     max_spctrm = max([max(max(pow1.powspctrm(channels_seb, :))), max(max(pow2.powspctrm(channels_seb, :))), max(max(pow3.powspctrm(channels_seb, :)))]);
-%     ylim([0 max_spctrm*0.75]);
-%     xlim([5 30]);
-%     xlabel('Frequency [Hz]');
-%     ylabel('Power [a.u.]');
-%     legend([eb1.mainLine, eb2.mainLine eb3.mainLine], {'1-back', '2-back', '3-back'}, 'FontName', 'Arial', 'FontSize', 20);
-%     title(sprintf('Subject %s: Power Spectrum', subjects{subj}), 'FontSize', 30);
-%     hold off;
-%
-%     % Save individual plot
-%     save_path = fullfile(output_dir, sprintf('AOC_powspctrm_nback_subj%s.png', subjects{subj}));
-%     saveas(gcf, save_path);
-% end
-
-%% Plot SUBPLOT of INDIVIDUAL powerspectra
-% close all;
-% output_dir = [fig_dir_ind filesep];
-% num_subj = length(subjects);
-%
-% % Determine subplot grid size
-% default_cols = 5;
-% nrows = ceil(num_subj / default_cols);
-% ncols = min(num_subj, default_cols);
-%
-% % Create figure
-% figure;
-% set(gcf, 'Color', 'w', 'Position', [0, 0, 300 * ncols, 300 * nrows]);
-%
-% for subj = 1:num_subj
-%     % Extract participant data
-%     pow1 = powl1{subj};
-%     pow2 = powl2{subj};
-%     pow3 = powl3{subj};
-%
-%     % Select subplot position
-%     subplot(nrows, ncols, subj);
-%     hold on;
-%
-%     % Figure common config
-%     cfg = [];
-%     cfg.channel = channels;
-%     cfg.figure = 'gcf';
-%     cfg.linewidth = 1;
-%
-%     % Plot power spectrum for low and high contrast
-%     ft_singleplotER(cfg, pow1, pow2, pow3);
-%
-%     % Add shaded error bars
-%     channels_seb = ismember(pow1.label, cfg.channel);
-%     eb1 = shadedErrorBar(pow1.freq, mean(pow1.powspctrm(channels_seb, :), 1), ...
-%         std(pow1.powspctrm(channels_seb, :)) / sqrt(size(pow1.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-%     eb2 = shadedErrorBar(pow2.freq, mean(pow2.powspctrm(channels_seb, :), 1), ...
-%         std(pow2.powspctrm(channels_seb, :)) / sqrt(size(pow2.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-%     eb3 = shadedErrorBar(pow3.freq, mean(pow3.powspctrm(channels_seb, :), 1), ...
-%         std(pow3.powspctrm(channels_seb, :)) / sqrt(size(pow3.powspctrm(channels_seb, :), 1)), {'-'}, 0);
-%
-%     eb1.mainLine.Color = colors(1, :);
-%     eb2.mainLine.Color = colors(2, :);
-%     eb3.mainLine.Color = colors(3, :);
-%     eb1.patch.FaceColor = colors(1, :);
-%     eb2.patch.FaceColor = colors(2, :);
-%     eb3.patch.FaceColor = colors(3, :);
-%     set(eb1.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(1, :));
-%     set(eb2.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(2, :));
-%     set(eb3.mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(3, :));
-%     set(eb1.patch, 'FaceAlpha', 0.5);
-%     set(eb2.patch, 'FaceAlpha', 0.5);
-%     set(eb3.patch, 'FaceAlpha', 0.5);
-%
-%     % Adjust plot aesthetics
-%     set(gca, 'FontSize', 12);
-%     max_spctrm = max([max(max(pow1.powspctrm(channels_seb, :))), max(max(pow2.powspctrm(channels_seb, :))), max(max(pow3.powspctrm(channels_seb, :))) ]);
-%     ylim([0 max_spctrm * 0.75]);
-%     xlim([5 30]);
-%     xlabel('Frequency [Hz]');
-%     ylabel('Power [a.u.]');
-%     if subj == 1
-%         legend([eb1.mainLine, eb2.mainLine eb3.mainLine], {'1-back', '2-back', '3-back'}, 'FontName', 'Arial', 'FontSize', 15, 'Location', 'best');
-%     end
-%     title(sprintf('Subject %s', subjects{subj}), 'FontSize', 14);
-%     hold off;
-% end
-%
-% % Save combined figure
-% save_path = fullfile(output_dir, 'AOC_powspctrm_nback_all_subs.png');
-% saveas(gcf, save_path);
+drawnow;
+exportgraphics(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_nback_raw.png'), 'Resolution', 600);

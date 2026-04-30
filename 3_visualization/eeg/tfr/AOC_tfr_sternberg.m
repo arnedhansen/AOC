@@ -43,7 +43,7 @@ channels = occ_channels;
 
 %% Plot TFR for each condition
 close all
-fontSize = 50;
+fontSize = 40;
 
 % Define the common configuration
 cfg = [];
@@ -67,7 +67,7 @@ clim = [0 max_spctrm];
 
 % WM load 2
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr2);
 colormap(color_map);
 set(gca, 'CLim', clim);
@@ -79,11 +79,11 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('WM load 2');
-saveas(gcf, [figpath 'AOC_tfr_sternberg_2.png']);
+drawnow; saveas(gcf, [figpath 'AOC_tfr_sternberg_2.png']);
 
 % WM load 4
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr4);
 colormap(color_map);
 set(gca, 'CLim', clim);
@@ -95,11 +95,11 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('WM load 4');
-saveas(gcf, [figpath 'AOC_tfr_sternberg_4.png']);
+drawnow; saveas(gcf, [figpath 'AOC_tfr_sternberg_4.png']);
 
 % WM load 6
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr6);
 colormap(color_map);
 set(gca, 'CLim', clim);
@@ -111,7 +111,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('WM load 6');
-saveas(gcf, [figpath 'AOC_tfr_sternberg_6.png']);
+drawnow; saveas(gcf, [figpath 'AOC_tfr_sternberg_6.png']);
 
 %% Plot the grand averages for the difference between condition 3 and condition 1
 close all
@@ -139,7 +139,7 @@ clim = double([-max_spctrm max_spctrm]);
 
 % Plot: Difference Time-Frequency Response
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 ft_singleplotTFR(cfg, diff);
 colormap(color_map);
 set(gca, 'CLim', clim); 
@@ -147,10 +147,10 @@ cb = colorbar;
 %ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
 ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
-ylabel('Frequency [Hz]');
+ylabel('Frequency [\muV^2/Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'r', 'LineWidth', 5);
 title('Sternberg TFR Difference (WM load 6 minus WM load 2)', 'FontName', 'Arial', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
 
 % Save
-saveas(gcf, [figpath 'AOC_tfr_sternberg_diff.png']);
+drawnow; saveas(gcf, [figpath 'AOC_tfr_sternberg_diff.png']);

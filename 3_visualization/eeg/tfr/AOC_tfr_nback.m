@@ -43,7 +43,7 @@ channels = occ_channels;
 
 %% Plot TFR for each individual condition
 close all
-fontSize = 50;
+fontSize = 40;
 
 % Define the common configuration
 cfg = [];
@@ -67,7 +67,7 @@ clim = [0 max_spctrm];
  
 % 1-back
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w');
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w');
 ft_singleplotTFR(cfg, gatfr1);
 colormap(color_map);
 set(gca, 'CLim', clim); 
@@ -77,13 +77,13 @@ ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
-title('1-back', 'FontSize', 30);
+title('1-back');
 set(gca, 'FontSize', fontSize);
 saveas(gcf, [figpath 'AOC_tfr_1back.png']);
 
 % 2-back
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w'); 
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w'); 
 ft_singleplotTFR(cfg, gatfr2);
 colormap(color_map);
 set(gca, 'CLim', clim); 
@@ -93,13 +93,13 @@ ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
-title('2-back', 'FontSize', 30);
+title('2-back');
 set(gca, 'FontSize', fontSize);
 saveas(gcf, [figpath 'AOC_tfr_2back.png']);
 
 % 3-back
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w'); 
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w'); 
 ft_singleplotTFR(cfg, gatfr3);
 colormap(color_map);
 set(gca, 'CLim', clim); 
@@ -109,7 +109,7 @@ ylabel(cb, 'Power [\muV^2/Hz]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
-title('3-back', 'FontSize', 30);
+title('3-back');
 set(gca, 'FontSize', fontSize);
 saveas(gcf, [figpath 'AOC_tfr_3back.png']);
 
@@ -139,7 +139,7 @@ clim = double([-max_spctrm, max_spctrm]);
 
 % Plot: Difference (Condition 3 minus Condition 1) - Time-Frequency Response
 figure;
-set(gcf, 'Position', [100, 200, 2000, 1200], 'Color', 'w'); 
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'w'); 
 ft_singleplotTFR(cfg, diff);
 colormap(color_map);
 set(gca, 'CLim', clim); 
@@ -152,7 +152,7 @@ xlabel('Time [s]');
 ylabel('Frequency [Hz]');
 ylim([5 30]);
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
-title('N-back TFR Difference (3-back minus 1-back)', 'FontName', 'Arial', 'FontSize', 30);
+title('N-back TFR Difference (3-back minus 1-back)', 'FontName', 'Arial');
 set(gca, 'FontSize', fontSize);
 
 % Save the figure

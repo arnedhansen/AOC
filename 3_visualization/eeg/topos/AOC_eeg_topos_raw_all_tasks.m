@@ -11,10 +11,10 @@ pathAOC = paths.features;
 figDir = fullfile(paths.figures, 'eeg', 'topos');
 if ~isfolder(figDir), mkdir(figDir); end
 
-fontSize = 22;
+fontSize = 20;
 
 %% ---------- N-back: load raw power windows ----------
-subjects_nback = setdiff(subjects, {'361'}); % keep exclusion used in existing raw n-back script
+subjects_nback = setdiff(subjects, {'361'}); % exclude 361
 powl1 = {};
 powl2 = {};
 powl3 = {};
@@ -91,8 +91,9 @@ zlim_nback = compute_task_zlim(ga_nback);
 zlim_stern = compute_task_zlim(ga_stern);
 
 %% ---------- Plot ----------
+close all
 figure('Position', [0 0 1512 982], 'Color', 'w');
-tiledlayout(2, 3, 'TileSpacing', 'compact', 'Padding', 'compact');
+tiledlayout(2, 3, 'TileSpacing', 'compact', 'Padding', 'loose');
 
 % Row 1: N-back
 for c = 1:3
@@ -101,8 +102,10 @@ for c = 1:3
     cfg.figure = ax;
     cfg.zlim = zlim_nback;
     ft_topoplotER(cfg, ga_nback{c});
-    cb = colorbar(ax);
-    cb.Label.String = 'Power [\muV^2/Hz]';
+    if c == 3
+        cb = colorbar(ax, 'eastoutside');
+        cb.Label.String = 'Power [\muV^2/Hz]';
+    end
     set(ax, 'FontSize', fontSize);
     title(ax, nback_labels{c}, 'Interpreter', 'none');
 end
@@ -114,8 +117,10 @@ for c = 1:3
     cfg.figure = ax;
     cfg.zlim = zlim_stern;
     ft_topoplotER(cfg, ga_stern{c});
-    cb = colorbar(ax);
-    cb.Label.String = 'Power [\muV^2/Hz]';
+    if c == 3
+        cb = colorbar(ax, 'eastoutside');
+        cb.Label.String = 'Power [\muV^2/Hz]';
+    end
     set(ax, 'FontSize', fontSize);
     title(ax, stern_labels{c}, 'Interpreter', 'none');
 end

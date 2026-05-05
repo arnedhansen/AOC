@@ -29,6 +29,40 @@ fmt_ci <- function(lo, hi) {
   paste0("[", sprintf("%.3f", as.numeric(lo)), ", ", sprintf("%.3f", as.numeric(hi)), "]")
 }
 
+safe_read_csv <- function(path) {
+  if (!file.exists(path)) return(NULL)
+  tryCatch(read.csv(path, stringsAsFactors = FALSE), error = function(e) NULL)
+}
+
+merge_pairwise_effectsizes <- function(pair_df, eff_df, task_name, dv_name) {
+  if (is.null(pair_df) || nrow(pair_df) == 0 || is.null(eff_df) || nrow(eff_df) == 0) {
+    return(pair_df)
+  }
+  req_cols <- c("Task", "Variable", "Group1", "Group2", "Cohens_dz")
+  if (!all(req_cols %in% names(eff_df))) return(pair_df)
+
+  p <- pair_df
+  p$Task <- if ("Task" %in% names(p)) as.character(p$Task) else task_name
+  p$Variable <- if ("Variable" %in% names(p)) as.character(p$Variable) else if ("AlphaDV" %in% names(p)) as.character(p$AlphaDV) else dv_name
+  p$GroupA <- pmin(as.character(p$Group1), as.character(p$Group2))
+  p$GroupB <- pmax(as.character(p$Group1), as.character(p$Group2))
+  p$.pair_order <- seq_len(nrow(p))
+
+  e <- eff_df
+  e <- e[e$Task == task_name & e$Variable == dv_name, , drop = FALSE]
+  if (nrow(e) == 0) return(pair_df)
+  e$GroupA <- pmin(as.character(e$Group1), as.character(e$Group2))
+  e$GroupB <- pmax(as.character(e$Group1), as.character(e$Group2))
+  e <- e[, c("GroupA", "GroupB", "Cohens_dz"), drop = FALSE]
+
+  merged <- merge(p, e, by = c("GroupA", "GroupB"), all.x = TRUE, sort = FALSE)
+  merged <- merged[order(merged$.pair_order), , drop = FALSE]
+  merged$GroupA <- NULL
+  merged$GroupB <- NULL
+  merged$.pair_order <- NULL
+  merged
+}
+
 display_dv <- function(dv) {
   out <- as.character(dv)
   out[out == "AlphaPower_FOOOF_bl"] <- "AlphaPowerSpecParamBaseline"
@@ -39,6 +73,7 @@ display_dv <- function(dv) {
 prettify_model_label <- function(model_label, dv_label = NULL, predictor_label = NULL) {
   x <- as.character(model_label)
   x <- gsub("^DV\\s*~", paste0(dv_label, " ~"), x)
+  x <- gsub("\\(1\\|ID\\)", "(1|SubjectID)", x)
   x <- gsub("_c\\b", "", x)
   x <- gsub("AlphaPower_FOOOF_bl", "AlphaPowerSpecParamBaseline", x)
   x <- gsub("\\s+", " ", x)
@@ -53,7 +88,7 @@ clean_term <- function(term) {
   term <- as.character(term)
   out <- term
   out[out == "Intercept"] <- "Intercept"
-  out[out == "Group Var"] <- "Random intercept variance (ID)"
+  out[out == "Group Var"] <- "Random intercept variance"
   out[out == "Condition"] <- "Condition"
   out[out == "Interaction"] <- "Interaction term"
   out[out == "GazeDeviation_c"] <- "Gaze deviation (centered)"
@@ -83,12 +118,12 @@ clean_term <- function(term) {
 clean_fixed <- function(df) {
   out <- df
   out$Term <- clean_term(out$Term)
-  out$beta <- fmt_num(out$beta)
+  out$`β` <- fmt_num(out$beta)
   out$SE <- fmt_num(out$SE)
-  out$Statistic <- fmt_num(out$stat)
+  out$`Statistic (z/t)` <- fmt_num(out$stat)
   out$`p-value` <- fmt_p(out$p)
   out$CI <- fmt_ci(out$CI_low, out$CI_high)
-  out <- out[, c("Term", "beta", "SE", "Statistic", "p-value", "CI")]
+  out <- out[, c("Term", "β", "SE", "Statistic (z/t)", "p-value", "CI")]
   names(out)[1] <- "Term"
   out
 }
@@ -97,19 +132,19 @@ clean_lrt <- function(df) {
   out <- df
   out$Term <- clean_term(out$Term)
   out$df <- fmt_num(out$df)
-  out$`LR Chi2` <- fmt_num(out$LR_Chi2)
+  out$`χ²` <- fmt_num(out$LR_Chi2)
   out$`p-value` <- fmt_p(out$p)
   out$`R2 (LR)` <- fmt_num(out$R2_LR)
   out$`f2 (LR)` <- fmt_num(out$f2_LR)
-  out[, c("Term", "df", "LR Chi2", "p-value", "R2 (LR)", "f2 (LR)")]
+  out[, c("Term", "df", "χ²", "p-value", "R2 (LR)", "f2 (LR)")]
 }
 
 clean_pairwise <- function(df) {
   out <- df
   out$Contrast <- paste(out$Group1, "vs", out$Group2)
-  out$beta <- fmt_num(out$Estimate)
+  out$`β` <- fmt_num(out$Estimate)
   out$SE <- fmt_num(out$SE)
-  out$Statistic <- fmt_num(out$z)
+  out$`Statistic (z)` <- fmt_num(out$z)
   out$`p-value` <- fmt_p(out$p)
   out$`p_adj` <- fmt_p(out$p_adj)
   if ("CI95_low" %in% names(out)) {
@@ -117,7 +152,9 @@ clean_pairwise <- function(df) {
   } else {
     out$CI <- fmt_ci(out$CI_low, out$CI_high)
   }
-  out[, c("Contrast", "beta", "SE", "Statistic", "p-value", "p_adj", "CI")]
+  if (!("Cohens_dz" %in% names(out))) out$Cohens_dz <- NA_real_
+  out$`Cohen's d` <- fmt_num(out$Cohens_dz)
+  out[, c("Contrast", "β", "SE", "Statistic (z)", "p-value", "p_adj", "CI", "Cohen's d")]
 }
 
 style_ft <- function(ft, col_widths = NULL) {
@@ -156,7 +193,18 @@ doc_add_table <- function(doc, title, df, table_type = c("fixed", "lrt", "pairwi
   } else if (table_type == "lrt") {
     ft <- style_ft(ft, col_widths = c(2.5, 0.7, 1.0, 1.0, 0.9, 0.8))
   } else {
-    ft <- style_ft(ft, col_widths = c(2.1, 0.9, 0.8, 1.0, 0.9, 0.9, 1.4))
+    ft <- style_ft(ft, col_widths = c(2.0, 0.85, 0.75, 0.95, 0.85, 0.85, 1.2, 0.9))
+    if ("p_adj" %in% names(df)) {
+      ft <- compose(
+        ft,
+        part = "header",
+        j = "p_adj",
+        value = as_paragraph(
+          as_chunk("p"),
+          as_chunk("adj", props = fp_text(vertical.align = "subscript"))
+        )
+      )
+    }
   }
   doc <- doc_add_title(doc, title, size = 10)
   body_add_flextable(doc, ft)
@@ -164,6 +212,8 @@ doc_add_table <- function(doc, title, df, table_type = c("fixed", "lrt", "pairwi
 
 pair_nback <- read.csv(file.path(stats_dir, "AOC_pairwise_mixedlm_nback.csv"), stringsAsFactors = FALSE)
 pair_stern <- read.csv(file.path(stats_dir, "AOC_pairwise_mixedlm_sternberg.csv"), stringsAsFactors = FALSE)
+eff_nback <- safe_read_csv(file.path(stats_dir, "AOC_pairwise_effectsizes_nback.csv"))
+eff_stern <- safe_read_csv(file.path(stats_dir, "AOC_pairwise_effectsizes_sternberg.csv"))
 
 model_specs <- list(
   list(
@@ -276,10 +326,22 @@ for (spec in model_specs) {
   write.csv(fixed_tbl, fixed_csv_path, row.names = FALSE)
 
   pair_tbl <- NULL
+  pair_raw <- NULL
+  task_name <- tolower(as.character(unique(fixed_raw$Task)[1]))
+  dv_name <- as.character(unique(fixed_raw$DV)[1])
+  eff_df <- if (!is.na(task_name) && task_name == "nback") eff_nback else eff_stern
   if (!is.null(spec$pair_src)) {
-    pair_tbl <- clean_pairwise(spec$pair_src)
+    pair_raw <- spec$pair_src
   } else if (!is.null(spec$pair)) {
     pair_raw <- read.csv(file.path(stats_dir, spec$pair), stringsAsFactors = FALSE)
+  }
+  if (!is.null(pair_raw)) {
+    pair_raw <- merge_pairwise_effectsizes(
+      pair_raw,
+      eff_df = eff_df,
+      task_name = task_name,
+      dv_name = dv_name
+    )
     pair_tbl <- clean_pairwise(pair_raw)
   }
   if (!is.null(pair_tbl)) {

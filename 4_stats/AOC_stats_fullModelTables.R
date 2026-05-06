@@ -88,7 +88,7 @@ clean_term <- function(term) {
   term <- as.character(term)
   out <- term
   out[out == "Intercept"] <- "Intercept"
-  out[out == "Group Var"] <- "Random intercept variance"
+  out[out == "Group Var"] <- "Random intercept variance (SubjectID)"
   out[out == "Condition"] <- "Condition"
   out[out == "Interaction"] <- "Interaction term"
   out[out == "GazeDeviation_c"] <- "Gaze deviation (centered)"
@@ -120,10 +120,23 @@ clean_fixed <- function(df) {
   out$Term <- clean_term(out$Term)
   out$`β` <- fmt_num(out$beta)
   out$SE <- fmt_num(out$SE)
-  out$`Statistic (z/t)` <- fmt_num(out$stat)
+  out$Statistic <- fmt_num(out$stat)
   out$`p-value` <- fmt_p(out$p)
   out$CI <- fmt_ci(out$CI_low, out$CI_high)
-  out <- out[, c("Term", "β", "SE", "Statistic (z/t)", "p-value", "CI")]
+  out <- out[, c("Term", "β", "SE", "Statistic", "p-value", "CI")]
+  names(out)[1] <- "Term"
+  out
+}
+
+clean_random <- function(df) {
+  out <- df
+  out$Term <- clean_term(out$Term)
+  out$Variance <- fmt_num(out$beta)
+  out$SE <- fmt_num(out$SE)
+  out$Statistic <- fmt_num(out$stat)
+  out$`p-value` <- fmt_p(out$p)
+  out$CI <- fmt_ci(out$CI_low, out$CI_high)
+  out <- out[, c("Term", "Variance", "SE", "Statistic", "p-value", "CI")]
   names(out)[1] <- "Term"
   out
 }
@@ -144,9 +157,12 @@ clean_pairwise <- function(df) {
   out$Contrast <- paste(out$Group1, "vs", out$Group2)
   out$`β` <- fmt_num(out$Estimate)
   out$SE <- fmt_num(out$SE)
-  out$`Statistic (z)` <- fmt_num(out$z)
-  out$`p-value` <- fmt_p(out$p)
-  out$`p_adj` <- fmt_p(out$p_adj)
+  out$Statistic <- fmt_num(out$z)
+  if ("p_adj" %in% names(out)) {
+    out$padj <- fmt_p(out$p_adj)
+  } else {
+    out$padj <- fmt_p(out$p)
+  }
   if ("CI95_low" %in% names(out)) {
     out$CI <- fmt_ci(out$CI95_low, out$CI95_high)
   } else {
@@ -154,20 +170,22 @@ clean_pairwise <- function(df) {
   }
   if (!("Cohens_dz" %in% names(out))) out$Cohens_dz <- NA_real_
   out$`Cohen's d` <- fmt_num(out$Cohens_dz)
-  out[, c("Contrast", "β", "SE", "Statistic (z)", "p-value", "p_adj", "CI", "Cohen's d")]
+  out[, c("Contrast", "β", "SE", "Statistic", "padj", "CI", "Cohen's d")]
 }
 
 style_ft <- function(ft, col_widths = NULL) {
   ft <- theme_booktabs(ft)
-  ft <- fontsize(ft, size = 10, part = "all")
+  ft <- fontsize(ft, size = 8, part = "all")
   ft <- bold(ft, part = "header")
-  ft <- padding(ft, padding = 4, part = "all")
+  ft <- padding(ft, padding = 1, part = "all")
   ft <- align(ft, align = "left", j = 1, part = "all")
   if (ncol(ft$body$dataset) > 1) {
     ft <- align(ft, align = "center", j = 2:ncol(ft$body$dataset), part = "all")
   }
   ft <- set_table_properties(ft, layout = "fixed")
-  ft <- line_spacing(ft, space = 1, part = "all")
+  ft <- line_spacing(ft, space = 0.9, part = "all")
+  ft <- hrule(ft, rule = "exact", part = "all")
+  ft <- height_all(ft, height = 0.18, part = "all")
   if (!is.null(col_widths) && length(col_widths) == ncol(ft$body$dataset)) {
     ft <- width(ft, j = seq_along(col_widths), width = col_widths)
   } else {
@@ -185,26 +203,15 @@ doc_add_title <- function(doc, text, size = 10) {
   )
 }
 
-doc_add_table <- function(doc, title, df, table_type = c("fixed", "lrt", "pairwise")) {
+doc_add_table <- function(doc, title, df, table_type = c("fixed", "random", "lrt", "pairwise")) {
   table_type <- match.arg(table_type)
   ft <- flextable(df)
-  if (table_type == "fixed") {
+  if (table_type %in% c("fixed", "random")) {
     ft <- style_ft(ft, col_widths = c(3.6, 0.9, 0.8, 1.0, 1.0, 1.6))
   } else if (table_type == "lrt") {
     ft <- style_ft(ft, col_widths = c(2.5, 0.7, 1.0, 1.0, 0.9, 0.8))
   } else {
-    ft <- style_ft(ft, col_widths = c(2.0, 0.85, 0.75, 0.95, 0.85, 0.85, 1.2, 0.9))
-    if ("p_adj" %in% names(df)) {
-      ft <- compose(
-        ft,
-        part = "header",
-        j = "p_adj",
-        value = as_paragraph(
-          as_chunk("p"),
-          as_chunk("adj", props = fp_text(vertical.align = "subscript"))
-        )
-      )
-    }
+    ft <- style_ft(ft, col_widths = c(2.2, 0.9, 0.8, 1.0, 0.95, 1.2, 0.95))
   }
   doc <- doc_add_title(doc, title, size = 10)
   body_add_flextable(doc, ft)
@@ -320,10 +327,18 @@ model_specs <- list(
 
 for (spec in model_specs) {
   fixed_raw <- read.csv(file.path(stats_dir, spec$fixed), stringsAsFactors = FALSE)
-  fixed_tbl <- clean_fixed(fixed_raw)
+  random_mask <- grepl("Var$|Cov$|Group Var", fixed_raw$Term)
+  fixed_tbl <- clean_fixed(fixed_raw[!random_mask, , drop = FALSE])
+  random_tbl <- NULL
+  if (any(random_mask)) {
+    random_tbl <- clean_random(fixed_raw[random_mask, , drop = FALSE])
+  }
 
   fixed_csv_path <- file.path(out_dir, paste0(spec$id, "_fixed.csv"))
   write.csv(fixed_tbl, fixed_csv_path, row.names = FALSE)
+  if (!is.null(random_tbl)) {
+    write.csv(random_tbl, file.path(out_dir, paste0(spec$id, "_random.csv")), row.names = FALSE)
+  }
 
   pair_tbl <- NULL
   pair_raw <- NULL
@@ -369,6 +384,10 @@ for (spec in model_specs) {
   }
   doc <- body_add_par(doc, "")
   doc <- doc_add_table(doc, "Fixed effects", fixed_tbl, table_type = "fixed")
+  if (!is.null(random_tbl)) {
+    doc <- body_add_par(doc, "")
+    doc <- doc_add_table(doc, "Random effects", random_tbl, table_type = "random")
+  }
 
   if (!is.null(lrt_tbl)) {
     doc <- body_add_par(doc, "")

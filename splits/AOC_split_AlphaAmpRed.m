@@ -392,7 +392,7 @@ eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_su
 % Gaze time-course representation for analysis/plotting.
 fprintf('\n=== Preparing gaze time courses ===\n');
 t_vec = linspace(-0.5, 3, Tf);
-bl_idx = (t_vec >= -0.5) & (t_vec <= -0.25);
+bl_idx = (t_vec >= -0.5) & (t_vec <= 0);
 
 dev_bl = mean(dev_tc(:, :, bl_idx), 3, 'omitnan');
 dev_bl_3d = repmat(dev_bl, [1, 1, Tf]);

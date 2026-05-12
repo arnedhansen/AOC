@@ -100,7 +100,7 @@ for s = 1:nSubj
             data(2, :) = 600 - data(2, :);
             data = remove_blinks(data, blink_win);
 
-            idx_base = (t >= -0.5) & (t <= -0.25);
+            idx_base = (t >= -0.5) & (t <= 0);
             if ~any(idx_base)
                 continue
             end

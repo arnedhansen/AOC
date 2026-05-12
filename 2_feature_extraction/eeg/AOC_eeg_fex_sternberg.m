@@ -5,7 +5,7 @@
 % AOC_eeg_fex_sternberg_TFR.m.
 %
 % Extracted features:
-%   Power Spectrum (Early [0 1], Late [1 2], Full [0 2]) + Baseline [-0.5 -0.25]
+%   Power Spectrum (Early [0 1], Late [1 2], Full [0 2]) + Baseline [-0.5 0]
 %   Baselined spectra (dB) for each window
 %   IAF (condition-wise from full window)
 %   Alpha power in IAF band (early/late/full; raw + dB)
@@ -41,7 +41,7 @@ for subj = 1:length(subjects)
         ind6 = find(dataTFR.trialinfo(:, 1) == 26); % WM load 6
 
         % Windows
-        t_base = [-0.5 -0.25];
+        t_base = [-0.5 0];
         t_early = [0 1];
         t_late  = [1 2];
         t_full  = [0 2];

@@ -22,11 +22,11 @@
 %
 %   EEG — FOOOF alpha [8-14 Hz], occ channels:
 %     AlphaPower_FOOOF           [0 2]s, no baseline
-%     AlphaPower_FOOOF_bl        [0 2]s, baselined [-0.5 -0.25]s absolute
+%     AlphaPower_FOOOF_bl        [0 2]s, baselined [-0.5 0]s absolute
 %     AlphaPower_FOOOF_bl_early  [0 1]s, baselined
 %     AlphaPower_FOOOF_bl_late   [1 2]s, baselined
 %
-%   Gaze — baselined (BL window [-0.5 -0.25]s; % for GD/SPL/MS/BCEA,pupil):
+%   Gaze — baselined (BL window [-0.5 0]s; % for GD/SPL/MS/BCEA,pupil):
 %     GazeDeviationFullBL / EarlyBL / LateBL
 %     ScanPathLengthFullBL / EarlyBL / LateBL
 %     PupilSizeFullBL / EarlyBL / LateBL          (% change)

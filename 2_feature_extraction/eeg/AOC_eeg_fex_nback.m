@@ -47,13 +47,14 @@ for subj = 1:length(subjects)
 
         % ----------------------
         % Time-frequency transform (raw) per condition (keeps time for window selection)
+        % mtmconvol: Hanning taper, fixed 500 ms window length at each foi
         % ----------------------
         cfg            = [];
         cfg.method     = 'mtmconvol';
         cfg.output     = 'pow';
         cfg.taper      = 'hanning';
-        cfg.foi        = 3:1:30;
-        cfg.t_ftimwin  = ones(size(cfg.foi))*1;     % 1 s windows
+        cfg.foi        = 2:2:40;
+        cfg.t_ftimwin  = ones(size(cfg.foi)) * 0.5;  % 500 ms window for all frequencies
         cfg.toi        = -1.25:0.05:2.25;
         cfg.pad        = 'maxperlen';
         cfg.keeptrials = 'no';
@@ -71,7 +72,7 @@ for subj = 1:length(subjects)
         tfr3_bl = ft_freqbaseline(cfgb, tfr3);
 
         % Convert to window-collapsed POWSPCTRM (chan x freq)
-        freq_range = [3 30];
+        freq_range = [2 40];
         pow1_early     = remove_time_dimension(select_data(t_early, freq_range, tfr1));
         pow2_early     = remove_time_dimension(select_data(t_early, freq_range, tfr2));
         pow3_early     = remove_time_dimension(select_data(t_early, freq_range, tfr3));
@@ -307,7 +308,7 @@ for subj = 1:length(subjects)
         eeg_data_nback = [eeg_data_nback; subj_data_eeg];
         clc
         fprintf(['Subject %s IAF: 1-back: %f Hz (Power: %f), 2-back: %f Hz (Power: %f), ' ...
-            '3-back: %f Hz (Power: %f) |Lateralization: %f %f %f \n'], subjects{subj}, IAF1, ...
+            '3-back: %f Hz (Power: %f) | Lateralization: %f %f %f \n'], subjects{subj}, IAF1, ...
             powerIAF1, IAF2, powerIAF2, IAF3, powerIAF3, LatIdx1, LatIdx2, LatIdx3);
     catch ME
         log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);

@@ -48,13 +48,14 @@ for subj = 1:length(subjects)
 
         % ----------------------
         % Time-frequency transform (raw) per condition (keeps time for window selection)
+        % mtmconvol: Hanning taper, fixed 500 ms window length at each foi
         % ----------------------
         cfg            = [];
         cfg.method     = 'mtmconvol';
         cfg.output     = 'pow';
         cfg.taper      = 'hanning';
-        cfg.foi        = 3:1:30;
-        cfg.t_ftimwin  = ones(size(cfg.foi))*1;     % 1 s windows
+        cfg.foi        = 2:2:40;
+        cfg.t_ftimwin  = ones(size(cfg.foi)) * 0.5;  % 500 ms window for all frequencies
         cfg.toi        = -1.5:0.05:3;
         cfg.pad        = 'maxperlen';
         cfg.keeptrials = 'no';
@@ -72,7 +73,7 @@ for subj = 1:length(subjects)
         tfr6_bl = ft_freqbaseline(cfgb, tfr6);
 
         % Convert to window-collapsed POWSPCTRM (chan x freq)
-        freq_range = [3 30];
+        freq_range = [2 40];
         pow2_early     = remove_time_dimension(select_data(t_early, freq_range, tfr2));
         pow4_early     = remove_time_dimension(select_data(t_early, freq_range, tfr4));
         pow6_early     = remove_time_dimension(select_data(t_early, freq_range, tfr6));

@@ -34,8 +34,9 @@ run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\gaze\AOC_g
 % EEG
 run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_sternberg.m');
 run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_nback.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_sternberg_TFR.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_nback_TFR.m');
+%run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_sternberg_TFR.m');
+%run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_nback_TFR.m');
+run('C:\Users\Administrator\Documents\GitHub\AOC\_controls\AOC_eeg_powspctrm_baseline_effects.m');
 
 % Master Matrices (CSVs)
 run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\AOC_master_matrix_sternberg.m');
@@ -43,35 +44,32 @@ run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\AOC_master
 
 %% 3 Visualization
 % Powspctrm
-% run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_nback.m');
-% run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_sternberg.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_baseline_window_fooof_bl.m');
+ run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_nback.m');
+ run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_sternberg.m');
+%run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_baseline_window_fooof_bl.m');
 
 % TFR
-% run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_nback.m');
-% run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_sternberg.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_nback_fooof_abs.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_sternberg_fooof_abs.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_sternberg_bl_relchange.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_all.m');
+ run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_nback.m');
+ run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_sternberg.m');
+%run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_nback_fooof_abs.m');
+%run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_sternberg_fooof_abs.m');
+%run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_sternberg_bl_relchange.m');
+%run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_all.m');
 
 % Topos
 % run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\topos\AOC_eeg_topos_nback.m');
 % run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\topos\AOC_eeg_topos_sternberg.m');
 
 % Gaze
-run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\heatmap\AOC_gaze_heatmap_sternberg.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\heatmap\AOC_gaze_heatmap_sternberg_split.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\heatmap\AOC_gaze_heatmap_nback.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\heatmap\AOC_gaze_heatmap_nback_split.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\deviation\AOC_gaze_dev_sternberg.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\deviation\AOC_gaze_dev_nback.m');
+%run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\heatmap\AOC_gaze_heatmap_sternberg.m');
+%run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\heatmap\AOC_gaze_heatmap_sternberg_split.m');
+%run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\heatmap\AOC_gaze_heatmap_nback.m');
+%run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\heatmap\AOC_gaze_heatmap_nback_split.m');
+%run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\deviation\AOC_gaze_dev_sternberg.m');
+%run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\deviation\AOC_gaze_dev_nback.m');
 
-%% 4 Controls required for the baseline update
-run('C:\Users\Administrator\Documents\GitHub\AOC\_controls\AOC_eeg_powspctrm_baseline_effects.m');
-
-%% 5 Split analyses required for the baseline update
-run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed.m');
+%% 4 Split analyses
+%run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed.m');
 %run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed_Nback.m');
 %run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaLoads.m');
 %run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaLoads_TimeCourse.m');

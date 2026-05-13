@@ -68,7 +68,7 @@ gaze_zlim_cfg.fallback_abs = 3;  % if scale degenerates
 %% Loop over subjects - load EEG TFR (specParam, baselined)
 clc
 cfg_bl = [];
-cfg_bl.baseline     = [-.5 0];
+cfg_bl.baseline     = [-.5 -.25];
 cfg_bl.baselinetype = 'absolute';
 for subj = 1:length(subjects)
     clc
@@ -2063,9 +2063,9 @@ for subj = 1:n_subj
     idx4 = find(trialinfo_vec == 24);
     idx6 = find(trialinfo_vec == 26);
 
-    allgazebase2{subj} = extract_gaze_window(et, idx2, [-0.5 0], x_grid, y_grid, fsample, smoothing);
-    allgazebase4{subj} = extract_gaze_window(et, idx4, [-0.5 0], x_grid, y_grid, fsample, smoothing);
-    allgazebase6{subj} = extract_gaze_window(et, idx6, [-0.5 0], x_grid, y_grid, fsample, smoothing);
+    allgazebase2{subj} = extract_gaze_window(et, idx2, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
+    allgazebase4{subj} = extract_gaze_window(et, idx4, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
+    allgazebase6{subj} = extract_gaze_window(et, idx6, [-0.5 -0.25], x_grid, y_grid, fsample, smoothing);
 
     trial_tmin = nan(1, n_trials);
     trial_tmax = nan(1, n_trials);

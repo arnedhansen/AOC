@@ -1,12 +1,12 @@
 %% AOC EEG Power Spectrum — Baseline Effects
 % Control script: compares grand-average power spectra during the baseline
-% period [-0.5 0]s vs the retention period [0 2]s for both tasks.
+% period [-0.5 -0.25]s vs the retention period [0 2]s for both tasks.
 %
 % Loads per-subject TFR data (raw and FOOOF'd), averages over occipital
 % channels and time within each window, then grand-averages across subjects.
 %
 % Figure layout (two figures per task — raw and FOOOF):
-%   Left panel:   Raw baseline [-0.5 0]s power spectra per condition
+%   Left panel:   Raw baseline [-0.5 -0.25]s power spectra per condition
 %   Middle panel: Raw retention [0 2]s power spectra per condition
 %   Right panel:  Baselined retention [0 2]s power spectra per condition
 %
@@ -52,7 +52,7 @@ tasks = struct( ...
     'cond_labels', {{'1-back','2-back','3-back'},             {'WM load 2','WM load 4','WM load 6'}}, ...
     'title',       {'N-Back',                                 'Sternberg'});
 
-blWin  = [-0.5 0];   % Baseline window [s]
+blWin  = [-0.5 -0.25];   % Baseline window [s]
 retWin = [0 2];           % Retention window [s]
 
 % Save path
@@ -168,7 +168,7 @@ for t = 1:numel(tasks)
     close all
     figure('Position', [0, 0, 1512, 982], 'Color', 'w');
 
-    % ---- Left: Raw Baseline [-0.5 0]s ----
+    % ---- Left: Raw Baseline [-0.5 -0.25]s ----
     subplot(1, 3, 1); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
@@ -183,7 +183,7 @@ for t = 1:numel(tasks)
     xlim([3 30]);
     xlabel('Frequency [Hz]');
     ylabel('Power [\muV^2/Hz]');
-    title('Baseline [-0.5 0]s', 'FontSize', 20);
+    title('Baseline [-0.5 -0.25]s', 'FontSize', 20);
     legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
     box on; hold off;
 
@@ -237,7 +237,7 @@ for t = 1:numel(tasks)
     % ================================================================
     figure('Position', [0, 0, 1512, 982], 'Color', 'w');
 
-    % ---- Left: FOOOF Baseline [-0.5 0]s ----
+    % ---- Left: FOOOF Baseline [-0.5 -0.25]s ----
     subplot(1, 3, 1); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
@@ -252,7 +252,7 @@ for t = 1:numel(tasks)
     xlim([3 30]);
     xlabel('Frequency [Hz]');
     ylabel('Power [FOOOF log]');
-    title('Baseline [-0.5 0]s', 'FontSize', 20);
+    title('Baseline [-0.5 -0.25]s', 'FontSize', 20);
     legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
     box on; hold off;
 

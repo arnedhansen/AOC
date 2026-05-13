@@ -40,7 +40,7 @@ for subj = 1:length(subjects)
         ind3 = find(dataTFR.trialinfo(:, 1) == 23);
 
         % Windows
-        t_base = [-0.5 0];
+        t_base = [-0.5 -0.25];
         t_early = [0 1];
         t_late  = [1 2];
         t_full  = [0 2];

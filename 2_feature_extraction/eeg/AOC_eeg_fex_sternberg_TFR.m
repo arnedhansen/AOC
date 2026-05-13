@@ -55,7 +55,7 @@ for subj = 1:length(subjects)
 
         %% Baselined TFR (raw)
         cfg              = [];
-        cfg.baseline     = [-.5 0];
+        cfg.baseline     = [-.5 -.25];
         cfg.baselinetype = 'db';
         tfr2_bl          = ft_freqbaseline(cfg, tfr2);
         tfr4_bl          = ft_freqbaseline(cfg, tfr4);
@@ -357,7 +357,7 @@ for subj = 1:length(subjects)
 
         %% Baselined FOOOF TFR
         cfg              = [];
-        cfg.baseline     = [-.5 0];
+        cfg.baseline     = [-.5 -.25];
         cfg.baselinetype = 'absolute';
         tfr2_fooof_bl    = ft_freqbaseline(cfg, tfr2_fooof);
         tfr4_fooof_bl    = ft_freqbaseline(cfg, tfr4_fooof);

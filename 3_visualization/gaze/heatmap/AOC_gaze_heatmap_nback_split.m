@@ -32,7 +32,7 @@ for subj = 1:length(subjects)
     smoothing_factor = 10;
 
     % BASELINE
-    cfg.latency = [-0.5 0];
+    cfg.latency = [-0.5 -0.25];
     dataBaseCOMB = ft_selectdata(cfg,dataETlong);
     dataBaseCOMB = horzcat(dataBaseCOMB.trial{:});
     dataBaseCOMBAllsubs{subj} = computeGazeHeatmap(dataBaseCOMB, num_bins, smoothing_factor);

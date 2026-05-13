@@ -56,7 +56,7 @@ for subj = 1:length(subjects)
         % BASELINE (dB)
         % ----------------------
         cfgb = [];
-        cfgb.baseline     = [-0.5 0];
+        cfgb.baseline     = [-0.5 -0.25];
         cfgb.baselinetype = 'db';
         tfr_all_bl = ft_freqbaseline(cfgb, tfr_all);
 

@@ -3,7 +3,7 @@
 %
 % Extracted features:
 %   GazeDeviation, ScanPathLength, PupilSize, MSRate (Early/Late/Full, baselined)
-%   ScanPathSeries, ScanPathSeriesT (time series). Windows: BL [-0.5 0], early [0 1], late [1 2], full [0 2] s
+%   ScanPathSeries, ScanPathSeriesT (time series). Windows: BL [-0.5 -0.25], early [0 1], late [1 2], full [0 2] s
 
 %% Setup
 startup
@@ -43,7 +43,7 @@ min_valid_samples = 100; % per window after cleaning
 bounds_x = [0 screenW];
 bounds_y = [0 screenH];
 
-t_base = [-0.5 0];
+t_base = [-0.5 -0.25];
 t_early = [0 1];
 t_late = [1 2];
 t_full = [0 2];

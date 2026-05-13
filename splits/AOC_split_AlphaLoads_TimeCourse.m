@@ -205,7 +205,7 @@ is_inc = ismember(uIDs, increase_ids);
 
 %% Baselined gaze time course (dB)
 t_vec = linspace(-0.5, 3, Tf);
-bl_idx = (t_vec >= -0.5) & (t_vec <= 0);
+bl_idx = (t_vec >= -0.5) & (t_vec <= -0.25);
 dev_bl = mean(dev_tc(:, :, bl_idx), 3, 'omitnan');
 dev_bl_3d = repmat(dev_bl, [1, 1, Tf]);
 dev_bl_3d(dev_bl_3d <= 0 | ~isfinite(dev_bl_3d)) = NaN;

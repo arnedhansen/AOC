@@ -61,7 +61,7 @@ for subj = 1:length(subjects)
 
     %% Baselined TFR (raw)
     cfg              = [];
-    cfg.baseline     = [-.5 0];
+    cfg.baseline     = [-.5 -.25];
     cfg.baselinetype = 'db';
     tfr1_bl          = ft_freqbaseline(cfg, tfr1);
     tfr2_bl          = ft_freqbaseline(cfg, tfr2);
@@ -369,7 +369,7 @@ for subj = 1:length(subjects)
 
     %% Baselined FOOOF TFR
     cfg              = [];
-    cfg.baseline     = [-.5 0];
+    cfg.baseline     = [-.5 -.25];
     cfg.baselinetype = 'absolute';  % FOOOF already in log space
     tfr1_fooof_bl    = ft_freqbaseline(cfg, tfr1_fooof);
     tfr2_fooof_bl    = ft_freqbaseline(cfg, tfr2_fooof);

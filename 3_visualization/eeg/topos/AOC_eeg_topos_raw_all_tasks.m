@@ -9,9 +9,7 @@ startup
 [subjects, paths, ~, headmodel] = setup('AOC');
 pathAOC = paths.features;
 figDir = fullfile(paths.figures, 'eeg', 'topos');
-if ~isfolder(figDir), mkdir(figDir); end
-
-fontSize = 20;
+fontSize = 40;
 
 %% ---------- N-back: load raw power windows ----------
 subjects_nback = setdiff(subjects, {'361'}); % exclude 361
@@ -150,7 +148,7 @@ end
 if ~isfinite(mx) || mx <= 0
     mx = 1;
 end
-zlim = [0 mx];
+zlim = [mx*0.25 mx];
 end
 
 function ch = occ_channels_from_labels(labels)

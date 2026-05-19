@@ -84,11 +84,11 @@ cb = colorbar;
 ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('WM load 2');
 drawnow;
-print(gcf, [figpath 'AOC_tfr_sternberg_2_fooof_bl_absX.png'], '-dpng', '-r300');
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_sternberg_2_fooof_bl_abs.png'), 'Resolution', 600);
 
 % WM load 4
 figure('Position', [0, 0, 1512, 982], 'Color', 'w');
@@ -100,11 +100,11 @@ cb = colorbar;
 ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('WM load 4');
 drawnow;
-print(gcf, [figpath 'AOC_tfr_sternberg_4_fooof_bl_absX.png'], '-dpng', '-r300');
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_sternberg_4_fooof_bl_abs.png'), 'Resolution', 600);
 
 % WM load 6
 figure('Position', [0, 0, 1512, 982], 'Color', 'w');
@@ -116,11 +116,11 @@ cb = colorbar;
 ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('WM load 6');
 drawnow;
-print(gcf, [figpath 'AOC_tfr_sternberg_6_fooof_bl_absX.png'], '-dpng', '-r300');
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_sternberg_6_fooof_bl_abs.png'), 'Resolution', 600);
 
 %% Plot the grand averages for the difference between condition 3 and condition 1
 close all
@@ -156,10 +156,10 @@ cb = colorbar;
 ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 title('Difference (WM load 6 - WM load 2)', 'FontName', 'Arial', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
 
 % Save
 drawnow;
-print(gcf, [figpath 'AOC_tfr_sternberg_diff_fooof_bl_absX.png'], '-dpng', '-r150');
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_sternberg_diff_fooof_bl_abs.png'), 'Resolution', 600);

@@ -79,7 +79,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('WM load 2');
-drawnow; saveas(gcf, [figpath 'AOC_tfr_sternberg_2.png']);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_sternberg_2.png'), 'Resolution', 600);
 
 % WM load 4
 figure;
@@ -95,7 +95,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('WM load 4');
-drawnow; saveas(gcf, [figpath 'AOC_tfr_sternberg_4.png']);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_sternberg_4.png'), 'Resolution', 600);
 
 % WM load 6
 figure;
@@ -111,7 +111,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('WM load 6');
-drawnow; saveas(gcf, [figpath 'AOC_tfr_sternberg_6.png']);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_sternberg_6.png'), 'Resolution', 600);
 
 %% Plot the grand averages for the difference between condition 3 and condition 1
 close all
@@ -148,9 +148,9 @@ cb = colorbar;
 ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [\muV^2/Hz]');
-rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'r', 'LineWidth', 5);
+rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 title('Sternberg TFR Difference (WM load 6 minus WM load 2)', 'FontName', 'Arial', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
 
 % Save
-drawnow; saveas(gcf, [figpath 'AOC_tfr_sternberg_diff.png']);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_sternberg_diff.png'), 'Resolution', 600);

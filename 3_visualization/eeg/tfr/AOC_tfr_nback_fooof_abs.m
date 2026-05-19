@@ -88,7 +88,7 @@ rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('1-back');
 drawnow;
-print(gcf, [figpath 'AOC_tfr_1back_fooof_bl_abs.png'], '-dpng', '-r300');
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_1back_fooof_bl_abs.png'), 'Resolution', 600);
 
 % 2-back
 figure('Position', [0, 0, 1512, 982], 'Color', 'w');
@@ -104,7 +104,7 @@ rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('2-back');
 drawnow;
-print(gcf, [figpath 'AOC_tfr_2back_fooof_bl_abs.png'], '-dpng', '-r300');
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_2back_fooof_bl_abs.png'), 'Resolution', 600);
 
 % 3-back
 figure('Position', [0, 0, 1512, 982], 'Color', 'w');
@@ -120,7 +120,7 @@ rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('3-back');
 drawnow;
-print(gcf, [figpath 'AOC_tfr_3back_fooof_bl_abs.png'], '-dpng', '-r300');
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_3back_fooof_bl_abs.png'), 'Resolution', 600);
 
 %% Plot the grand averages for the difference between condition 3 and condition 1
 close all
@@ -162,4 +162,4 @@ set(gca, 'FontSize', fontSize);
 
 % Save
 drawnow;
-print(gcf, [figpath 'AOC_tfr_nback_diff_fooof_bl_abs.png'], '-dpng', '-r300');
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_nback_diff_fooof_bl_abs.png'), 'Resolution', 600);

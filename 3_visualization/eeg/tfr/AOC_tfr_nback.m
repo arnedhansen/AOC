@@ -79,7 +79,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 title('1-back');
 set(gca, 'FontSize', fontSize);
-saveas(gcf, [figpath 'AOC_tfr_1back.png']);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_1back.png'), 'Resolution', 600);
 
 % 2-back
 figure;
@@ -95,7 +95,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 title('2-back');
 set(gca, 'FontSize', fontSize);
-saveas(gcf, [figpath 'AOC_tfr_2back.png']);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_2back.png'), 'Resolution', 600);
 
 % 3-back
 figure;
@@ -111,7 +111,7 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 title('3-back');
 set(gca, 'FontSize', fontSize);
-saveas(gcf, [figpath 'AOC_tfr_3back.png']);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_3back.png'), 'Resolution', 600);
 
 %% Compute the difference between condition 3 and condition 1
 close all
@@ -156,4 +156,4 @@ title('N-back TFR Difference (3-back minus 1-back)', 'FontName', 'Arial');
 set(gca, 'FontSize', fontSize);
 
 % Save the figure
-saveas(gcf, [figpath 'AOC_tfr_nback_diff.png']);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_nback_diff.png'), 'Resolution', 600);

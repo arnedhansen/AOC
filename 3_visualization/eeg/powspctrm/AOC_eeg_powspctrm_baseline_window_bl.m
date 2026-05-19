@@ -1,7 +1,7 @@
 %% AOC Power Spectrum — Baseline Window (Raw, Uncorrected)
 % Builds power spectra from the baseline interval [-0.5 -0.25] s only
 % using time-resolved raw (non-FOOOF) TFR files, for both Sternberg and N-back.
-% No baseline correction: FieldTrip ft_freqdescriptives (latency + avgovertime).
+% No baseline correction: FieldTrip ft_selectdata (latency), mean over time.
 %
 % Data source: tfr_stern.mat / tfr_nback.mat (tfr*, not tfr*_fooof) from
 % AOC_eeg_fex_sternberg_TFR.m / AOC_eeg_fex_nback_TFR.m
@@ -55,21 +55,29 @@ cfg.linewidth = 3;
 hold on;
 
 elecs = ismember(gapow2.label, cfg.channel);
-freqs = gapow2.freq;
+freqs = gapow2.freq(:)';
 
-pow2_e = gapow2.powspctrm(elecs, :);
-pow4_e = gapow4.powspctrm(elecs, :);
-pow6_e = gapow6.powspctrm(elecs, :);
+pow2_e = squeeze(gapow2.powspctrm(elecs, :));
+pow4_e = squeeze(gapow4.powspctrm(elecs, :));
+pow6_e = squeeze(gapow6.powspctrm(elecs, :));
 
 m2 = mean(pow2_e, 1, 'omitnan');
+m2 = m2(:)';
 n2 = sum(isfinite(pow2_e), 1);
 se2 = std(pow2_e, 0, 1, 'omitnan') ./ sqrt(n2);
+se2 = se2(:)';
 m4 = mean(pow4_e, 1, 'omitnan');
+m4 = m4(:)';
 n4 = sum(isfinite(pow4_e), 1);
 se4 = std(pow4_e, 0, 1, 'omitnan') ./ sqrt(n4);
+se4 = se4(:)';
 m6 = mean(pow6_e, 1, 'omitnan');
+m6 = m6(:)';
 n6 = sum(isfinite(pow6_e), 1);
 se6 = std(pow6_e, 0, 1, 'omitnan') ./ sqrt(n6);
+se6 = se6(:)';
+
+assert(numel(freqs) == numel(m2), 'freq axis length mismatch (WM load 2)');
 
 se2(n2 < 2) = NaN;
 se4(n4 < 2) = NaN;
@@ -127,21 +135,29 @@ cfg.linewidth = 3;
 hold on;
 
 elecs = ismember(gapow1.label, cfg.channel);
-freqs = gapow1.freq;
+freqs = gapow1.freq(:)';
 
-pow1_e = gapow1.powspctrm(elecs, :);
-pow2_e = gapow2_nb.powspctrm(elecs, :);
-pow3_e = gapow3.powspctrm(elecs, :);
+pow1_e = squeeze(gapow1.powspctrm(elecs, :));
+pow2_e = squeeze(gapow2_nb.powspctrm(elecs, :));
+pow3_e = squeeze(gapow3.powspctrm(elecs, :));
 
 m1 = mean(pow1_e, 1, 'omitnan');
+m1 = m1(:)';
 n1 = sum(isfinite(pow1_e), 1);
 se1 = std(pow1_e, 0, 1, 'omitnan') ./ sqrt(n1);
+se1 = se1(:)';
 m2 = mean(pow2_e, 1, 'omitnan');
+m2 = m2(:)';
 n2 = sum(isfinite(pow2_e), 1);
 se2 = std(pow2_e, 0, 1, 'omitnan') ./ sqrt(n2);
+se2 = se2(:)';
 m3 = mean(pow3_e, 1, 'omitnan');
+m3 = m3(:)';
 n3 = sum(isfinite(pow3_e), 1);
 se3 = std(pow3_e, 0, 1, 'omitnan') ./ sqrt(n3);
+se3 = se3(:)';
+
+assert(numel(freqs) == numel(m1), 'freq axis length mismatch (1-back)');
 
 se1(n1 < 2) = NaN;
 se2(n2 < 2) = NaN;
@@ -180,8 +196,13 @@ function S_pow = tfr_to_pow_baseline_epoch(S_tfr, baseline_window, freq_range)
 cfg = [];
 cfg.latency = baseline_window;
 cfg.frequency = freq_range;
-cfg.avgovertime = 'yes';
-S_pow = ft_freqdescriptives(cfg, S_tfr);
+S_sel = ft_selectdata(cfg, S_tfr);
+S_pow = S_sel;
+S_pow.powspctrm = mean(S_sel.powspctrm, 3, 'omitnan');
+S_pow.dimord = 'chan_freq';
+if isfield(S_pow, 'time')
+    S_pow = rmfield(S_pow, 'time');
+end
 end
 
 function [a, b, c, keep_idx] = exclude_empty_subjects(a, b, c, subjects, label)

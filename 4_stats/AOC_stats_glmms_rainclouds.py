@@ -403,7 +403,7 @@ for task in tasks:
             print(f"  Pairwise contrasts (FDR-BH): {var} [{task['name']}]")
             for _, r in pw.iterrows():
                 sig = p_to_signif(float(r["p_adj"]))
-                print(f"    {r['Group1']} vs {r['Group2']}: "
+                print(f"    {r['Group2']} vs {r['Group1']}: "
                       f"β = {float(r['Estimate']):.3f}, "
                       f"95% CI [{float(r['CI95_low']):.3f}, {float(r['CI95_high']):.3f}], "
                       f"p_adj = {float(r['p_adj']):.4f} {sig}")

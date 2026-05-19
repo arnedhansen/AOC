@@ -359,7 +359,7 @@ for task in tasks:
         if not pw.empty:
             for _, r in pw.iterrows():
                 sig = p_to_signif(float(r['p_adj'])) if 'p_adj' in r else ''
-                print(f"    {r['group1']} vs {r['group2']}: p_adj = {float(r['p_adj']):.4f} {sig}")
+                print(f"    {r['group2']} vs {r['group1']}: p_adj = {float(r['p_adj']):.4f} {sig}")
 
         # ------ Pairwise Cohen's dz ------
         wide = dvar.pivot(index="ID", columns="Condition", values=var)

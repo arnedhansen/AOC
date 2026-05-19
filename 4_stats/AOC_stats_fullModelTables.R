@@ -156,7 +156,8 @@ clean_lrt <- function(df) {
 
 clean_pairwise <- function(df) {
   out <- df
-  out$Contrast <- paste(out$Group1, "vs", out$Group2)
+  # Estimate is Group2 - Group1; label as Group2 vs Group1 (matches fixed effects)
+  out$Contrast <- paste(out$Group2, "vs", out$Group1)
   out$`β` <- fmt_num(out$Estimate)
   out$SE <- fmt_num(out$SE)
   out$Statistic <- fmt_num(out$z)

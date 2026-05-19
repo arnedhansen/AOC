@@ -7,35 +7,26 @@
 
 %% Setup
 startup
-[~, ~, ~ , ~] = setup('AOC');
-if ispc == 1
-    path = 'W:\Students\Arne\AOC\data\merged\';
-else
-    path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/merged/';
-end
-dirs = dir(path);
+[~, paths, ~, ~] = setup('AOC');
+mergedPath = paths.merged;
+dirs = dir(mergedPath);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 subjects = exclude_subjects(subjects, 'AOC');
 runMode = askRunMode();
 
-% Setup logging
-logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
+logDir = paths.logs;
 scriptName = 'AOC_preprocessing_nback';
 
 %% Read data, segment and convert to FieldTrip data structure
 tic;
 for subj = 1:length(subjects)
     try
-        datapath = fullfile(path, subjects{subj});
+        datapath = fullfile(mergedPath, subjects{subj});
         cd(datapath)
 
         % Only process new data
-        if ispc == 1
-            newDataFolder = dir(['W:\Students\Arne\AOC\data\features\' , subjects{subj}, '\eeg\dataEEG_nback.mat']);
-        else
-            newDataFolder = dir(['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_nback.mat']);
-        end
+        newDataFolder = dir(fullfile(paths.features, subjects{subj}, 'eeg', 'dataEEG_nback.mat'));
         if strcmp(runMode,'all') || isempty(newDataFolder)
             clc
             disp(['Preprocessing Subject AOC ', num2str(subjects{subj})])
@@ -303,15 +294,9 @@ for subj = 1:length(subjects)
             preStimFixInfo.totalTrials = numel(trialsToKeep);
             preStimFixInfo.keptTrials = find(trialsToKeep);
             preStimFixInfo.distL = distL;
-            if ispc == 1
-                savepathControlsFix = (['W:\Students\Arne\AOC\data\controls\preStimFixation\', subjects{subj}]);
-                mkdir(savepathControlsFix)
-                save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_nback'], "preStimFixInfo");
-            else
-                savepathControlsFix = ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/preStimFixation/', subjects{subj}];
-                mkdir(savepathControlsFix)
-                save([savepathControlsFix, filesep, 'AOC_preStimFixation_', subjects{subj}, '_nback'], "preStimFixInfo");
-            end
+            savepathControlsFix = fullfile(paths.preStimFixation, subjects{subj});
+            mkdir(savepathControlsFix)
+            save(fullfile(savepathControlsFix, ['AOC_preStimFixation_', subjects{subj}, '_nback']), "preStimFixInfo");
 
             % Continue analyses with correct fix trials
             data = ft_selectdata(struct('trials', trialsToKeep), data);
@@ -369,22 +354,14 @@ for subj = 1:length(subjects)
             %% Save data
             clc
             disp(['Saving Data for Subject AOC ', num2str(subjects{subj})])
-            if ispc == 1
-                savepathEEG = fullfile('W:\Students\Arne\AOC\data\features', subjects{subj}, 'eeg');
-            else
-                savepathEEG = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', subjects{subj}, 'eeg');
-            end
+            savepathEEG = fullfile(paths.features, subjects{subj}, 'eeg');
             mkdir(savepathEEG)
             cd(savepathEEG)
             disp('SAVING dataEEG_nback...')
             save dataEEG_nback dataEEG
             disp('SAVING dataEEG_TFR_nback...')
             save dataEEG_TFR_nback dataTFR
-            if ispc == 1
-                savepathET = fullfile('W:\Students\Arne\AOC\data\features', subjects{subj}, 'gaze');
-            else
-                savepathET = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', subjects{subj}, 'gaze');
-            end
+            savepathET = fullfile(paths.features, subjects{subj}, 'gaze');
             mkdir(savepathET)
             cd(savepathET)
             disp('SAVING dataET_nback...')

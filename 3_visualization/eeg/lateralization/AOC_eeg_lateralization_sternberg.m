@@ -8,12 +8,8 @@ clear
 clc
 close all
 startup
-[~, paths, ~, ~] = setup('AOC', 0);
+[subjects, paths, ~, ~] = setup('AOC', 0);
 featPath = paths.features;
-path = '/Volumes/methlab/Students/Arne/AOC/data/automagic_nohp';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
 
 %% Load data
 load(fullfile(featPath, 'AOC_eeg_matrix_sternberg_trials.mat'));

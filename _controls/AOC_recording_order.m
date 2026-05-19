@@ -4,8 +4,12 @@
 % Key outputs:
 %   AOC_sorted_table.xlsx (participants ordered by recording date/time)
 
+%% Setup
+startup
+[~, paths, ~, ~] = setup('AOC', 0);
+
 % Read the Excel file. (Optionally, use 'VariableNamingRule','preserve' to keep original headers)
-T = readtable('/Volumes/methlab_vp/AOC/AOC_VPs.xlsx');
+T = readtable(paths.vp_table);
 
 % Combine the 'Datum' (date) and 'Uhrzeit' (time as fraction of day) columns.
 % Adding the numeric fraction to a datetime will correctly offset the time.
@@ -23,4 +27,4 @@ disp(sorted_IDs);
 
 % Save
 T_sorted = T_sorted(1:125, ["x_", "ID", "Vorname", "Nachname", "DateTime"]);
-writetable(T_sorted, '/Volumes/methlab/Students/Arne/AOC/data/controls/dataAcquisitionOrder/AOC_sorted_table.xlsx');
+writetable(T_sorted, fullfile(paths.controls, 'dataAcquisitionOrder', 'AOC_sorted_table.xlsx'));

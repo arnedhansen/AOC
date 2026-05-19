@@ -9,13 +9,9 @@
 startup
 clear
 clc
-if ispc == 1
-    p = 'C:\Users\dummy\Documents\GitHub\AOC\1_preprocessing\1_cut';
-    cd W:\4marius_bdf\eeglab
-else
-    p = '/Users/Arne/Documents/GitHub/AOC/1_preprocessing/1_cut';
-    cd /Volumes/methlab/4marius_bdf/eeglab
-end
+[~, paths, ~, ~] = setup('AOC', 0);
+p = fileparts(mfilename('fullpath'));
+cd(paths.eeglab_share)
 eeglab
 close()
 cd(p)
@@ -23,11 +19,7 @@ clc
 
 %% Define path, cut data and convert asc to mat files.
 tic
-if ispc == 1
-    d = dir(fullfile('V:\OCC\AOC\data', '*', '*cnt'));
-else
-    d = dir(fullfile('/Volumes/methlab_data/OCC/AOC/data', '*', '*cnt'));
-end
+d = dir(fullfile(paths.raw_occ, '*', '*cnt'));
 disp(upper([num2str(size(d, 1)), ' subjects to compute']))
 ids = {};
 for f = 1 : size(d, 1)
@@ -45,12 +37,8 @@ disp(upper('Loading and Synchronizing EEG & Eyelink'));
 for id = 1 : length(ids)
     ID = ids{id};
 
-    if ispc == 1
-        filePath = fullfile('V:\OCC\AOC\data\', ID);
-    else
-        filePath = fullfile('/Volumes/methlab_data/OCC/AOC/data', ID);
-    end
-    d = dir([filePath, filesep, '*.asc']);
+    filePath = fullfile(paths.raw_occ, ID);
+    d = dir(fullfile(filePath, '*.asc'));
 
     if not(isempty(d))
         fprintf('Synchronizing data for Subject AOC %.3s \n', ID)
@@ -88,24 +76,24 @@ for id = 1 : length(ids)
                 etfile = [id, '_' task, '_block', num2str(block), '_task_ET.mat'];
             end
 
-            outputFile = [d(f).folder filesep etfile];
+            outputFile = fullfile(d(f).folder, etfile);
             ET = parseeyelink(inputFile, outputFile);
         end
     end
 
     % Move asc files to archive
-    d = dir([filePath, filesep, '*.asc']);
+    d = dir(fullfile(filePath, '*.asc'));
     for f = 1 : size(d, 1)
         source = fullfile(d(f).folder, d(f).name);
-        destination = fullfile(fullfile(filePath, 'archive'));
+        destination = fullfile(filePath, 'archive');
         movefile(source,destination)
     end
 
     % Move edf files to archive
-    d = dir([filePath, filesep, '*.edf']);
+    d = dir(fullfile(filePath, '*.edf'));
     for f = 1 : size(d, 1)
         source = fullfile(d(f).folder, d(f).name);
-        destination = fullfile(fullfile(filePath, 'archive'));
+        destination = fullfile(filePath, 'archive');
         movefile(source,destination)
     end
 end

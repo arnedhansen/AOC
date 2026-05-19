@@ -8,18 +8,16 @@
 %   3. R² vs aperiodic offset — faceted by latency
 %   4. R² distribution histogram — with threshold line at 0.90
 %
-% Input:  /Volumes/.../data/controls/multiverse/fooof_r2_{task}.csv
-%         /Volumes/.../data/controls/multiverse/fooof_r2_{task}_subject.csv
-% Output: /Volumes/.../figures/controls/multiverse/FOOOF/
+% Input:  paths.controls/multiverse/fooof_r2_{task}.csv
+%         paths.controls/multiverse/fooof_r2_{task}_subject.csv
+% Output: paths.figures/controls/multiverse/FOOOF/
 
-%% Paths
-base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC';
-if ispc
-    base_data = 'W:\Students\Arne\AOC';
-end
-csv_dir = fullfile(base_data, 'data', 'controls', 'multiverse');
-multiverse_csv_dir = fullfile(base_data, 'data', 'multiverse');
-fig_dir_base = fullfile(base_data, 'figures', 'controls', 'multiverse', 'FOOOF');
+%% Setup
+startup
+[~, paths, ~, ~] = setup('AOC', 0);
+csv_dir = fullfile(paths.controls, 'multiverse');
+multiverse_csv_dir = paths.multiverse;
+fig_dir_base = fullfile(paths.figures, 'controls', 'multiverse', 'FOOOF');
 if ~isfolder(fig_dir_base), mkdir(fig_dir_base); end
 
 %% Select method

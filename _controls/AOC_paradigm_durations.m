@@ -8,7 +8,9 @@
 clear
 clc
 close all
-path = '/Volumes/methlab_data/OCC/AOC/data/';
+startup
+[~, paths, ~, ~] = setup('AOC', 0);
+path = paths.raw_occ;
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};

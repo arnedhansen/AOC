@@ -72,12 +72,16 @@ variables = [
     "BCEA", "BCEALateralization",
     "AlphaPower", "IAF", "Lateralization",
     # --- FOOOF alpha ---
-    "AlphaPower_FOOOF",
-    "AlphaPower_FOOOF_bl",
+    "AlphaPower_FOOOF_full",
+    "AlphaPower_FOOOF_bl_full",
     "AlphaPower_FOOOF_bl_early",
     "AlphaPower_FOOOF_bl_late",
+    # --- Raw alpha (non-FOOOF) ---
+    "AlphaPower_raw_full",
+    "AlphaPower_raw_early",
+    "AlphaPower_raw_late",
     # --- Baselined raw alpha ---
-    "AlphaPower_bl",
+    "AlphaPower_bl_full",
     "AlphaPower_bl_early",
     "AlphaPower_bl_late",
     # --- Baselined gaze ---
@@ -90,7 +94,22 @@ variables = [
     "BCEALatFullBL", "BCEALatEarlyBL", "BCEALatLateBL",
 ]
 
-# Pretty labels (auto-generated; override specific ones below)
+_ALPHA_BL_COLUMN_ALIASES = {}
+
+RAW_ALPHA_BY_TASK = {
+    "nback": "AlphaPower_raw_full",
+    "sternberg": "AlphaPower_raw_late",
+}
+
+def enforce_task_raw_alpha(df: pd.DataFrame, task_name: str) -> pd.DataFrame:
+    source_col = RAW_ALPHA_BY_TASK.get(task_name)
+    if source_col is None:
+        return df
+    if source_col in df.columns:
+        df["AlphaPower"] = pd.to_numeric(df[source_col], errors="coerce")
+    return df
+
+# Labels
 _unit_map = {
     "Accuracy": "[%]",
     "ReactionTime": "[s]",
@@ -104,11 +123,14 @@ _unit_map = {
     "AlphaPower": "[\u03BCV\u00B2/Hz]",
     "IAF": "[Hz]",
     "Lateralization": "[R\u2212L / R+L]",
-    "AlphaPower_FOOOF": "[FOOOF log]",
-    "AlphaPower_FOOOF_bl": "[FOOOF log, BL]",
+    "AlphaPower_FOOOF_full": "[FOOOF log, full]",
+    "AlphaPower_FOOOF_bl_full": "[FOOOF log, BL full]",
     "AlphaPower_FOOOF_bl_early": "[FOOOF log, BL early]",
     "AlphaPower_FOOOF_bl_late": "[FOOOF log, BL late]",
-    "AlphaPower_bl": "[dB]",
+    "AlphaPower_raw_full": "[\u03bcV\u00b2/Hz, full]",
+    "AlphaPower_raw_early": "[\u03bcV\u00b2/Hz, early]",
+    "AlphaPower_raw_late": "[\u03bcV\u00b2/Hz, late]",
+    "AlphaPower_bl_full": "[dB, full]",
     "AlphaPower_bl_early": "[dB, early]",
     "AlphaPower_bl_late": "[dB, late]",
     "GazeDeviationFullBL": "[dB]", "GazeDeviationEarlyBL": "[dB]", "GazeDeviationLateBL": "[dB]",
@@ -267,6 +289,10 @@ for task in tasks:
     dat = pd.read_csv(task["input_csv"])
     dat.loc[dat.get("Accuracy", pd.Series(dtype=float)) > 100, "Accuracy"] = np.nan
     dat = harmonise_conditions(dat, task)
+    dat = enforce_task_raw_alpha(dat, task["name"])
+    for alias, src in _ALPHA_BL_COLUMN_ALIASES.items():
+        if src in dat.columns:
+            dat[alias] = dat[src]
 
     # Determine which LONG variables are actually present in this CSV
     task_vars = [v for v in variables if v in dat.columns]

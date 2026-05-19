@@ -5,17 +5,10 @@
 %   Gaze deviation (Euclidean), GazeStdX/Y, PupilSize, MSRate
 %   Blinks, Fixations, Saccades, ScanPathLength (from preprocessing)
 
-%% Setup
+%% Setup 
 startup
-setup('AOC');
-if ispc == 1
-    path = 'W:\Students\Arne\AOC\data\features\';
-else
-    path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
-end
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+[subjects, paths, ~, ~] = setup('AOC');
+path = paths.features;
 
 gaze_data_sternberg = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, ...
     'GazeStdX', {}, 'GazeStdY', {}, 'PupilSize', {}, 'MSRate', {}, ...
@@ -363,11 +356,7 @@ for subj = 1:length(subjects)
         'BCEALatLateBL', num2cell([l2blatBLl; l4blatBLl; l6blatBLl]));
 
     %% Save data
-    if ispc == 1
-        savepath = fullfile('W:\Students\Arne\AOC\data\features\', subjects{subj}, 'gaze');
-    else
-        savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, 'gaze');
-    end
+    savepath = fullfile(paths.features, subjects{subj}, 'gaze');
     if ~exist(savepath, 'dir')
         mkdir(savepath)
     end
@@ -383,10 +372,5 @@ for subj = 1:length(subjects)
     gaze_data_sternberg = [gaze_data_sternberg; subj_data_gaze];
 end
 trialinfo = dataETlong.trialinfo';
-if ispc == 1
-    save W:\Students\Arne\AOC\data\features\AOC_gaze_sternberg gaze_x gaze_y trialinfo
-    save W:\Students\Arne\AOC\data\features\AOC_gaze_matrix_sternberg gaze_data_sternberg
-else
-    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_sternberg gaze_x gaze_y trialinfo
-    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_matrix_sternberg gaze_data_sternberg
-end
+save(fullfile(paths.features, 'AOC_gaze_sternberg.mat'), 'gaze_x', 'gaze_y', 'trialinfo')
+save(fullfile(paths.features, 'AOC_gaze_matrix_sternberg.mat'), 'gaze_data_sternberg')

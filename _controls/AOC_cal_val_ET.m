@@ -9,13 +9,13 @@ startup
 clear
 clc
 close all
-path = '/Volumes/methlab_data/OCC/AOC/data/';
+[~, paths, ~, ~] = setup('AOC', 0);
+path = paths.raw_occ;
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
-% Setup logging
-logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
+logDir = paths.logs;
 scriptName = 'AOC_cal_val_ET';
 
 %% Load gaze data
@@ -68,7 +68,7 @@ for subj = 1:length(subjects)
 end
 
 %% Load VL data
-vlTbl = readtable('/Volumes/methlab_vp/AOC/AOC_VPs.xlsx');
+vlTbl = readtable(paths.vp_table);
 vlTbl = vlTbl(1:125, ["ID", "VL1", "VL2"]);
 
 %% VISUALIZE for each subject
@@ -132,7 +132,7 @@ for subjIdx = 1:numSubjects
             'EdgeColor', 'none', 'FontSize', 15);
 
         % Save
-        savepath = fullfile('/Volumes/methlab/Students/Arne/AOC/data/controls/ET_validations');
+        savepath = fullfile(paths.controls, 'ET_validations');
         mkdir(savepath)
         cd(savepath)
         saveName = [savepath, filesep, num2str(subjects{subjIdx}) '_validations.png'];

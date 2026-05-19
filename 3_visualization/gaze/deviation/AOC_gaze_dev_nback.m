@@ -4,12 +4,7 @@
 startup
 [subjects, paths, colors, ~] = setup('AOC');
 
-if ispc
-    seb_path = 'W:\Students\Arne\toolboxes\shadedErrorBar';
-else
-    seb_path = '/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/shadedErrorBar';
-end
-addpath(seb_path);
+addpath(paths.seb_path);
 
 feat_dir = paths.features;
 fig_dir = fullfile(paths.figures, 'gaze', 'deviation');

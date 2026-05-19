@@ -6,7 +6,8 @@
 
 startup
 clear
-dirs = dir('/Volumes/methlab/Students/Arne/AOC/data/merged/');
+[~, paths, ~, ~] = setup('AOC', 0);
+dirs = dir(paths.merged);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
@@ -21,7 +22,7 @@ totalCounts = zeros(2, numel(subjects));
 for subj = 1:numel(subjects)
     try
         % Load nback data
-        loadPathNback = fullfile('/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/', subjects{subj});
+        loadPathNback = fullfile(paths.preStimFixation, subjects{subj});
         load(fullfile(loadPathNback, ['AOC_preStimFixation_', subjects{subj}, '_nback.mat']), 'preStimFixInfo');
         excludedCounts(1, subj) = numel(preStimFixInfo.excludedTrials);
         keptCounts(1, subj) = numel(preStimFixInfo.keptTrials);
@@ -63,9 +64,9 @@ for t = 1:2
     
     if t == 1
         ylim([0 305])
-        saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/AOC_preStimFixation_nback.png')
+        saveas(gcf, fullfile(paths.preStimFixation, 'AOC_preStimFixation_nback.png'))
     else
-        saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/data/controls/preStimFixation/AOC_preStimFixation_sternberg.png')
+        saveas(gcf, fullfile(paths.preStimFixation, 'AOC_preStimFixation_sternberg.png'))
     end
 end
 

@@ -10,7 +10,8 @@ startup
 clear
 clc
 close all
-path = '/Volumes/g_psyplafor_methlab_data$/OCC/AOC/data/';
+[~, paths, ~, ~] = setup('AOC', 0);
+path = paths.raw_occ;
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
@@ -18,8 +19,7 @@ subjects = exclude_subjects(subjects, 'AOC');
 behav_data_sternberg = struct('ID', {}, 'Condition', {}, 'Accuracy', {}, 'ReactionTime', {});
 behav_data_sternberg_trials = struct('Trial', {}, 'ID', {}, 'Condition', {}, 'Accuracy', {}, 'ReactionTime', {}, 'Stimuli', {}, 'Probe', {}, 'Match', {});
 
-% Setup logging
-logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
+logDir = paths.logs;
 scriptName = 'AOC_behavioral_fex_sternberg';
 
 %% Read data
@@ -97,7 +97,7 @@ for subj = 1:length(subjects)
         subj_data_behav = struct('ID', num2cell([subject_id{1}; subject_id{1}; subject_id{1}]), 'Condition', num2cell([2; 4; 6]), 'Accuracy', num2cell([l2acc; l4acc; l6acc]), 'ReactionTime', num2cell([l2rt; l4rt; l6rt]));
 
         %% Save
-        savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', subjects{subj}, 'behavioral');
+        savepath = fullfile(paths.features, subjects{subj}, 'behavioral');
         mkdir(savepath)
         cd(savepath)
         save behavioral_matrix_sternberg_subj_trials subj_data_behav_trials
@@ -115,5 +115,5 @@ for subj = 1:length(subjects)
         fprintf('Continuing to next subject...\n');
     end
 end
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_behavioral_matrix_sternberg_trials behav_data_sternberg_trials
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_behavioral_matrix_sternberg behav_data_sternberg
+save(fullfile(paths.features, 'AOC_behavioral_matrix_sternberg_trials.mat'), 'behav_data_sternberg_trials')
+save(fullfile(paths.features, 'AOC_behavioral_matrix_sternberg.mat'), 'behav_data_sternberg')

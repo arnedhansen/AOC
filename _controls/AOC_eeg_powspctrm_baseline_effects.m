@@ -56,7 +56,7 @@ tasks = struct( ...
 blWin  = [-0.5 -0.25];   % Baseline window [s]
 
 % Save path
-savePath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/controls/';
+savePath = fullfile(paths.figures, 'controls');
 if ~exist(savePath, 'dir'), mkdir(savePath); end
 
 %% Loop over tasks

@@ -10,7 +10,7 @@ path = paths.features;
 featPath = paths.features;
 
 % Setup logging
-logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
+logDir = paths.logs;
 scriptName = 'AOC_eeg_fex_sternberg_FOOOF';
 eeg_data_sternberg_FOOOF = struct('ID', {}, 'Condition', {}, ...
     'AlphaPower_FOOOF_full', {}, 'AlphaPower_FOOOF_bl_full', {}, ...
@@ -343,11 +343,7 @@ for subj = 1:length(subjects)
         sgtitle(sprintf('FOOOF sanity check (AOC STERNBERG): Subject %s | Window [%.2f %.2f] s | t = %.2f s', ...
             subjects{subj}, latWin(1), latWin(2), tfr2_fooof.time(tim)), 'FontSize', 18)
 
-        if ispc
-            savePathControls = 'W:\Students\Arne\AOC\data\controls\FOOOF\';
-        else
-            savePathControls = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF/';
-        end
+        savePathControls = paths.fooof;
         if ~exist(savePathControls, 'dir')
             mkdir(savePathControls)
         end
@@ -488,13 +484,8 @@ for subj = 1:length(subjects)
     end
 end
 
-if ispc == 1
-    save W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_sternberg_FOOOF eeg_data_sternberg_FOOOF
-    writetable(struct2table(eeg_data_sternberg_FOOOF), 'W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_sternberg_FOOOF.csv')
-else
-    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg_FOOOF eeg_data_sternberg_FOOOF
-    writetable(struct2table(eeg_data_sternberg_FOOOF), '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg_FOOOF.csv')
-end
+save(fullfile(paths.features, 'AOC_eeg_matrix_sternberg_FOOOF.mat'), 'eeg_data_sternberg_FOOOF')
+writetable(struct2table(eeg_data_sternberg_FOOOF), fullfile(paths.features, 'AOC_eeg_matrix_sternberg_FOOOF.csv'))
 
 function ch = occ_channels_from_labels(labels)
 ch = {};

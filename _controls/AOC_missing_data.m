@@ -27,18 +27,17 @@ startup
 clear
 clc
 close all
-path = '/Volumes/methlab_data/OCC/AOC/data';
-dirs = dir(path);
+[~, paths, ~, ~] = setup('AOC', 0);
+dirs = dir(paths.raw_occ);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
 %% Check missing data
 missingFiles = {};
-path = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
 for subj = 1 : length(subjects)
     for type = {'Sternberg', 'Nback'}
         for block = 1 : 6
-            filePath = ['/Volumes/methlab/Students/Arne/AOC/data/merged/', char(subjects(subj)), filesep, char(subjects(subj)), '_EEG_ET_', char(type), '_block', num2str(block), '_merged.mat'];
+            filePath = fullfile(paths.merged, char(subjects(subj)), [char(subjects(subj)), '_EEG_ET_', char(type), '_block', num2str(block), '_merged.mat']);
             fileName = [char(subjects(subj)), '_EEG_ET_', char(type), '_block', num2str(block), '_merged.mat'];
             if isfile(filePath)
                 disp([fileName '...'])
@@ -69,12 +68,8 @@ fprintf('%.2f%% of files are missing\n', missingFilesPercentage);
 %% Heatmap Visualization
 close all
 
-% Define paths
-data_path = '/Volumes/methlab_data/OCC/AOC/data';
-check_path = '/Volumes/methlab/Students/Arne/AOC/data/merged/';
-
 % Get subject list
-dirs = dir(data_path);
+dirs = dir(paths.raw_occ);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
@@ -92,7 +87,7 @@ for subj = 1:length(subjects)
         for block = 1:num_blocks
             % Construct expected file path
             fileName = sprintf('%s_EEG_ET_%s_block%d_merged.mat', subjects{subj}, conditions{c}, block);
-            filePath = fullfile(check_path, subjects{subj}, fileName);
+            filePath = fullfile(paths.merged, subjects{subj}, fileName);
             
             % Check file existence
             if ~isfile(filePath)
@@ -117,7 +112,7 @@ xticks(1:length(subjects));
 xticklabels(subjects);
 
 % Load exclusion list
-fid = fopen('/Volumes/methlab/Students/Arne/AOC/data/controls/AOC_exclusion_participants.rtf','rt');
+fid = fopen(fullfile(paths.controls, 'AOC_exclusion_participants.rtf'), 'rt');
 raw = fread(fid, '*char')';
 fclose(fid);
 exclIDs = regexp(raw, '\d+', 'match');  % cell array of strings
@@ -175,4 +170,4 @@ ylabelHandle = get(gca, 'YLabel');
 set(ylabelHandle, 'FontSize', 25);
 
 % Save
-saveas(gcf, '/Volumes/methlab/Students/Arne/AOC/data/controls/AOC_missing_data_heatmap.png')
+saveas(gcf, fullfile(paths.controls, 'AOC_missing_data_heatmap.png'))

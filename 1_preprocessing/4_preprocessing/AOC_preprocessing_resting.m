@@ -18,13 +18,9 @@
 %% Setup
 startup
 clear
-[~, ~, ~, ~] = setup('AOC');
-if ispc == 1
-    path = 'W:\Students\Arne\AOC\data\merged\';
-else
-    path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/merged/';
-end
-dirs = dir(path);
+[~, paths, ~, ~] = setup('AOC');
+mergedPath = paths.merged;
+dirs = dir(mergedPath);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 subjects = exclude_subjects(subjects, 'AOC');
@@ -34,15 +30,11 @@ runMode = askRunMode();
 tic;
 for subj = 1:length(subjects)
     try
-        datapath = fullfile(path, subjects{subj});
+        datapath = fullfile(mergedPath, subjects{subj});
         cd(datapath)
 
         % Check if already processed
-        if ispc == 1
-            checkFile = dir(['W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\dataEEG_resting.mat']);
-        else
-            checkFile = dir(['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/dataEEG_resting.mat']);
-        end
+        checkFile = dir(fullfile(paths.features, subjects{subj}, 'eeg', 'dataEEG_resting.mat'));
 
         if strcmp(runMode, 'all') || isempty(checkFile)
             clc
@@ -133,22 +125,14 @@ for subj = 1:length(subjects)
 
             %% Save EEG data
             clc
-            if ispc == 1
-                savepathEEG = ['W:\Students\Arne\AOC\data\features\', subjects{subj}, '\eeg\'];
-            else
-                savepathEEG = ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/eeg/'];
-            end
+            savepathEEG = fullfile(paths.features, subjects{subj}, 'eeg');
             mkdir(savepathEEG)
             cd(savepathEEG)
             disp('SAVING dataEEG_resting...')
             save('dataEEG_resting', 'dataEEG', 'segInfo', '-v7.3')
 
             %% Save ET data
-            if ispc == 1
-                savepathET = ['W:\Students\Arne\AOC\data\features\', subjects{subj}, '\gaze\'];
-            else
-                savepathET = ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, '/gaze/'];
-            end
+            savepathET = fullfile(paths.features, subjects{subj}, 'gaze');
             mkdir(savepathET)
             cd(savepathET)
             disp('SAVING dataET_resting...')

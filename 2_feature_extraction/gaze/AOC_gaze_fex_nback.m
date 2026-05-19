@@ -7,15 +7,8 @@
 
 %% Setup 
 startup
-setup('AOC');
-if ispc == 1
-    path = 'W:\Students\Arne\AOC\data\features\';
-else
-    path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
-end
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+[subjects, paths, ~, ~] = setup('AOC');
+path = paths.features;
 
 gaze_data_nback = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, ...
     'GazeStdX', {}, 'GazeStdY', {}, 'PupilSize', {}, 'MSRate', {}, ...
@@ -366,11 +359,7 @@ for subj = 1:length(subjects)
         'BCEALatLateBL', num2cell([l1blatBLl; l2blatBLl; l3blatBLl]));
 
     %% Save
-    if ispc == 1
-        savepath = fullfile('W:\Students\Arne\AOC\data\features\', subjects{subj}, 'gaze');
-    else
-        savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, 'gaze');
-    end
+    savepath = fullfile(paths.features, subjects{subj}, 'gaze');
     if ~exist(savepath, 'dir')
         mkdir(savepath)
     end
@@ -385,10 +374,5 @@ for subj = 1:length(subjects)
     % Append to the final structure array
     gaze_data_nback = [gaze_data_nback; subj_data_gaze];
 end
-if ispc == 1
-    save W:\Students\Arne\AOC\data\features\AOC_gaze_nback gaze_x gaze_y
-    save W:\Students\Arne\AOC\data\features\AOC_gaze_matrix_nback gaze_data_nback
-else
-    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_nback gaze_x gaze_y
-    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_matrix_nback gaze_data_nback
-end
+save(fullfile(paths.features, 'AOC_gaze_nback.mat'), 'gaze_x', 'gaze_y')
+save(fullfile(paths.features, 'AOC_gaze_matrix_nback.mat'), 'gaze_data_nback')

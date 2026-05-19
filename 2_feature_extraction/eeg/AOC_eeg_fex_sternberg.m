@@ -17,12 +17,7 @@ startup
 [subjects, paths, ~ , ~] = setup('AOC');
 path = paths.features;
 
-% Setup logging
-if ispc == 1
-    logDir = 'W:\Students\Arne\AOC\data\controls\logs';
-else
-    logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
-end
+logDir = paths.logs;
 scriptName = 'AOC_eeg_fex_sternberg';
 
 for subj = 1:length(subjects)
@@ -290,11 +285,7 @@ for subj = 1:length(subjects)
             'AlphaPower_bl_late', num2cell(AlphaPower_bl_late), ...
             'AlphaPower_bl_full', num2cell(AlphaPower_bl_full));
         % Save
-        if ispc == 1
-            savepath = fullfile('W:\Students\Arne\AOC\data\features\', subjects{subj}, 'eeg');
-        else
-            savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, 'eeg');
-        end
+        savepath = fullfile(paths.features, subjects{subj}, 'eeg');
         mkdir(savepath)
         cd(savepath)
         save eeg_matrix_sternberg_subj subj_data_eeg
@@ -311,13 +302,8 @@ for subj = 1:length(subjects)
         fprintf('Continuing to next subject...\n');
     end
 end
-if ispc == 1
-    save W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_sternberg eeg_data_sternberg
-    writetable(struct2table(eeg_data_sternberg), 'W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_sternberg.csv')
-else
-    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg eeg_data_sternberg
-    writetable(struct2table(eeg_data_sternberg), '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg.csv')
-end
+save(fullfile(paths.features, 'AOC_eeg_matrix_sternberg.mat'), 'eeg_data_sternberg')
+writetable(struct2table(eeg_data_sternberg), fullfile(paths.features, 'AOC_eeg_matrix_sternberg.csv'))
 
 function v = robust_roi_pow(S, channelIdx, band)
 fmask = S.freq >= band(1) & S.freq <= band(2);

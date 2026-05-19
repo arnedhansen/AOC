@@ -160,7 +160,6 @@ datLateGA6    = ft_freqgrandaverage([],dataLate6Allsubs_bl{:});
 % set(gca, "Clim", [0 max(datBaseGACOMB.powspctrm(:))])
 % 
 % % Save
-% saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_BASELINE.png');
 % 
 % % Plot EARLY heatmap
 % figure;
@@ -182,7 +181,6 @@ datLateGA6    = ft_freqgrandaverage([],dataLate6Allsubs_bl{:});
 % set(gca, "Clim", [-maxval maxval])
 % 
 % % Save
-% saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_EARLY.png');
 % 
 % % Plot LATE heatmap
 % figure;
@@ -204,7 +202,6 @@ datLateGA6    = ft_freqgrandaverage([],dataLate6Allsubs_bl{:});
 % set(gca, "Clim", [-maxval maxval])
 % 
 % % Save
-% saveas(gcf, '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/gaze/heatmap/AOC_gaze_heatmap_sternberg_LATE.png');
 
 %% Set up stats
 cfg                    = [];

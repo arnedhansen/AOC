@@ -28,7 +28,7 @@ startup
 path = paths.features;
 
 % Setup logging
-logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
+logDir = paths.logs;
 scriptName = 'AOC_eeg_fex_resting_FOOOF';
 
 % FOOOF sliding-window parameters (match interaction script)
@@ -299,11 +299,7 @@ for subj = 1:length(subjects)
             text(0.5, 0.5, 'Sanity check failed', 'HorizontalAlignment', 'center');
         end
 
-        if ispc
-            savePathControls = 'W:\Students\Arne\AOC\data\controls\FOOOF\';
-        else
-            savePathControls = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF/';
-        end
+        savePathControls = paths.fooof;
         if ~exist(savePathControls, 'dir'), mkdir(savePathControls); end
         saveName = sprintf('AOC_controls_FOOOF_resting_subj%s.png', subjects{subj});
         saveas(gcf, fullfile(savePathControls, saveName));

@@ -17,7 +17,7 @@ featPath = paths.features;
 
 %% Load data
 % Demographics from methlab_vp
-demog_data_nback = readtable('/Volumes/g_psyplafor_methlab$/VP/OCC/AOC/AOC_VPs.xlsx');
+demog_data_nback = readtable(paths.vp_table);
 demog_data_nback = demog_data_nback(:, {'ID', 'Gender', 'Alter', 'H_ndigkeit', 'OcularDominance'});
 demog_data_nback = table2struct(demog_data_nback(1:120, :));
 

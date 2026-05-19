@@ -7,12 +7,8 @@
 
 %% Setup
 startup
-setup('AOC');
-
-path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/';
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
+[subjects, paths, ~, ~] = setup('AOC');
+path = paths.features;
 
 gaze_data_sternberg_trials = struct('Trial', {}, 'ID', {}, 'Condition', {}, ...
     'GazeDeviationEarly', {}, 'GazeDeviationEarlyBL', {}, ...
@@ -597,7 +593,7 @@ for subj = 1:length(subjects)
         'BCEALatFullBL', num2cell(BCEALatFullBL));
 
     %% Save data
-    savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', subjects{subj}, 'gaze');
+    savepath = fullfile(paths.features, subjects{subj}, 'gaze');
     mkdir(savepath)
     cd(savepath)
     save gaze_matrix_sternberg_trials subj_data_gaze_trials
@@ -614,4 +610,4 @@ for subj = 1:length(subjects)
 end
 
 % Grand save across subjects
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_gaze_matrix_sternberg_trials gaze_data_sternberg_trials
+save(fullfile(paths.features, 'AOC_gaze_matrix_sternberg_trials.mat'), 'gaze_data_sternberg_trials')

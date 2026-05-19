@@ -11,9 +11,6 @@ close all
 path = paths.features;
 figDir = fullfile(paths.figures, 'behavioral');
 if ~isfolder(figDir), mkdir(figDir); end
-dirs = dir(path);
-folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
-subjects = {folders.name};
 
 %% Load RT and Acc data
 for subj = 1:length(subjects)

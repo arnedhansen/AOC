@@ -14,35 +14,18 @@
 disp(upper('=== AOC MULTIVERSE FOOOF-ONLY PREP START ==='))
 
 %% Setup
-path_preproc = [];
-subjects = {};
-try
-  if exist('startup', 'file')
-    startup
-    disp(upper('Startup run.'))
-  end
-  if exist('setup', 'file')
-    [subjects, paths, ~, ~] = setup('AOC');
-    path_preproc = paths.features;
-    disp(upper(['Setup: ' num2str(length(subjects)) ' subjects, path_preproc = ' path_preproc]))
-  end
-catch ME
-  disp(upper(['Setup failed: ' ME.message ' — using base_features for subject list.']))
-end
+startup
+[subjects, paths, ~, ~] = setup('AOC');
+path_preproc = paths.features;
+disp(upper(['Setup: ' num2str(length(subjects)) ' subjects, path_preproc = ' path_preproc]))
 
 %% Paths
-if ispc
-  base_data = 'W:\Students\Arne\AOC';
-  base_features = fullfile(base_data, 'data', 'features');
-else
-  base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC';
-  base_features = fullfile(base_data, 'data', 'features');
-end
-out_dir = fullfile(base_data, 'data', 'multiverse');
+base_features = paths.features;
+out_dir = paths.multiverse;
 if ~isfolder(out_dir), mkdir(out_dir); end
-r2_dir = fullfile(base_data, 'data', 'controls', 'multiverse');
+r2_dir = fullfile(paths.controls, 'multiverse');
 if ~isfolder(r2_dir), mkdir(r2_dir); end
-disp(upper(['Paths: base_data = ' base_data ', out_dir = ' out_dir ', r2_dir = ' r2_dir]))
+disp(upper(['Paths: out_dir = ' out_dir ', r2_dir = ' r2_dir]))
 
 if isempty(subjects)
   dirs = dir(base_features);

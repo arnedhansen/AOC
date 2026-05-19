@@ -7,7 +7,7 @@ startup
 path = paths.features;
 
 % Setup logging
-logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
+logDir = paths.logs;
 scriptName = 'AOC_eeg_fex_sternberg_FOOOF_trials';
 
 for subj = 1:length(subjects)
@@ -337,11 +337,7 @@ for subj = 1:length(subjects)
             'Window [%.2f %.2f] s | t = %.2f s'], ...
             subjects{subj}, trial_idx, latWin(1), latWin(2), tfr2_fooof.time(tim)), 'FontSize', 18)
 
-        if ispc
-            savePathControls = 'W:\Students\Arne\AOC\data\controls\FOOOF\';
-        else
-            savePathControls = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/FOOOF/';
-        end
+        savePathControls = paths.fooof;
         if ~exist(savePathControls, 'dir')
             mkdir(savePathControls)
         end

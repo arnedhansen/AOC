@@ -13,13 +13,8 @@ startup
 [subjects, paths, colors, headmodel] = setup('AOC');
 path = paths.features;
 
-if ispc
-    base_data = 'W:\Students\Arne\AOC';
-else
-    base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC';
-end
-feat_dir = fullfile(base_data, 'data', 'features');
-fig_dir = fullfile(base_data, 'figures', 'splits', 'SplitAlphaLoads');
+feat_dir = paths.features;
+fig_dir = fullfile(paths.figures, 'splits', 'SplitAlphaLoads');
 if ~isfolder(fig_dir)
     mkdir(fig_dir);
 end
@@ -37,7 +32,7 @@ if ~isfield(S_merged, 'merged_data_sternberg')
 end
 T_merged = struct2table(S_merged.merged_data_sternberg);
 
-log_dir = fullfile(base_data, 'data', 'controls', 'logs');
+log_dir = paths.logs;
 if ~isfolder(log_dir)
     mkdir(log_dir);
 end
@@ -373,7 +368,7 @@ tiledlayout(1, 2, 'TileSpacing', 'compact');
 ch_idx_inc = ch_idx_inc(ch_idx_inc > 0);
 freqs_inc = ga2_inc_powspctrm.freq;
 
-addpath('W:\Students\Arne\toolboxes\shadedErrorBar\')
+addpath(paths.seb_path)
 nexttile; hold on
 ga_inc = {ga2_inc_powspctrm, ga4_inc_powspctrm, ga6_inc_powspctrm};
 for c = 1:3

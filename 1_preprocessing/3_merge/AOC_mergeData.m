@@ -8,19 +8,13 @@
 %% Setup
 startup
 clear
-if ispc == 1
-    addpath W:\4marius_bdf\eeglab
-else
-    addpath /Volumes/g_psyplafor_methlab$/4marius_bdf/eeglab % for pop_importeyetracker (EYE-EEG)
-end
+[~, paths, ~, ~] = setup('AOC');
+addpath(paths.eeglab_share);
 eeglab
 clc
 close all
-if ispc == 1
-    path = 'W:\Students\Arne\AOC\data\automagic_nohp';
-else
-    path = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/automagic_nohp/';
-end
+
+path = paths.automagic_nohp;
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjectIDs = {folders.name};
@@ -31,21 +25,14 @@ for subjects = 1 : length(subjectIDs)
     subjectID = subjectIDs{subjects};
     fprintf('Processing Subject %s\n', subjectID)
 
-    % Check if subject files have already been merged
-    if isempty(dir(['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/merged/', char(subjectID), filesep, char(subjectID), '*_merged.mat']))
-        % Set up data paths
-        if ispc == 1
-            filePathET = ['V:\OCC\AOC\data\', char(subjectID)];
-            filePathEEG = ['W:\Students\Arne\AOC\data\automagic_nohp\',  char(subjectID)];
-            resultFolder = ['W:\Students\Arne\AOC\data\merged\', char(subjectID)];
-        else
-            filePathET = ['/Volumes/g_psyplafor_methlab_data$/OCC/AOC/data/', char(subjectID)];
-            filePathEEG = ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/automagic_nohp/',  char(subjectID)];
-            resultFolder = ['/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/merged/', char(subjectID)];
-        end
+    mergedPattern = fullfile(paths.merged, subjectID, [subjectID, '*_merged.mat']);
+    if isempty(dir(mergedPattern))
+        filePathET = fullfile(paths.raw_occ, subjectID);
+        filePathEEG = fullfile(paths.automagic_nohp, subjectID);
+        resultFolder = fullfile(paths.merged, subjectID);
         mkdir(resultFolder)
-        dEEG = dir([filePathEEG, filesep, '*ip*EEG.mat']);
-        dET = dir([filePathET, filesep, '*ET.mat']);
+        dEEG = dir(fullfile(filePathEEG, '*ip*EEG.mat'));
+        dET = dir(fullfile(filePathET, '*ET.mat'));
         for files = [size(dEEG, 1), 1 : size(dEEG, 1)-1]
             close all
             try
@@ -86,24 +73,6 @@ for subjects = 1 : length(subjectIDs)
 
                 %% Merge files
                 EEG = pop_importeyetracker(EEG, ETfile,[startTrigger endTrigger],[2 3 4 5 6 7],{'L_GAZE_X', 'L_GAZE_Y', 'L_AREA', 'R_GAZE_X', 'R_GAZE_Y', 'R_AREA'},1,1,1,1);
-
-                %% Save merge info as image
-                % set(gcf, "Position", [0 0 1200 800], "Color", "W")
-                % if ispc == 1
-                %     savepath = fullfile('W:\Students\Arne\AOC\data\controls\mergeInfo', subjectID);
-                % else
-                %     savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/mergeInfo', subjectID);
-                % end
-                % mkdir(savepath)
-                % if strcmp(task, 'Resting') == 1
-                %     taskName = 'Resting';
-                % elseif strcmp(task, 'AOC_Sternberg') == 1
-                %     taskName = ['Sternberg_block' num2str(block)];
-                % elseif strcmp(task, 'AOC_Nback') == 1
-                %     taskName = ['Nback_block' num2str(block)];
-                % end
-                % saveName = [savepath, filesep, num2str(subjectID) '_mergeInfo_', taskName, '.png'];
-                % saveas(gcf, saveName);
 
                 %% Save to disk
                 if strcmp(task, 'Resting') == 1

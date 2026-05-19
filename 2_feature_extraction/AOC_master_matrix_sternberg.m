@@ -36,7 +36,7 @@ featPath = paths.features;
 
 %% Load data
 % Demographics
-demog = readtable('/Volumes/g_psyplafor_methlab$/VP/OCC/AOC/AOC_VPs.xlsx');
+demog = readtable(paths.vp_table);
 demog = demog(:, {'ID', 'Gender', 'Alter', 'H_ndigkeit', 'OcularDominance'});
 demog = renamevars(demog, {'Alter', 'H_ndigkeit'}, {'Age', 'Handedness'});
 demog = table2struct(demog(1:120, :));

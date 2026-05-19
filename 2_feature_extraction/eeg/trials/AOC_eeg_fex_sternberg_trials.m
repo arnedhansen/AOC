@@ -353,11 +353,7 @@ for subj = 1:length(subjects)
         subj_data_eeg_trials = [subj_data_eeg_trials_2; subj_data_eeg_trials_4; subj_data_eeg_trials_6];
 
         % Save (per subject + append to grand table)
-        if ispc == 1
-            savepath = fullfile('W:\Students\Arne\AOC\data\features\', subjects{subj}, 'eeg');
-        else
-            savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, 'eeg');
-        end
+        savepath = fullfile(paths.features, subjects{subj}, 'eeg');
         mkdir(savepath)
         cd(savepath)
         save eeg_matrix_sternberg_subj_trials subj_data_eeg_trials
@@ -377,8 +373,4 @@ for subj = 1:length(subjects)
 end
 
 % Save pooled table
-if ispc == 1
-    save W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_sternberg_trials eeg_data_sternberg_trials
-else
-    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_sternberg_trials eeg_data_sternberg_trials
-end
+save(fullfile(paths.features, 'AOC_eeg_matrix_sternberg_trials.mat'), 'eeg_data_sternberg_trials')

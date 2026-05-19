@@ -17,18 +17,11 @@ startup
 [subjects, paths, colors, ~] = setup('AOC');
 pathAOC = paths.features;
 
-if ispc
-    base_data = 'W:\Students\Arne\AOC';
-    seb_path = 'W:\Students\Arne\toolboxes\shadedErrorBar';
-else
-    base_data = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC';
-    seb_path = '/Volumes/g_psyplafor_methlab$/Students/Arne/toolboxes/shadedErrorBar';
-end
-addpath(seb_path);
+addpath(paths.seb_path);
 
-feat_dir = fullfile(base_data, 'data', 'features');
-fig_dir = fullfile(base_data, 'figures', 'splits', 'SplitAlphaLoadsTimeCourse');
-stats_dir = fullfile(base_data, 'data', 'stats', 'splits');
+feat_dir = paths.features;
+fig_dir = fullfile(paths.figures, 'splits', 'SplitAlphaLoadsTimeCourse');
+stats_dir = paths.splits_stats;
 if ~isfolder(fig_dir), mkdir(fig_dir); end
 if ~isfolder(stats_dir), mkdir(stats_dir); end
 

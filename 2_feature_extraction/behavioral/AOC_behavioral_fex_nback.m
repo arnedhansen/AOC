@@ -10,7 +10,8 @@ startup
 clear
 clc
 close all
-path = '/Volumes/g_psyplafor_methlab_data$/OCC/AOC/data/';
+[~, paths, ~, ~] = setup('AOC', 0);
+path = paths.raw_occ;
 dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
@@ -95,7 +96,7 @@ for subj = 1:length(subjects)
         'Accuracy', num2cell([l1acc; l2acc; l3acc]), 'ReactionTime', num2cell([l1rt; l2rt; l3rt]));
 
     %% Save
-    savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features', subjects{subj}, 'behavioral');
+    savepath = fullfile(paths.features, subjects{subj}, 'behavioral');
     mkdir(savepath)
     cd(savepath)
     save behavioral_matrix_nback_subj_trials subj_data_behav_trials
@@ -109,5 +110,5 @@ for subj = 1:length(subjects)
     behav_data_nback_trials = [behav_data_nback_trials; subj_data_behav_trials];
     behav_data_nback = [behav_data_nback; subj_data_behav];
 end
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_behavioral_matrix_nback_trials behav_data_nback_trials
-save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_behavioral_matrix_nback behav_data_nback
+save(fullfile(paths.features, 'AOC_behavioral_matrix_nback_trials.mat'), 'behav_data_nback_trials')
+save(fullfile(paths.features, 'AOC_behavioral_matrix_nback.mat'), 'behav_data_nback')

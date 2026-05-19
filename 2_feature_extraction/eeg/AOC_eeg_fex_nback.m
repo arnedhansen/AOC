@@ -16,12 +16,7 @@ startup
 [subjects, paths, ~ , ~] = setup('AOC');
 path = paths.features;
 
-% Setup logging
-if ispc == 1
-    logDir = 'W:\Students\Arne\AOC\data\controls\logs';
-else
-    logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
-end
+logDir = paths.logs;
 scriptName = 'AOC_eeg_fex_nback';
 
 for subj = 1:length(subjects)
@@ -290,11 +285,7 @@ for subj = 1:length(subjects)
             'AlphaPower_bl_late', num2cell(AlphaPower_bl_late), ...
             'AlphaPower_bl_full', num2cell(AlphaPower_bl_full));
         % Save
-        if ispc == 1
-            savepath = fullfile('W:\Students\Arne\AOC\data\features\', subjects{subj}, 'eeg');
-        else
-            savepath = fullfile('/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/', subjects{subj}, 'eeg');
-        end
+        savepath = fullfile(paths.features, subjects{subj}, 'eeg');
         mkdir(savepath)
         cd(savepath)
         save eeg_matrix_nback_subj subj_data_eeg
@@ -311,13 +302,8 @@ for subj = 1:length(subjects)
         fprintf('Continuing to next subject...\n');
     end
 end
-if ispc == 1
-    save W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_nback eeg_data_nback
-    writetable(struct2table(eeg_data_nback), 'W:\Students\Arne\AOC\data\features\AOC_eeg_matrix_nback.csv')
-else
-    save /Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_nback eeg_data_nback
-    writetable(struct2table(eeg_data_nback), '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_eeg_matrix_nback.csv')
-end
+save(fullfile(paths.features, 'AOC_eeg_matrix_nback.mat'), 'eeg_data_nback')
+writetable(struct2table(eeg_data_nback), fullfile(paths.features, 'AOC_eeg_matrix_nback.csv'))
 
 function v = robust_roi_pow(S, channelIdx, band)
 fmask = S.freq >= band(1) & S.freq <= band(2);

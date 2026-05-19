@@ -1,6 +1,7 @@
-%% AOC Power Spectrum — Baseline Window (Raw + dB)
+%% AOC Power Spectrum — Baseline Window (Raw, Uncorrected)
 % Builds power spectra from the baseline interval [-0.5 -0.25] s only
 % using time-resolved raw (non-FOOOF) TFR files, for both Sternberg and N-back.
+% No baseline correction: FieldTrip ft_freqdescriptives (latency + avgovertime).
 %
 % Data source: tfr_stern.mat / tfr_nback.mat (tfr*, not tfr*_fooof) from
 % AOC_eeg_fex_sternberg_TFR.m / AOC_eeg_fex_nback_TFR.m
@@ -16,7 +17,6 @@ fig_dir_pow = fullfile(paths.figures, 'eeg', 'powspctrm');
 
 %% Channels
 datapath = fullfile(path, subjects{1}, 'eeg');
-cd(datapath);
 D0 = load(fullfile(datapath, 'tfr_stern.mat'), 'tfr2');
 ref_tfr = D0.tfr2;
 
@@ -34,12 +34,11 @@ clc
 disp('LOADING STERNBERG BASELINE-WINDOW POWERSPECTRA (RAW)...')
 for subj = 1:length(subjects)
     datapath = fullfile(path, subjects{subj}, 'eeg');
-    cd(datapath);
     stern_file = fullfile(datapath, 'tfr_stern.mat');
     D = load(stern_file, 'tfr2', 'tfr4', 'tfr6');
-    powl2{subj} = tfr_to_pow_baseline_db(D.tfr2, baseline_window, freq_range);
-    powl4{subj} = tfr_to_pow_baseline_db(D.tfr4, baseline_window, freq_range);
-    powl6{subj} = tfr_to_pow_baseline_db(D.tfr6, baseline_window, freq_range);
+    powl2{subj} = tfr_to_pow_baseline_epoch(D.tfr2, baseline_window, freq_range);
+    powl4{subj} = tfr_to_pow_baseline_epoch(D.tfr4, baseline_window, freq_range);
+    powl6{subj} = tfr_to_pow_baseline_epoch(D.tfr6, baseline_window, freq_range);
 end
 
 [powl2, powl4, powl6, keep_idx_stern] = exclude_empty_subjects(powl2, powl4, powl6, subjects, 'Sternberg');
@@ -54,7 +53,6 @@ cfg = [];
 cfg.channel = channels;
 cfg.linewidth = 3;
 hold on;
-yline(0, '--')
 
 elecs = ismember(gapow2.label, cfg.channel);
 freqs = gapow2.freq;
@@ -91,9 +89,9 @@ end
 set(gca, 'FontSize', 20);
 box off
 xlim([5 20]);
-set_ylim_from_shaded(m2, se2, m4, se4, m6, se6);
+ylim([0 6.1]);
 xlabel('Frequency [Hz]');
-ylabel('Power [dB]');
+ylabel('Power [\muV^2/Hz]');
 leg_p2 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
 leg_p4 = patch(NaN, NaN, colors(2,:), 'EdgeColor', 'none');
 leg_p6 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
@@ -108,12 +106,11 @@ clc
 disp('LOADING N-BACK BASELINE-WINDOW POWERSPECTRA (RAW)...')
 for subj = 1:length(subjects)
     datapath = fullfile(path, subjects{subj}, 'eeg');
-    cd(datapath);
     nback_file = fullfile(datapath, 'tfr_nback.mat');
     dat = load(nback_file, 'tfr1', 'tfr2', 'tfr3');
-    powl1{subj} = tfr_to_pow_baseline_db(dat.tfr1, baseline_window, freq_range);
-    powl2_nb{subj} = tfr_to_pow_baseline_db(dat.tfr2, baseline_window, freq_range);
-    powl3{subj} = tfr_to_pow_baseline_db(dat.tfr3, baseline_window, freq_range);
+    powl1{subj} = tfr_to_pow_baseline_epoch(dat.tfr1, baseline_window, freq_range);
+    powl2_nb{subj} = tfr_to_pow_baseline_epoch(dat.tfr2, baseline_window, freq_range);
+    powl3{subj} = tfr_to_pow_baseline_epoch(dat.tfr3, baseline_window, freq_range);
 end
 
 [powl1, powl2_nb, powl3, keep_idx_nback] = exclude_empty_subjects(powl1, powl2_nb, powl3, subjects, 'N-back');
@@ -128,7 +125,6 @@ cfg = [];
 cfg.channel = channels;
 cfg.linewidth = 3;
 hold on;
-yline(0, '--')
 
 elecs = ismember(gapow1.label, cfg.channel);
 freqs = gapow1.freq;
@@ -165,9 +161,9 @@ end
 set(gca, 'FontSize', 20);
 box off
 xlim([5 20]);
-set_ylim_from_shaded(m1, se1, m2, se2, m3, se3);
+ylim([0 6.1]);
 xlabel('Frequency [Hz]');
-ylabel('Power [dB]');
+ylabel('Power [\muV^2/Hz]');
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
 leg_p2 = patch(NaN, NaN, colors(2,:), 'EdgeColor', 'none');
 leg_p3 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
@@ -180,22 +176,12 @@ saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_nback_baselineWindow.png'));
 fprintf('Sternberg included N = %d subjects\n', numel(keep_idx_stern));
 fprintf('N-back included N = %d subjects\n', numel(keep_idx_nback));
 
-function S_pow = tfr_to_pow_baseline_db(S_tfr, baseline_window, freq_range)
-S_pow = tfr_to_pow_baseline(S_tfr, baseline_window, freq_range);
-S_pow.powspctrm = 10 * log10(max(S_pow.powspctrm, eps));
-end
-
-function S_pow = tfr_to_pow_baseline(S_tfr, baseline_window, freq_range)
+function S_pow = tfr_to_pow_baseline_epoch(S_tfr, baseline_window, freq_range)
 cfg = [];
 cfg.latency = baseline_window;
 cfg.frequency = freq_range;
-S_sel = ft_selectdata(cfg, S_tfr);
-S_pow = S_sel;
-S_pow.powspctrm = mean(S_sel.powspctrm, 3, 'omitnan');
-S_pow.dimord = 'chan_freq';
-if isfield(S_pow, 'time')
-    S_pow = rmfield(S_pow, 'time');
-end
+cfg.avgovertime = 'yes';
+S_pow = ft_freqdescriptives(cfg, S_tfr);
 end
 
 function [a, b, c, keep_idx] = exclude_empty_subjects(a, b, c, subjects, label)
@@ -220,17 +206,4 @@ end
 a = a(keep_idx);
 b = b(keep_idx);
 c = c(keep_idx);
-end
-
-function set_ylim_from_shaded(varargin)
-lo = inf;
-hi = -inf;
-for k = 1:2:numel(varargin)
-    m = varargin{k};
-    se = varargin{k + 1};
-    lo = min(lo, min(m - se, [], 'omitnan'));
-    hi = max(hi, max(m + se, [], 'omitnan'));
-end
-pad = 0.05 * (hi - lo);
-ylim([lo - pad, hi + pad]);
 end

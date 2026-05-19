@@ -11,10 +11,6 @@ path = paths.features;
 
 fig_dir_pow = fullfile(paths.figures, 'eeg', 'powspctrm');
 fig_dir_ind = fullfile(paths.figures, 'eeg', 'alpha_power', 'powspctrm');
-fig_dir_top = fullfile(paths.figures, 'eeg', 'alpha_power', 'topos');
-if ~isfolder(fig_dir_pow), mkdir(fig_dir_pow); end
-if ~isfolder(fig_dir_ind), mkdir(fig_dir_ind); end
-if ~isfolder(fig_dir_top), mkdir(fig_dir_top); end
 
 %% Define channels
 subj = 1;
@@ -128,13 +124,13 @@ max_spctrm = max([mean(gapow1.powspctrm(channel_idx, freq_idx), 2); mean(gapow2.
 ylim([0 max_spctrm*1.25])
 box off
 xlim([5 20]);
-ylim([0 3.75])
+ylim([0 6.1])
 xlabel('Frequency [Hz]');
 ylabel(yLabel);
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
 leg_p2 = patch(NaN, NaN, colors(2,:), 'EdgeColor', 'none');
 leg_p3 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
-legend([leg_p1, leg_p2, leg_p3], {'1 back', '2 back', '3 back'}, ...
+legend([leg_p1, leg_p2, leg_p3], conditions, ...
     'FontName', 'Arial', 'FontSize', 20, 'Box', 'off');
 title('');
 hold off;

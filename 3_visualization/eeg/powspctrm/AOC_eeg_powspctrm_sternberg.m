@@ -100,7 +100,7 @@ for k = 1:numel(ebs)
         'Color',     colors(k,:) );
     set( ebs(k).patch,    ...
         'FaceColor', colors(k,:), ...
-        'FaceAlpha', 0.20 );
+        'FaceAlpha', 0.25 );
     set( ebs(k).edge(1), 'Color', 'none' );
     set( ebs(k).edge(2), 'Color', 'none' );
 end
@@ -109,7 +109,7 @@ end
 set(gca,'FontSize',20);
 box off
 xlim([5 20]);
-ylim([0 3.75])
+ylim([0 6.1])
 ylabel('Power [\muV^2/Hz]');
 xlabel('Frequency [Hz]');
 leg_p2 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');

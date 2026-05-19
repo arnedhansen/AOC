@@ -6,33 +6,19 @@
 startup
 [subjects, paths, colors, ~] = setup('AOC');
 path = paths.features;
-max_load_retries = 3;
-retry_pause_s = 0.2;
 
 fig_dir_pow = fullfile(paths.figures, 'eeg', 'powspctrm');
 if ~isfolder(fig_dir_pow), mkdir(fig_dir_pow); end
 
-%% Define channels
-subj = 1;
-datapath = fullfile(path, subjects{subj}, 'eeg');
+%% Define channels (reference: first subject)
+datapath = fullfile(path, subjects{1}, 'eeg');
 cd(datapath);
-ok_ref = false;
-for subj = 1:length(subjects)
-    datapath = fullfile(path, subjects{subj}, 'eeg');
-    cd(datapath);
-    nback_power_file = resolve_nback_power_file(datapath);
-    if isempty(nback_power_file)
-        continue
-    end
-    [ok_ref, D0] = load_with_retry(nback_power_file, {'pow1_fooof_bl'}, max_load_retries, retry_pause_s);
-    if ok_ref && isfield(D0, 'pow1_fooof_bl')
-        pow1_fooof_bl = D0.pow1_fooof_bl;
-        break
-    end
+nback_power_file = resolve_nback_power_file(datapath);
+if isempty(nback_power_file)
+    error('No n-back FOOOF power file for subject 1 (expected power_nback_fooof_TFR.mat or power_nback_fooof.mat).');
 end
-if ~ok_ref
-    error('Could not load pow1_fooof_bl from any subject n-back FOOOF power file.');
-end
+D0 = load(nback_power_file, 'pow1_fooof_bl');
+pow1_fooof_bl = D0.pow1_fooof_bl;
 occ_channels = {};
 for i = 1:length(pow1_fooof_bl.label)
     label = pow1_fooof_bl.label{i};
@@ -58,16 +44,10 @@ for subj = 1:length(subjects)
         powl3{subj} = [];
         continue
     end
-    [ok_load, D] = load_with_retry(nback_power_file, {'pow1_fooof_bl', 'pow2_fooof_bl', 'pow3_fooof_bl'}, max_load_retries, retry_pause_s);
-    if ok_load
-        powl1{subj} = D.pow1_fooof_bl;
-        powl2{subj} = D.pow2_fooof_bl;
-        powl3{subj} = D.pow3_fooof_bl;
-    else
-        powl1{subj} = [];
-        powl2{subj} = [];
-        powl3{subj} = [];
-    end
+    D = load(nback_power_file, 'pow1_fooof_bl', 'pow2_fooof_bl', 'pow3_fooof_bl');
+    powl1{subj} = D.pow1_fooof_bl;
+    powl2{subj} = D.pow2_fooof_bl;
+    powl3{subj} = D.pow3_fooof_bl;
 end
 
 % Exclude subjects with any empty condition before grand-average.
@@ -89,13 +69,15 @@ if isempty(keep_idx)
     error('No valid subjects remain after excluding empty condition data.');
 end
 
+% Trim subject cell arrays to included indices only (no empty placeholders), then
+% pass the trimmed list into ft_freqgrandaverage_nanrobust (NaN-safe over subjects).
 powl1 = powl1(keep_idx);
 powl2 = powl2(keep_idx);
 powl3 = powl3(keep_idx);
 
-gapow1 = grandavg_omitnan(powl1);
-gapow2 = grandavg_omitnan(powl2);
-gapow3 = grandavg_omitnan(powl3);
+gapow1 = ft_freqgrandaverage_nanrobust([], powl1{:});
+gapow2 = ft_freqgrandaverage_nanrobust([], powl2{:});
+gapow3 = ft_freqgrandaverage_nanrobust([], powl3{:});
 
 %% Plot grand-average power spectrum
 close all
@@ -153,31 +135,11 @@ ylabel('Power [dB]');
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
 leg_p2 = patch(NaN, NaN, colors(2,:), 'EdgeColor', 'none');
 leg_p3 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
-legend([leg_p1, leg_p2, leg_p3], {'1 back', '2 back', '3 back'}, ...
+legend([leg_p1, leg_p2, leg_p3], {'1-back', '2-back', '3-back'}, ...
     'FontName', 'Arial', 'FontSize', 20, 'Box', 'off');
 title('')
 
 saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_nback_fooof_bl.png'));
-
-function ga = grandavg_omitnan(pow_cells)
-S0 = pow_cells{1};
-nSub = numel(pow_cells);
-[nCh, nFq] = size(S0.powspctrm);
-stack = nan(nCh, nFq, nSub);
-for i = 1:nSub
-    Xi = pow_cells{i}.powspctrm;
-    if ~isequal(size(Xi), [nCh nFq])
-        error('Inconsistent powspctrm size across subjects.');
-    end
-    stack(:, :, i) = Xi;
-end
-ga = S0;
-ga.powspctrm = mean(stack, 3, 'omitnan');
-ga.dimord = 'chan_freq';
-if isfield(ga, 'time')
-    ga = rmfield(ga, 'time');
-end
-end
 
 function f = resolve_nback_power_file(datapath)
 f_tfr = fullfile(datapath, 'power_nback_fooof_TFR.mat');
@@ -188,21 +150,5 @@ elseif isfile(f_legacy)
     f = f_legacy;
 else
     f = '';
-end
-end
-
-function [ok, D] = load_with_retry(matfile, varnames, max_retries, retry_pause_s)
-ok = false;
-D = struct();
-for att = 1:max_retries
-    try
-        D = load(matfile, varnames{:});
-        ok = true;
-        return
-    catch
-        if att < max_retries
-            pause(retry_pause_s);
-        end
-    end
 end
 end

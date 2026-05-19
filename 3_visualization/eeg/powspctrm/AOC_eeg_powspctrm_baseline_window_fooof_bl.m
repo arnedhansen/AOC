@@ -6,34 +6,22 @@
 startup
 [subjects, paths, colors, ~] = setup('AOC');
 path = paths.features;
-max_load_retries = 3;
-retry_pause_s = 0.2;
 baseline_window = [-0.5 -0.25];
 freq_range = [3 30];
 
 fig_dir_pow = fullfile(paths.figures, 'eeg', 'powspctrm');
-if ~isfolder(fig_dir_pow), mkdir(fig_dir_pow); end
 
-%% Channel definition from Sternberg reference
-ok_ref = false;
-for subj = 1:length(subjects)
-    datapath = fullfile(path, subjects{subj}, 'eeg');
-    cd(datapath);
-    [ok_ref, D0] = load_with_retry(fullfile(datapath, 'tfr_stern.mat'), {'tfr2_fooof'}, max_load_retries, retry_pause_s);
-    if ok_ref && isfield(D0, 'tfr2_fooof')
-        ref_tfr = D0.tfr2_fooof;
-        break
-    end
-end
-if ~ok_ref
-    error('Could not load tfr2_fooof from any subject tfr_stern.mat');
-end
+%% Channels
+datapath = fullfile(path, subjects{1}, 'eeg');
+cd(datapath);
+D0 = load(fullfile(datapath, 'tfr_stern.mat'), 'tfr2_fooof');
+ref_tfr = D0.tfr2_fooof;
 
 occ_channels = {};
 for i = 1:length(ref_tfr.label)
     label = ref_tfr.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
-        occ_channels{end+1} = label; %#ok<AGROW>
+        occ_channels{end+1} = label;
     end
 end
 channels = occ_channels;
@@ -45,25 +33,17 @@ for subj = 1:length(subjects)
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath);
     stern_file = fullfile(datapath, 'tfr_stern.mat');
-    [ok_load, D] = load_with_retry(stern_file, ...
-        {'tfr2_fooof', 'tfr4_fooof', 'tfr6_fooof'}, ...
-        max_load_retries, retry_pause_s);
-
-    if ok_load
-        powl2{subj} = tfr_to_pow_baseline(D.tfr2_fooof, baseline_window, freq_range);
-        powl4{subj} = tfr_to_pow_baseline(D.tfr4_fooof, baseline_window, freq_range);
-        powl6{subj} = tfr_to_pow_baseline(D.tfr6_fooof, baseline_window, freq_range);
-    else
-        powl2{subj} = [];
-        powl4{subj} = [];
-        powl6{subj} = [];
-    end
+    D = load(stern_file, 'tfr2_fooof', 'tfr4_fooof', 'tfr6_fooof');
+    powl2{subj} = tfr_to_pow_baseline(D.tfr2_fooof, baseline_window, freq_range);
+    powl4{subj} = tfr_to_pow_baseline(D.tfr4_fooof, baseline_window, freq_range);
+    powl6{subj} = tfr_to_pow_baseline(D.tfr6_fooof, baseline_window, freq_range);
 end
 
 [powl2, powl4, powl6, keep_idx_stern] = exclude_empty_subjects(powl2, powl4, powl6, subjects, 'Sternberg');
-gapow2 = grandavg_omitnan(powl2);
-gapow4 = grandavg_omitnan(powl4);
-gapow6 = grandavg_omitnan(powl6);
+% powl* are trimmed to complete subjects only; grand average over that list.
+gapow2 = ft_freqgrandaverage_nanrobust([], powl2{:});
+gapow4 = ft_freqgrandaverage_nanrobust([], powl4{:});
+gapow6 = ft_freqgrandaverage_nanrobust([], powl6{:});
 
 %% Sternberg plot
 close all
@@ -109,7 +89,7 @@ end
 set(gca, 'FontSize', 20);
 box off
 xlim([5 20]);
-%ylim([-.16 .16]);
+ylim([0 .65]);
 xlabel('Frequency [Hz]');
 ylabel('Power [dB]');
 leg_p2 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
@@ -128,25 +108,17 @@ for subj = 1:length(subjects)
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath);
     nback_file = fullfile(datapath, 'tfr_nback.mat');
-    [ok_load, D] = load_with_retry(nback_file, ...
-        {'tfr1_fooof', 'tfr2_fooof', 'tfr3_fooof'}, ...
-        max_load_retries, retry_pause_s);
-
-    if ok_load
-        powl1{subj} = tfr_to_pow_baseline(D.tfr1_fooof, baseline_window, freq_range);
-        powl2_nb{subj} = tfr_to_pow_baseline(D.tfr2_fooof, baseline_window, freq_range);
-        powl3{subj} = tfr_to_pow_baseline(D.tfr3_fooof, baseline_window, freq_range);
-    else
-        powl1{subj} = [];
-        powl2_nb{subj} = [];
-        powl3{subj} = [];
-    end
+    dat = load(nback_file, 'tfr1_fooof', 'tfr2_fooof', 'tfr3_fooof');
+    powl1{subj} = tfr_to_pow_baseline(dat.tfr1_fooof, baseline_window, freq_range);
+    powl2_nb{subj} = tfr_to_pow_baseline(dat.tfr2_fooof, baseline_window, freq_range);
+    powl3{subj} = tfr_to_pow_baseline(dat.tfr3_fooof, baseline_window, freq_range);
 end
 
 [powl1, powl2_nb, powl3, keep_idx_nback] = exclude_empty_subjects(powl1, powl2_nb, powl3, subjects, 'N-back');
-gapow1 = grandavg_omitnan(powl1);
-gapow2_nb = grandavg_omitnan(powl2_nb);
-gapow3 = grandavg_omitnan(powl3);
+% powl* are trimmed to complete subjects only; grand average over that list.
+gapow1 = ft_freqgrandaverage_nanrobust([], powl1{:});
+gapow2_nb = ft_freqgrandaverage_nanrobust([], powl2_nb{:});
+gapow3 = ft_freqgrandaverage_nanrobust([], powl3{:});
 
 %% N-back plot
 close all
@@ -192,13 +164,13 @@ end
 set(gca, 'FontSize', 20);
 box off
 xlim([5 20]);
-%ylim([-.16 .16]);
+ylim([0 .65]);
 xlabel('Frequency [Hz]');
 ylabel('Power [dB]');
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
 leg_p2 = patch(NaN, NaN, colors(2,:), 'EdgeColor', 'none');
 leg_p3 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
-legend([leg_p1, leg_p2, leg_p3], {'1 back', '2 back', '3 back'}, ...
+legend([leg_p1, leg_p2, leg_p3], {'1-back', '2-back', '3-back'}, ...
     'FontName', 'Arial', 'FontSize', 20, 'Box', 'off');
 title('');
 
@@ -217,26 +189,6 @@ S_pow.powspctrm = mean(S_sel.powspctrm, 3, 'omitnan');
 S_pow.dimord = 'chan_freq';
 if isfield(S_pow, 'time')
     S_pow = rmfield(S_pow, 'time');
-end
-end
-
-function ga = grandavg_omitnan(pow_cells)
-S0 = pow_cells{1};
-nSub = numel(pow_cells);
-[nCh, nFq] = size(S0.powspctrm);
-stack = nan(nCh, nFq, nSub);
-for i = 1:nSub
-    Xi = pow_cells{i}.powspctrm;
-    if ~isequal(size(Xi), [nCh nFq])
-        error('Inconsistent powspctrm size across subjects.');
-    end
-    stack(:, :, i) = Xi;
-end
-ga = S0;
-ga.powspctrm = mean(stack, 3, 'omitnan');
-ga.dimord = 'chan_freq';
-if isfield(ga, 'time')
-    ga = rmfield(ga, 'time');
 end
 end
 
@@ -262,20 +214,4 @@ end
 a = a(keep_idx);
 b = b(keep_idx);
 c = c(keep_idx);
-end
-
-function [ok, D] = load_with_retry(matfile, varnames, max_retries, retry_pause_s)
-ok = false;
-D = struct();
-for att = 1:max_retries
-    try
-        D = load(matfile, varnames{:});
-        ok = true;
-        return
-    catch
-        if att < max_retries
-            pause(retry_pause_s);
-        end
-    end
-end
 end

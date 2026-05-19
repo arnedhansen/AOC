@@ -6,26 +6,16 @@
 startup
 [subjects, paths, colors, ~] = setup('AOC');
 path = paths.features;
-max_load_retries = 3;
-retry_pause_s = 0.2;
 
 fig_dir_pow = fullfile(paths.figures, 'eeg', 'powspctrm');
 if ~isfolder(fig_dir_pow), mkdir(fig_dir_pow); end
 
-%% Define channels
-ok_ref = false;
-for subj = 1:length(subjects)
-    datapath = fullfile(path, subjects{subj}, 'eeg');
-    cd(datapath);
-    [ok_ref, tmp] = load_with_retry(fullfile(datapath, 'power_stern_fooof_TFR.mat'), {'pow2_fooof_bl'}, max_load_retries, retry_pause_s);
-    if ok_ref && isfield(tmp, 'pow2_fooof_bl')
-        pow2_fooof_bl = tmp.pow2_fooof_bl;
-        break
-    end
-end
-if ~ok_ref
-    error('Could not load pow2_fooof_bl from any subject Sternberg FOOOF power file.');
-end
+%% Define channels (reference: first subject)
+datapath = fullfile(path, subjects{1}, 'eeg');
+cd(datapath);
+ref_file = fullfile(datapath, 'power_stern_fooof_TFR.mat');
+tmp = load(ref_file, 'pow2_fooof_bl');
+pow2_fooof_bl = tmp.pow2_fooof_bl;
 
 occ_channels = {};
 for i = 1:length(pow2_fooof_bl.label)
@@ -46,17 +36,10 @@ for subj = 1:length(subjects)
     disp('LOADING FOOOF+BL DATA...')
     disp(subj)
     stern_power_file = fullfile(datapath, 'power_stern_fooof_TFR.mat');
-    [ok_load, D] = load_with_retry(stern_power_file, {'pow2_fooof_bl', 'pow4_fooof_bl', 'pow6_fooof_bl'}, max_load_retries, retry_pause_s);
-    if ok_load
-        powl2{subj} = D.pow2_fooof_bl;
-        powl4{subj} = D.pow4_fooof_bl;
-        powl6{subj} = D.pow6_fooof_bl;
-    else
-        % Keep as empty for exclusion if file/vars are missing or IO failed.
-        powl2{subj} = [];
-        powl4{subj} = [];
-        powl6{subj} = [];
-    end
+    D = load(stern_power_file, 'pow2_fooof_bl', 'pow4_fooof_bl', 'pow6_fooof_bl');
+    powl2{subj} = D.pow2_fooof_bl;
+    powl4{subj} = D.pow4_fooof_bl;
+    powl6{subj} = D.pow6_fooof_bl;
 end
 
 % Exclude subjects with any empty condition before grand-average.
@@ -78,13 +61,15 @@ if isempty(keep_idx)
     error('No valid subjects remain after excluding empty condition data.');
 end
 
+% Trim subject cell arrays to included indices only (no empty placeholders), then
+% pass the trimmed list into ft_freqgrandaverage_nanrobust (NaN-safe over subjects).
 powl2 = powl2(keep_idx);
 powl4 = powl4(keep_idx);
 powl6 = powl6(keep_idx);
 
-gapow2 = grandavg_omitnan(powl2);
-gapow4 = grandavg_omitnan(powl4);
-gapow6 = grandavg_omitnan(powl6);
+gapow2 = ft_freqgrandaverage_nanrobust([], powl2{:});
+gapow4 = ft_freqgrandaverage_nanrobust([], powl4{:});
+gapow6 = ft_freqgrandaverage_nanrobust([], powl6{:});
 
 %% Plot grand-average power spectrum
 close all
@@ -143,39 +128,3 @@ legend([leg_p2, leg_p4, leg_p6], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
 title('');
 
 saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_fooof_bl.png'));
-
-function ga = grandavg_omitnan(pow_cells)
-S0 = pow_cells{1};
-nSub = numel(pow_cells);
-[nCh, nFq] = size(S0.powspctrm);
-stack = nan(nCh, nFq, nSub);
-for i = 1:nSub
-    Xi = pow_cells{i}.powspctrm;
-    if ~isequal(size(Xi), [nCh nFq])
-        error('Inconsistent powspctrm size across subjects.');
-    end
-    stack(:, :, i) = Xi;
-end
-ga = S0;
-ga.powspctrm = mean(stack, 3, 'omitnan');
-ga.dimord = 'chan_freq';
-if isfield(ga, 'time')
-    ga = rmfield(ga, 'time');
-end
-end
-
-function [ok, D] = load_with_retry(matfile, varnames, max_retries, retry_pause_s)
-ok = false;
-D = struct();
-for att = 1:max_retries
-    try
-        D = load(matfile, varnames{:});
-        ok = true;
-        return
-    catch
-        if att < max_retries
-            pause(retry_pause_s);
-        end
-    end
-end
-end

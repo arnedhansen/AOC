@@ -83,9 +83,19 @@ se2(n2 < 2) = NaN;
 se4(n4 < 2) = NaN;
 se6(n6 < 2) = NaN;
 
-eb2 = shadedErrorBar(freqs, m2, se2, 'lineProps', {'-','Color',colors(1,:)});
-eb4 = shadedErrorBar(freqs, m4, se4, 'lineProps', {'-','Color',colors(2,:)});
-eb6 = shadedErrorBar(freqs, m6, se6, 'lineProps', {'-','Color',colors(3,:)});
+% Light display-only smoothing (does not alter source data)
+freqs_plot = linspace(min(freqs), max(freqs), 250);
+gauss_win = 20;
+m2s  = smoothdata(interp1(freqs, m2,  freqs_plot, 'pchip'), 'gaussian', gauss_win);
+se2s = smoothdata(interp1(freqs, se2, freqs_plot, 'pchip'), 'gaussian', gauss_win);
+m4s  = smoothdata(interp1(freqs, m4,  freqs_plot, 'pchip'), 'gaussian', gauss_win);
+se4s = smoothdata(interp1(freqs, se4, freqs_plot, 'pchip'), 'gaussian', gauss_win);
+m6s  = smoothdata(interp1(freqs, m6,  freqs_plot, 'pchip'), 'gaussian', gauss_win);
+se6s = smoothdata(interp1(freqs, se6, freqs_plot, 'pchip'), 'gaussian', gauss_win);
+
+eb2 = shadedErrorBar(freqs_plot, m2s, se2s, 'lineProps', {'-','Color',colors(1,:)});
+eb4 = shadedErrorBar(freqs_plot, m4s, se4s, 'lineProps', {'-','Color',colors(2,:)});
+eb6 = shadedErrorBar(freqs_plot, m6s, se6s, 'lineProps', {'-','Color',colors(3,:)});
 ebs = [eb2, eb4, eb6];
 for k = 1:numel(ebs)
     set(ebs(k).mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(k,:));
@@ -163,9 +173,19 @@ se1(n1 < 2) = NaN;
 se2(n2 < 2) = NaN;
 se3(n3 < 2) = NaN;
 
-eb1 = shadedErrorBar(freqs, m1, se1, 'lineProps', {'-','Color',colors(1,:)});
-eb2 = shadedErrorBar(freqs, m2, se2, 'lineProps', {'-','Color',colors(2,:)});
-eb3 = shadedErrorBar(freqs, m3, se3, 'lineProps', {'-','Color',colors(3,:)});
+% Light display-only smoothing (does not alter source data)
+freqs_plot = linspace(min(freqs), max(freqs), 250);
+gauss_win = 20;
+m1s  = smoothdata(interp1(freqs, m1,  freqs_plot, 'pchip'), 'gaussian', gauss_win);
+se1s = smoothdata(interp1(freqs, se1, freqs_plot, 'pchip'), 'gaussian', gauss_win);
+m2s  = smoothdata(interp1(freqs, m2,  freqs_plot, 'pchip'), 'gaussian', gauss_win);
+se2s = smoothdata(interp1(freqs, se2, freqs_plot, 'pchip'), 'gaussian', gauss_win);
+m3s  = smoothdata(interp1(freqs, m3,  freqs_plot, 'pchip'), 'gaussian', gauss_win);
+se3s = smoothdata(interp1(freqs, se3, freqs_plot, 'pchip'), 'gaussian', gauss_win);
+
+eb1 = shadedErrorBar(freqs_plot, m1s, se1s, 'lineProps', {'-','Color',colors(1,:)});
+eb2 = shadedErrorBar(freqs_plot, m2s, se2s, 'lineProps', {'-','Color',colors(2,:)});
+eb3 = shadedErrorBar(freqs_plot, m3s, se3s, 'lineProps', {'-','Color',colors(3,:)});
 ebs = [eb1, eb2, eb3];
 for k = 1:numel(ebs)
     set(ebs(k).mainLine, 'LineWidth', cfg.linewidth, 'Color', colors(k,:));

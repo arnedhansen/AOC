@@ -21,6 +21,7 @@ behav_data_nback_trials = struct('Trial', {}, 'ID', {}, 'Condition', {}, 'Accura
 
 %% Read data
 for subj = 1:length(subjects)
+    clc; fprintf('[BEHAV FEX - NBACK] Behavioral feature extraction for Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj});
     cd(datapath)
 

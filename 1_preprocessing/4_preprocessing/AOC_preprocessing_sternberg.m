@@ -22,6 +22,7 @@ scriptName = 'AOC_preprocessing_sternberg';
 %% Read data, segment and convert to FieldTrip data structure
 tic;
 for subj = 1:length(subjects)
+    clc; fprintf('[PREP - STERNBERG] Sternberg EEG and ET preprocessing for Subject %d / %d \n', subj, length(subjects))
     try
     datapath = fullfile(mergedPath, subjects{subj});
     cd(datapath)
@@ -30,8 +31,6 @@ for subj = 1:length(subjects)
     newDataFolder = dir(fullfile(paths.features, subjects{subj}, 'eeg', 'dataEEG_sternberg.mat'));
 
     if strcmp(runMode,'all') || isempty(newDataFolder)
-        clc
-        disp(['Preprocessing Subject AOC ', num2str(subjects{subj})])
         clear alleeg data2 data4 data6
         %% Read blocks
         %  and assign globalID values

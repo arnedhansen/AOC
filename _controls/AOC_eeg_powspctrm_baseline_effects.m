@@ -70,9 +70,7 @@ for t = 1:numel(tasks)
     %  Collect per-subject spectra
     % ================================================================
     for subj = 1:nSubj
-        clc
-        fprintf('%s — Loading TFR for Subject %s (%d/%d)\n', ...
-            upper(task.name), subjects{subj}, subj, nSubj);
+        clc; fprintf('[CTRL BASELINE FX - %s] Loading TFR spectra for Subject %d / %d \n', upper(task.name), subj, nSubj);
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath);
 

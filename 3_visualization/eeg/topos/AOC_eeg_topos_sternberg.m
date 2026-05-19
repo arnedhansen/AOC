@@ -12,11 +12,9 @@ if ~isfolder(figDir), mkdir(figDir); end
 
 %% Load raw powerspctrm data
 for subj = 1:length(subjects)
+    clc; fprintf('[VIZ TOPO - STERNBERG] Loading power spectra for topographies, Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
-    clc
-    disp('LOADING DATA...')
-    disp(subj)
     load power_stern_windows
     powl2{subj} = pow2_bl_late;
     powl4{subj} = pow4_bl_late;

@@ -33,10 +33,7 @@ for subj = 1:length(subjects)
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath)
         close all
-        clc
-
-        disp(['Processing TFR (Raw, FOOOF and Baselined) and FOOOFed POWSPCTRM (NBACK) for Subject AOC ', num2str(subjects{subj})])
-        disp('Loading EEG TFR data (NBACK)')
+        clc; fprintf('[EEG FEX TFR - NBACK] TFR, FOOOF and baselined spectra for Subject %d / %d \n', subj, length(subjects))
         load dataEEG_TFR_nback
 
     %% Identify indices of trials belonging to conditions (trialinfo codes: 21, 22, 23)
@@ -110,8 +107,7 @@ for subj = 1:length(subjects)
             condName = '3back';
         end
 
-        disp(' ')
-        disp(['Running sliding-window FOOOF (NBACK) for condition ', condName])
+        clc; fprintf('[EEG FEX FOOOF - NBACK] Starting sliding-window FOOOF for Subject %d / %d, condition %s \n', subj, length(subjects), condName)
 
         % One test window to get sizes / master freq grid
         cfg_sel0         = [];
@@ -137,12 +133,7 @@ for subj = 1:length(subjects)
             cfg_sel.trials  = trlIdx;
             datTFR_win      = ft_selectdata(cfg_sel, dataTFR);
 
-            % Tracker
-            clc
-            disp(['Running FOOOF for Subject ', num2str(subjects{subj})])
-            disp(['Subject:    ', num2str(subj), ' / ', num2str(length(subjects))])
-            disp(['Condition:  ', num2str(tfr_conds), ' / 3 (', condName, ')'])
-            disp(['Time Point: ', num2str(timePnt), ' / ', num2str(nTimePnts)])
+            clc; fprintf('[EEG FEX FOOOF - NBACK] Sliding-window FOOOF for Subject %d / %d, condition %d / 3 (%s), time point %d / %d \n', subj, length(subjects), tfr_conds, condName, timePnt, nTimePnts)
 
             % Run FOOOF on averaged spectrum
             out = evalc('fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, datTFR_win);');

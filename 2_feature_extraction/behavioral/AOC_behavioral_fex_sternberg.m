@@ -24,6 +24,7 @@ scriptName = 'AOC_behavioral_fex_sternberg';
 
 %% Read data
 for subj = 1:length(subjects)
+    clc; fprintf('[BEHAV FEX - STERNBERG] Behavioral feature extraction for Subject %d / %d \n', subj, length(subjects))
     try
         datapath = fullfile(path, subjects{subj});
         cd(datapath)

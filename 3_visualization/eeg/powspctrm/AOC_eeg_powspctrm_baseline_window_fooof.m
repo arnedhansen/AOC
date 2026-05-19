@@ -30,6 +30,7 @@ channels = occ_channels;
 clc
 disp('LOADING STERNBERG BASELINE-WINDOW POWERSPECTRA...')
 for subj = 1:length(subjects)
+    clc; fprintf('[VIZ POWSPCTRM BL - STERNBERG] Loading baseline-window FOOOF power for Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath);
     stern_file = fullfile(datapath, 'tfr_stern.mat');
@@ -105,6 +106,7 @@ saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_fooof_baselineWindow.
 clc
 disp('LOADING N-BACK BASELINE-WINDOW POWERSPECTRA...')
 for subj = 1:length(subjects)
+    clc; fprintf('[VIZ POWSPCTRM BL - NBACK] Loading baseline-window FOOOF power for Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath);
     nback_file = fullfile(datapath, 'tfr_nback.mat');

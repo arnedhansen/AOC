@@ -23,8 +23,7 @@ gaze_data_sternberg = struct('ID', {}, 'Condition', {}, 'GazeDeviation', {}, ...
 
 %% Load all eye movements
 for subj = 1:length(subjects)
-    clc
-    fprintf('[GAZE FEX - STERNBERG] Gaze feature extraction for Subject %d / %d (%s)\n', subj, length(subjects), subjects{subj})
+    clc; fprintf('[GAZE FEX - STERNBERG] Gaze feature extraction for Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'gaze');
     load([datapath, filesep, 'dataET_sternberg'])
 

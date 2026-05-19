@@ -15,13 +15,13 @@ end
 
 %% Compute grand average time and frequency data GATFR
 for subj = 1:length(subjects)
+    clc; fprintf('[VIZ TFR - STERNBERG] Loading TFR data for Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
     load tfr_stern
     tfr2_all{subj} = tfr2;
     tfr4_all{subj} = tfr4;
     tfr6_all{subj} = tfr6;
-    disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' TFR data loaded.'])
 end
 
 % Compute grand average

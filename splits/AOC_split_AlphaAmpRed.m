@@ -198,7 +198,7 @@ missing_gaze = {};
 %% Aggregate per-subject data
 fprintf('\n=== Aggregating per-subject data (%d subjects) ===\n', nSubj);
 for s = 1:nSubj
-    disp(s)
+    clc; fprintf('[SPLIT ALPHA AMP - STERNBERG] Aggregating Sternberg data for Subject %d / %d \n', s, nSubj);
     sid = uIDs(s);
     sid_str = num2str(sid);
     subj_folder = resolve_subject_folder(subjects, sid);

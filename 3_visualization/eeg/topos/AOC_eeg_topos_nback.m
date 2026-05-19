@@ -14,11 +14,9 @@ subjects = setdiff(subjects, {'361'});
 
 %% Load raw powerspctrm data
 for subj = 1:length(subjects)
+    clc; fprintf('[VIZ TOPO - NBACK] Loading power spectra for topographies, Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
-    clc
-    disp('LOADING DATA...')
-    disp(subj)
     load power_nback_windows
     powl1{subj} = pow1_bl_full;
     powl2{subj} = pow2_bl_full;

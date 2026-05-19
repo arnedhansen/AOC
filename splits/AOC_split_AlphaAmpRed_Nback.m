@@ -59,6 +59,7 @@ missing_gaze = {};
 %% Aggregate subject data
 fprintf('\n=== Aggregating N-back subject data (%d subjects) ===\n', nSubj);
 for s = 1:nSubj
+    clc; fprintf('[SPLIT ALPHA AMP - NBACK] Aggregating N-back data for Subject %d / %d \n', s, nSubj);
     sid = uIDs(s);
     sid_str = num2str(sid);
     subj_folder = resolve_subject_folder(subjects, sid);

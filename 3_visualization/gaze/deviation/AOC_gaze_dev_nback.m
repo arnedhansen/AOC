@@ -38,7 +38,7 @@ gaze_tc = nan(nSubj, 3, Tf);
 gaze_tc_raw = nan(nSubj, 3, Tf);
 
 for s = 1:nSubj
-    fprintf('Computing Subject %d / %d\n', s, nSubj);
+    clc; fprintf('[GAZE DEV - NBACK] Computing gaze deviation time courses for Subject %d / %d \n', s, nSubj);
     sid = uIDs(s);
     sid_str = num2str(sid);
     subj_folder = resolve_subject_folder(subjects, sid);

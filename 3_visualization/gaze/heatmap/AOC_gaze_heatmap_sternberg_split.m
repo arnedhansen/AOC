@@ -13,10 +13,9 @@ if ~isfolder(figDir), mkdir(figDir); end
 
 %% Load data
 for subj = 1:length(subjects)
+    clc; fprintf('[GAZE HEATMAP SPLIT - STERNBERG] Building split gaze heatmaps for Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'gaze');
     load([datapath, filesep 'dataET_sternberg'])
-    clc
-    disp(upper(['Loading ET data for Subject ' num2str(subj) '/' num2str(length(subjects)) '...']))
 
     %% Segment data in split latencies and conditions, filter and compute heatmaps
     % Find condition indexes for each trial
@@ -90,6 +89,7 @@ end
 %% Baseline data
 disp('BASELININIG...')
 for subj = 1 : length(subjects)
+    clc; fprintf('[GAZE HEATMAP SPLIT - STERNBERG] Baselining split heatmaps for Subject %d / %d \n', subj, length(subjects))
     % EARLY
     dataEarlyCOMBAllsubs_bl{subj}           = dataEarlyCOMBAllsubs{subj};
     dataEarly2Allsubs_bl{subj}              = dataEarly2Allsubs{subj};

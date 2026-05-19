@@ -21,8 +21,7 @@ scriptName = 'AOC_eeg_fex_nback';
 
 for subj = 1:length(subjects)
     try
-        clc
-        disp(['Processing windowed POWSPCTRM (subject-level) for Subject AOC ', num2str(subjects{subj})])
+        clc; fprintf('[EEG FEX - NBACK] Windowed power spectrum extraction for Subject %d / %d \n', subj, length(subjects))
         % Load data
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath)
@@ -159,8 +158,7 @@ eeg_data_nback = struct('ID', {}, 'Condition', {}, 'IAF', {}, 'Lateralization', 
 
 for subj = 1:length(subjects)
     try
-        clc
-        disp(['Processing Alpha Power, IAF and Lateralization for Subject AOC ', num2str(subjects{subj})])
+        clc; fprintf('[EEG FEX - NBACK] Alpha power, IAF and lateralization for Subject %d / %d \n', subj, length(subjects))
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath);
         load('power_nback_windows.mat');

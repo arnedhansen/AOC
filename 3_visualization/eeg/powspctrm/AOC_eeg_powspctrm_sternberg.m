@@ -35,11 +35,9 @@ disp('LOADING DATA...')
 
 % Load raw LATE-window powerspctrm data
 for subj = 1:length(subjects)
+    clc; fprintf('[VIZ POWSPCTRM - STERNBERG] Loading power spectra for Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
-    clc
-    disp('LOADING DATA...')
-    disp(subj)
     load('power_stern_windows.mat')
     powl2{subj} = pow2_bl_late;
     powl4{subj} = pow4_bl_late;

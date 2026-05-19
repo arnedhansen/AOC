@@ -41,6 +41,7 @@ channels = occ_channels;
 % Load powspctrm data
 clc
 for subj = 1:length(subjects)
+    clc; fprintf('[VIZ POWSPCTRM - NBACK] Loading power spectra for Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
     load('power_nback_windows.mat')

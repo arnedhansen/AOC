@@ -11,20 +11,15 @@
 %   merged_data_sternberg.csv
 %
 % Columns include:
-%   EEG — Raw alpha power:
-%     AlphaPower                non-baselined
-%     AlphaPowerEarly           non-baselined
-%     AlphaPowerLate            non-baselined
-%     AlphaPowerFull            non-baselined
-%     AlphaPowerEarlyBL         baselined
-%     AlphaPowerLateBL          baselined
-%     AlphaPowerFullBL          baselined
+%   EEG — Raw alpha power (IAF band, occ channels):
+%     AlphaPower_raw_early / _late / _full
+%     AlphaPower_bl_early / _late / _full   (dB baseline [-0.5 -0.25]s)
 %
-%   EEG — FOOOF alpha [8-14 Hz], occ channels:
-%     AlphaPower_FOOOF           [0 2]s, no baseline
-%     AlphaPower_FOOOF_bl        [0 2]s, baselined [-0.5 -0.25]s absolute
-%     AlphaPower_FOOOF_bl_early  [0 1]s, baselined
-%     AlphaPower_FOOOF_bl_late   [1 2]s, baselined
+%   EEG — FOOOF alpha (IAF band, occ channels):
+%     AlphaPower_FOOOF_full          [0 2]s, no baseline
+%     AlphaPower_FOOOF_bl_full       [0 2]s, baselined absolute
+%     AlphaPower_FOOOF_bl_early      [0 1]s, baselined
+%     AlphaPower_FOOOF_bl_late       [1 2]s, baselined
 %
 %   Gaze — baselined (BL window [-0.5 -0.25]s; % for GD/SPL/MS/BCEA,pupil):
 %     GazeDeviationFullBL / EarlyBL / LateBL
@@ -89,8 +84,8 @@ else
     warning('AOC_master_matrix_sternberg:EmptyFOOOF', ...
         ['eeg_data_sternberg_FOOOF is empty; FOOOF columns are set to NaN. ', ...
         'Re-run AOC_eeg_fex_sternberg_TFR.m after non-FOOOF EEG (IAF CSV).']);
-    merged_table.AlphaPower_FOOOF = nan(height(merged_table), 1);
-    merged_table.AlphaPower_FOOOF_bl = nan(height(merged_table), 1);
+    merged_table.AlphaPower_FOOOF_full = nan(height(merged_table), 1);
+    merged_table.AlphaPower_FOOOF_bl_full = nan(height(merged_table), 1);
     merged_table.AlphaPower_FOOOF_bl_early = nan(height(merged_table), 1);
     merged_table.AlphaPower_FOOOF_bl_late = nan(height(merged_table), 1);
 end

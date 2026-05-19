@@ -20,9 +20,9 @@ for subj = 1:length(subjects)
     disp('LOADING DATA...')
     disp(subj)
     load power_nback_windows
-    powl1{subj} = pow1_full;
-    powl2{subj} = pow2_full;
-    powl3{subj} = pow3_full;
+    powl1{subj} = pow1_bl_full;
+    powl2{subj} = pow2_bl_full;
+    powl3{subj} = pow3_bl_full;
 end
 
 % Compute grand avg of raw powspctrm data
@@ -34,11 +34,11 @@ gapow3 = ft_freqgrandaverage([],powl3{:});
 subj = 1;
 datapath = fullfile(path, subjects{subj}, 'eeg');
 cd(datapath);
-load('power_nback.mat');
+load('power_nback_windows.mat');
 % Occipital channels
 occ_channels = {};
-for i = 1:length(pow1_full.label)
-    label = pow1_full.label{i};
+for i = 1:length(pow1_bl_full.label)
+    label = pow1_bl_full.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end

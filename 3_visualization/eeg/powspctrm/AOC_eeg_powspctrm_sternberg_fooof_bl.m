@@ -1,5 +1,5 @@
-%% AOC Power Spectrum — Sternberg (FOOOFed + baselined)
-% Loads power_stern_fooof_TFR (pow*_fooof_bl), grand-averages across load 2/4/6,
+%% AOC Power Spectrum — Sternberg (FOOOFed + baselined, late window [1 2]s)
+% Loads power_stern_fooof_TFR (pow*_fooof_bl_late), grand-averages across load 2/4/6,
 % plots power spectra, and saves figures.
 
 %% Setup
@@ -14,12 +14,12 @@ if ~isfolder(fig_dir_pow), mkdir(fig_dir_pow); end
 datapath = fullfile(path, subjects{1}, 'eeg');
 cd(datapath);
 ref_file = fullfile(datapath, 'power_stern_fooof_TFR.mat');
-tmp = load(ref_file, 'pow2_fooof_bl');
-pow2_fooof_bl = tmp.pow2_fooof_bl;
+tmp = load(ref_file, 'pow2_fooof_bl_late');
+pow2_fooof_bl_late = tmp.pow2_fooof_bl_late;
 
 occ_channels = {};
-for i = 1:length(pow2_fooof_bl.label)
-    label = pow2_fooof_bl.label{i};
+for i = 1:length(pow2_fooof_bl_late.label)
+    label = pow2_fooof_bl_late.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
@@ -28,18 +28,18 @@ channels = occ_channels;
 
 %% Load data
 clc
-disp('LOADING FOOOF+BL DATA...')
+disp('LOADING FOOOF+BL LATE DATA...')
 for subj = 1:length(subjects)
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
     clc
-    disp('LOADING FOOOF+BL DATA...')
+    disp('LOADING FOOOF+BL LATE DATA...')
     disp(subj)
     stern_power_file = fullfile(datapath, 'power_stern_fooof_TFR.mat');
-    D = load(stern_power_file, 'pow2_fooof_bl', 'pow4_fooof_bl', 'pow6_fooof_bl');
-    powl2{subj} = D.pow2_fooof_bl;
-    powl4{subj} = D.pow4_fooof_bl;
-    powl6{subj} = D.pow6_fooof_bl;
+    D = load(stern_power_file, 'pow2_fooof_bl_late', 'pow4_fooof_bl_late', 'pow6_fooof_bl_late');
+    powl2{subj} = D.pow2_fooof_bl_late;
+    powl4{subj} = D.pow4_fooof_bl_late;
+    powl6{subj} = D.pow6_fooof_bl_late;
 end
 
 % Grand-average per condition
@@ -131,4 +131,4 @@ legend([leg_p2, leg_p4, leg_p6], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
     'FontName', 'Arial', 'FontSize', 20, 'Box', 'off');
 title('');
 
-saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_fooof_bl.png'));
+saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_fooof_bl_late.png'));

@@ -21,8 +21,8 @@ cd(datapath);
 load('power_stern_windows.mat');
 % Occipital channels
 occ_channels = {};
-for i = 1:length(pow2_early.label)
-    label = pow2_early.label{i};
+for i = 1:length(pow2_bl_late.label)
+    label = pow2_bl_late.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
@@ -41,9 +41,9 @@ for subj = 1:length(subjects)
     disp('LOADING DATA...')
     disp(subj)
     load('power_stern_windows.mat')
-    powl2{subj} = pow2_late;
-    powl4{subj} = pow4_late;
-    powl6{subj} = pow6_late;
+    powl2{subj} = pow2_bl_late;
+    powl4{subj} = pow4_bl_late;
+    powl6{subj} = pow6_bl_late;
 end
 
 % Compute grand avg of raw LATE-window powspctrm data
@@ -122,4 +122,4 @@ title('');
 
 % Save
 drawnow;
-exportgraphics(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_raw.png'), 'Resolution', 600);
+exportgraphics(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_bl_late.png'), 'Resolution', 600);

@@ -11,20 +11,15 @@
 %   merged_data_nback.csv
 %
 % Columns include:
-%   EEG — Raw alpha power:
-%     AlphaPower                non-baselined
-%     AlphaPowerEarly           non-baselined
-%     AlphaPowerLate            non-baselined
-%     AlphaPowerFull            non-baselined
-%     AlphaPowerEarlyBL         baselined
-%     AlphaPowerLateBL          baselined
-%     AlphaPowerFullBL          baselined
+%   EEG — Raw alpha power (IAF band, occ channels):
+%     AlphaPower_raw_early / _late / _full
+%     AlphaPower_bl_early / _late / _full   (dB baseline [-0.5 -0.25]s)
 %
-%   EEG — FOOOF alpha [8-14 Hz], occ channels:
-%     AlphaPower_FOOOF           [0 2]s, no baseline
-%     AlphaPower_FOOOF_bl        [0 2]s, baselined [-0.5 -0.25]s absolute
-%     AlphaPower_FOOOF_bl_early  [0 1]s, baselined
-%     AlphaPower_FOOOF_bl_late   [1 2]s, baselined
+%   EEG — FOOOF alpha (IAF band, occ channels):
+%     AlphaPower_FOOOF_full          [0 2]s, no baseline
+%     AlphaPower_FOOOF_bl_full       [0 2]s, baselined absolute
+%     AlphaPower_FOOOF_bl_early      [0 1]s, baselined
+%     AlphaPower_FOOOF_bl_late       [1 2]s, baselined
 %
 %   Gaze — baselined (BL window [-0.5 -0.25]s; % change for all gaze metrics):
 %     GazeDeviationFullBL / EarlyBL / LateBL

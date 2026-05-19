@@ -1,5 +1,5 @@
-%% AOC Power Spectrum — N-back (FOOOFed + baselined)
-% Loads FOOOFed/baselined n-back power (pow*_fooof_bl), grand-averages across
+%% AOC Power Spectrum — N-back (FOOOFed + baselined, full window [0 2]s)
+% Loads FOOOFed/baselined n-back power (pow*_fooof_bl_full), grand-averages across
 % 1/2/3-back, plots power spectra, and saves figures.
 
 %% Setup
@@ -13,15 +13,15 @@ if ~isfolder(fig_dir_pow), mkdir(fig_dir_pow); end
 %% Define channels (reference: first subject)
 datapath = fullfile(path, subjects{1}, 'eeg');
 cd(datapath);
-nback_power_file = resolve_nback_power_file(datapath);
-if isempty(nback_power_file)
-    error('No n-back FOOOF power file for subject 1 (expected power_nback_fooof_TFR.mat or power_nback_fooof.mat).');
+nback_power_file = fullfile(datapath, 'power_nback_fooof_TFR.mat');
+if ~isfile(nback_power_file)
+    error('No n-back FOOOF power file for subject 1 (expected power_nback_fooof_TFR.mat).');
 end
-D0 = load(nback_power_file, 'pow1_fooof_bl');
-pow1_fooof_bl = D0.pow1_fooof_bl;
+D0 = load(nback_power_file, 'pow1_fooof_bl_full');
+pow1_fooof_bl_full = D0.pow1_fooof_bl_full;
 occ_channels = {};
-for i = 1:length(pow1_fooof_bl.label)
-    label = pow1_fooof_bl.label{i};
+for i = 1:length(pow1_fooof_bl_full.label)
+    label = pow1_fooof_bl_full.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
@@ -30,24 +30,24 @@ channels = occ_channels;
 
 %% Load data
 clc
-disp('LOADING FOOOF+BL DATA...')
+disp('LOADING FOOOF+BL FULL DATA...')
 for subj = 1:length(subjects)
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
     clc
-    disp('LOADING FOOOF+BL DATA...')
+    disp('LOADING FOOOF+BL FULL DATA...')
     disp(subj)
-    nback_power_file = resolve_nback_power_file(datapath);
-    if isempty(nback_power_file)
+    nback_power_file = fullfile(datapath, 'power_nback_fooof_TFR.mat');
+    if ~isfile(nback_power_file)
         powl1{subj} = [];
         powl2{subj} = [];
         powl3{subj} = [];
         continue
     end
-    D = load(nback_power_file, 'pow1_fooof_bl', 'pow2_fooof_bl', 'pow3_fooof_bl');
-    powl1{subj} = D.pow1_fooof_bl;
-    powl2{subj} = D.pow2_fooof_bl;
-    powl3{subj} = D.pow3_fooof_bl;
+    D = load(nback_power_file, 'pow1_fooof_bl_full', 'pow2_fooof_bl_full', 'pow3_fooof_bl_full');
+    powl1{subj} = D.pow1_fooof_bl_full;
+    powl2{subj} = D.pow2_fooof_bl_full;
+    powl3{subj} = D.pow3_fooof_bl_full;
 end
 
 % Exclude subjects with any empty condition before grand-average.
@@ -69,8 +69,6 @@ if isempty(keep_idx)
     error('No valid subjects remain after excluding empty condition data.');
 end
 
-% Trim subject cell arrays to included indices only (no empty placeholders), then
-% pass the trimmed list into ft_freqgrandaverage_nanrobust (NaN-safe over subjects).
 powl1 = powl1(keep_idx);
 powl2 = powl2(keep_idx);
 powl3 = powl3(keep_idx);
@@ -139,16 +137,4 @@ legend([leg_p1, leg_p2, leg_p3], {'1-back', '2-back', '3-back'}, ...
     'FontName', 'Arial', 'FontSize', 20, 'Box', 'off');
 title('')
 
-saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_nback_fooof_bl.png'));
-
-function f = resolve_nback_power_file(datapath)
-f_tfr = fullfile(datapath, 'power_nback_fooof_TFR.mat');
-f_legacy = fullfile(datapath, 'power_nback_fooof.mat');
-if isfile(f_tfr)
-    f = f_tfr;
-elseif isfile(f_legacy)
-    f = f_legacy;
-else
-    f = '';
-end
-end
+saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_nback_fooof_bl_full.png'));

@@ -50,10 +50,10 @@ tasks = struct( ...
     'raw_bl_vars', {{'tfr1_bl','tfr2_bl','tfr3_bl'},          {'tfr2_bl','tfr4_bl','tfr6_bl'}}, ...
     'fooof_bl_vars', {{'tfr1_fooof_bl','tfr2_fooof_bl','tfr3_fooof_bl'}, {'tfr2_fooof_bl','tfr4_fooof_bl','tfr6_fooof_bl'}}, ...
     'cond_labels', {{'1-back','2-back','3-back'},             {'WM load 2','WM load 4','WM load 6'}}, ...
-    'title',       {'N-Back',                                 'Sternberg'});
+    'title',       {'N-Back',                                 'Sternberg'}, ...
+    'retWin',      {[0 2],                                  [1 2]});
 
 blWin  = [-0.5 -0.25];   % Baseline window [s]
-retWin = [0 2];           % Retention window [s]
 
 % Save path
 savePath = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/controls/';
@@ -114,24 +114,24 @@ for t = 1:numel(tasks)
 
             % --- Raw: mean over occ channels × time window ---
             tBL_r  = raw.time >= blWin(1)  & raw.time <= blWin(2);
-            tRet_r = raw.time >= retWin(1) & raw.time <= retWin(2);
+            tRet_r = raw.time >= task.retWin(1) & raw.time <= task.retWin(2);
             bl_raw(subj, c, :)  = mean(mean(raw.powspctrm(chIdx, :, tBL_r),  3, 'omitnan'), 1, 'omitnan');
             ret_raw(subj, c, :) = mean(mean(raw.powspctrm(chIdx, :, tRet_r), 3, 'omitnan'), 1, 'omitnan');
 
             % --- Raw baselined: retention only ---
-            tRetBL_r = rawBL.time >= retWin(1) & rawBL.time <= retWin(2);
+            tRetBL_r = rawBL.time >= task.retWin(1) & rawBL.time <= task.retWin(2);
             retbl_raw(subj, c, :) = mean(mean(rawBL.powspctrm(chIdx, :, tRetBL_r), 3, 'omitnan'), 1, 'omitnan');
 
             % --- FOOOF: same (may have different freq grid) ---
             chIdxFF = find(ismember(ff.label, channels));
             tBL_f   = ff.time >= blWin(1)  & ff.time <= blWin(2);
-            tRet_f  = ff.time >= retWin(1) & ff.time <= retWin(2);
+            tRet_f  = ff.time >= task.retWin(1) & ff.time <= task.retWin(2);
             bl_ff(subj, c, :)  = mean(mean(ff.powspctrm(chIdxFF, :, tBL_f),  3, 'omitnan'), 1, 'omitnan');
             ret_ff(subj, c, :) = mean(mean(ff.powspctrm(chIdxFF, :, tRet_f), 3, 'omitnan'), 1, 'omitnan');
 
             % --- FOOOF baselined: retention only ---
             chIdxFFBL = find(ismember(ffBL.label, channels));
-            tRetBL_f  = ffBL.time >= retWin(1) & ffBL.time <= retWin(2);
+            tRetBL_f  = ffBL.time >= task.retWin(1) & ffBL.time <= task.retWin(2);
             retbl_ff(subj, c, :) = mean(mean(ffBL.powspctrm(chIdxFFBL, :, tRetBL_f), 3, 'omitnan'), 1, 'omitnan');
         end
     end
@@ -202,11 +202,11 @@ for t = 1:numel(tasks)
     xlim([3 30]);
     xlabel('Frequency [Hz]');
     ylabel('Power [\muV^2/Hz]');
-    title('Retention [0 2]s', 'FontSize', 20);
+    title(sprintf('Retention [%.1f %.1f]s', task.retWin(1), task.retWin(2)), 'FontSize', 20);
     legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
     box on; hold off;
 
-    % ---- Right: Baselined Retention [0 2]s (dB) ----
+    % ---- Right: Baselined retention (dB) ----
     subplot(1, 3, 3); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
@@ -221,7 +221,7 @@ for t = 1:numel(tasks)
     xlim([3 30]);
     xlabel('Frequency [Hz]');
     ylabel('Power [dB]');
-    title('Retention [0 2]s (baselined)', 'FontSize', 20);
+    title(sprintf('Retention [%.1f %.1f]s (baselined)', task.retWin(1), task.retWin(2)), 'FontSize', 20);
     legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
     box on; hold off;
 
@@ -271,11 +271,11 @@ for t = 1:numel(tasks)
     xlim([3 30]);
     xlabel('Frequency [Hz]');
     ylabel('Power [FOOOF log]');
-    title('Retention [0 2]s', 'FontSize', 20);
+    title(sprintf('Retention [%.1f %.1f]s', task.retWin(1), task.retWin(2)), 'FontSize', 20);
     legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
     box on; hold off;
 
-    % ---- Right: FOOOF Baselined Retention [0 2]s ----
+    % ---- Right: FOOOF baselined retention ----
     subplot(1, 3, 3); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
@@ -290,7 +290,7 @@ for t = 1:numel(tasks)
     xlim([3 30]);
     xlabel('Frequency [Hz]');
     ylabel('Power [FOOOF log, baselined]');
-    title('Retention [0 2]s (baselined)', 'FontSize', 20);
+    title(sprintf('Retention [%.1f %.1f]s (baselined)', task.retWin(1), task.retWin(2)), 'FontSize', 20);
     legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
     box on; hold off;
 

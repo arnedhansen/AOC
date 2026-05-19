@@ -65,7 +65,8 @@ merge_pairwise_effectsizes <- function(pair_df, eff_df, task_name, dv_name) {
 
 display_dv <- function(dv) {
   out <- as.character(dv)
-  out[out == "AlphaPower_FOOOF_bl"] <- "AlphaPowerSpecParamBaseline"
+  out[out == "AlphaPower_FOOOF_bl_full"] <- "AlphaPowerSpecParamBaselineFull"
+  out[out == "AlphaPower_FOOOF_bl_late"] <- "AlphaPowerSpecParamBaselineLate"
   out[out == "AlphaPower"] <- "AlphaPower"
   out
 }
@@ -75,7 +76,8 @@ prettify_model_label <- function(model_label, dv_label = NULL, predictor_label =
   x <- gsub("^DV\\s*~", paste0(dv_label, " ~"), x)
   x <- gsub("\\(1\\|ID\\)", "(1|SubjectID)", x)
   x <- gsub("_c\\b", "", x)
-  x <- gsub("AlphaPower_FOOOF_bl", "AlphaPowerSpecParamBaseline", x)
+  x <- gsub("AlphaPower_FOOOF_bl_full", "AlphaPowerSpecParamBaselineFull", x)
+  x <- gsub("AlphaPower_FOOOF_bl_late", "AlphaPowerSpecParamBaselineLate", x)
   x <- gsub("\\s+", " ", x)
   x <- trimws(x)
   if (!is.null(predictor_label) && nzchar(predictor_label)) {
@@ -287,13 +289,13 @@ model_specs <- list(
     id = "nback_alphapower_fooof_bl",
     title = "N-back AlphaPower specParam Baseline",
     fixed = "AOC_mixedlm_fixed_pow_specparam_bl_nback.csv",
-    pair_src = pair_nback[pair_nback$Variable == "AlphaPower_FOOOF_bl", ]
+    pair_src = pair_nback[pair_nback$Variable == "AlphaPower_FOOOF_bl_full", ]
   ),
   list(
     id = "sternberg_alphapower_fooof_bl",
     title = "Sternberg AlphaPower specParam Baseline",
     fixed = "AOC_mixedlm_fixed_pow_specparam_bl_sternberg.csv",
-    pair_src = pair_stern[pair_stern$Variable == "AlphaPower_FOOOF_bl", ]
+    pair_src = pair_stern[pair_stern$Variable == "AlphaPower_FOOOF_bl_late", ]
   ),
   list(
     id = "nback_alpha_by_gazedeviation",

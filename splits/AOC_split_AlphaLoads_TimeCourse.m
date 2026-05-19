@@ -69,7 +69,7 @@ for s = 1:nSubj
     for c = 1:3
         cmask = rows.Condition == cond_vals(c);
         if any(cmask)
-            alpha_by_load(s, c) = mean(rows.AlphaPower_FOOOF_bl(cmask), 'omitnan');
+            alpha_by_load(s, c) = mean(rows.AlphaPower_FOOOF_bl_late(cmask), 'omitnan');
         end
     end
     if all(isfinite(alpha_by_load(s, :)))
@@ -235,7 +235,7 @@ LoadValue = nan(rows_n, 1);
 LoadLabel = strings(rows_n, 1);
 Group = strings(rows_n, 1);
 Included = false(rows_n, 1);
-AlphaPower_FOOOF_bl = nan(rows_n, 1);
+AlphaPower_FOOOF_bl_late = nan(rows_n, 1);
 Dev_dB = nan(rows_n, 1);
 GazeDev_dB_0p5_1p5s = nan(rows_n, 1);
 AlphaSlope = nan(rows_n, 1);
@@ -252,7 +252,7 @@ for s = 1:nSubj
         LoadLabel(r) = string(cond_labels{c});
         Group(r) = split_group(s);
         Included(r) = included(s);
-        AlphaPower_FOOOF_bl(r) = metrics.Alpha(s, c);
+        AlphaPower_FOOOF_bl_late(r) = metrics.Alpha(s, c);
         Dev_dB(r) = metrics.Dev(s, c);
         GazeDev_dB_0p5_1p5s(r) = dev_dB_by_load(s, c);
         AlphaSlope(r) = alpha_slope(s);
@@ -265,7 +265,7 @@ for s = 1:nSubj
 end
 
 split_stats = table(ID, LoadValue, LoadLabel, Group, Included, ...
-    AlphaPower_FOOOF_bl, Dev_dB, GazeDev_dB_0p5_1p5s, AlphaSlope, SlopeThreshold, ...
+    AlphaPower_FOOOF_bl_late, Dev_dB, GazeDev_dB_0p5_1p5s, AlphaSlope, SlopeThreshold, ...
     SlopeAbsRef, SlopeZeroPct, SlopeRefPercentile);
 out_csv = fullfile(stats_dir, 'AOC_splitAlphaLoads_TimeCourse_sternberg_stats_input.csv');
 writetable(split_stats, out_csv);

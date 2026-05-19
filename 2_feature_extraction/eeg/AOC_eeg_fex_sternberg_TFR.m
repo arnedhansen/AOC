@@ -13,7 +13,7 @@ featPath = paths.features;
 logDir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/controls/logs';
 scriptName = 'AOC_eeg_fex_sternberg_FOOOF';
 eeg_data_sternberg_FOOOF = struct('ID', {}, 'Condition', {}, ...
-    'AlphaPower_FOOOF', {}, 'AlphaPower_FOOOF_bl', {}, ...
+    'AlphaPower_FOOOF_full', {}, 'AlphaPower_FOOOF_bl_full', {}, ...
     'AlphaPower_FOOOF_bl_early', {}, 'AlphaPower_FOOOF_bl_late', {});
 
 iaf_csv = fullfile(featPath, 'AOC_eeg_matrix_sternberg.csv');
@@ -374,61 +374,61 @@ for subj = 1:length(subjects)
             tfr2_fooof_bl tfr4_fooof_bl tfr6_fooof_bl
 
         %% Convert TFR data to POWSPCTRM (channels x frequency)
-        analysisPeriodFull  = [0 2];
-        analysisPeriodEarly = [0 1];
-        analysisPeriodLate  = [1 2];
-        freq_range          = [2 40];
+        window.full  = [0 2];
+        window.early = [0 1];
+        window.late  = [1 2];
+        freq_range   = [2 40];
 
-        pow2_fooof          = select_data(analysisPeriodFull,  freq_range, tfr2_fooof);
-        pow2_fooof_bl       = select_data(analysisPeriodFull,  freq_range, tfr2_fooof_bl);
-        pow2_fooof_bl_early = select_data(analysisPeriodEarly, freq_range, tfr2_fooof_bl);
-        pow2_fooof_bl_late  = select_data(analysisPeriodLate,  freq_range, tfr2_fooof_bl);
+        pow2_fooof_full       = select_data(window.full,  freq_range, tfr2_fooof);
+        pow2_fooof_bl_full    = select_data(window.full,  freq_range, tfr2_fooof_bl);
+        pow2_fooof_bl_early   = select_data(window.early, freq_range, tfr2_fooof_bl);
+        pow2_fooof_bl_late    = select_data(window.late,  freq_range, tfr2_fooof_bl);
 
-        pow4_fooof          = select_data(analysisPeriodFull,  freq_range, tfr4_fooof);
-        pow4_fooof_bl       = select_data(analysisPeriodFull,  freq_range, tfr4_fooof_bl);
-        pow4_fooof_bl_early = select_data(analysisPeriodEarly, freq_range, tfr4_fooof_bl);
-        pow4_fooof_bl_late  = select_data(analysisPeriodLate,  freq_range, tfr4_fooof_bl);
+        pow4_fooof_full       = select_data(window.full,  freq_range, tfr4_fooof);
+        pow4_fooof_bl_full    = select_data(window.full,  freq_range, tfr4_fooof_bl);
+        pow4_fooof_bl_early   = select_data(window.early, freq_range, tfr4_fooof_bl);
+        pow4_fooof_bl_late    = select_data(window.late,  freq_range, tfr4_fooof_bl);
 
-        pow6_fooof          = select_data(analysisPeriodFull,  freq_range, tfr6_fooof);
-        pow6_fooof_bl       = select_data(analysisPeriodFull,  freq_range, tfr6_fooof_bl);
-        pow6_fooof_bl_early = select_data(analysisPeriodEarly, freq_range, tfr6_fooof_bl);
-        pow6_fooof_bl_late  = select_data(analysisPeriodLate,  freq_range, tfr6_fooof_bl);
+        pow6_fooof_full       = select_data(window.full,  freq_range, tfr6_fooof);
+        pow6_fooof_bl_full    = select_data(window.full,  freq_range, tfr6_fooof_bl);
+        pow6_fooof_bl_early   = select_data(window.early, freq_range, tfr6_fooof_bl);
+        pow6_fooof_bl_late    = select_data(window.late,  freq_range, tfr6_fooof_bl);
 
-        pow2_fooof          = remove_time_dimension(pow2_fooof);
-        pow2_fooof_bl       = remove_time_dimension(pow2_fooof_bl);
-        pow2_fooof_bl_early = remove_time_dimension(pow2_fooof_bl_early);
-        pow2_fooof_bl_late  = remove_time_dimension(pow2_fooof_bl_late);
+        pow2_fooof_full       = remove_time_dimension(pow2_fooof_full);
+        pow2_fooof_bl_full    = remove_time_dimension(pow2_fooof_bl_full);
+        pow2_fooof_bl_early   = remove_time_dimension(pow2_fooof_bl_early);
+        pow2_fooof_bl_late    = remove_time_dimension(pow2_fooof_bl_late);
 
-        pow4_fooof          = remove_time_dimension(pow4_fooof);
-        pow4_fooof_bl       = remove_time_dimension(pow4_fooof_bl);
-        pow4_fooof_bl_early = remove_time_dimension(pow4_fooof_bl_early);
-        pow4_fooof_bl_late  = remove_time_dimension(pow4_fooof_bl_late);
+        pow4_fooof_full       = remove_time_dimension(pow4_fooof_full);
+        pow4_fooof_bl_full    = remove_time_dimension(pow4_fooof_bl_full);
+        pow4_fooof_bl_early   = remove_time_dimension(pow4_fooof_bl_early);
+        pow4_fooof_bl_late    = remove_time_dimension(pow4_fooof_bl_late);
 
-        pow6_fooof          = remove_time_dimension(pow6_fooof);
-        pow6_fooof_bl       = remove_time_dimension(pow6_fooof_bl);
-        pow6_fooof_bl_early = remove_time_dimension(pow6_fooof_bl_early);
-        pow6_fooof_bl_late  = remove_time_dimension(pow6_fooof_bl_late);
+        pow6_fooof_full       = remove_time_dimension(pow6_fooof_full);
+        pow6_fooof_bl_full    = remove_time_dimension(pow6_fooof_bl_full);
+        pow6_fooof_bl_early   = remove_time_dimension(pow6_fooof_bl_early);
+        pow6_fooof_bl_late    = remove_time_dimension(pow6_fooof_bl_late);
 
         save power_stern_fooof_TFR ...
-            pow2_fooof pow4_fooof pow6_fooof ...
-            pow2_fooof_bl pow4_fooof_bl pow6_fooof_bl ...
+            pow2_fooof_full pow4_fooof_full pow6_fooof_full ...
+            pow2_fooof_bl_full pow4_fooof_bl_full pow6_fooof_bl_full ...
             pow2_fooof_bl_early pow4_fooof_bl_early pow6_fooof_bl_early ...
             pow2_fooof_bl_late pow4_fooof_bl_late pow6_fooof_bl_late
 
         % Build FOOOF-only subject EEG rows using IAF from non-FOOOF CSV.
-        occ_channels_fooof = occ_channels_from_labels(pow2_fooof.label);
-        occ_idx = find(ismember(pow2_fooof.label, occ_channels_fooof));
+        occ_channels_fooof = occ_channels_from_labels(pow2_fooof_full.label);
+        occ_idx = find(ismember(pow2_fooof_full.label, occ_channels_fooof));
         condVals = [2; 4; 6];
         subID = str2double(subjects{subj});
         if isnan(subID)
             subID = str2num(subjects{subj}); %#ok<ST2NM>
         end
-        AlphaPower_FOOOF = nan(3, 1);
-        AlphaPower_FOOOF_bl = nan(3, 1);
+        AlphaPower_FOOOF_full = nan(3, 1);
+        AlphaPower_FOOOF_bl_full = nan(3, 1);
         AlphaPower_FOOOF_bl_early = nan(3, 1);
         AlphaPower_FOOOF_bl_late = nan(3, 1);
-        condPows = {pow2_fooof, pow4_fooof, pow6_fooof};
-        condPows_bl = {pow2_fooof_bl, pow4_fooof_bl, pow6_fooof_bl};
+        condPows_full = {pow2_fooof_full, pow4_fooof_full, pow6_fooof_full};
+        condPows_bl_full = {pow2_fooof_bl_full, pow4_fooof_bl_full, pow6_fooof_bl_full};
         condPows_bl_early = {pow2_fooof_bl_early, pow4_fooof_bl_early, pow6_fooof_bl_early};
         condPows_bl_late = {pow2_fooof_bl_late, pow4_fooof_bl_late, pow6_fooof_bl_late};
         nIAF_fallback = 0;
@@ -439,8 +439,8 @@ for subj = 1:length(subjects)
                 band = [8 14];
                 nIAF_fallback = nIAF_fallback + 1;
             end
-            AlphaPower_FOOOF(c) = robust_roi_pow(condPows{c}, occ_idx, band);
-            AlphaPower_FOOOF_bl(c) = robust_roi_pow(condPows_bl{c}, occ_idx, band);
+            AlphaPower_FOOOF_full(c) = robust_roi_pow(condPows_full{c}, occ_idx, band);
+            AlphaPower_FOOOF_bl_full(c) = robust_roi_pow(condPows_bl_full{c}, occ_idx, band);
             AlphaPower_FOOOF_bl_early(c) = robust_roi_pow(condPows_bl_early{c}, occ_idx, band);
             AlphaPower_FOOOF_bl_late(c) = robust_roi_pow(condPows_bl_late{c}, occ_idx, band);
         end
@@ -448,8 +448,8 @@ for subj = 1:length(subjects)
             fprintf('Subject %s: IAF fallback [8 14] used in %d/3 conditions.\n', subjects{subj}, nIAF_fallback);
         end
         subj_data_fooof = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell(condVals), ...
-            'AlphaPower_FOOOF', num2cell(AlphaPower_FOOOF), ...
-            'AlphaPower_FOOOF_bl', num2cell(AlphaPower_FOOOF_bl), ...
+            'AlphaPower_FOOOF_full', num2cell(AlphaPower_FOOOF_full), ...
+            'AlphaPower_FOOOF_bl_full', num2cell(AlphaPower_FOOOF_bl_full), ...
             'AlphaPower_FOOOF_bl_early', num2cell(AlphaPower_FOOOF_bl_early), ...
             'AlphaPower_FOOOF_bl_late', num2cell(AlphaPower_FOOOF_bl_late));
         save eeg_matrix_sternberg_FOOOF_subj subj_data_fooof
@@ -457,11 +457,11 @@ for subj = 1:length(subjects)
 
         %% Additional sanity check: WM-load differences (subject-level alpha, FOOOF-bl)
         % Uses split-style cloud + box + jitter aesthetics.
-        occ_channels = occ_channels_from_labels(pow2_fooof_bl.label);
+        occ_channels = occ_channels_from_labels(pow2_fooof_bl_late.label);
         alphaRange = [8 14];
-        a2 = extract_subject_alpha_samples(pow2_fooof_bl, occ_channels, alphaRange);
-        a4 = extract_subject_alpha_samples(pow4_fooof_bl, occ_channels, alphaRange);
-        a6 = extract_subject_alpha_samples(pow6_fooof_bl, occ_channels, alphaRange);
+        a2 = extract_subject_alpha_samples(pow2_fooof_bl_late, occ_channels, alphaRange);
+        a4 = extract_subject_alpha_samples(pow4_fooof_bl_late, occ_channels, alphaRange);
+        a6 = extract_subject_alpha_samples(pow6_fooof_bl_late, occ_channels, alphaRange);
 
         figure('Position', [0 0 1512 982]);
         hold on
@@ -471,7 +471,7 @@ for subj = 1:length(subjects)
         draw_one_cloud_sanity(a6, 3, cols(3, :), 0.30, 120, 0.75);
         yline(0, '--', 'Color', [0.6 0.6 0.6]);
         set(gca, 'XTick', 1:3, 'XTickLabel', {'WM load 2', 'WM load 4', 'WM load 6'}, 'FontSize', 20);
-        ylabel('AlphaPower\_FOOOF\_bl');
+        ylabel('AlphaPower\_FOOOF\_bl\_late');
         title(sprintf('Sanity check WM-load differences: Subject %s', subjects{subj}), 'Interpreter', 'none');
         box off
 

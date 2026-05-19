@@ -43,11 +43,16 @@ warnings.filterwarnings(
 
 # %% Raw alpha definition
 # Task-specific raw-alpha source:
-# - nback: entire window (`AlphaPowerFull`)
-# - sternberg: late window (`AlphaPowerLate`)
+# - nback: full window (`AlphaPower_raw_full`)
+# - sternberg: late window (`AlphaPower_raw_late`)
 RAW_ALPHA_BY_TASK = {
-    "nback": "AlphaPowerFull",
-    "sternberg": "AlphaPowerLate",
+    "nback": "AlphaPower_raw_full",
+    "sternberg": "AlphaPower_raw_late",
+}
+
+FOOOF_ALPHA_BY_TASK = {
+    "nback": "AlphaPower_FOOOF_bl_full",
+    "sternberg": "AlphaPower_FOOOF_bl_late",
 }
 
 def enforce_task_raw_alpha(df: pd.DataFrame, task_name: str) -> pd.DataFrame:
@@ -106,15 +111,18 @@ os.makedirs(lrt_dir, exist_ok=True)
 
 variables  = [
     "Accuracy", "ReactionTime", "GazeDeviation", "MSRate", "Fixations", "Saccades", "PupilSize", "AlphaPower", "IAF",
-    "GazeDeviationFullBL", "MSRateFullBL", "PupilSizeFullBL", "AlphaPowerFullBL", "AlphaPower_FOOOF_bl",
+    "GazeDeviationFullBL", "MSRateFullBL", "PupilSizeFullBL",
+    "AlphaPower_bl_full", "AlphaPower_bl_late", "AlphaPower_FOOOF_bl_full", "AlphaPower_FOOOF_bl_late",
 ]
 y_labels   = [
     "Accuracy [%]", "Reaction Time [s]", "Gaze Deviation [px]", "Microsaccade Rate [MS/s]", "Fixations", "Saccades", "Pupil Size [a.u.]", "Alpha Power [\u03BCV²/Hz]", "IAF [Hz]",
-    "Gaze Deviation [%]", "Microsaccade Rate [%]", "Pupil Size [%]", "Alpha Power [dB]", "Alpha Power [dB]",
+    "Gaze Deviation [%]", "Microsaccade Rate [%]", "Pupil Size [%]",
+    "Alpha Power [dB, full]", "Alpha Power [dB, late]", "Alpha Power FOOOF [dB, full]", "Alpha Power FOOOF [dB, late]",
 ]
 save_names = [
     "acc", "rt", "gazedev", "ms", "fix", "sacc", "pupil", "pow", "iaf",
-    "gazedev_bl", "ms_bl", "pupil_bl", "pow_bl", "pow_specparam_bl",
+    "gazedev_bl", "ms_bl", "pupil_bl",
+    "pow_bl_full", "pow_bl_late", "pow_specparam_bl_full", "pow_specparam_bl_late",
 ]
 
 # Manual y ticks and ylims per variable
@@ -131,8 +139,10 @@ yticks_map = {
     "GazeDeviationFullBL" : np.arange(0, 401, 50),
     "MSRateFullBL"        : np.arange(-100, 5, 5),
     "PupilSizeFullBL"     : np.arange(-20, 121, 20),
-    "AlphaPowerFullBL"    : np.arange(-3, 3.1, 1),
-    "AlphaPower_FOOOF_bl" : np.arange(-0.3, 0.31, 0.1),
+    "AlphaPower_bl_full"       : np.arange(-3, 3.1, 1),
+    "AlphaPower_bl_late"       : np.arange(-3, 3.1, 1),
+    "AlphaPower_FOOOF_bl_full" : np.arange(-0.3, 0.31, 0.1),
+    "AlphaPower_FOOOF_bl_late" : np.arange(-0.3, 0.31, 0.1),
 }
 ylims_map = {
     "Accuracy"      : (60, 102),
@@ -147,8 +157,10 @@ ylims_map = {
     "GazeDeviationFullBL" : (0, 400),
     "MSRateFullBL"        : (-100, 0),
     "PupilSizeFullBL"     : (-20, 120),
-    "AlphaPowerFullBL"    : (-3, 3),
-    "AlphaPower_FOOOF_bl" : (-0.325, 0.325),
+    "AlphaPower_bl_full"       : (-3, 3),
+    "AlphaPower_bl_late"       : (-3, 3),
+    "AlphaPower_FOOOF_bl_full" : (-0.325, 0.325),
+    "AlphaPower_FOOOF_bl_late" : (-0.325, 0.325),
 }
 
 # %% Task configurations
@@ -718,7 +730,7 @@ for task in tasks:
     dat = iqr_outlier_filter(dat, vars_present, by="Condition")
 
     # Keep essential columns
-    alpha_vars = ["AlphaPower", "AlphaPowerFullBL", "AlphaPower_FOOOF_bl"]
+    alpha_vars = ["AlphaPower", "AlphaPower_bl_full", "AlphaPower_bl_late", "AlphaPower_FOOOF_bl_full", "AlphaPower_FOOOF_bl_late"]
     gaze_vars = ["GazeDeviation", "MSRate", "GazeDeviationFullBL", "MSRateFullBL"]
     cols_needed = ["ID", "Condition"] + alpha_vars + gaze_vars
     dat = dat[[c for c in cols_needed if c in dat.columns]].copy()

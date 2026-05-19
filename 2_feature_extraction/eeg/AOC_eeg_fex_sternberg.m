@@ -40,11 +40,11 @@ for subj = 1:length(subjects)
         ind4 = find(dataTFR.trialinfo(:, 1) == 24); % WM load 4
         ind6 = find(dataTFR.trialinfo(:, 1) == 26); % WM load 6
 
-        % Windows
-        t_base = [-0.5 -0.25];
-        t_early = [0 1];
-        t_late  = [1 2];
-        t_full  = [0 2];
+        % Retention windows [s] — suffix mapping for saved variables
+        window.base  = [-0.5 -0.25];
+        window.early = [0 1];
+        window.late  = [1 2];
+        window.full  = [0 2];
 
         % ----------------------
         % Time-frequency transform (raw) per condition (keeps time for window selection)
@@ -66,7 +66,7 @@ for subj = 1:length(subjects)
 
         % Baselined TFR (dB)
         cfgb              = [];
-        cfgb.baseline     = t_base;
+        cfgb.baseline     = window.base;
         cfgb.baselinetype = 'db';
         tfr2_bl = ft_freqbaseline(cfgb, tfr2);
         tfr4_bl = ft_freqbaseline(cfgb, tfr4);
@@ -74,36 +74,36 @@ for subj = 1:length(subjects)
 
         % Convert to window-collapsed POWSPCTRM (chan x freq)
         freq_range = [2 40];
-        pow2_early     = remove_time_dimension(select_data(t_early, freq_range, tfr2));
-        pow4_early     = remove_time_dimension(select_data(t_early, freq_range, tfr4));
-        pow6_early     = remove_time_dimension(select_data(t_early, freq_range, tfr6));
-        pow2_early_bl  = remove_time_dimension(select_data(t_early, freq_range, tfr2_bl));
-        pow4_early_bl  = remove_time_dimension(select_data(t_early, freq_range, tfr4_bl));
-        pow6_early_bl  = remove_time_dimension(select_data(t_early, freq_range, tfr6_bl));
+        pow2_raw_early  = remove_time_dimension(select_data(window.early, freq_range, tfr2));
+        pow4_raw_early  = remove_time_dimension(select_data(window.early, freq_range, tfr4));
+        pow6_raw_early  = remove_time_dimension(select_data(window.early, freq_range, tfr6));
+        pow2_bl_early   = remove_time_dimension(select_data(window.early, freq_range, tfr2_bl));
+        pow4_bl_early   = remove_time_dimension(select_data(window.early, freq_range, tfr4_bl));
+        pow6_bl_early   = remove_time_dimension(select_data(window.early, freq_range, tfr6_bl));
 
-        pow2_late      = remove_time_dimension(select_data(t_late, freq_range, tfr2));
-        pow4_late      = remove_time_dimension(select_data(t_late, freq_range, tfr4));
-        pow6_late      = remove_time_dimension(select_data(t_late, freq_range, tfr6));
-        pow2_late_bl   = remove_time_dimension(select_data(t_late, freq_range, tfr2_bl));
-        pow4_late_bl   = remove_time_dimension(select_data(t_late, freq_range, tfr4_bl));
-        pow6_late_bl   = remove_time_dimension(select_data(t_late, freq_range, tfr6_bl));
+        pow2_raw_late   = remove_time_dimension(select_data(window.late, freq_range, tfr2));
+        pow4_raw_late   = remove_time_dimension(select_data(window.late, freq_range, tfr4));
+        pow6_raw_late   = remove_time_dimension(select_data(window.late, freq_range, tfr6));
+        pow2_bl_late    = remove_time_dimension(select_data(window.late, freq_range, tfr2_bl));
+        pow4_bl_late    = remove_time_dimension(select_data(window.late, freq_range, tfr4_bl));
+        pow6_bl_late    = remove_time_dimension(select_data(window.late, freq_range, tfr6_bl));
 
-        pow2_full      = remove_time_dimension(select_data(t_full, freq_range, tfr2));
-        pow4_full      = remove_time_dimension(select_data(t_full, freq_range, tfr4));
-        pow6_full      = remove_time_dimension(select_data(t_full, freq_range, tfr6));
-        pow2_full_bl   = remove_time_dimension(select_data(t_full, freq_range, tfr2_bl));
-        pow4_full_bl   = remove_time_dimension(select_data(t_full, freq_range, tfr4_bl));
-        pow6_full_bl   = remove_time_dimension(select_data(t_full, freq_range, tfr6_bl));
+        pow2_raw_full   = remove_time_dimension(select_data(window.full, freq_range, tfr2));
+        pow4_raw_full   = remove_time_dimension(select_data(window.full, freq_range, tfr4));
+        pow6_raw_full   = remove_time_dimension(select_data(window.full, freq_range, tfr6));
+        pow2_bl_full    = remove_time_dimension(select_data(window.full, freq_range, tfr2_bl));
+        pow4_bl_full    = remove_time_dimension(select_data(window.full, freq_range, tfr4_bl));
+        pow6_bl_full    = remove_time_dimension(select_data(window.full, freq_range, tfr6_bl));
 
         % Save windowed spectra
         cd(datapath)
         save('power_stern_windows.mat', ...
-            'pow2_early','pow4_early','pow6_early', ...
-            'pow2_late','pow4_late','pow6_late', ...
-            'pow2_full','pow4_full','pow6_full', ...
-            'pow2_early_bl','pow4_early_bl','pow6_early_bl', ...
-            'pow2_late_bl','pow4_late_bl','pow6_late_bl', ...
-            'pow2_full_bl','pow4_full_bl','pow6_full_bl')
+            'pow2_raw_early','pow4_raw_early','pow6_raw_early', ...
+            'pow2_raw_late','pow4_raw_late','pow6_raw_late', ...
+            'pow2_raw_full','pow4_raw_full','pow6_raw_full', ...
+            'pow2_bl_early','pow4_bl_early','pow6_bl_early', ...
+            'pow2_bl_late','pow4_bl_late','pow6_bl_late', ...
+            'pow2_bl_full','pow4_bl_full','pow6_bl_full')
 
     catch ME
         log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
@@ -124,8 +124,8 @@ cd(datapath);
 load('power_stern_windows.mat');
 % Occipital channels
 occ_channels = {};
-for i = 1:length(pow2_full.label)
-    label = pow2_full.label{i};
+for i = 1:length(pow2_raw_full.label)
+    label = pow2_raw_full.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
@@ -158,9 +158,9 @@ powerIAF2 = [];
 powerIAF4 = [];
 powerIAF6 = [];
 IAF_results = struct();
-eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'AlphaPower', {}, 'IAF', {}, 'Lateralization', {}, ...
-    'AlphaPowerEarly', {}, 'AlphaPowerLate', {}, 'AlphaPowerFull', {}, ...
-    'AlphaPowerEarlyBL', {}, 'AlphaPowerLateBL', {}, 'AlphaPowerFullBL', {});
+eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'IAF', {}, 'Lateralization', {}, ...
+    'AlphaPower_raw_early', {}, 'AlphaPower_raw_late', {}, 'AlphaPower_raw_full', {}, ...
+    'AlphaPower_bl_early', {}, 'AlphaPower_bl_late', {}, 'AlphaPower_bl_full', {});
 
 for subj = 1:length(subjects)
     try
@@ -171,15 +171,15 @@ for subj = 1:length(subjects)
         load('power_stern_windows.mat');
 
         % Channel selection
-        channelIdx = find(ismember(pow2_full.label, channels));
+        channelIdx = find(ismember(pow2_raw_full.label, channels));
 
         % Extract FULL-window power spectra for selected channels (used for IAF)
-        powspctrm2 = mean(pow2_full.powspctrm(channelIdx, :), 1);
-        powspctrm4 = mean(pow4_full.powspctrm(channelIdx, :), 1);
-        powspctrm6 = mean(pow6_full.powspctrm(channelIdx, :), 1);
+        powspctrm2 = mean(pow2_raw_full.powspctrm(channelIdx, :), 1);
+        powspctrm4 = mean(pow4_raw_full.powspctrm(channelIdx, :), 1);
+        powspctrm6 = mean(pow6_raw_full.powspctrm(channelIdx, :), 1);
 
         % Find the indices corresponding to the alpha range
-        alphaIndices = find(pow2_full.freq >= alphaRange(1) & pow2_full.freq <= alphaRange(2));
+        alphaIndices = find(pow2_raw_full.freq >= alphaRange(1) & pow2_raw_full.freq <= alphaRange(2));
 
         % Calculate IAF for WM load 2
         alphaPower2 = powspctrm2(alphaIndices);
@@ -190,8 +190,8 @@ for subj = 1:length(subjects)
             powerIAF2 = NaN;
         else
             [~, ind] = max(pks2);
-            IAF2 = pow2_full.freq(alphaIndices(locs(ind)));
-            IAF_range2 = find(pow2_full.freq > (IAF2-4) & pow2_full.freq < (IAF2+2));
+            IAF2 = pow2_raw_full.freq(alphaIndices(locs(ind)));
+            IAF_range2 = find(pow2_raw_full.freq > (IAF2-4) & pow2_raw_full.freq < (IAF2+2));
             powerIAF2 = mean(powspctrm2(IAF_range2));
         end
 
@@ -204,8 +204,8 @@ for subj = 1:length(subjects)
             powerIAF4 = NaN;
         else
             [~, ind] = max(pks4);
-            IAF4 = pow4_full.freq(alphaIndices(locs(ind)));
-            IAF_range4 = find(pow4_full.freq > (IAF4-4) & pow4_full.freq < (IAF4+2));
+            IAF4 = pow4_raw_full.freq(alphaIndices(locs(ind)));
+            IAF_range4 = find(pow4_raw_full.freq > (IAF4-4) & pow4_raw_full.freq < (IAF4+2));
             powerIAF4 = mean(powspctrm4(IAF_range4));
         end
 
@@ -218,8 +218,8 @@ for subj = 1:length(subjects)
             powerIAF6 = NaN;
         else
             [~, ind] = max(pks6);
-            IAF6 = pow6_full.freq(alphaIndices(locs(ind)));
-            IAF_range6 = find(pow6_full.freq > (IAF6-4) & pow6_full.freq < (IAF6+2));
+            IAF6 = pow6_raw_full.freq(alphaIndices(locs(ind)));
+            IAF_range6 = find(pow6_raw_full.freq > (IAF6-4) & pow6_raw_full.freq < (IAF6+2));
             powerIAF6 = mean(powspctrm6(IAF_range6));
         end
 
@@ -254,7 +254,7 @@ for subj = 1:length(subjects)
         end
 
         % Compute lateralization index on LATE BASELINED spectra (dB)
-        powloads = {pow2_late_bl, pow4_late_bl, pow6_late_bl};
+        powloads = {pow2_bl_late, pow4_bl_late, pow6_bl_late};
         for i = 1:3
             curr_load = powloads{i};
             left_idx = find(ismember(curr_load.label, left_channels));
@@ -273,28 +273,22 @@ for subj = 1:length(subjects)
         IAF_band4 = [IAF4-4 IAF4+2]; if any(isnan(IAF_band4)); IAF_band4 = alphaRange; end
         IAF_band6 = [IAF6-4 IAF6+2]; if any(isnan(IAF_band6)); IAF_band6 = alphaRange; end
 
-        AlphaPowerEarly    = [robust_roi_pow(pow2_early, channelIdx, IAF_band2);    robust_roi_pow(pow4_early, channelIdx, IAF_band4);    robust_roi_pow(pow6_early, channelIdx, IAF_band6)];
-        AlphaPowerLate     = [robust_roi_pow(pow2_late,  channelIdx, IAF_band2);    robust_roi_pow(pow4_late,  channelIdx, IAF_band4);    robust_roi_pow(pow6_late,  channelIdx, IAF_band6)];
-        AlphaPowerFull     = [robust_roi_pow(pow2_full,  channelIdx, IAF_band2);    robust_roi_pow(pow4_full,  channelIdx, IAF_band4);    robust_roi_pow(pow6_full,  channelIdx, IAF_band6)];
-        AlphaPowerEarlyBL  = [robust_roi_pow(pow2_early_bl, channelIdx, IAF_band2); robust_roi_pow(pow4_early_bl, channelIdx, IAF_band4); robust_roi_pow(pow6_early_bl, channelIdx, IAF_band6)];
-        AlphaPowerLateBL   = [robust_roi_pow(pow2_late_bl,  channelIdx, IAF_band2); robust_roi_pow(pow4_late_bl,  channelIdx, IAF_band4); robust_roi_pow(pow6_late_bl,  channelIdx, IAF_band6)];
-        AlphaPowerFullBL   = [robust_roi_pow(pow2_full_bl,  channelIdx, IAF_band2); robust_roi_pow(pow4_full_bl,  channelIdx, IAF_band4); robust_roi_pow(pow6_full_bl,  channelIdx, IAF_band6)];
-        % Keep legacy AlphaPower as LATE raw (registered retention)
-        AlphaPower = AlphaPowerLate;
+        AlphaPower_raw_early = [robust_roi_pow(pow2_raw_early, channelIdx, IAF_band2); robust_roi_pow(pow4_raw_early, channelIdx, IAF_band4); robust_roi_pow(pow6_raw_early, channelIdx, IAF_band6)];
+        AlphaPower_raw_late  = [robust_roi_pow(pow2_raw_late,  channelIdx, IAF_band2); robust_roi_pow(pow4_raw_late,  channelIdx, IAF_band4); robust_roi_pow(pow6_raw_late,  channelIdx, IAF_band6)];
+        AlphaPower_raw_full  = [robust_roi_pow(pow2_raw_full,  channelIdx, IAF_band2); robust_roi_pow(pow4_raw_full,  channelIdx, IAF_band4); robust_roi_pow(pow6_raw_full,  channelIdx, IAF_band6)];
+        AlphaPower_bl_early  = [robust_roi_pow(pow2_bl_early, channelIdx, IAF_band2); robust_roi_pow(pow4_bl_early, channelIdx, IAF_band4); robust_roi_pow(pow6_bl_early, channelIdx, IAF_band6)];
+        AlphaPower_bl_late   = [robust_roi_pow(pow2_bl_late,  channelIdx, IAF_band2); robust_roi_pow(pow4_bl_late,  channelIdx, IAF_band4); robust_roi_pow(pow6_bl_late,  channelIdx, IAF_band6)];
+        AlphaPower_bl_full   = [robust_roi_pow(pow2_bl_full,  channelIdx, IAF_band2); robust_roi_pow(pow4_bl_full,  channelIdx, IAF_band4); robust_roi_pow(pow6_bl_full,  channelIdx, IAF_band6)];
 
-        % Create a structure array for this subject (legacy fields preserved)
         subID = str2num(subjects{subj});
         subj_data_eeg = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell([2; 4; 6]), ...
-            'AlphaPower', num2cell(AlphaPower), 'IAF', num2cell([IAF2; IAF4; IAF6]), ...
-            'Lateralization', num2cell([LatIdx2; LatIdx4; LatIdx6]));
-
-        % Add windowed alpha power fields (raw + baselined, IAF band)
-        tmp = num2cell(AlphaPowerEarly);   [subj_data_eeg.AlphaPowerEarly]   = tmp{:};
-        tmp = num2cell(AlphaPowerLate);    [subj_data_eeg.AlphaPowerLate]    = tmp{:};
-        tmp = num2cell(AlphaPowerFull);    [subj_data_eeg.AlphaPowerFull]    = tmp{:};
-        tmp = num2cell(AlphaPowerEarlyBL); [subj_data_eeg.AlphaPowerEarlyBL] = tmp{:};
-        tmp = num2cell(AlphaPowerLateBL);  [subj_data_eeg.AlphaPowerLateBL]  = tmp{:};
-        tmp = num2cell(AlphaPowerFullBL);  [subj_data_eeg.AlphaPowerFullBL]  = tmp{:};
+            'IAF', num2cell([IAF2; IAF4; IAF6]), 'Lateralization', num2cell([LatIdx2; LatIdx4; LatIdx6]), ...
+            'AlphaPower_raw_early', num2cell(AlphaPower_raw_early), ...
+            'AlphaPower_raw_late', num2cell(AlphaPower_raw_late), ...
+            'AlphaPower_raw_full', num2cell(AlphaPower_raw_full), ...
+            'AlphaPower_bl_early', num2cell(AlphaPower_bl_early), ...
+            'AlphaPower_bl_late', num2cell(AlphaPower_bl_late), ...
+            'AlphaPower_bl_full', num2cell(AlphaPower_bl_full));
         % Save
         if ispc == 1
             savepath = fullfile('W:\Students\Arne\AOC\data\features\', subjects{subj}, 'eeg');

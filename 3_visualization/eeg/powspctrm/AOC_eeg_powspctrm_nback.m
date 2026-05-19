@@ -19,8 +19,8 @@ cd(datapath);
 load('power_nback_windows.mat');
 % Occipital channels
 occ_channels = {};
-for i = 1:length(pow1_full.label)
-    label = pow1_full.label{i};
+for i = 1:length(pow1_bl_full.label)
+    label = pow1_bl_full.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
@@ -44,9 +44,9 @@ for subj = 1:length(subjects)
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
     load('power_nback_windows.mat')
-    powl1{subj} = pow1_full;
-    powl2{subj} = pow2_full;
-    powl3{subj} = pow3_full;
+    powl1{subj} = pow1_bl_full;
+    powl2{subj} = pow2_bl_full;
+    powl3{subj} = pow3_bl_full;
 end
 
 % Compute grand avg of powspctrm data
@@ -137,4 +137,4 @@ hold off;
 
 % Save
 drawnow;
-exportgraphics(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_nback_raw.png'), 'Resolution', 600);
+exportgraphics(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_nback_bl_full.png'), 'Resolution', 600);

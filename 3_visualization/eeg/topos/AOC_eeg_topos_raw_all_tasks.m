@@ -22,10 +22,10 @@ for subj = 1:numel(subjects_nback)
     if ~isfolder(datapath), continue, end
     cd(datapath);
     if ~isfile('power_nback_windows.mat'), continue, end
-    S = load('power_nback_windows.mat', 'pow1_full', 'pow2_full', 'pow3_full');
-    if isfield(S, 'pow1_full'), powl1{end+1} = S.pow1_full; end
-    if isfield(S, 'pow2_full'), powl2{end+1} = S.pow2_full; end
-    if isfield(S, 'pow3_full'), powl3{end+1} = S.pow3_full; end
+    S = load('power_nback_windows.mat', 'pow1_raw_full', 'pow2_raw_full', 'pow3_raw_full');
+    if isfield(S, 'pow1_raw_full'), powl1{end+1} = S.pow1_raw_full; end
+    if isfield(S, 'pow2_raw_full'), powl2{end+1} = S.pow2_raw_full; end
+    if isfield(S, 'pow3_raw_full'), powl3{end+1} = S.pow3_raw_full; end
 end
 
 assert(~isempty(powl1) && ~isempty(powl2) && ~isempty(powl3), ...
@@ -47,10 +47,10 @@ for subj = 1:numel(subjects)
     if ~isfolder(datapath), continue, end
     cd(datapath);
     if ~isfile('power_stern_windows.mat'), continue, end
-    S = load('power_stern_windows.mat', 'pow2_late', 'pow4_late', 'pow6_late');
-    if isfield(S, 'pow2_late'), pows2{end+1} = S.pow2_late; end
-    if isfield(S, 'pow4_late'), pows4{end+1} = S.pow4_late; end
-    if isfield(S, 'pow6_late'), pows6{end+1} = S.pow6_late; end
+    S = load('power_stern_windows.mat', 'pow2_raw_late', 'pow4_raw_late', 'pow6_raw_late');
+    if isfield(S, 'pow2_raw_late'), pows2{end+1} = S.pow2_raw_late; end
+    if isfield(S, 'pow4_raw_late'), pows4{end+1} = S.pow4_raw_late; end
+    if isfield(S, 'pow6_raw_late'), pows6{end+1} = S.pow6_raw_late; end
 end
 
 assert(~isempty(pows2) && ~isempty(pows4) && ~isempty(pows6), ...

@@ -1,6 +1,6 @@
 %% AOC Split Alpha Amp/Red (Subject-Level) — Sternberg
 % Subject-level split (fixed across conditions) using merged_data_sternberg:
-%   mean AlphaPower_FOOOF_bl across load levels (baselined, FOOOFed alpha)
+%   mean AlphaPower_FOOOF_bl_late across load levels (baselined, FOOOFed alpha, [1 2]s)
 %   split0 mode: < 0 -> reduction, >= 0 -> amplification
 %
 % Uses split-pipeline FOOOF sources (Sternberg only):
@@ -54,7 +54,7 @@ tasks(1).cond_vals = [2 4 6];
 tasks(1).cond_codes = [22 24 26];
 tasks(1).cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
 tasks(1).power_fname = 'power_stern_fooof_TFR.mat';
-tasks(1).pow_vars = {'pow2_fooof_bl', 'pow4_fooof_bl', 'pow6_fooof_bl'};
+tasks(1).pow_vars = {'pow2_fooof_bl_late', 'pow4_fooof_bl_late', 'pow6_fooof_bl_late'};
 tasks(1).tfr_fname = 'tfr_stern.mat';
 tasks(1).tfr_vars = {'tfr2_fooof_bl', 'tfr4_fooof_bl', 'tfr6_fooof_bl'};
 tasks(1).gaze_fname = 'gaze_series_sternberg_trials.mat';
@@ -99,7 +99,7 @@ alpha_mean = nan(nSubj, 1);
 for i = 1:nSubj
     sid = uIDs(i);
     mask = T.ID == sid;
-    alpha_mean(i) = mean(T.AlphaPower_FOOOF_bl(mask), 'omitnan');
+    alpha_mean(i) = mean(T.AlphaPower_FOOOF_bl_late(mask), 'omitnan');
 end
 
 % Robust filtering for split reference:
@@ -130,7 +130,7 @@ zero_ids = [];
 invalid_ids = uIDs(~split_valid);
 split_info_str = 'Split at 0.0000 (no near-zero exclusion)';
 
-fprintf('\n=== Split Summary [%s | %s] (AlphaPower_FOOOF_bl, full window) ===\n', task_tag, split_mode);
+fprintf('\n=== Split Summary [%s | %s] (AlphaPower_FOOOF_bl_late, [1 2]s) ===\n', task_tag, split_mode);
 fprintf('Subjects total: %d\n', nSubj);
 fprintf('%s\n', split_info_str);
 fprintf('Reduction (< 0.0000): %d\n', numel(reduction_ids));
@@ -218,7 +218,7 @@ for s = 1:nSubj
     for c = 1:3
         cmask = subj_rows.Condition == cond_vals(c);
         if any(cmask)
-            metrics.Alpha(s, c) = mean(subj_rows.AlphaPower_FOOOF_bl(cmask), 'omitnan');
+            metrics.Alpha(s, c) = mean(subj_rows.AlphaPower_FOOOF_bl_late(cmask), 'omitnan');
             metrics.Dev(s, c) = mean(subj_rows.GazeDeviationFullBL(cmask), 'omitnan');
         end
     end
@@ -505,7 +505,7 @@ stats_tbl = table( ...
     Alpha_col, GazeDev_col, GazeSummary_col, ...
     'VariableNames', { ...
     'ID', 'LoadValue', 'LoadLabel', 'Group', 'Included', ...
-    'AlphaPower_FOOOF_bl', 'GazeDeviationFullBL', gaze_csv_varname});
+    'AlphaPower_FOOOF_bl_late', 'GazeDeviationFullBL', gaze_csv_varname});
 
 csv_out = fullfile(stats_dir, sprintf('AOC_splitAmpRed_%s_%s_stats_input.csv', task_tag, split_label));
 writetable(stats_tbl, csv_out);
@@ -1053,7 +1053,7 @@ end
 
 function plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_prefix, fig_pos, fsz)
 metric_defs = { ...
-    'Alpha', 'AlphaPower_FOOOF_bl', false; ...
+    'Alpha', 'AlphaPower_FOOOF_bl_late', false; ...
     'Dev', 'Gaze deviation', false; ...
     };
 

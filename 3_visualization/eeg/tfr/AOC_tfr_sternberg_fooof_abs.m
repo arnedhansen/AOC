@@ -25,9 +25,9 @@ for subj = 1:length(subjects)
 end
 
 % Compute grand average
-gatfr2 = ft_freqgrandaverage([],tfr2_all{:});
-gatfr4 = ft_freqgrandaverage([],tfr4_all{:});
-gatfr6 = ft_freqgrandaverage([],tfr6_all{:});
+gatfr2 = ft_freqgrandaverage_nanrobust([],tfr2_all{:});
+gatfr4 = ft_freqgrandaverage_nanrobust([],tfr4_all{:});
+gatfr6 = ft_freqgrandaverage_nanrobust([],tfr6_all{:});
 
 %% Define channels
 occ_channels = {};

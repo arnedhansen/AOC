@@ -42,34 +42,38 @@ for subj = 1:length(subjects)
     powl6{subj} = D.pow6_fooof_bl;
 end
 
-% Exclude subjects with any empty condition before grand-average.
+% Grand-average per condition
 is_empty2 = cellfun(@isempty, powl2);
 is_empty4 = cellfun(@isempty, powl4);
 is_empty6 = cellfun(@isempty, powl6);
-exclude_mask = is_empty2 | is_empty4 | is_empty6;
-exclude_idx = find(exclude_mask);
-keep_idx = find(~exclude_mask);
 
-fprintf('Excluded subjects (any empty condition): %d\n', numel(exclude_idx));
-if ~isempty(exclude_idx)
-    fprintf('Excluded subject indices: %s\n', mat2str(exclude_idx));
-    fprintf('Excluded subject IDs: %s\n', strjoin(subjects(exclude_idx), ', '));
+miss2 = find(is_empty2);
+miss4 = find(is_empty4);
+miss6 = find(is_empty6);
+if ~isempty(miss2)
+    fprintf('WM load 2 missing (%d): %s\n', numel(miss2), strjoin(subjects(miss2), ', '));
 end
-fprintf('Included subjects for grand average: %d\n', numel(keep_idx));
-
-if isempty(keep_idx)
-    error('No valid subjects remain after excluding empty condition data.');
+if ~isempty(miss4)
+    fprintf('WM load 4 missing (%d): %s\n', numel(miss4), strjoin(subjects(miss4), ', '));
+end
+if ~isempty(miss6)
+    fprintf('WM load 6 missing (%d): %s\n', numel(miss6), strjoin(subjects(miss6), ', '));
 end
 
-% Trim subject cell arrays to included indices only (no empty placeholders), then
-% pass the trimmed list into ft_freqgrandaverage_nanrobust (NaN-safe over subjects).
-powl2 = powl2(keep_idx);
-powl4 = powl4(keep_idx);
-powl6 = powl6(keep_idx);
+powl2_valid = powl2(~is_empty2);
+powl4_valid = powl4(~is_empty4);
+powl6_valid = powl6(~is_empty6);
 
-gapow2 = ft_freqgrandaverage_nanrobust([], powl2{:});
-gapow4 = ft_freqgrandaverage_nanrobust([], powl4{:});
-gapow6 = ft_freqgrandaverage_nanrobust([], powl6{:});
+fprintf('Grand average N: WM load 2 = %d, load 4 = %d, load 6 = %d\n', ...
+    numel(powl2_valid), numel(powl4_valid), numel(powl6_valid));
+
+if isempty(powl2_valid) || isempty(powl4_valid) || isempty(powl6_valid)
+    error('At least one WM load has no subject data; cannot plot all three conditions.');
+end
+
+gapow2 = ft_freqgrandaverage_nanrobust([], powl2_valid{:});
+gapow4 = ft_freqgrandaverage_nanrobust([], powl4_valid{:});
+gapow6 = ft_freqgrandaverage_nanrobust([], powl6_valid{:});
 
 %% Plot grand-average power spectrum
 close all

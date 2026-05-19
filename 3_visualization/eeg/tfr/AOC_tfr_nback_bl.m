@@ -1,6 +1,6 @@
-%% AOC TFR — N-Back (Baselined, Raw)
-% Loads raw tfr_nback (tfr1/2/3, not FOOOF) per subject, applies FieldTrip
-% ft_freqbaseline (db), grand-averages, plots occipital TFRs. Saves figures.
+%% AOC TFR — N-Back (Baselined)
+% Loads raw tfr_nback per subject, applies ft_freqbaseline (db), 
+% grand-averages, plots occipital TFRs
 %
 % Data source: tfr_nback.mat from AOC_eeg_fex_nback_TFR.m
 %
@@ -12,16 +12,13 @@ startup
 [subjects, paths, ~, headmodel] = setup('AOC');
 path = paths.features;
 figpath = fullfile(paths.figures, 'eeg', 'tfr');
-baseline_window = [-.5 -0.25];
-if ~isfolder(figpath)
-    mkdir(figpath);
-end
 
+%% Compute grand average time and frequency data GATFR
+baseline_window = [-.5 -0.25];
 cfgb = [];
 cfgb.baseline = baseline_window;
 cfgb.baselinetype = 'db';
 
-%% Compute grand average time and frequency data GATFR
 for subj = 1:length(subjects)
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
@@ -29,6 +26,7 @@ for subj = 1:length(subjects)
     tfr1_all{subj} = ft_freqbaseline(cfgb, tfr1);
     tfr2_all{subj} = ft_freqbaseline(cfgb, tfr2);
     tfr3_all{subj} = ft_freqbaseline(cfgb, tfr3);
+    clc
     disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' TFR data loaded.'])
 end
 
@@ -59,9 +57,10 @@ cfg.ylim = [5 30];
 cfg.layout = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64));
 
+% Get max power for clim
 [~, channel_idx] = ismember(channels, gatfr1.label);
-freq_idx = gatfr1.freq >= 5 & gatfr1.freq <= 30;
-time_idx = gatfr1.time >= -0.5 & gatfr1.time <= 2;
+freq_idx = gatfr1.freq >= 8 & gatfr1.freq <= 14;
+time_idx = gatfr1.time >= 0 & gatfr1.time <= 2;
 avg1 = squeeze(mean(gatfr1.powspctrm(channel_idx, :, :), 1));
 avg2 = squeeze(mean(gatfr2.powspctrm(channel_idx, :, :), 1));
 avg3 = squeeze(mean(gatfr3.powspctrm(channel_idx, :, :), 1));
@@ -84,8 +83,8 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('1-back');
-drawnow;
-print(gcf, [figpath 'AOC_tfr_1back_bl.png'], '-dpng', '-r300');
+drawnow; pause(0.05);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_1back_bl.png'), 'Resolution', 600);
 
 % 2-back
 figure('Position', [0, 0, 1512, 982], 'Color', 'w');
@@ -100,8 +99,8 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('2-back');
-drawnow;
-print(gcf, [figpath 'AOC_tfr_2back_bl.png'], '-dpng', '-r300');
+drawnow; pause(0.05);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_2back_bl.png'), 'Resolution', 600);
 
 % 3-back
 figure('Position', [0, 0, 1512, 982], 'Color', 'w');
@@ -116,15 +115,14 @@ ylabel('Frequency [Hz]');
 rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
 title('3-back');
-drawnow;
-print(gcf, [figpath 'AOC_tfr_3back_bl.png'], '-dpng', '-r300');
+drawnow; pause(0.05);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_3back_bl.png'), 'Resolution', 600);
 
 %% Plot difference (3-back minus 1-back)
 close all
 
-cfgm = [];
-cfgm.operation = 'subtract';
-diff = ft_freqmath(cfgm, gatfr3, gatfr1);
+diff = gatfr3;
+diff.powspctrm = gatfr3.powspctrm - gatfr1.powspctrm;
 
 cfg = [];
 cfg.channel = channels;
@@ -154,5 +152,5 @@ rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 title('Difference (3-back - 1-back)', 'FontName', 'Arial', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
 
-drawnow;
-print(gcf, [figpath 'AOC_tfr_nback_diff_bl.png'], '-dpng', '-r300');
+drawnow; pause(0.05);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_nback_diff_bl.png'), 'Resolution', 600);

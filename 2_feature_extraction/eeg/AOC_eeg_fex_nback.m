@@ -5,8 +5,10 @@
 % AOC_eeg_fex_nback_TFR.m.
 %
 % Extracted features:
-%   Power Spectrum windows (raw + baselined)
-%   IAF (condition-wise from full window)
+%   Power Spectrum windows (raw + baselined) via mtmconvol (2 Hz foi grid; unchanged)
+%   IAF (condition-wise): concatenated [0 2]s retention data per condition, mtmfft + DPSS,
+%       same peak rules as legacy; not read from the 2 Hz windowed spectra above
+%   IAF_specParam: FOOOF alpha peak centre frequency (Hz) per condition (occ channels, median CF)
 %   Alpha power in IAF band (early/late/full; raw + dB)
 %   Lateralization index (late baselined)
 
@@ -152,9 +154,11 @@ powerIAF1 = [];
 powerIAF2 = [];
 powerIAF3 = [];
 IAF_results = struct();
-eeg_data_nback = struct('ID', {}, 'Condition', {}, 'IAF', {}, 'Lateralization', {}, ...
+eeg_data_nback = struct('ID', {}, 'Condition', {}, 'IAF', {}, 'IAF_specParam', {}, 'Lateralization', {}, ...
     'AlphaPower_raw_early', {}, 'AlphaPower_raw_late', {}, 'AlphaPower_raw_full', {}, ...
     'AlphaPower_bl_early', {}, 'AlphaPower_bl_late', {}, 'AlphaPower_bl_full', {});
+
+winIAF = [0 2];
 
 for subj = 1:length(subjects)
     try
@@ -162,89 +166,25 @@ for subj = 1:length(subjects)
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath);
         load('power_nback_windows.mat');
+        load dataEEG_TFR_nback
+
+        ind1 = find(dataTFR.trialinfo(:, 1) == 21);
+        ind2 = find(dataTFR.trialinfo(:, 1) == 22);
+        ind3 = find(dataTFR.trialinfo(:, 1) == 23);
 
         % Channels selection based on CBPT
         channelIdx = find(ismember(pow1_raw_full.label, channels));
+        chLabs = pow1_raw_full.label(channelIdx);
 
-        % FULL-window power spectra for IAF
-        powspctrm1 = mean(pow1_raw_full.powspctrm(channelIdx, :), 1);
-        powspctrm2 = mean(pow2_raw_full.powspctrm(channelIdx, :), 1);
-        powspctrm3 = mean(pow3_raw_full.powspctrm(channelIdx, :), 1);
+        % IAF: concatenated retention + mtmfft + DPSS (high-res freq), same peak rules
+        [IAF1, powerIAF1] = iaf_from_concat_dpss(dataTFR, ind1, winIAF, chLabs, alphaRange);
+        [IAF2, powerIAF2] = iaf_from_concat_dpss(dataTFR, ind2, winIAF, chLabs, alphaRange);
+        [IAF3, powerIAF3] = iaf_from_concat_dpss(dataTFR, ind3, winIAF, chLabs, alphaRange);
 
-        % Find the indices corresponding to the alpha range
-        alphaIndices = find(pow1_raw_full.freq >= alphaRange(1) & pow1_raw_full.freq <= alphaRange(2));
-
-        % Calculate IAF for 1-back
-        alphaPower1 = powspctrm1(alphaIndices);
-        [pks1,locs] = findpeaks(alphaPower1);
-        if isempty(pks1)
-            IAF1 = NaN;
-            IAF_range1 = NaN;
-            powerIAF1 = NaN;
-        else
-            [~, ind] = max(pks1);
-            IAF1 = pow1_raw_full.freq(alphaIndices(locs(ind)));
-            IAF_range1 = find(pow1_raw_full.freq > (IAF1-4) & pow1_raw_full.freq < (IAF1+2));
-            powerIAF1 = mean(powspctrm1(IAF_range1));
-        end
-
-        % Calculate IAF for 2-back
-        alphaPower2 = powspctrm2(alphaIndices);
-        [pks2,locs] = findpeaks(alphaPower2);
-        if isempty(pks2)
-            IAF2 = NaN;
-            IAF_range2 = NaN;
-            powerIAF2 = NaN;
-        else
-            [~, ind] = max(pks2);
-            IAF2 = pow2_raw_full.freq(alphaIndices(locs(ind)));
-            IAF_range2 = find(pow2_raw_full.freq > (IAF2-4) & pow2_raw_full.freq < (IAF2+2));
-            powerIAF2 = mean(powspctrm2(IAF_range2));
-        end
-
-        % Calculate IAF for 3-back
-        alphaPower3 = powspctrm3(alphaIndices);
-        [pks3,locs] = findpeaks(alphaPower3);
-        if isempty(pks3)
-            IAF3 = NaN;
-            IAF_range3 = NaN;
-            powerIAF3 = NaN;
-        else
-            [~, ind] = max(pks3);
-            IAF3 = pow3_raw_full.freq(alphaIndices(locs(ind)));
-            IAF_range3 = find(pow3_raw_full.freq > (IAF3-4) & pow3_raw_full.freq < (IAF3+2));
-            powerIAF3 = mean(powspctrm3(IAF_range3));
-        end
-
-        % Do not extract alpha peak if there is no clear peak
-        % Check if any IAF is 8 or 14 and set the corresponding power to NaN
-        if IAF1 == alphaRange(1) || IAF1 == alphaRange(2)
-            powerIAF1 = NaN;
-            IAF1 = NaN;
-        end
-        if IAF2 == alphaRange(1) || IAF2 == alphaRange(2)
-            powerIAF2 = NaN;
-            IAF2 = NaN;
-        end
-        if IAF3 == alphaRange(1) || IAF3 == alphaRange(2)
-            powerIAF3 = NaN;
-            IAF3 = NaN;
-        end
-
-        % Check if the averaged power at IAF -4/+2 Hz is more than the peak
-        % of power. If so, set power to NaN
-        if powerIAF1 > max(pks1)
-            powerIAF1 = NaN;
-            IAF1 = NaN;
-        end
-        if powerIAF2 > max(pks2)
-            powerIAF2 = NaN;
-            IAF2 = NaN;
-        end
-        if powerIAF3 > max(pks3)
-            powerIAF3 = NaN;
-            IAF3 = NaN;
-        end
+        % FOOOF alpha peak CF (median across occ channels), optional if ft_freqanalysis_Arne_FOOOF on path
+        IAF_specParam1 = iaf_specparam_fooof(dataTFR, ind1, winIAF, chLabs, alphaRange);
+        IAF_specParam2 = iaf_specparam_fooof(dataTFR, ind2, winIAF, chLabs, alphaRange);
+        IAF_specParam3 = iaf_specparam_fooof(dataTFR, ind3, winIAF, chLabs, alphaRange);
 
         % Compute lateralization index on LATE BASELINED spectra (dB)
         powloads = {pow1_bl_late, pow2_bl_late, pow3_bl_late};
@@ -275,7 +215,9 @@ for subj = 1:length(subjects)
 
         subID = str2num(subjects{subj});
         subj_data_eeg = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell([1; 2; 3]), ...
-            'IAF', num2cell([IAF1; IAF2; IAF3]), 'Lateralization', num2cell([LatIdx1; LatIdx2; LatIdx3]), ...
+            'IAF', num2cell([IAF1; IAF2; IAF3]), ...
+            'IAF_specParam', num2cell([IAF_specParam1; IAF_specParam2; IAF_specParam3]), ...
+            'Lateralization', num2cell([LatIdx1; LatIdx2; LatIdx3]), ...
             'AlphaPower_raw_early', num2cell(AlphaPower_raw_early), ...
             'AlphaPower_raw_late', num2cell(AlphaPower_raw_late), ...
             'AlphaPower_raw_full', num2cell(AlphaPower_raw_full), ...
@@ -302,6 +244,150 @@ for subj = 1:length(subjects)
 end
 save(fullfile(paths.features, 'AOC_eeg_matrix_nback.mat'), 'eeg_data_nback')
 writetable(struct2table(eeg_data_nback), fullfile(paths.features, 'AOC_eeg_matrix_nback.csv'))
+
+function datc = local_ft_concat_trials(dw)
+% One FieldTrip trial: all epochs of dw concatenated along time (per channel).
+nTr = numel(dw.trial);
+nCh = size(dw.trial{1}, 1);
+Ttot = 0;
+for k = 1:nTr
+    Ttot = Ttot + size(dw.trial{k}, 2);
+end
+datc = struct();
+datc.label = dw.label;
+datc.fsample = dw.fsample;
+datc.trial = {zeros(nCh, Ttot)};
+t0 = 1;
+for k = 1:nTr
+    tk = size(dw.trial{k}, 2);
+    datc.trial{1}(:, t0:t0 + tk - 1) = dw.trial{k};
+    t0 = t0 + tk;
+end
+datc.time = {(0:Ttot - 1) ./ dw.fsample};
+datc.sampleinfo = [1 Ttot];
+if isfield(dw, 'hdr') && ~isempty(dw.hdr)
+    datc.hdr = dw.hdr;
+end
+end
+
+function [IAF, powerIAF] = iaf_from_concat_dpss(dataTFR, trialinds, winSec, chLabs, alphaRange)
+% Concatenate retention window per trial, multitaper FFT, ROI-mean spectrum, legacy peak rules.
+IAF = NaN;
+powerIAF = NaN;
+if isempty(trialinds) || isempty(chLabs)
+    return
+end
+try
+    cfg_sel = [];
+    cfg_sel.latency = winSec;
+    cfg_sel.trials = trialinds(:)';
+    cfg_sel.channel = chLabs(:)';
+    dw = ft_selectdata(cfg_sel, dataTFR);
+    if isempty(dw.trial)
+        return
+    end
+    datc = local_ft_concat_trials(dw);
+    cfgf = [];
+    cfgf.method = 'mtmfft';
+    cfgf.output = 'pow';
+    cfgf.taper = 'dpss';
+    cfgf.tapsmofrq = 2;
+    cfgf.foilim = [6 18];
+    cfgf.pad = 5;
+    fr = ft_freqanalysis(cfgf, datc);
+    ps = mean(fr.powspctrm, 1);
+    [IAF, powerIAF] = iaf_peak_rules(fr.freq(:), ps(:), alphaRange);
+catch
+    IAF = NaN;
+    powerIAF = NaN;
+end
+end
+
+function [IAF, powerIAF] = iaf_peak_rules(freq, spec, alphaRange)
+freq = freq(:);
+spec = spec(:)';
+IAF = NaN;
+powerIAF = NaN;
+amask = freq >= alphaRange(1) & freq <= alphaRange(2);
+alphaFreqs = freq(amask);
+alphaSpec = spec(amask);
+if numel(alphaSpec) < 3
+    return
+end
+[pks, locs] = findpeaks(alphaSpec);
+if isempty(pks)
+    return
+end
+[~, ind] = max(pks);
+IAF = alphaFreqs(locs(ind));
+df = median(diff(alphaFreqs));
+if ~isfinite(df) || df <= 0
+    df = min(diff(alphaFreqs));
+    if ~isfinite(df) || df <= 0
+        return
+    end
+end
+if IAF <= alphaRange(1) + df || IAF >= alphaRange(2) - df
+    IAF = NaN;
+    return
+end
+bandIdx = freq > (IAF - 4) & freq < (IAF + 2);
+if ~any(bandIdx)
+    return
+end
+powerIAF = mean(spec(bandIdx));
+if powerIAF > max(pks)
+    IAF = NaN;
+    powerIAF = NaN;
+end
+end
+
+function cf = iaf_specparam_fooof(dataTFR, trialinds, winSec, chLabs, alphaRange)
+% Median FOOOF peak centre frequency in alphaRange across selected channels (trial-averaged spectrum).
+cf = NaN;
+if isempty(trialinds) || isempty(chLabs) || exist('ft_freqanalysis_Arne_FOOOF', 'file') ~= 2
+    return
+end
+try
+    cfg_fooof = [];
+    cfg_fooof.method = 'mtmfft';
+    cfg_fooof.taper = 'hanning';
+    cfg_fooof.foilim = [2 40];
+    cfg_fooof.pad = 5;
+    cfg_fooof.output = 'fooof';
+    cfg_fooof.keeptrials = 'no';
+    cfg_sel = [];
+    cfg_sel.latency = winSec;
+    cfg_sel.trials = trialinds(:)';
+    cfg_sel.channel = chLabs(:)';
+    dat = ft_selectdata(cfg_sel, dataTFR);
+    fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat);
+    if iscell(fooof_out.fooofparams)
+        rep = fooof_out.fooofparams{1};
+    else
+        rep = fooof_out.fooofparams;
+    end
+    cfs = [];
+    for k = 1:numel(rep)
+        if ~isfield(rep(k), 'peak_params') || isempty(rep(k).peak_params)
+            continue
+        end
+        pk = rep(k).peak_params;
+        inb = pk(:, 1) >= alphaRange(1) & pk(:, 1) <= alphaRange(2);
+        if ~any(inb)
+            continue
+        end
+        pk = pk(inb, :);
+        [~, im] = max(pk(:, 2));
+        cfs(end + 1) = pk(im, 1); %#ok<AGROW>
+    end
+    if ~isempty(cfs)
+        cf = median(cfs, 'omitnan');
+    end
+catch
+    cf = NaN;
+end
+end
 
 function v = robust_roi_pow(S, channelIdx, band)
 fmask = S.freq >= band(1) & S.freq <= band(2);

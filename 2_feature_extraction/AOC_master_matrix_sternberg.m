@@ -11,9 +11,10 @@
 %   merged_data_sternberg.csv
 %
 % Columns include:
-%   EEG — Raw alpha power (IAF band, occ channels):
+%   EEG — Raw alpha power (IAF band from multitaper IAF, occ channels):
 %     AlphaPower_raw_early / _late / _full
 %     AlphaPower_bl_early / _late / _full   (dB baseline [-0.5 -0.25]s)
+%     IAF (concat [1 2]s retention, mtmfft+DPSS peak); IAF_specParam (FOOOF alpha CF, median occ)
 %
 %   EEG — FOOOF alpha (IAF band, occ channels):
 %     AlphaPower_FOOOF_full          [0 2]s, no baseline

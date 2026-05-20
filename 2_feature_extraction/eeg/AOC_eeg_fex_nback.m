@@ -1,7 +1,6 @@
 %% AOC EEG Feature Extraction — N-Back
-% Computes subject-level NON-FOOOF EEG features from preprocessed N-back EEG.
-% This script is the non-FOOOF branch in the split pipeline and saves
-% `eeg_data_nback` (MAT + CSV). FOOOF features are produced in
+% Computes subject-level EEG features from preprocessed N-back EEG.
+% Saves `eeg_data_nback` (MAT + CSV). FOOOF TFR products are produced in
 % AOC_eeg_fex_nback_TFR.m.
 %
 % Extracted features:
@@ -158,7 +157,7 @@ eeg_data_nback = struct('ID', {}, 'Condition', {}, 'IAF', {}, 'IAF_specParam', {
     'AlphaPower_raw_early', {}, 'AlphaPower_raw_late', {}, 'AlphaPower_raw_full', {}, ...
     'AlphaPower_bl_early', {}, 'AlphaPower_bl_late', {}, 'AlphaPower_bl_full', {});
 
-winIAF = [0 2];
+winIAF = [0 2];  % full retention (IAF / IAF_specParam)
 
 for subj = 1:length(subjects)
     try
@@ -176,7 +175,7 @@ for subj = 1:length(subjects)
         channelIdx = find(ismember(pow1_raw_full.label, channels));
         chLabs = pow1_raw_full.label(channelIdx);
 
-        % IAF: concatenated retention + mtmfft + DPSS (high-res freq), same peak rules
+        % IAF: concatenated full retention [0 2]s + mtmfft + DPSS (high-res freq), same peak rules
         [IAF1, powerIAF1] = iaf_from_concat_dpss(dataTFR, ind1, winIAF, chLabs, alphaRange);
         [IAF2, powerIAF2] = iaf_from_concat_dpss(dataTFR, ind2, winIAF, chLabs, alphaRange);
         [IAF3, powerIAF3] = iaf_from_concat_dpss(dataTFR, ind3, winIAF, chLabs, alphaRange);
@@ -281,7 +280,7 @@ try
     cfg_sel = [];
     cfg_sel.latency = winSec;
     cfg_sel.trials = trialinds(:)';
-    cfg_sel.channel = chLabs(:)';
+    cfg_sel.channel = chLabs(:);
     dw = ft_selectdata(cfg_sel, dataTFR);
     if isempty(dw.trial)
         return
@@ -305,7 +304,7 @@ end
 
 function [IAF, powerIAF] = iaf_peak_rules(freq, spec, alphaRange)
 freq = freq(:);
-spec = spec(:)';
+spec = spec(:);
 IAF = NaN;
 powerIAF = NaN;
 amask = freq >= alphaRange(1) & freq <= alphaRange(2);
@@ -359,7 +358,7 @@ try
     cfg_sel = [];
     cfg_sel.latency = winSec;
     cfg_sel.trials = trialinds(:)';
-    cfg_sel.channel = chLabs(:)';
+    cfg_sel.channel = chLabs(:);
     dat = ft_selectdata(cfg_sel, dataTFR);
     fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat);
     if iscell(fooof_out.fooofparams)

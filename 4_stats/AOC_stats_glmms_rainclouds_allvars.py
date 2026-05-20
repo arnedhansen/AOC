@@ -70,7 +70,7 @@ variables = [
     "GazeDeviation", "GazeStdX", "GazeStdY",
     "PupilSize", "MSRate", "Blinks", "Fixations", "Saccades", "ScanPathLength",
     "BCEA", "BCEALateralization",
-    "AlphaPower", "IAF", "Lateralization",
+    "AlphaPower", "IAF", "IAF_specParam", "Lateralization",
     # --- FOOOF alpha ---
     "AlphaPower_FOOOF_full",
     "AlphaPower_FOOOF_bl_full",
@@ -122,6 +122,7 @@ _unit_map = {
     "BCEALateralization": "[L−R]",
     "AlphaPower": "[\u03BCV\u00B2/Hz]",
     "IAF": "[Hz]",
+    "IAF_specParam": "[Hz]",
     "Lateralization": "[R\u2212L / R+L]",
     "AlphaPower_FOOOF_full": "[FOOOF log, full]",
     "AlphaPower_FOOOF_bl_full": "[FOOOF log, BL full]",

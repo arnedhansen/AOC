@@ -1,8 +1,11 @@
-%% AOC Power Spectrum — Sternberg (baselined, no FOOOF)
-% Loads power_stern_windows (pow*_late_bl), grand-averages across load 2/4/6,
-% plots power spectra, and saves figures.
+%% AOC Power Spectrum — Sternberg (Hanning/mtmconvol, baselined dB, late [1 2]s)
+% Loads power_stern_windows.mat fields pow*_bl_late, grand-averages across WM load 2/4/6,
+% plots baseline-relative power (dB), and saves figures.
 %
-% Data source: power_stern_windows.mat from AOC_eeg_fex_sternberg.m
+% Data source: power_stern_windows.mat from AOC_eeg_fex_sternberg.m (ft_freqbaseline, db).
+% For raw µV^2/Hz late-window spectra, use AOC_eeg_powspctrm_sternberg.m (pow*_raw_late).
+% For FOOOF + baselined late-window spectra, use AOC_eeg_powspctrm_sternberg_fooof_bl.m
+% (power_stern_fooof_TFR.mat).
 
 %% Setup
 startup
@@ -47,7 +50,7 @@ gapow6 = ft_freqgrandaverage([], powl6{:});
 
 %% Plot grand-average power spectrum
 close all
-figure('Position', [0 0 1512 982], 'Color', 'w');
+figure('Position', [0 0 1512*0.4 982], 'Color', 'w');
 cfg = [];
 cfg.channel   = channels;
 cfg.figure    = 'gcf';

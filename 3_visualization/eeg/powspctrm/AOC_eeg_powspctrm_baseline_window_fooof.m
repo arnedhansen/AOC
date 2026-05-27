@@ -48,7 +48,7 @@ gapow6 = ft_freqgrandaverage_nanrobust([], powl6{:});
 
 %% Sternberg plot
 close all
-figure('Position', [0 0 1512/2 982], 'Color', 'w');
+figure('Position', [0 0 1512*0.4 982], 'Color', 'w');
 cfg = [];
 cfg.channel = channels;
 cfg.linewidth = 3;
@@ -124,7 +124,7 @@ gapow3 = ft_freqgrandaverage_nanrobust([], powl3{:});
 
 %% N-back plot
 close all
-figure('Position', [0 0 1512/2 982], 'Color', 'w');
+figure('Position', [0 0 1512*0.4 982], 'Color', 'w');
 cfg = [];
 cfg.channel = channels;
 cfg.linewidth = 3;

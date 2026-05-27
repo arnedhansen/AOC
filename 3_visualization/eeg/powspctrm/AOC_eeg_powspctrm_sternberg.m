@@ -1,8 +1,9 @@
-%% AOC Power Spectrum — Sternberg
-% Loads power_stern (powspctrm), grand-averages across load 2/4/6. Plots power spectra. Saves figures.
+%% AOC Power Spectrum — Sternberg (raw, late retention [1 2]s)
+% Loads pow*_raw_late from power_stern_windows.mat (AOC_eeg_fex_sternberg.m), grand-averages
+% across WM load 2/4/6, and plots absolute power (not dB baselined).
 %
-% Key outputs:
-%   Power spectrum figures (per condition)
+% For baselined Hanning/mtmconvol spectra (dB), use AOC_eeg_powspctrm_sternberg_bl.m.
+% For FOOOF + baselined late-window spectra, use AOC_eeg_powspctrm_sternberg_fooof_bl.m.
 
 %% Setup
 startup
@@ -14,15 +15,14 @@ fig_dir_ind = fullfile(paths.figures, 'eeg', 'alpha_power', 'powspctrm');
 if ~isfolder(fig_dir_pow), mkdir(fig_dir_pow); end
 if ~isfolder(fig_dir_ind), mkdir(fig_dir_ind); end
 
-%% Define channels
-subj = 1;
-datapath = fullfile(path, subjects{subj}, 'eeg');
-cd(datapath);
-load('power_stern_windows.mat');
+%% Define channels (reference: first subject)
+datapath = fullfile(path, subjects{1}, 'eeg');
+D0 = load(fullfile(datapath, 'power_stern_windows.mat'), 'pow2_raw_late');
+pow2_raw_late = D0.pow2_raw_late;
 % Occipital channels
 occ_channels = {};
-for i = 1:length(pow2_bl_late.label)
-    label = pow2_bl_late.label{i};
+for i = 1:length(pow2_raw_late.label)
+    label = pow2_raw_late.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
@@ -31,17 +31,17 @@ channels = occ_channels;
 
 %% Load data
 clc
-disp('LOADING DATA...')
+disp('LOADING RAW LATE-WINDOW SPECTRA...')
 
-% Load raw LATE-window powerspctrm data
+% Load raw late-window spectra (same MAT as baselined script, pow*_raw_late fields)
 for subj = 1:length(subjects)
-    clc; fprintf('[VIZ POWSPCTRM - STERNBERG] Loading power spectra for Subject %d / %d \n', subj, length(subjects))
+    clc; fprintf('[VIZ POWSPCTRM - STERNBERG RAW LATE] Loading power spectra for Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'eeg');
-    cd(datapath)
-    load('power_stern_windows.mat')
-    powl2{subj} = pow2_bl_late;
-    powl4{subj} = pow4_bl_late;
-    powl6{subj} = pow6_bl_late;
+    D = load(fullfile(datapath, 'power_stern_windows.mat'), ...
+        'pow2_raw_late', 'pow4_raw_late', 'pow6_raw_late');
+    powl2{subj} = D.pow2_raw_late;
+    powl4{subj} = D.pow4_raw_late;
+    powl6{subj} = D.pow6_raw_late;
 end
 
 % Compute grand avg of raw LATE-window powspctrm data
@@ -57,7 +57,7 @@ gapow6 = gapow6_raw;
 
 % Configs
 cfg = [];
-set(gcf, 'Position', [0, 0, 1512*0.4, 982], 'Color', 'w');
+figure('Position', [0 0 1512*0.4 982], 'Color', 'w');
 cfg.channel   = channels;
 cfg.figure    = 'gcf';
 cfg.linewidth = 3;
@@ -120,4 +120,4 @@ title('');
 
 % Save
 drawnow;
-exportgraphics(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_bl_late.png'), 'Resolution', 600);
+exportgraphics(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_raw_late.png'), 'Resolution', 600);

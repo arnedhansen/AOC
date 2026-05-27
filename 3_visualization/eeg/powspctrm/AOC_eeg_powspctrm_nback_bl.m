@@ -1,8 +1,9 @@
-%% AOC Power Spectrum — N-back (baselined, no FOOOF)
-% Loads power_nback_windows (pow*_bl_full), grand-averages across 1/2/3-back,
-% plots power spectra, and saves figures.
+%% AOC Power Spectrum — N-back (Hanning/mtmconvol, baselined dB, no FOOOF)
+% Loads power_nback_windows.mat fields pow*_bl_full, grand-averages across 1/2/3-back,
+% plots baseline-relative power (dB), and saves figures.
 %
-% Data source: power_nback_windows.mat from AOC_eeg_fex_nback.m
+% Data source: power_nback_windows.mat from AOC_eeg_fex_nback.m (ft_freqbaseline, db).
+% For raw µV^2/Hz full-window spectra, use AOC_eeg_powspctrm_nback.m (pow*_raw_full).
 
 %% Setup
 startup
@@ -47,7 +48,7 @@ gapow3 = ft_freqgrandaverage([], powl3{:});
 
 %% Plot grand-average power spectrum
 close all
-figure('Position', [0 0 1512 982], 'Color', 'w');
+figure('Position', [0 0 1512*0.4 982], 'Color', 'w');
 cfg = [];
 cfg.channel = channels;
 cfg.figure = 'gcf';

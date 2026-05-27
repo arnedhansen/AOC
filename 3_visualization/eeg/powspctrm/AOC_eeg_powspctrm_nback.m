@@ -1,8 +1,9 @@
-%% AOC Power Spectrum — N-Back
-% Loads power_nback and alpha_power_nback, grand-averages power and power-at-IAF across conditions. Plots powspctrm and bar plots. Saves figures.
+%% AOC Power Spectrum — N-Back (raw, full retention [0 2]s)
+% Loads `pow*_raw_full` from power_nback_windows.mat (AOC_eeg_fex_nback.m), grand-averages
+% across 1/2/3-back, and plots absolute power spectra (not dB baselined).
 %
-% Key outputs:
-%   Power spectrum and power-at-IAF figures (per condition)
+% For baselined Hanning/mtmconvol spectra (dB), use AOC_eeg_powspctrm_nback_bl.m.
+% For FOOOF + baselined spectra, use AOC_eeg_powspctrm_nback_fooof_bl.m.
 
 %% Setup
 startup
@@ -10,17 +11,17 @@ startup
 path = paths.features;
 
 fig_dir_pow = fullfile(paths.figures, 'eeg', 'powspctrm');
+if ~isfolder(fig_dir_pow), mkdir(fig_dir_pow); end
 fig_dir_ind = fullfile(paths.figures, 'eeg', 'alpha_power', 'powspctrm');
 
-%% Define channels
-subj = 1;
-datapath = fullfile(path, subjects{subj}, 'eeg');
-cd(datapath);
-load('power_nback_windows.mat');
+%% Define channels (reference: first subject)
+datapath = fullfile(path, subjects{1}, 'eeg');
+D0 = load(fullfile(datapath, 'power_nback_windows.mat'), 'pow1_raw_full');
+pow1_raw_full = D0.pow1_raw_full;
 % Occipital channels
 occ_channels = {};
-for i = 1:length(pow1_bl_full.label)
-    label = pow1_bl_full.label{i};
+for i = 1:length(pow1_raw_full.label)
+    label = pow1_raw_full.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
@@ -38,16 +39,16 @@ channels = occ_channels;
 %     powIAF3(subj) = powerIAF3;
 % end
 
-% Load powspctrm data
+% Load powspctrm data (raw full-window spectra; same MAT as baselined script, different fields)
 clc
 for subj = 1:length(subjects)
-    clc; fprintf('[VIZ POWSPCTRM - NBACK] Loading power spectra for Subject %d / %d \n', subj, length(subjects))
+    clc; fprintf('[VIZ POWSPCTRM - NBACK RAW] Loading power spectra for Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'eeg');
-    cd(datapath)
-    load('power_nback_windows.mat')
-    powl1{subj} = pow1_bl_full;
-    powl2{subj} = pow2_bl_full;
-    powl3{subj} = pow3_bl_full;
+    D = load(fullfile(datapath, 'power_nback_windows.mat'), ...
+        'pow1_raw_full', 'pow2_raw_full', 'pow3_raw_full');
+    powl1{subj} = D.pow1_raw_full;
+    powl2{subj} = D.pow2_raw_full;
+    powl3{subj} = D.pow3_raw_full;
 end
 
 % Compute grand avg of powspctrm data
@@ -63,8 +64,7 @@ yLabel = 'Power [\muV^2/Hz]';
 
 % Create figure
 close all
-figure;
-set(gcf, 'Position', [0, 0, 1512*0.4, 982], 'Color', 'w');
+figure('Position', [0 0 1512*0.4 982], 'Color', 'w');
 conditions = {'1-back', '2-back', '3-back'};
 
 % Plot
@@ -119,10 +119,6 @@ set(eb3.patch, 'FaceAlpha', 0.20);
 % Adjust plotting
 set(gcf,'color','w');
 set(gca,'Fontsize',20);
-[~, channel_idx] = ismember(cfg.channel, gapow1.label);
-freq_idx = find(gapow1.freq >= 8 & gapow1.freq <= 14);
-max_spctrm = max([mean(gapow1.powspctrm(channel_idx, freq_idx), 2); mean(gapow2.powspctrm(channel_idx, freq_idx), 2); mean(gapow3.powspctrm(channel_idx, freq_idx), 2)]);
-ylim([0 max_spctrm*1.25])
 box off
 xlim([5 20]);
 ylim([0 6.1])
@@ -138,4 +134,4 @@ hold off;
 
 % Save
 drawnow;
-exportgraphics(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_nback_bl_full.png'), 'Resolution', 600);
+exportgraphics(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_nback_raw_full.png'), 'Resolution', 600);

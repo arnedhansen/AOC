@@ -71,10 +71,9 @@ for subj = 1:length(subjects)
         win_size = 50;
         data = remove_blinks(data, win_size);
 
-        %% Extract gaze data and pupil size
+        %% Extract gaze and pupil for main task window (full, 0-2 s)
         gaze_x{subj, trl} = data(1, :);
         gaze_y{subj, trl} = data(2, :);
-        % Raw metrics should match the task window (0-2 s).
         pupil_size{subj, trl} = mean(data(3, idx_full), 'omitnan') / 1000;
         pups = pupil_size{subj, trl};
 

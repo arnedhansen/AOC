@@ -40,7 +40,7 @@ for subj = 1:length(subjects)
     scanPathLength = [];
     bcea95Area = [];
     bceaLateralization = [];
-    % Baselined (% change or delta) gaze metrics
+    % Baselined (% change) gaze metrics
     gdevEarlyBL = []; gdevLateBL = []; gdevFullBL = [];
     splEarlyBL = [];  splLateBL = [];  splFullBL = [];
     pupEarlyBL = [];  pupLateBL = [];  pupFullBL = [];
@@ -65,18 +65,17 @@ for subj = 1:length(subjects)
         idx_early  = t >= 0    & t <= 1;
         idx_late   = t >= 1    & t <= 2;
         idx_full   = t >= 0    & t <= 2;
-        idx_legacy = idx_late; % keep legacy non-baselined metrics on [1 2]s
         data(2, :) = 600 - data(2, :); % Invert Y-axis
 
         %% Remove blinks with a window of 100ms (= 50 samples/timepoints)
         win_size = 50;
         data = remove_blinks(data, win_size);
 
-        %% Extract gaze data and pupil size (legacy non-baselined on [1 2]s)
-        data_legacy = data(:, idx_legacy);
-        gaze_x{subj, trl} = data_legacy(1, :);
-        gaze_y{subj, trl} = data_legacy(2, :);
-        pupil_size{subj, trl} = mean(data_legacy(3, :), 'omitnan') / 1000;
+        %% Extract gaze and pupil for main task window (late, 1-2 s)
+        data_late = data(:, idx_late);
+        gaze_x{subj, trl} = data_late(1, :);
+        gaze_y{subj, trl} = data_late(2, :);
+        pupil_size{subj, trl} = mean(data_late(3, :), 'omitnan') / 1000;
         pups = pupil_size{subj, trl};
 
         %% Compute gaze deviation as euclidean distances from the center

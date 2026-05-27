@@ -7,7 +7,6 @@
 
 %% Setup
 startup
-clear
 [~, paths, ~, ~] = setup('AOC');
 mergedPath = paths.merged;
 dirs = dir(mergedPath);
@@ -375,7 +374,7 @@ toc;
 % conds_all = trialinfo(:,1);
 % ids_nonzero = ids_all(ids_all>0);
 % 
-% % 6. Visual diagnostic plots
+% % Visual diagnostic plots
 % figure('Name','Trialinfo diagnostics','Color','w','Position',[200 200 1200 400]);
 % subplot(1,3,1)
 % scatter(1:numel(ids_all), ids_all, 10, conds_all, 'filled');

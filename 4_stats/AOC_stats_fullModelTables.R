@@ -155,6 +155,19 @@ clean_lrt <- function(df) {
 }
 
 clean_pairwise <- function(df) {
+  if (is.null(df) || nrow(df) == 0) {
+    return(data.frame(
+      Contrast = character(),
+      `β` = character(),
+      SE = character(),
+      Statistic = character(),
+      padj = character(),
+      CI = character(),
+      `Cohen's d` = character(),
+      check.names = FALSE,
+      stringsAsFactors = FALSE
+    ))
+  }
   out <- df
   # Estimate is Group2 - Group1; label as Group2 vs Group1 (matches fixed effects)
   out$Contrast <- paste(out$Group2, "vs", out$Group1)
@@ -290,13 +303,13 @@ model_specs <- list(
     id = "nback_alphapower_fooof_bl",
     title = "N-back AlphaPower specParam Baseline",
     fixed = "AOC_mixedlm_fixed_pow_specparam_bl_nback.csv",
-    pair_src = pair_nback[pair_nback$Variable == "AlphaPower_FOOOF_bl_full", ]
+    pair_src = pair_nback[pair_nback$Variable == "AlphaPower_FOOOF_bl", ]
   ),
   list(
     id = "sternberg_alphapower_fooof_bl",
     title = "Sternberg AlphaPower specParam Baseline",
     fixed = "AOC_mixedlm_fixed_pow_specparam_bl_sternberg.csv",
-    pair_src = pair_stern[pair_stern$Variable == "AlphaPower_FOOOF_bl_late", ]
+    pair_src = pair_stern[pair_stern$Variable == "AlphaPower_FOOOF_bl", ]
   ),
   list(
     id = "nback_alpha_by_gazedeviation",
@@ -353,7 +366,7 @@ for (spec in model_specs) {
   } else if (!is.null(spec$pair)) {
     pair_raw <- read.csv(file.path(stats_dir, spec$pair), stringsAsFactors = FALSE)
   }
-  if (!is.null(pair_raw)) {
+  if (!is.null(pair_raw) && nrow(pair_raw) > 0) {
     pair_raw <- merge_pairwise_effectsizes(
       pair_raw,
       eff_df = eff_df,
@@ -361,8 +374,14 @@ for (spec in model_specs) {
       dv_name = dv_name
     )
     pair_tbl <- clean_pairwise(pair_raw)
+  } else if (!is.null(pair_raw) && nrow(pair_raw) == 0) {
+    pair_tbl <- NULL
+    message(
+      "Skipping pairwise for ", spec$id,
+      " (no rows in pairwise source; regenerate AOC_pairwise_* when Variable names match)."
+    )
   }
-  if (!is.null(pair_tbl)) {
+  if (!is.null(pair_tbl) && nrow(pair_tbl) > 0) {
     write.csv(pair_tbl, file.path(out_dir, paste0(spec$id, "_pairwise.csv")), row.names = FALSE)
   }
 
@@ -397,7 +416,7 @@ for (spec in model_specs) {
     doc <- doc_add_table(doc, "Likelihood-ratio tests", lrt_tbl, table_type = "lrt")
   }
 
-  if (!is.null(pair_tbl)) {
+  if (!is.null(pair_tbl) && nrow(pair_tbl) > 0) {
     doc <- body_add_par(doc, "")
     doc <- doc_add_table(doc, "Pairwise contrasts", pair_tbl, table_type = "pairwise")
   }

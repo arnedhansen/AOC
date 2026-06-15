@@ -1,5 +1,5 @@
 %% AOC Power Spectrum — Baseline Window (Raw, Uncorrected)
-% Builds power spectra from the baseline interval [-0.5 -0.25] s only
+% Builds power spectra from the baseline interval [-1.5 -0.5] s only
 % using time-resolved raw (non-FOOOF) TFR files, for both Sternberg and N-back.
 % No baseline correction: FieldTrip ft_selectdata (latency), mean over time.
 %
@@ -10,7 +10,7 @@
 startup
 [subjects, paths, colors, ~] = setup('AOC');
 path = paths.features;
-baseline_window = [-0.5 -0.25];
+baseline_window = [-1.5 -0.5];
 freq_range = [3 30];
 
 fig_dir_pow = fullfile(paths.figures, 'eeg', 'powspctrm');

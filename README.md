@@ -49,7 +49,7 @@ The EEG files that were preprocessed by Automagic are subsequently merged with t
 
 ### Omnibus (MATLAB, FieldTrip)
 
-`AOC_omnibus_prep.m` loads single-subject TFR (FOOOF), applies baseline [-.5 -.25] s, builds high–low load contrasts (N-back: 3−1; Sternberg: 6−2) and grand averages, saves `omnibus_data.mat`. `AOC_omnibus.m` loads that, extracts posterior alpha spectra, runs cluster-based permutation (F-stat for load, t for omnibus), and produces ROI raincloud/box plots with paired t-tests.
+`AOC_omnibus_prep.m` loads single-subject TFR (FOOOF), applies baseline [-1.5 -0.5] s, builds high–low load contrasts (N-back: 3−1; Sternberg: 6−2) and grand averages, saves `omnibus_data.mat`. `AOC_omnibus.m` loads that, extracts posterior alpha spectra, runs cluster-based permutation (F-stat for load, t for omnibus), and produces ROI raincloud/box plots with paired t-tests.
 
 ### Rainclouds (Python)
 
@@ -104,10 +104,10 @@ Ordered by when the decision occurs in the processing pipeline:
 | Latency       | 0–500 ms, 0–1000 ms, 0–2000 ms, 1000–2000 ms (4)          |
 | Electrodes    | posterior, occipital (2)                                  |
 | FOOOF         | FOOOFed, non-FOOOFed (2)                                  |
-| EEG baseline  | raw, dB, percentage change from `[-0.5, -0.25] s` (3)     |
+| EEG baseline  | raw, dB, percentage change from `[-1.5, -0.5] s` (3)     |
 | Alpha band    | canonical (8–14 Hz), IAF (2)                              |
 | Gaze measure  | gaze deviation, gaze velocity, scan path length, BCEA (4) |
-| Gaze baseline | raw, dB, percentage change from `[-0.5, -0.25] s` (3)     |
+| Gaze baseline | raw, dB, percentage change from `[-1.5, -0.5] s` (3)     |
 
 
 **Total:** 4 × 2 × 2 × 2 × 2 × 4 × 2 = **512 universes per task**.
@@ -121,10 +121,10 @@ Ordered by when the decision occurs in the processing pipeline:
 - **Late retention window:** 1000–2000 ms captures the late retention interval.
 - **Gaze deviation:** Mean Euclidean distance from screen center (400, 300) px per time window. The main registered gaze metric.
 - **BCEA:** Bivariate Contour Ellipse Area (95% confidence).
-- **Gaze baseline (dB):** `10 * log10(task / baseline)` from `[-0.5, -0.25] s`.
-- **Gaze baseline (% change):** `(task - base) / |base| × 100` from `[-0.5, -0.25] s`.
-- **EEG baseline (dB):** `10 * log10(task_spectrum / mean_baseline_spectrum)` from `[-0.5, -0.25] s`.
-- **EEG baseline (% change):** `(task_spectrum - mean_baseline_spectrum) / |mean_baseline_spectrum| × 100` from `[-0.5, -0.25] s`. Baseline mean uses all trials for a stable estimate.
+- **Gaze baseline (dB):** `10 * log10(task / baseline)` from `[-1.5, -0.5] s`.
+- **Gaze baseline (% change):** `(task - base) / |base| × 100` from `[-1.5, -0.5] s`.
+- **EEG baseline (dB):** `10 * log10(task_spectrum / mean_baseline_spectrum)` from `[-1.5, -0.5] s`.
+- **EEG baseline (% change):** `(task_spectrum - mean_baseline_spectrum) / |mean_baseline_spectrum| × 100` from `[-1.5, -0.5] s`. Baseline mean uses all trials for a stable estimate.
 - **Aperiodic parameters:** Offset and exponent are extracted from `fooofparams.aperiodic_params` during FOOOF fitting. Only available for FOOOFed universes (NaN otherwise). The aperiodic multiverse is a reduced dimension space: only latency and electrodes matter (alpha band, EEG baseline, and FOOOF/no-FOOOF dimensions are not applicable). Motivated by Tröndle & Langer (2026) showing that ocular contamination increases aperiodic offset and steepens the slope.
 - **Robust z-scoring:** Median + MAD, winsorized at ±3, applied per universe before model fitting.
 - **Unstable universe filtering:** Universes with SE > 95th percentile are dropped.

@@ -15,10 +15,10 @@ for subj = 1:length(subjects)
     clc; fprintf('[VIZ TOPO - STERNBERG] Loading power spectra for topographies, Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
-    load power_stern_windows
-    powl2{subj} = pow2_bl_late;
-    powl4{subj} = pow4_bl_late;
-    powl6{subj} = pow6_bl_late;
+    D = load('power_stern_windows.mat', 'pow2_raw_late', 'pow4_raw_late', 'pow6_raw_late');
+    powl2{subj} = D.pow2_raw_late;
+    powl4{subj} = D.pow4_raw_late;
+    powl6{subj} = D.pow6_raw_late;
 end
 
 % Compute grand avg of raw powspctrm data
@@ -30,11 +30,12 @@ gapow6 = ft_freqgrandaverage([],powl6{:});
 subj = 1;
 datapath = fullfile(path, subjects{subj}, 'eeg');
 cd(datapath);
-load('power_stern_windows.mat');
+D0 = load('power_stern_windows.mat', 'pow2_raw_late');
+pow2_raw_late = D0.pow2_raw_late;
 % Occipital channels
 occ_channels = {};
-for i = 1:length(pow2_bl_late.label)
-    label = pow2_bl_late.label{i};
+for i = 1:length(pow2_raw_late.label)
+    label = pow2_raw_late.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end

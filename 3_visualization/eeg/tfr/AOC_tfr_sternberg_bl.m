@@ -14,7 +14,7 @@ path = paths.features;
 figpath = fullfile(paths.figures, 'eeg', 'tfr');
 
 %% Compute grand average time and frequency data GATFR
-baseline_window = [-.5 -0.25];
+baseline_window = [-1.5 -0.5];
 cfgb = [];
 cfgb.baseline = baseline_window;
 cfgb.baselinetype = 'db';

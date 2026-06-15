@@ -15,11 +15,12 @@ if ~isfolder(figDir), mkdir(figDir); end
 subj = 1;
 datapath = fullfile(path, subjects{subj}, 'eeg');
 cd(datapath);
-load('power_stern.mat');
+D0 = load('dataEEG_TFR_sternberg.mat', 'dataTFR');
+dataTFR_ref = D0.dataTFR;
 % Occipital channels
 occ_channels = {};
-for i = 1:length(powload2.label)
-    label = powload2.label{i};
+for i = 1:length(dataTFR_ref.label)
+    label = dataTFR_ref.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
@@ -48,7 +49,7 @@ for subj = 1:length(subjects)
 
     % Baseline
     cfg = [];
-    cfg.baseline = [-1.5 0.5];
+    cfg.baseline = [-1.5 -0.5];
     dat2bl = ft_timelockbaseline(cfg, dat2);
     dat4bl = ft_timelockbaseline(cfg, dat4);
     dat6bl = ft_timelockbaseline(cfg, dat6);

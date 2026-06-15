@@ -13,7 +13,7 @@
 % Columns include:
 %   EEG — Raw alpha power (IAF band from multitaper IAF, occ channels):
 %     AlphaPower_raw_early / _late / _full
-%     AlphaPower_bl_early / _late / _full   (dB baseline [-0.5 -0.25]s)
+%     AlphaPower_bl_early / _late / _full   (dB baseline [-1.5 -0.5]s)
 %     IAF (concat [0 2]s retention, mtmfft+DPSS peak); IAF_specParam (FOOOF alpha CF, median occ)
 %
 %   EEG — FOOOF alpha (IAF band, occ channels):
@@ -22,7 +22,7 @@
 %     AlphaPower_FOOOF_bl_early      [0 1]s, baselined
 %     AlphaPower_FOOOF_bl_late       [1 2]s, baselined
 %
-%   Gaze — baselined (BL window [-0.5 -0.25]s; % change for all gaze metrics):
+%   Gaze — baselined (BL window [-1.5 -0.5]s; % change for all gaze metrics):
 %     GazeDeviationFullBL / EarlyBL / LateBL
 %     ScanPathLengthFullBL / EarlyBL / LateBL
 %     PupilSizeFullBL / EarlyBL / LateBL          (% change)

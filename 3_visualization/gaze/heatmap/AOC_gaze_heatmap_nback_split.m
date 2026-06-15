@@ -31,7 +31,7 @@ for subj = 1:length(subjects)
     smoothing_factor = 10;
 
     % BASELINE
-    cfg.latency = [-0.5 -0.25];
+    cfg.latency = [-1.5 -0.5];
     dataBaseCOMB = ft_selectdata(cfg,dataETlong);
     dataBaseCOMB = horzcat(dataBaseCOMB.trial{:});
     dataBaseCOMBAllsubs{subj} = computeGazeHeatmap(dataBaseCOMB, num_bins, smoothing_factor);
@@ -156,7 +156,7 @@ ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
 set(gca, 'FontSize', overallFontSize);
-title('Baseline Period [-0.75 -0.25] Gaze Heatmap', 'FontSize', 30)
+title('Baseline Period [-1.5 -0.5] Gaze Heatmap', 'FontSize', 30)
 set(gca, "Clim", [0 max(datBaseGACOMB.powspctrm(:))])
 
 % Save

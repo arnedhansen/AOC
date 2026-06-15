@@ -739,6 +739,10 @@ for task in tasks:
     print(f"Saved pooled fixed effects → {fixed_all_csv}")
 
 # %% Alpha variants ~ Gaze variants * Condition + (1|ID)
+# Exploratory grid (per task): every alpha DV × every gaze predictor, i.e.
+#   {AlphaPower, AlphaPower_bl, AlphaPower_FOOOF_bl} × {GazeDeviation, MSRate, GazeDeviationBL, MSRateBL}
+# so raw and baselined EEG, raw and baselined gaze, and specParam baselined alpha are all crossed
+# (e.g. AlphaPower_FOOOF_bl ~ GazeDeviationBL * Condition when columns exist).
 print("\n=== Alpha variants ~ Gaze variants * Condition mixed models (per task) ===")
 
 exploratory_drop1_all = []

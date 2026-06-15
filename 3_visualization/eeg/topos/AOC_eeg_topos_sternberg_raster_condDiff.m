@@ -16,11 +16,12 @@ if ~isfolder(rasterDir), mkdir(rasterDir); end
 subj = 1;
 datapath = fullfile(path, subjects{subj}, 'eeg');
 cd(datapath);
-load('power_stern.mat');
+D0 = load('tfr_stern.mat', 'tfr2_bl');
+tfr2_bl_ref = D0.tfr2_bl;
 % Occipital channels
 occ_channels = {};
-for i = 1:length(powload2.label)
-    label = powload2.label{i};
+for i = 1:length(tfr2_bl_ref.label)
+    label = tfr2_bl_ref.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end

@@ -61,7 +61,7 @@ for subj = 1:length(subjects)
         valid_data = data(1:3, valid_data_indices);
         data = valid_data;
         t = t(valid_data_indices);
-        idx_base   = t >= -0.5 & t <= -0.25;
+        idx_base   = t >= -1.5 & t <= -0.5;
         idx_early  = t >= 0    & t <= 1;
         idx_late   = t >= 1    & t <= 2;
         idx_full   = t >= 0    & t <= 2;

@@ -4,7 +4,7 @@
 % AOC_eeg_fex_sternberg_TFR.m.
 %
 % Extracted features:
-%   Power Spectrum (Early [0 1], Late [1 2], Full [0 2]) + Baseline [-0.5 -0.25]
+%   Power Spectrum (Early [0 1], Late [1 2], Full [0 2]) + Baseline [-1.5 -0.5]
 %   Baselined spectra (dB) for each window (mtmconvol, 2 Hz foi grid; unchanged)
 %   IAF (condition-wise): concatenated [1 2]s (late retention), mtmfft + DPSS, legacy peak rules
 %   IAF_specParam: FOOOF alpha peak CF (Hz) per condition (occ channels, median CF)
@@ -35,7 +35,7 @@ for subj = 1:length(subjects)
         ind6 = find(dataTFR.trialinfo(:, 1) == 26); % WM load 6
 
         % Retention windows [s] — suffix mapping for saved variables
-        window.base  = [-0.5 -0.25];
+        window.base  = [-1.5 -0.5];
         window.early = [0 1];
         window.late  = [1 2];
         window.full  = [0 2];

@@ -1,6 +1,6 @@
 %% AOC Gaze Velocity — N-Back & Sternberg (Baselined Difference Time Courses)
 % Loads dataETlong per subject, computes 2D gaze speed (computeEyeVelocity),
-% baselines each trial to percent change in [-0.5, -0.25] s, and plots the
+% baselines each trial to percent change in [-1.5, -0.5] s, and plots the
 % high-minus-low load difference (3-back - 1-back; WM load 6 - WM load 2).
 %
 % Key outputs:
@@ -127,7 +127,7 @@ for task = 1:numel(task_cfg)
                 vel = velTS.trial{1}(3, :);
                 t_vel = velTS.time{1};
 
-                idx_base = (t_vel >= -0.5) & (t_vel <= -0.25);
+                idx_base = (t_vel >= -1.5) & (t_vel <= -0.5);
                 if ~any(idx_base)
                     continue
                 end

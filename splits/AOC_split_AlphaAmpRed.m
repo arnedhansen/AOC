@@ -385,7 +385,7 @@ eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_su
 % Gaze time-course representation for analysis/plotting.
 fprintf('\n=== Preparing gaze time courses ===\n');
 t_vec = linspace(-0.5, 3, Tf);
-bl_idx = (t_vec >= -0.5) & (t_vec <= -0.25);
+bl_idx = (t_vec >= -1.5) & (t_vec <= -0.5);
 
 dev_bl = mean(dev_tc(:, :, bl_idx), 3, 'omitnan');
 dev_bl_3d = repmat(dev_bl, [1, 1, Tf]);
@@ -1251,8 +1251,8 @@ xlim([-0.5 3]);
 box on
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)
-    text(0.75, ylims(2) - 0.08*diff(ylims), 'WARNING: No significant clusters; shading shows uncorrected t<-t_{crit} (3-back > 1-back)', ...
-        'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'HorizontalAlignment', 'center');
+    title({'WARNING: No significant clusters; shading shows uncorrected t < -t_{crit} (3-back > 1-back)'}, ...
+        'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'Interpreter', 'tex');
 end
 saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlphaAmpRed_timecourse_%s.png', save_tag)));
 close(gcf);
@@ -1487,8 +1487,8 @@ xlim([-0.5 3]);
 box on
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)
-    text(0.75, ylims(2) - 0.08*diff(ylims), 'WARNING: No significant clusters; shading shows uncorrected t>t_{crit}', ...
-        'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'HorizontalAlignment', 'center');
+    title({'WARNING: No significant clusters; shading shows uncorrected t > t_{crit}'}, ...
+        'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'Interpreter', 'tex');
 end
 
 % Alpha power time course panel in combined figure.
@@ -1606,6 +1606,10 @@ if show_eeg
     xlim([-0.5 3]);
     box on
     set(gca, 'FontSize', fsz-4);
+    if ~any(sig_cluster_eeg) && any(sig_uncorr_eeg)
+        title({'WARNING: No significant clusters; shading shows uncorrected t > t_{crit}'}, ...
+            'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'Interpreter', 'tex');
+    end
 end
 
 saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlphaAmpRed_timecourse_%s_CBPT.png', save_tag)));

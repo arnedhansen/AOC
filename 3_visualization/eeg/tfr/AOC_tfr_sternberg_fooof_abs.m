@@ -54,14 +54,14 @@ cfg.layout = headmodel.layANThead;
 color_map = interp1(linspace(0,1,5), [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], linspace(0,1,64)); % Red diverging color map
 
 % Baseline
-cfg.baseline      = [-.5 -0.25];   % example baseline window
+cfg.baseline      = [-1.5 -0.5];   % example baseline window
 cfg.baselinetype  = 'absolute';   % options: 'absolute', 'relative', 'relchange', 'db'
 
 % Find maximum deviation across conditions
 [~, channel_idx] = ismember(channels, gatfr2.label);
 freq_idx = gatfr2.freq >= 5 & gatfr2.freq <= 30;
 time_idx = gatfr2.time >= -0.5 & gatfr2.time <= 2;
-bl_idx   = gatfr2.time >= -0.5 & gatfr2.time <= -0.25;
+bl_idx   = gatfr2.time >= -1.5 & gatfr2.time <= -0.5;
 avg2 = squeeze(mean(gatfr2.powspctrm(channel_idx, :, :), 1));
 avg4 = squeeze(mean(gatfr4.powspctrm(channel_idx, :, :), 1));
 avg6 = squeeze(mean(gatfr6.powspctrm(channel_idx, :, :), 1));

@@ -18,11 +18,12 @@ subjects = setdiff(subjects, {'361'});
 subj = 1;
 datapath = fullfile(path, subjects{subj}, 'eeg');
 cd(datapath);
-load('power_nback.mat');
+D0 = load('tfr_nback.mat', 'tfr1_bl');
+tfr1_bl_ref = D0.tfr1_bl;
 % Occipital channels
 occ_channels = {};
-for i = 1:length(powload1.label)
-    label = powload1.label{i};
+for i = 1:length(tfr1_bl_ref.label)
+    label = tfr1_bl_ref.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end

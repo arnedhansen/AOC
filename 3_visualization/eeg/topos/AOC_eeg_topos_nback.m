@@ -17,10 +17,10 @@ for subj = 1:length(subjects)
     clc; fprintf('[VIZ TOPO - NBACK] Loading power spectra for topographies, Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
-    load power_nback_windows
-    powl1{subj} = pow1_bl_full;
-    powl2{subj} = pow2_bl_full;
-    powl3{subj} = pow3_bl_full;
+    D = load('power_nback_windows.mat', 'pow1_raw_full', 'pow2_raw_full', 'pow3_raw_full');
+    powl1{subj} = D.pow1_raw_full;
+    powl2{subj} = D.pow2_raw_full;
+    powl3{subj} = D.pow3_raw_full;
 end
 
 % Compute grand avg of raw powspctrm data
@@ -32,11 +32,12 @@ gapow3 = ft_freqgrandaverage([],powl3{:});
 subj = 1;
 datapath = fullfile(path, subjects{subj}, 'eeg');
 cd(datapath);
-load('power_nback_windows.mat');
+D0 = load('power_nback_windows.mat', 'pow1_raw_full');
+pow1_raw_full = D0.pow1_raw_full;
 % Occipital channels
 occ_channels = {};
-for i = 1:length(pow1_bl_full.label)
-    label = pow1_bl_full.label{i};
+for i = 1:length(pow1_raw_full.label)
+    label = pow1_raw_full.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
@@ -129,8 +130,8 @@ A2 = mean(gapow2.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
 A3 = mean(gapow3.powspctrm(channel_idx, freq_idx), 2, 'omitnan');
 all_alpha = [A1(:); A2(:); A3(:)];
 global_max = prctile(all_alpha,99);
-global_max = 2
-cfg.zlim = [0 global_max];
+%global_max = 2
+cfg.zlim = [global_max/3 global_max];
 
 % Plot 1-back
 figure('Color', 'w');

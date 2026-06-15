@@ -30,11 +30,12 @@ gatfr2 = ft_freqgrandaverage([],l2{:});
 gatfr3 = ft_freqgrandaverage([],l3{:});
 
 %% Define channels
-load('power_nback.mat');
+D0 = load('tfr_nback.mat', 'tfr1');
+tfr1_ref = D0.tfr1;
 % Occipital channels
 occ_channels = {};
-for i = 1:length(powload2.label)
-    label = powload2.label{i};
+for i = 1:length(tfr1_ref.label)
+    label = tfr1_ref.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end

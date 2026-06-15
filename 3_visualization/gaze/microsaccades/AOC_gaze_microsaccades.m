@@ -61,7 +61,7 @@ n_samp   = length(crop_idx);
 t_vec    = t_comp_vec(crop_idx);                         % display time axis
 
 % Baseline period for percentage-change normalisation
-bl_win = [-0.5 0];                                       % seconds (pre-stimulus)
+bl_win = [-1.5 -0.5];                                       % seconds (pre-stimulus)
 bl_idx = t_vec >= bl_win(1) & t_vec <= bl_win(2);       % logical index into t_vec
 
 % Plotting

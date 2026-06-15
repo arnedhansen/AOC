@@ -20,6 +20,9 @@ path = paths.features;
 logDir = paths.logs;
 scriptName = 'AOC_eeg_fex_sternberg';
 
+% TEMP: set true to compute IAF_specParam via FOOOF (ft_freqanalysis_Arne_FOOOF).
+RUN_FOOOF = false;
+
 for subj = 1:length(subjects)
     try
         clc; fprintf('[EEG FEX - STERNBERG] Windowed power spectrum extraction for Subject %d / %d \n', subj, length(subjects))
@@ -179,9 +182,15 @@ for subj = 1:length(subjects)
         [IAF4, powerIAF4] = iaf_from_concat_dpss(dataTFR, ind4, winIAF, chLabs, alphaRange);
         [IAF6, powerIAF6] = iaf_from_concat_dpss(dataTFR, ind6, winIAF, chLabs, alphaRange);
 
-        IAF_specParam2 = iaf_specparam_fooof(dataTFR, ind2, winIAF, chLabs, alphaRange);
-        IAF_specParam4 = iaf_specparam_fooof(dataTFR, ind4, winIAF, chLabs, alphaRange);
-        IAF_specParam6 = iaf_specparam_fooof(dataTFR, ind6, winIAF, chLabs, alphaRange);
+        if RUN_FOOOF
+            IAF_specParam2 = iaf_specparam_fooof(dataTFR, ind2, winIAF, chLabs, alphaRange);
+            IAF_specParam4 = iaf_specparam_fooof(dataTFR, ind4, winIAF, chLabs, alphaRange);
+            IAF_specParam6 = iaf_specparam_fooof(dataTFR, ind6, winIAF, chLabs, alphaRange);
+        else
+            IAF_specParam2 = NaN;
+            IAF_specParam4 = NaN;
+            IAF_specParam6 = NaN;
+        end
 
         % Compute lateralization index on LATE BASELINED spectra (dB)
         powloads = {pow2_bl_late, pow4_bl_late, pow6_bl_late};

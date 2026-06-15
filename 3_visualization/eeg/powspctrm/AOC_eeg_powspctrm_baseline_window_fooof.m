@@ -11,6 +11,14 @@ freq_range = [3 30];
 
 fig_dir_pow = fullfile(paths.figures, 'eeg', 'powspctrm');
 
+% Skip when TFR feature extraction was run with RUN_FOOOF=false (no FOOOF fields in MAT).
+chk = fullfile(path, subjects{1}, 'eeg', 'tfr_stern.mat');
+Schk = load(chk, 'tfr2_fooof');
+if ~isfield(Schk, 'tfr2_fooof')
+    warning('AOC_eeg_powspctrm_baseline_window_fooof: tfr2_fooof not in %s (FOOOF disabled?). Skipping script.', chk);
+    return
+end
+
 %% Channels
 datapath = fullfile(path, subjects{1}, 'eeg');
 cd(datapath);

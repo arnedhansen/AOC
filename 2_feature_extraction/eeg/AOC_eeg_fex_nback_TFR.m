@@ -27,6 +27,9 @@ if ~isfile(iaf_csv)
 end
 iaf_table = readtable(iaf_csv);
 
+% TEMP: set true to run sliding-window FOOOF, FOOOF baselines, FOOOF matrices/CSVs (slow).
+RUN_FOOOF = false;
+
 %% Loop subjects
 for subj = 1:length(subjects)
     try
@@ -66,6 +69,7 @@ for subj = 1:length(subjects)
 
     disp(upper('Raw TFR + baseline done...'))
 
+    if RUN_FOOOF
     %%%%%%%%%%%%%%%%%%%%
     %%%%%%  FOOOF %%%%%%
     %%%%%%%%%%%%%%%%%%%%
@@ -419,7 +423,7 @@ for subj = 1:length(subjects)
     condVals = [1; 2; 3];
     subID = str2double(subjects{subj});
     if isnan(subID)
-        subID = str2num(subjects{subj}); %#ok<ST2NM>
+        subID = str2num(subjects{subj});
     end
     AlphaPower_FOOOF_full = nan(3, 1);
     AlphaPower_FOOOF_bl_full = nan(3, 1);
@@ -453,24 +457,36 @@ for subj = 1:length(subjects)
     save eeg_matrix_nback_FOOOF_subj subj_data_fooof
     eeg_data_nback_FOOOF = [eeg_data_nback_FOOOF; subj_data_fooof];
 
+    else
+        cd(datapath)
+        save tfr_nback tfr1 tfr2 tfr3 tfr1_bl tfr2_bl tfr3_bl
+    end
+
         clc
-        fprintf('Subject AOC %s (%.3d/%.3d) DONE (sliding-window FOOOF: model - aperiodic) \n', ...
-            num2str(subjects{subj}), subj, length(subjects))
+        if RUN_FOOOF
+            fprintf('Subject AOC %s (%.3d/%.3d) DONE (sliding-window FOOOF: model - aperiodic) \n', ...
+                num2str(subjects{subj}), subj, length(subjects))
+        else
+            fprintf('Subject AOC %s (%.3d/%.3d) DONE (TFR only; RUN_FOOOF=false) \n', ...
+                num2str(subjects{subj}), subj, length(subjects))
+        end
     catch ME
         log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
         fprintf('Continuing to next subject...\n');
     end
 end
 
-save(fullfile(paths.features, 'AOC_eeg_matrix_nback_FOOOF.mat'), 'eeg_data_nback_FOOOF')
-writetable(struct2table(eeg_data_nback_FOOOF), fullfile(paths.features, 'AOC_eeg_matrix_nback_FOOOF.csv'))
+if RUN_FOOOF
+    save(fullfile(paths.features, 'AOC_eeg_matrix_nback_FOOOF.mat'), 'eeg_data_nback_FOOOF')
+    writetable(struct2table(eeg_data_nback_FOOOF), fullfile(paths.features, 'AOC_eeg_matrix_nback_FOOOF.csv'))
+end
 
 function ch = occ_channels_from_labels(labels)
 ch = {};
 for i = 1:numel(labels)
     lab = labels{i};
     if contains(lab, {'O'}) || contains(lab, {'I'})
-        ch{end+1} = lab; %#ok<AGROW>
+        ch{end+1} = lab;
     end
 end
 if isempty(ch)

@@ -27,6 +27,9 @@ startup
 [subjects, paths, colors, ~] = setup('AOC');
 path = paths.features;
 
+% TEMP: set true to build FOOOF panels (requires FOOOF fields in tfr_*.mat).
+RUN_FOOOF = false;
+
 %% Define occipital channels (from first subject)
 datapath = fullfile(path, subjects{1}, 'eeg');
 cd(datapath);
@@ -78,15 +81,10 @@ for t = 1:numel(tasks)
         S = load(task.tfr_file);
 
         % First subject: initialise arrays
-        % Raw and FOOOF may have different frequency grids
         if ~init
             refRaw = S.(task.raw_vars{1});
-            refFF  = S.(task.fooof_vars{1});
-
             freqsRaw = refRaw.freq;
-            freqsFF  = refFF.freq;
             nFreqRaw = numel(freqsRaw);
-            nFreqFF  = numel(freqsFF);
             chIdx    = find(ismember(refRaw.label, channels));
 
             % Raw: baseline period + retention period (absolute)
@@ -95,20 +93,26 @@ for t = 1:numel(tasks)
             % Raw: retention period (baselined, dB)
             retbl_raw = nan(nSubj, nConds, nFreqRaw);
 
-            % FOOOF: baseline period + retention period (absolute)
-            bl_ff    = nan(nSubj, nConds, nFreqFF);
-            ret_ff   = nan(nSubj, nConds, nFreqFF);
-            % FOOOF: retention period (baselined, absolute)
-            retbl_ff = nan(nSubj, nConds, nFreqFF);
+            if RUN_FOOOF
+                refFF  = S.(task.fooof_vars{1});
+                freqsFF  = refFF.freq;
+                nFreqFF  = numel(freqsFF);
+                % FOOOF: baseline period + retention period (absolute)
+                bl_ff    = nan(nSubj, nConds, nFreqFF);
+                ret_ff   = nan(nSubj, nConds, nFreqFF);
+                % FOOOF: retention period (baselined, absolute)
+                retbl_ff = nan(nSubj, nConds, nFreqFF);
+            else
+                freqsFF  = [];
+                nFreqFF  = 0;
+            end
 
             init = true;
         end
 
         for c = 1:nConds
             raw   = S.(task.raw_vars{c});
-            ff    = S.(task.fooof_vars{c});
             rawBL = S.(task.raw_bl_vars{c});
-            ffBL  = S.(task.fooof_bl_vars{c});
 
             % --- Raw: mean over occ channels × time window ---
             tBL_r  = raw.time >= blWin(1)  & raw.time <= blWin(2);
@@ -120,17 +124,22 @@ for t = 1:numel(tasks)
             tRetBL_r = rawBL.time >= task.retWin(1) & rawBL.time <= task.retWin(2);
             retbl_raw(subj, c, :) = mean(mean(rawBL.powspctrm(chIdx, :, tRetBL_r), 3, 'omitnan'), 1, 'omitnan');
 
-            % --- FOOOF: same (may have different freq grid) ---
-            chIdxFF = find(ismember(ff.label, channels));
-            tBL_f   = ff.time >= blWin(1)  & ff.time <= blWin(2);
-            tRet_f  = ff.time >= task.retWin(1) & ff.time <= task.retWin(2);
-            bl_ff(subj, c, :)  = mean(mean(ff.powspctrm(chIdxFF, :, tBL_f),  3, 'omitnan'), 1, 'omitnan');
-            ret_ff(subj, c, :) = mean(mean(ff.powspctrm(chIdxFF, :, tRet_f), 3, 'omitnan'), 1, 'omitnan');
+            if RUN_FOOOF
+                ff    = S.(task.fooof_vars{c});
+                ffBL  = S.(task.fooof_bl_vars{c});
 
-            % --- FOOOF baselined: retention only ---
-            chIdxFFBL = find(ismember(ffBL.label, channels));
-            tRetBL_f  = ffBL.time >= task.retWin(1) & ffBL.time <= task.retWin(2);
-            retbl_ff(subj, c, :) = mean(mean(ffBL.powspctrm(chIdxFFBL, :, tRetBL_f), 3, 'omitnan'), 1, 'omitnan');
+                % --- FOOOF: same (may have different freq grid) ---
+                chIdxFF = find(ismember(ff.label, channels));
+                tBL_f   = ff.time >= blWin(1)  & ff.time <= blWin(2);
+                tRet_f  = ff.time >= task.retWin(1) & ff.time <= task.retWin(2);
+                bl_ff(subj, c, :)  = mean(mean(ff.powspctrm(chIdxFF, :, tBL_f),  3, 'omitnan'), 1, 'omitnan');
+                ret_ff(subj, c, :) = mean(mean(ff.powspctrm(chIdxFF, :, tRet_f), 3, 'omitnan'), 1, 'omitnan');
+
+                % --- FOOOF baselined: retention only ---
+                chIdxFFBL = find(ismember(ffBL.label, channels));
+                tRetBL_f  = ffBL.time >= task.retWin(1) & ffBL.time <= task.retWin(2);
+                retbl_ff(subj, c, :) = mean(mean(ffBL.powspctrm(chIdxFFBL, :, tRetBL_f), 3, 'omitnan'), 1, 'omitnan');
+            end
         end
     end
 
@@ -142,9 +151,11 @@ for t = 1:numel(tasks)
     bl_raw_m    = nan(nConds, nFreqRaw);  bl_raw_s    = nan(nConds, nFreqRaw);
     ret_raw_m   = nan(nConds, nFreqRaw);  ret_raw_s   = nan(nConds, nFreqRaw);
     retbl_raw_m = nan(nConds, nFreqRaw);  retbl_raw_s = nan(nConds, nFreqRaw);
-    bl_ff_m     = nan(nConds, nFreqFF);   bl_ff_s     = nan(nConds, nFreqFF);
-    ret_ff_m    = nan(nConds, nFreqFF);   ret_ff_s    = nan(nConds, nFreqFF);
-    retbl_ff_m  = nan(nConds, nFreqFF);   retbl_ff_s  = nan(nConds, nFreqFF);
+    if RUN_FOOOF
+        bl_ff_m     = nan(nConds, nFreqFF);   bl_ff_s     = nan(nConds, nFreqFF);
+        ret_ff_m    = nan(nConds, nFreqFF);   ret_ff_s    = nan(nConds, nFreqFF);
+        retbl_ff_m  = nan(nConds, nFreqFF);   retbl_ff_s  = nan(nConds, nFreqFF);
+    end
     for c = 1:nConds
         bl_raw_m(c, :)    = mean(squeeze(bl_raw(:, c, :)),    1, 'omitnan');
         bl_raw_s(c, :)    = std(squeeze(bl_raw(:, c, :)),     0, 1, 'omitnan') / sqrt(nValid);
@@ -152,12 +163,14 @@ for t = 1:numel(tasks)
         ret_raw_s(c, :)   = std(squeeze(ret_raw(:, c, :)),    0, 1, 'omitnan') / sqrt(nValid);
         retbl_raw_m(c, :) = mean(squeeze(retbl_raw(:, c, :)), 1, 'omitnan');
         retbl_raw_s(c, :) = std(squeeze(retbl_raw(:, c, :)),  0, 1, 'omitnan') / sqrt(nValid);
-        bl_ff_m(c, :)     = mean(squeeze(bl_ff(:, c, :)),     1, 'omitnan');
-        bl_ff_s(c, :)     = std(squeeze(bl_ff(:, c, :)),      0, 1, 'omitnan') / sqrt(nValid);
-        ret_ff_m(c, :)    = mean(squeeze(ret_ff(:, c, :)),    1, 'omitnan');
-        ret_ff_s(c, :)    = std(squeeze(ret_ff(:, c, :)),     0, 1, 'omitnan') / sqrt(nValid);
-        retbl_ff_m(c, :)  = mean(squeeze(retbl_ff(:, c, :)),  1, 'omitnan');
-        retbl_ff_s(c, :)  = std(squeeze(retbl_ff(:, c, :)),   0, 1, 'omitnan') / sqrt(nValid);
+        if RUN_FOOOF
+            bl_ff_m(c, :)     = mean(squeeze(bl_ff(:, c, :)),     1, 'omitnan');
+            bl_ff_s(c, :)     = std(squeeze(bl_ff(:, c, :)),      0, 1, 'omitnan') / sqrt(nValid);
+            ret_ff_m(c, :)    = mean(squeeze(ret_ff(:, c, :)),    1, 'omitnan');
+            ret_ff_s(c, :)    = std(squeeze(ret_ff(:, c, :)),     0, 1, 'omitnan') / sqrt(nValid);
+            retbl_ff_m(c, :)  = mean(squeeze(retbl_ff(:, c, :)),  1, 'omitnan');
+            retbl_ff_s(c, :)  = std(squeeze(retbl_ff(:, c, :)),   0, 1, 'omitnan') / sqrt(nValid);
+        end
     end
 
     % ================================================================
@@ -230,6 +243,7 @@ for t = 1:numel(tasks)
     saveas(gcf, fullfile(savePath, fname));
     fprintf('Saved: %s\n', fullfile(savePath, fname));
 
+    if RUN_FOOOF
     % ================================================================
     %  FIGURE 2 — FOOOF Power Spectra (3 subplots)
     % ================================================================
@@ -298,4 +312,5 @@ for t = 1:numel(tasks)
     fname = sprintf('AOC_eeg_powspctrm_baseline_effects_%s_fooof.png', task.name);
     saveas(gcf, fullfile(savePath, fname));
     fprintf('Saved: %s\n', fullfile(savePath, fname));
+    end
 end

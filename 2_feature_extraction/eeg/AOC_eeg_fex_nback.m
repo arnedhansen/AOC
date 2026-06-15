@@ -20,6 +20,9 @@ path = paths.features;
 logDir = paths.logs;
 scriptName = 'AOC_eeg_fex_nback';
 
+% TEMP: set true to compute IAF_specParam via FOOOF (ft_freqanalysis_Arne_FOOOF).
+RUN_FOOOF = false;
+
 for subj = 1:length(subjects)
     try
         clc; fprintf('[EEG FEX - NBACK] Windowed power spectrum extraction for Subject %d / %d \n', subj, length(subjects))
@@ -181,9 +184,15 @@ for subj = 1:length(subjects)
         [IAF3, powerIAF3] = iaf_from_concat_dpss(dataTFR, ind3, winIAF, chLabs, alphaRange);
 
         % FOOOF alpha peak CF (median across occ channels), optional if ft_freqanalysis_Arne_FOOOF on path
-        IAF_specParam1 = iaf_specparam_fooof(dataTFR, ind1, winIAF, chLabs, alphaRange);
-        IAF_specParam2 = iaf_specparam_fooof(dataTFR, ind2, winIAF, chLabs, alphaRange);
-        IAF_specParam3 = iaf_specparam_fooof(dataTFR, ind3, winIAF, chLabs, alphaRange);
+        if RUN_FOOOF
+            IAF_specParam1 = iaf_specparam_fooof(dataTFR, ind1, winIAF, chLabs, alphaRange);
+            IAF_specParam2 = iaf_specparam_fooof(dataTFR, ind2, winIAF, chLabs, alphaRange);
+            IAF_specParam3 = iaf_specparam_fooof(dataTFR, ind3, winIAF, chLabs, alphaRange);
+        else
+            IAF_specParam1 = NaN;
+            IAF_specParam2 = NaN;
+            IAF_specParam3 = NaN;
+        end
 
         % Compute lateralization index on LATE BASELINED spectra (dB)
         powloads = {pow1_bl_late, pow2_bl_late, pow3_bl_late};

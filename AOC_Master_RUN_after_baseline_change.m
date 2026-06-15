@@ -3,6 +3,10 @@
 % Recomputes features and figures that depend on the baseline interval
 % [-1.5 -0.5] s. Preprocessing is omitted (epochs already span that range).
 %
+% FOOOF: pipeline scripts use RUN_FOOOF = false (TFR, main EEG fex IAF_specParam,
+% _controls/AOC_eeg_powspctrm_baseline_effects). Set those to true to re-enable.
+% FOOOF-only run lines below are commented out so the driver matches that default.
+%
 % Change the paths if the repo is not under this location.
 %
 % IMPORTANT: Scripts call startup / clear, which wipe the workspace. Use
@@ -34,11 +38,11 @@ run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\AOC_master
 
 %% 3_visualization — EEG: baseline-window powspctrm, TFR (db / FOOOF abs), ERP
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_baseline_window.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_baseline_window_fooof.m');
+% run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_baseline_window_fooof.m');
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_sternberg_bl.m');
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_nback_bl.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_sternberg_fooof_abs.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_nback_fooof_abs.m');
+% run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_sternberg_fooof_abs.m');
+% run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_nback_fooof_abs.m');
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\erp\AOC_eeg_erp_sternberg.m');
 
 %% 3_visualization — Gaze
@@ -54,11 +58,11 @@ run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\microsacca
 %% _controls — baseline vs retention powspctrm check
 run('C:\Users\Administrator\Documents\GitHub\AOC\_controls\AOC_eeg_powspctrm_baseline_effects.m');
 
-%% 4_splits
-run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed_Nback.m');
+%% 4_splits (AlphaAmpRed* and AlphaLoads_TimeCourse need FOOOF-derived merged columns when RUN_FOOOF=false)
+% run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed.m');
+% run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed_Nback.m');
 run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaLoads.m');
-run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaLoads_TimeCourse.m');
+% run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaLoads_TimeCourse.m');
 
 %% 4_stats
 % After merged CSVs are updated, run from the repo or your stats environment, e.g.:

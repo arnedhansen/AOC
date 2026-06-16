@@ -3,6 +3,7 @@
 %
 % Key outputs:
 %   Gaze heatmap figures (baseline, stimulus, per condition)
+%   Cluster permutation: effect-size style maps (t/sqrt(n)) and separate t-value heatmaps (*_tmap_*.png)
 
 %% Setup
 startup
@@ -229,24 +230,32 @@ clc; disp('COMPUTING STATS...')
 
 clc; disp('dataStim1Allsubs...')
 [stat2late] = ft_freqstatistics(cfg, dataStim1Allsubs{:},dataBase1Allsubs{:});
+stat2late_tmap = stat2late;
+stat2late_tmap.stat(stat2late_tmap.mask==0) = 0;
 cohensd=((stat2late.stat)./sqrt(numel(subjects)));
 stat2late.stat=cohensd;
 stat2late.stat(stat2late.mask==0)=0;
 
 clc; disp('dataStim2Allsubs...')
 [stat4late] = ft_freqstatistics(cfg, dataStim2Allsubs{:}, dataBase2Allsubs{:});
+stat4late_tmap = stat4late;
+stat4late_tmap.stat(stat4late_tmap.mask==0) = 0;
 cohensd=((stat4late.stat)./sqrt(numel(subjects)));
 stat4late.stat=cohensd;
 stat4late.stat(stat4late.mask==0)=0;
 
 clc; disp('dataStim3Allsubs...')
 [stat6late] = ft_freqstatistics(cfg, dataStim3Allsubs{:},dataBase3Allsubs{:});
+stat6late_tmap = stat6late;
+stat6late_tmap.stat(stat6late_tmap.mask==0) = 0;
 cohensd=((stat6late.stat)./sqrt(numel(subjects)));
 stat6late.stat=cohensd;
 stat6late.stat(stat6late.mask==0)=0;
 
 clc; disp('dataDIFF...')
 [statDIFF] = ft_freqstatistics(cfg, dataStim3Allsubs{:},dataStim1Allsubs{:});
+statDIFF_tmap = statDIFF;
+statDIFF_tmap.stat(statDIFF_tmap.mask==0) = 0;
 cohensd=((statDIFF.stat)./sqrt(numel(subjects)));
 statDIFF.stat=cohensd;
 statDIFF.stat(statDIFF.mask==0)=0;
@@ -354,6 +363,77 @@ title('Statistical Difference Heatmap', 'FontSize', overallFontSize*1.2)
 
 % Save
 saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_nback_stats_DIFF_stim3vs1.png'))
+
+%% Plot t-value heatmaps (depsamplesT statistic before d scaling)
+tmAbs = max(abs([stat2late_tmap.stat(:); stat4late_tmap.stat(:); stat6late_tmap.stat(:); statDIFF_tmap.stat(:)]), [], 'omitnan');
+if ~isfinite(tmAbs) || tmAbs == 0
+    tmAbs = 1;
+end
+cfgT = [];
+cfgT.parameter     = 'stat';
+cfgT.maskparameter = 'mask';
+cfgT.maskstyle     = 'outline';
+cfgT.zlim          = [-tmAbs tmAbs];
+cfgT.colormap      = colMap;
+cfgT.figure        = 'gcf';
+
+close all
+overallFontSize = 15;
+figure;
+set(gcf, 'Position', [0 0 800 1200], 'Color', 'W')
+subplot(3,1,1);
+ft_singleplotTFR(cfgT, stat2late_tmap);
+xlim([0 800]); ylim([0 600]); yticks([0 150 300 450 600])
+xlabel('Screen Width [px]'); ylabel('Screen Height [px]');
+colormap(colMap);
+colBt = colorbar;
+colBt.LineWidth = 1;
+title(colBt, 't value')
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('1-back (t: stimulus vs baseline)', 'FontSize', overallFontSize*1.25)
+subplot(3,1,2);
+ft_singleplotTFR(cfgT, stat4late_tmap);
+xlim([0 800]); ylim([0 600]); yticks([0 150 300 450 600])
+xlabel('Screen Width [px]'); ylabel('Screen Height [px]');
+colormap(colMap);
+colBt = colorbar;
+colBt.LineWidth = 1;
+title(colBt, 't value')
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('2-back (t: stimulus vs baseline)', 'FontSize', overallFontSize*1.25)
+subplot(3,1,3);
+ft_singleplotTFR(cfgT, stat6late_tmap);
+xlim([0 800]); ylim([0 600]); yticks([0 150 300 450 600])
+xlabel('Screen Width [px]'); ylabel('Screen Height [px]');
+colormap(colMap);
+colBt = colorbar;
+colBt.LineWidth = 1;
+title(colBt, 't value')
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('3-back (t: stimulus vs baseline)', 'FontSize', overallFontSize*1.25)
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_nback_tmap_OVERVIEW.png'))
+
+close all
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
+ft_singleplotTFR(cfgT, statDIFF_tmap);
+xlim([0 800]); ylim([0 600]); yticks([0 150 300 450 600])
+xlabel('Screen Width [px]'); ylabel('Screen Height [px]');
+colormap(colMap);
+colBt = colorbar;
+colBt.LineWidth = 1;
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title(colBt, 't value', 'FontSize', overallFontSize*0.8)
+title('t map: 3-back vs 1-back (stimulus window)', 'FontSize', overallFontSize*1.2)
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_nback_tmap_DIFF_stim3vs1.png'))
 
 %% Plot stats INDIVIDUAL figures
 % plotGazeHeatmap(stat2early, '1-back EARLY [0 1] Gaze Heatmap', 'AOC_gaze_heatmap_nback_stats_early2');

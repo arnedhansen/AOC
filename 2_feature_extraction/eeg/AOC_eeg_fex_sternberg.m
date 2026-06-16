@@ -10,6 +10,9 @@
 %   IAF_specParam: FOOOF alpha peak CF (Hz) per condition (occ channels, median CF)
 %   Alpha power in IAF band (early/late/full; raw + dB)
 %   Lateralization index (late baselined)
+%   ERSD_early / ERSD_late / ERSD_full: fixed [8 14] Hz dB on tfr*_bl, occipital channels (label contains O or I;
+%       same rule as IAF occ ROI), mean over time [0 1] / [1 2] / [0 2]s (same windows as AlphaPower_*).
+%       Requires tfr_stern.mat from AOC_eeg_fex_sternberg_TFR.m. Differs from IAF-tuned AlphaPower_bl_*.
 
 %% POWSPCTRM (Baseline + Early/Late/Full)
 % Setup
@@ -157,7 +160,8 @@ powerIAF6 = [];
 IAF_results = struct();
 eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'IAF', {}, 'IAF_specParam', {}, 'Lateralization', {}, ...
     'AlphaPower_raw_early', {}, 'AlphaPower_raw_late', {}, 'AlphaPower_raw_full', {}, ...
-    'AlphaPower_bl_early', {}, 'AlphaPower_bl_late', {}, 'AlphaPower_bl_full', {});
+    'AlphaPower_bl_early', {}, 'AlphaPower_bl_late', {}, 'AlphaPower_bl_full', {}, ...
+    'ERSD_early', {}, 'ERSD_late', {}, 'ERSD_full', {});
 
 winIAF = [1 2];  % late retention only (IAF / IAF_specParam); pow windows unchanged
 
@@ -219,6 +223,55 @@ for subj = 1:length(subjects)
         AlphaPower_bl_late   = [robust_roi_pow(pow2_bl_late,  channelIdx, IAF_band2); robust_roi_pow(pow4_bl_late,  channelIdx, IAF_band4); robust_roi_pow(pow6_bl_late,  channelIdx, IAF_band6)];
         AlphaPower_bl_full   = [robust_roi_pow(pow2_bl_full,  channelIdx, IAF_band2); robust_roi_pow(pow4_bl_full,  channelIdx, IAF_band4); robust_roi_pow(pow6_bl_full,  channelIdx, IAF_band6)];
 
+        % Fixed-band occipital ERD/ERS from baselined TFR (O/I channels; [8 14] Hz; windows match AlphaPower_*)
+        ERSD_early = nan(3, 1);
+        ERSD_late = nan(3, 1);
+        ERSD_full = nan(3, 1);
+        tfrMatPath = fullfile(datapath, 'tfr_stern.mat');
+        if isfile(tfrMatPath)
+            occ_from_pow = {};
+            for ii = 1:numel(pow2_raw_full.label)
+                lab = pow2_raw_full.label{ii};
+                if contains(lab, {'O'}) || contains(lab, {'I'})
+                    occ_from_pow{end+1} = lab;
+                end
+            end
+            S_tfr = load(tfrMatPath, 'tfr2_bl', 'tfr4_bl', 'tfr6_bl');
+            if isfield(S_tfr, 'tfr2_bl') && isfield(S_tfr, 'tfr4_bl') && isfield(S_tfr, 'tfr6_bl')
+                tfPack = {S_tfr.tfr2_bl, S_tfr.tfr4_bl, S_tfr.tfr6_bl};
+                latencyWins = {[0 1], [1 2], [0 2]};
+                for ic = 1:3
+                    tf = tfPack{ic};
+                    chUse = occ_from_pow(ismember(occ_from_pow, tf.label));
+                    if isempty(chUse)
+                        continue
+                    end
+                    for iw = 1:3
+                        cfgE = [];
+                        cfgE.channel = chUse;
+                        cfgE.avgoverchan = 'yes';
+                        cfgE.frequency = [8 14];
+                        cfgE.avgoverfreq = 'yes';
+                        cfgE.latency = latencyWins{iw};
+                        cfgE.avgovertime = 'yes';
+                        try
+                            outE = ft_selectdata(cfgE, tf);
+                            v = mean(outE.powspctrm(:), 'omitnan');
+                        catch
+                            v = NaN;
+                        end
+                        if iw == 1
+                            ERSD_early(ic) = v;
+                        elseif iw == 2
+                            ERSD_late(ic) = v;
+                        else
+                            ERSD_full(ic) = v;
+                        end
+                    end
+                end
+            end
+        end
+
         subID = str2num(subjects{subj});
         subj_data_eeg = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell([2; 4; 6]), ...
             'IAF', num2cell([IAF2; IAF4; IAF6]), ...
@@ -229,7 +282,10 @@ for subj = 1:length(subjects)
             'AlphaPower_raw_full', num2cell(AlphaPower_raw_full), ...
             'AlphaPower_bl_early', num2cell(AlphaPower_bl_early), ...
             'AlphaPower_bl_late', num2cell(AlphaPower_bl_late), ...
-            'AlphaPower_bl_full', num2cell(AlphaPower_bl_full));
+            'AlphaPower_bl_full', num2cell(AlphaPower_bl_full), ...
+            'ERSD_early', num2cell(ERSD_early), ...
+            'ERSD_late', num2cell(ERSD_late), ...
+            'ERSD_full', num2cell(ERSD_full));
         % Save
         savepath = fullfile(paths.features, subjects{subj}, 'eeg');
         mkdir(savepath)

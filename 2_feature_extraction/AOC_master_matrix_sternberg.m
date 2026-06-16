@@ -14,6 +14,8 @@
 %   EEG — Raw alpha power (IAF band from multitaper IAF, occ channels):
 %     AlphaPower_raw_early / _late / _full
 %     AlphaPower_bl_early / _late / _full   (dB baseline [-1.5 -0.5]s)
+%     ERSD_early / ERSD_late / ERSD_full — fixed [8 14] Hz dB on tfr*_bl, O/I occ channels, windows [0 1] / [1 2] / [0 2]s
+%         (tfr_stern.mat from AOC_eeg_fex_sternberg_TFR.m)
 %     IAF (concat [1 2]s retention, mtmfft+DPSS peak); IAF_specParam (FOOOF alpha CF, median occ)
 %
 %   EEG — FOOOF alpha (IAF band, occ channels):

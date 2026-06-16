@@ -331,7 +331,7 @@ function use_parfor = init_parallel_pool_science_cloud()
     use_parfor = true;
     disp(upper('PARFOR ENABLED.'))
   catch ME
-    disp(upper(['PARFOR DISABLED: ' ME.message]))
+    disp(upper('PARFOR DISABLED.'))
     use_parfor = false;
   end
 end

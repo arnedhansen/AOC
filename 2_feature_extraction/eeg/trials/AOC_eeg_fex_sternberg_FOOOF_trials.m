@@ -6,10 +6,6 @@ startup
 [subjects, paths, ~, ~] = setup('AOC');
 path = paths.features;
 
-% Setup logging
-logDir = paths.logs;
-scriptName = 'AOC_eeg_fex_sternberg_FOOOF_trials';
-
 for subj = 1:length(subjects)
     try
         datapath = fullfile(path, subjects{subj}, 'eeg');
@@ -394,7 +390,6 @@ for subj = 1:length(subjects)
         fprintf(['Subject AOC %s (%.3d/%.3d) DONE (trial-level sliding-window FOOOF: ', ...
             'model - aperiodic)\n'], num2str(subjects{subj}), subj, length(subjects))
     catch ME
-        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
         fprintf('Continuing to next subject...\n');
     end
 end

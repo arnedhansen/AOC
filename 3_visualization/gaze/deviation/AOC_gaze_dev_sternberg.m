@@ -311,7 +311,7 @@ try
     D = load(et_file, 'dataETlong');
     return
 catch ME
-    err_msg = ME.message;
+    err_msg = 'direct load failed';
 end
 
 tmp_file = '';
@@ -320,7 +320,7 @@ try
     copyfile(et_file, tmp_file, 'f');
     D = load(tmp_file, 'dataETlong');
 catch ME2
-    err_msg = sprintf('direct: %s | tmp: %s', err_msg, ME2.message);
+    err_msg = 'direct and tmp load failed';
     D = [];
 end
 

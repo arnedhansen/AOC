@@ -15,9 +15,6 @@ subjects = {folders.name};
 subjects = exclude_subjects(subjects, 'AOC');
 runMode = askRunMode();
 
-logDir = paths.logs;
-scriptName = 'AOC_preprocessing_sternberg';
-
 %% Read data, segment and convert to FieldTrip data structure
 tic;
 for subj = 1:length(subjects)
@@ -62,8 +59,8 @@ for subj = 1:length(subjects)
                 clear EEG
                 fprintf('Block %.1d loaded \n', block)
             catch ME
-                fprintf('[WARNING] Subject %s (iteration %d/%d): Error loading Block %d: %s\n', ...
-                    subjects{subj}, subj, length(subjects), block, ME.message);
+                fprintf('[WARNING] Subject %s (iteration %d/%d): Error loading Block %d.\n', ...
+                    subjects{subj}, subj, length(subjects), block);
             end
         end
 
@@ -130,7 +127,7 @@ for subj = 1:length(subjects)
 
                 fprintf('WM load 2 data processed for block %d.\n', block);
             catch ME
-                fprintf('ERROR processing WM load 2 for block %d: %s\n', block, ME.message);
+                fprintf('ERROR processing WM load 2 for block %d.\n', block);
                 data2{block} = struct;
             end
 
@@ -179,7 +176,7 @@ for subj = 1:length(subjects)
 
                 fprintf('WM load 4 data processed for block %d.\n', block);
             catch ME
-                fprintf('ERROR processing WM load 4 for block %d: %s\n', block, ME.message);
+                fprintf('ERROR processing WM load 4 for block %d.\n', block);
                 data4{block} = struct;
             end
 
@@ -228,7 +225,7 @@ for subj = 1:length(subjects)
 
                 fprintf('WM load 6 data processed for block %d.\n', block);
             catch ME
-                fprintf('ERROR processing WM load 6 for block %d: %s\n', block, ME.message);
+                fprintf('ERROR processing WM load 6 for block %d.\n', block);
                 data6{block} = struct;
             end
         end

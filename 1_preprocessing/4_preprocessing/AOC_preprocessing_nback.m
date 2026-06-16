@@ -15,9 +15,6 @@ subjects = {folders.name};
 subjects = exclude_subjects(subjects, 'AOC');
 runMode = askRunMode();
 
-logDir = paths.logs;
-scriptName = 'AOC_preprocessing_nback';
-
 %% Read data, segment and convert to FieldTrip data structure
 tic;
 for subj = 1:length(subjects)
@@ -61,8 +58,8 @@ for subj = 1:length(subjects)
                     clear EEG
                     fprintf('Block %.1d loaded \n', block)
             catch ME
-                fprintf('[WARNING] Subject %s (iteration %d/%d): Error loading Block %d: %s\n', ...
-                    subjects{subj}, subj, length(subjects), block, ME.message);
+                fprintf('[WARNING] Subject %s (iteration %d/%d): Error loading Block %d.\n', ...
+                    subjects{subj}, subj, length(subjects), block);
             end
         end
 
@@ -131,8 +128,8 @@ for subj = 1:length(subjects)
 
                 fprintf('1-back data processed for block %d.\n', block);
                 catch ME
-                    fprintf('[WARNING] Subject %s (iteration %d/%d): Error processing 1-back for block %d: %s\n', ...
-                        subjects{subj}, subj, length(subjects), block, ME.message);
+                    fprintf('[WARNING] Subject %s (iteration %d/%d): Error processing 1-back for block %d.\n', ...
+                        subjects{subj}, subj, length(subjects), block);
                     data1{block} = struct;
                 end
 
@@ -186,8 +183,8 @@ for subj = 1:length(subjects)
 
                 fprintf('2-back data processed for block %d.\n', block);
                 catch ME
-                    fprintf('[WARNING] Subject %s (iteration %d/%d): Error processing 2-back for block %d: %s\n', ...
-                        subjects{subj}, subj, length(subjects), block, ME.message);
+                    fprintf('[WARNING] Subject %s (iteration %d/%d): Error processing 2-back for block %d.\n', ...
+                        subjects{subj}, subj, length(subjects), block);
                     data2{block} = struct;
                 end
 
@@ -240,8 +237,8 @@ for subj = 1:length(subjects)
 
                 fprintf('3-back data processed for block %d.\n', block);
                 catch ME
-                    fprintf('[WARNING] Subject %s (iteration %d/%d): Error processing 3-back for block %d: %s\n', ...
-                        subjects{subj}, subj, length(subjects), block, ME.message);
+                    fprintf('[WARNING] Subject %s (iteration %d/%d): Error processing 3-back for block %d.\n', ...
+                        subjects{subj}, subj, length(subjects), block);
                     data3{block} = struct;
                 end
             end
@@ -379,7 +376,6 @@ for subj = 1:length(subjects)
             disp(['Subject ', num2str(subjects{subj}), ' already done. SKIPPING...'])
         end
     catch ME
-        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
         fprintf('Continuing to next subject...\n');
     end
 end

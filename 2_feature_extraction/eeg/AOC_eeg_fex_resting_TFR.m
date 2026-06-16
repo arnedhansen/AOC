@@ -27,10 +27,6 @@ startup
 [subjects, paths, ~, ~] = setup('AOC');
 path = paths.features;
 
-% Setup logging
-logDir = paths.logs;
-scriptName = 'AOC_eeg_fex_resting_FOOOF';
-
 % FOOOF sliding-window parameters (match interaction script)
 winLen  = 2;       % 2 s windows
 stepLen = 1;       % 1 s step
@@ -314,7 +310,6 @@ for subj = 1:length(subjects)
             subjects{subj}, subj, length(subjects))
 
     catch ME
-        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
         fprintf('Continuing to next subject...\n');
     end
 end

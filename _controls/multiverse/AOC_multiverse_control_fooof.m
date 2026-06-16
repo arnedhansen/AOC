@@ -449,7 +449,7 @@ try
     opts.SelectedVariableNames = avail;
     G = readtable(gaze_file, opts);
 catch ME
-    status_msg = sprintf('Gaze merge: failed to read %s (%s).', gaze_file, ME.message);
+    status_msg = sprintf('Gaze merge: failed to read %s.', gaze_file);
     return
 end
 

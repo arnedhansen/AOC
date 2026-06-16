@@ -101,7 +101,7 @@ for s = 1:length(subjects)
                     off_all(s, c, t) = rep.aperiodic_params(1);
                 end
             catch ME
-                fprintf('  FOOOF failed at t=%.2f: %s\n', toi(t), ME.message);
+                fprintf('  FOOOF failed at t=%.2f\n', toi(t));
             end
         end
     end

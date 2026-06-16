@@ -14,9 +14,6 @@ startup
 path = paths.features;
 featPath = paths.features;
 
-% Setup logging
-logDir = paths.logs;
-scriptName = 'AOC_eeg_fex_nback_FOOOF';
 eeg_data_nback_FOOOF = struct('ID', {}, 'Condition', {}, ...
     'AlphaPower_FOOOF_full', {}, 'AlphaPower_FOOOF_bl_full', {}, ...
     'AlphaPower_FOOOF_bl_early', {}, 'AlphaPower_FOOOF_bl_late', {});
@@ -471,7 +468,6 @@ for subj = 1:length(subjects)
                 num2str(subjects{subj}), subj, length(subjects))
         end
     catch ME
-        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
         fprintf('Continuing to next subject...\n');
     end
 end

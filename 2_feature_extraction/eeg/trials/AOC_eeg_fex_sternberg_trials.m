@@ -146,7 +146,6 @@ for subj = 1:length(subjects)
             powload2_full_bl powload4_full_bl powload6_full_bl
 
     catch ME
-        ME.message
         error(['ERROR extracting trial-wise power for Subject ' num2str(subjects{subj}) '!'])
     end
 end
@@ -187,7 +186,6 @@ for i = 1:length(channels)
             right_channels{end+1} = ch;
         end
     catch ME
-        ME.message
         disp(['Midline or nonstandard channel: ', ch])
     end
 end
@@ -367,7 +365,6 @@ for subj = 1:length(subjects)
         fprintf(['Subject %s done...'], subjects{subj});
 
     catch ME
-        ME.message
         error(['ERROR calculating trial-wise alpha power / LI for Subject ' num2str(subjects{subj}) '!'])
     end
 end

@@ -19,9 +19,6 @@ subjects = exclude_subjects(subjects, 'AOC');
 behav_data_sternberg = struct('ID', {}, 'Condition', {}, 'Accuracy', {}, 'ReactionTime', {});
 behav_data_sternberg_trials = struct('Trial', {}, 'ID', {}, 'Condition', {}, 'Accuracy', {}, 'ReactionTime', {}, 'Stimuli', {}, 'Probe', {}, 'Match', {});
 
-logDir = paths.logs;
-scriptName = 'AOC_behavioral_fex_sternberg';
-
 %% Read data
 for subj = 1:length(subjects)
     clc; fprintf('[BEHAV FEX - STERNBERG] Behavioral feature extraction for Subject %d / %d \n', subj, length(subjects))
@@ -57,8 +54,8 @@ for subj = 1:length(subjects)
                 match = [match; saves.data.match'];
                 trial_counter = trial_counter + num_trials;
             catch ME
-                fprintf('[WARNING] Subject %s (iteration %d/%d): Error loading Block %d: %s\n', ...
-                    subjects{subj}, subj, length(subjects), block, ME.message);
+                fprintf('[WARNING] Subject %s (iteration %d/%d): Error loading Block %d.\n', ...
+                    subjects{subj}, subj, length(subjects), block);
                 num_trials = 50;
                 trial_counter = trial_counter + num_trials;
             end
@@ -112,7 +109,6 @@ for subj = 1:length(subjects)
         behav_data_sternberg_trials = [behav_data_sternberg_trials; subj_data_behav_trials];
         behav_data_sternberg = [behav_data_sternberg; subj_data_behav];
     catch ME
-        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
         fprintf('Continuing to next subject...\n');
     end
 end

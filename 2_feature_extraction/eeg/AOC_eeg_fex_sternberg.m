@@ -20,9 +20,6 @@ startup
 [subjects, paths, ~ , ~] = setup('AOC');
 path = paths.features;
 
-logDir = paths.logs;
-scriptName = 'AOC_eeg_fex_sternberg';
-
 % TEMP: set true to compute IAF_specParam via FOOOF (ft_freqanalysis_Arne_FOOOF).
 RUN_FOOOF = false;
 
@@ -106,7 +103,6 @@ for subj = 1:length(subjects)
             'pow2_bl_full','pow4_bl_full','pow6_bl_full')
 
     catch ME
-        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
         fprintf('Continuing to next subject...\n');
     end
 end
@@ -147,7 +143,6 @@ for i = 1:length(channels)
             right_channels{end+1} = ch;
         end
     catch ME
-        ME.message
         disp(['Midline channel: ', ch])
     end
 end
@@ -300,7 +295,6 @@ for subj = 1:length(subjects)
             'WM6: %f Hz (Power: %f) | Lateralization: %f %f %f \n'], subjects{subj}, ...
             IAF2, powerIAF2, IAF4, powerIAF4, IAF6, powerIAF6, LatIdx2, LatIdx4, LatIdx6);
     catch ME
-        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
         fprintf('Continuing to next subject...\n');
     end
 end

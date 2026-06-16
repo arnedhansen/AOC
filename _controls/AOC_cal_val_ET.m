@@ -15,9 +15,6 @@ dirs = dir(path);
 folders = dirs([dirs.isdir] & ~ismember({dirs.name}, {'.', '..'}));
 subjects = {folders.name};
 
-logDir = paths.logs;
-scriptName = 'AOC_cal_val_ET';
-
 %% Load gaze data
 % Define the number of files for each pattern (N and S)
 numFiles = 6;
@@ -56,13 +53,12 @@ for subj = 1:length(subjects)
                 % Increment file counter
                 fileCounter = fileCounter + 1;
             catch ME
-                fprintf('[WARNING] Subject %s (iteration %d/%d): Error loading file %s: %s\n', ...
-                    subjects{subj}, subj, length(subjects), filePath, ME.message);
+                fprintf('[WARNING] Subject %s (iteration %d/%d): Error loading file %s.\n', ...
+                    subjects{subj}, subj, length(subjects), filePath);
             end
         end
     end
     catch ME
-        log_error(scriptName, subjects{subj}, subj, length(subjects), ME, logDir);
         fprintf('Continuing to next subject...\n');
     end
 end
@@ -138,8 +134,8 @@ for subjIdx = 1:numSubjects
         saveName = [savepath, filesep, num2str(subjects{subjIdx}) '_validations.png'];
         saveas(gcf, saveName)
     catch ME
-        fprintf('[WARNING] Subject %s (iteration %d/%d): Could not create VALIDATION overview: %s\n', ...
-            num2str(subjects{subjIdx}), subjIdx, numSubjects, ME.message);
+        fprintf('[WARNING] Subject %s (iteration %d/%d): Could not create VALIDATION overview.\n', ...
+            num2str(subjects{subjIdx}), subjIdx, numSubjects);
     end
 end
 

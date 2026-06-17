@@ -13,10 +13,10 @@ startup
 path = paths.features;
 figDir = fullfile(paths.figures, 'gaze', 'heatmap');
 if ~isfolder(figDir), mkdir(figDir); end
-
+ 
 latencyWindow = [0 2];
-num_bins = 200;
-smoothing_factor =[2.604 4.623];
+num_bins = 50;
+smoothing_factor = 1;
 x_edges = linspace(0, 800, num_bins);
 y_edges = linspace(0, 600, num_bins);
 x_centers = x_edges(2:end);
@@ -182,7 +182,7 @@ yticks([0 150 300 450 600]);
 xlabel('Screen Width [px]');
 ylabel('Screen Height [px]');
 cb = colorbar;
-ylabel(cb, 'Effect size (Cohen''s d)', 'FontSize', fontSize);
+ylabel(cb, 'Cohen''s d', 'FontSize', fontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
 set(gca, 'FontSize', fontSize);

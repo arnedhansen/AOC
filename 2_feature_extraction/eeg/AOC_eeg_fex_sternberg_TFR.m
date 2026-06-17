@@ -1,7 +1,11 @@
 %% AOC EEG FOOOF Extraction — Sternberg (TFR Branch)
-% Computes TFR-based FOOOF outputs and builds FOOOF-only EEG products:
-% `eeg_data_sternberg_FOOOF` (MAT + CSV).
+% Computes trial-averaged baselined TFR, ERSD scalars, and (optional) FOOOF products.
+% Saves `tfr_stern.mat` per subject (RUN_FOOOF=false), `eeg_data_sternberg_ERSD` (MAT + CSV),
+% and optionally `eeg_data_sternberg_FOOOF` when RUN_FOOOF=true.
 % IAF is loaded from non-FOOOF CSV (`AOC_eeg_matrix_sternberg.csv`).
+%
+% ERSD_early / ERSD_late / ERSD_full: fixed [8 14] Hz dB on tfr*_bl, occipital channels
+% (label contains O or I), mean over time [0 1] / [1 2] / [0 2]s.
 
 %%
 startup
@@ -12,6 +16,9 @@ featPath = paths.features;
 eeg_data_sternberg_FOOOF = struct('ID', {}, 'Condition', {}, ...
     'AlphaPower_FOOOF_full', {}, 'AlphaPower_FOOOF_bl_full', {}, ...
     'AlphaPower_FOOOF_bl_early', {}, 'AlphaPower_FOOOF_bl_late', {});
+
+eeg_data_sternberg_ERSD = struct('ID', {}, 'Condition', {}, ...
+    'ERSD_early', {}, 'ERSD_late', {}, 'ERSD_full', {});
 
 iaf_csv = fullfile(featPath, 'AOC_eeg_matrix_sternberg.csv');
 if ~isfile(iaf_csv)
@@ -59,6 +66,18 @@ for subj = 1:length(subjects)
         tfr6_bl          = ft_freqbaseline(cfg, tfr6);
 
         disp(upper('Raw TFR + baseline done...'))
+
+        [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars({tfr2_bl, tfr4_bl, tfr6_bl}, tfr2_bl.label);
+        subID_ersd = str2double(subjects{subj});
+        if isnan(subID_ersd)
+            subID_ersd = str2num(subjects{subj});
+        end
+        subj_data_ersd = struct('ID', num2cell(repmat(subID_ersd, 3, 1)), ...
+            'Condition', num2cell([2; 4; 6]), ...
+            'ERSD_early', num2cell(ERSD_early), ...
+            'ERSD_late', num2cell(ERSD_late), ...
+            'ERSD_full', num2cell(ERSD_full));
+        eeg_data_sternberg_ERSD = [eeg_data_sternberg_ERSD; subj_data_ersd];
 
         if RUN_FOOOF
         %% Sliding-window FOOOF over trial-averaged spectra (mtmfft)
@@ -488,6 +507,70 @@ end
 if RUN_FOOOF
     save(fullfile(paths.features, 'AOC_eeg_matrix_sternberg_FOOOF.mat'), 'eeg_data_sternberg_FOOOF')
     writetable(struct2table(eeg_data_sternberg_FOOOF), fullfile(paths.features, 'AOC_eeg_matrix_sternberg_FOOOF.csv'))
+end
+
+save(fullfile(featPath, 'AOC_eeg_matrix_sternberg_ERSD.mat'), 'eeg_data_sternberg_ERSD')
+writetable(struct2table(eeg_data_sternberg_ERSD), fullfile(featPath, 'AOC_eeg_matrix_sternberg_ERSD.csv'))
+
+eegMainMat = fullfile(featPath, 'AOC_eeg_matrix_sternberg.mat');
+if isfile(eegMainMat)
+    Sm = load(eegMainMat, 'eeg_data_sternberg');
+    eeg_data_sternberg = merge_ersd_into_eeg(Sm.eeg_data_sternberg, eeg_data_sternberg_ERSD);
+    save(eegMainMat, 'eeg_data_sternberg');
+    writetable(struct2table(eeg_data_sternberg), fullfile(featPath, 'AOC_eeg_matrix_sternberg.csv'));
+end
+
+function [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars(tfPack, labels)
+ERSD_early = nan(numel(tfPack), 1);
+ERSD_late = nan(numel(tfPack), 1);
+ERSD_full = nan(numel(tfPack), 1);
+occ_ch = occ_channels_from_labels(labels);
+latencyWins = {[0 1], [1 2], [0 2]};
+for ic = 1:numel(tfPack)
+    tf = tfPack{ic};
+    chUse = occ_ch(ismember(occ_ch, tf.label));
+    if isempty(chUse)
+        continue
+    end
+    for iw = 1:3
+        cfgE = [];
+        cfgE.channel = chUse;
+        cfgE.avgoverchan = 'yes';
+        cfgE.frequency = [8 14];
+        cfgE.avgoverfreq = 'yes';
+        cfgE.latency = latencyWins{iw};
+        cfgE.avgovertime = 'yes';
+        try
+            outE = ft_selectdata(cfgE, tf);
+            v = mean(outE.powspctrm(:), 'omitnan');
+        catch
+            v = NaN;
+        end
+        if iw == 1
+            ERSD_early(ic) = v;
+        elseif iw == 2
+            ERSD_late(ic) = v;
+        else
+            ERSD_full(ic) = v;
+        end
+    end
+end
+end
+
+function eeg_out = merge_ersd_into_eeg(eeg_in, ersd_in)
+eeg_out = eeg_in;
+if isempty(ersd_in) || isempty(eeg_in)
+    return
+end
+T = struct2table(eeg_in);
+Te = struct2table(ersd_in);
+for cn = {'ERSD_early', 'ERSD_late', 'ERSD_full'}
+    if ismember(cn{1}, T.Properties.VariableNames)
+        T.(cn{1}) = [];
+    end
+end
+T = outerjoin(T, Te, 'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
+eeg_out = table2struct(T);
 end
 
 function ch = occ_channels_from_labels(labels)

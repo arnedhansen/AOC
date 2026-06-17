@@ -344,6 +344,27 @@ if ~any(fmask)
     v = NaN;
     return
 end
+x = S.powspctrm(channelIdx, fmask);
+x = x(:);
+x = x(isfinite(x));
+% Hard plausibility guard to suppress catastrophic numeric explosions.
+x = x(abs(x) <= 1e4);
+if numel(x) >= 8
+    q1 = prctile(x, 25);
+    q3 = prctile(x, 75);
+    iqr_v = q3 - q1;
+    if isfinite(iqr_v) && iqr_v > 0
+        lo = q1 - 3 * iqr_v;
+        hi = q3 + 3 * iqr_v;
+        x = x(x >= lo & x <= hi);
+    end
+end
+if isempty(x)
+    v = NaN;
+else
+    v = mean(x, 'omitnan');
+end
+end
 
 function [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars(tfPack, labels)
 ERSD_early = nan(numel(tfPack), 1);
@@ -390,6 +411,10 @@ for i = 1:numel(labels)
         ch{end + 1} = lab;
     end
 end
+if isempty(ch)
+    ch = labels;
+end
+end
 
 function ersd_tc = compute_ersd_timecourse(tfPack, labels, condVals)
 occ_ch = occ_channels_from_labels(labels);
@@ -415,30 +440,4 @@ ersd_tc = struct();
 ersd_tc.time = timeVec;
 ersd_tc.condition = condVals(:);
 ersd_tc.ersd_occ_8_14_db = tc;
-end
-if isempty(ch)
-    ch = labels;
-end
-end
-
-x = S.powspctrm(channelIdx, fmask);
-x = x(:);
-x = x(isfinite(x));
-% Hard plausibility guard to suppress catastrophic numeric explosions.
-x = x(abs(x) <= 1e4);
-if numel(x) >= 8
-    q1 = prctile(x, 25);
-    q3 = prctile(x, 75);
-    iqr_v = q3 - q1;
-    if isfinite(iqr_v) && iqr_v > 0
-        lo = q1 - 3 * iqr_v;
-        hi = q3 + 3 * iqr_v;
-        x = x(x >= lo & x <= hi);
-    end
-end
-if isempty(x)
-    v = NaN;
-else
-    v = mean(x, 'omitnan');
-end
 end

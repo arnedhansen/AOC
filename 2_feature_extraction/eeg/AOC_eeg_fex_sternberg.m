@@ -1,13 +1,14 @@
 %% AOC EEG Feature Extraction — Sternberg
 % Computes subject-level EEG features from preprocessed Sternberg EEG.
-% Saves `eeg_data_sternberg` (MAT + CSV). FOOOF TFR products are produced in
-% AOC_eeg_fex_sternberg_TFR.m.
+% Saves `eeg_data_sternberg` (MAT + CSV).
+% Run order: AOC_eeg_fex_sternberg_TFR.m -> AOC_eeg_fex_sternberg_FOOOF.m -> this script.
+% If IAF_specParam_sternberg.mat is available per subject, IAF_specParam is merged automatically.
 %
 % Extracted features:
 %   Power Spectrum (Early [0 1], Late [1 2], Full [0 2]) + Baseline [-1.5 -0.5]
 %   Baselined spectra (dB) for each window (mtmconvol, 2 Hz foi grid; unchanged)
 %   IAF (condition-wise): concatenated [1 2]s (late retention), mtmfft + DPSS, legacy peak rules
-%   IAF_specParam: FOOOF alpha peak CF (Hz) per condition (occ channels, median CF)
+%   IAF_specParam: loaded from AOC_eeg_fex_sternberg_FOOOF.m outputs when available
 %   Alpha power in IAF band (early/late/full; raw + dB)
 %   Lateralization index (late baselined)
 %   ERSD_early / ERSD_late / ERSD_full: computed in AOC_eeg_fex_sternberg_TFR.m
@@ -17,9 +18,6 @@
 startup
 [subjects, paths, ~ , ~] = setup('AOC');
 path = paths.features;
-
-% TEMP: set true to compute IAF_specParam via FOOOF (ft_freqanalysis_Arne_FOOOF).
-RUN_FOOOF = false;
 
 for subj = 1:length(subjects)
     try
@@ -178,15 +176,10 @@ for subj = 1:length(subjects)
         [IAF4, powerIAF4] = iaf_from_concat_dpss(dataTFR, ind4, winIAF, chLabs, alphaRange);
         [IAF6, powerIAF6] = iaf_from_concat_dpss(dataTFR, ind6, winIAF, chLabs, alphaRange);
 
-        if RUN_FOOOF
-            IAF_specParam2 = iaf_specparam_fooof(dataTFR, ind2, winIAF, chLabs, alphaRange);
-            IAF_specParam4 = iaf_specparam_fooof(dataTFR, ind4, winIAF, chLabs, alphaRange);
-            IAF_specParam6 = iaf_specparam_fooof(dataTFR, ind6, winIAF, chLabs, alphaRange);
-        else
-            IAF_specParam2 = NaN;
-            IAF_specParam4 = NaN;
-            IAF_specParam6 = NaN;
-        end
+        % FOOOF output is merged from dedicated script output files.
+        IAF_specParam2 = NaN;
+        IAF_specParam4 = NaN;
+        IAF_specParam6 = NaN;
 
         % Compute lateralization index on LATE BASELINED spectra (dB)
         powloads = {pow2_bl_late, pow4_bl_late, pow6_bl_late};
@@ -243,6 +236,7 @@ for subj = 1:length(subjects)
         fprintf('Continuing to next subject...\n');
     end
 end
+eeg_data_sternberg = merge_iaf_specparam_sternberg(eeg_data_sternberg, subjects, paths.features);
 save(fullfile(paths.features, 'AOC_eeg_matrix_sternberg.mat'), 'eeg_data_sternberg')
 writetable(struct2table(eeg_data_sternberg), fullfile(paths.features, 'AOC_eeg_matrix_sternberg.csv'))
 
@@ -269,6 +263,7 @@ if isfield(dw, 'hdr') && ~isempty(dw.hdr)
     datc.hdr = dw.hdr;
 end
 end
+
 
 function [IAF, powerIAF] = iaf_from_concat_dpss(dataTFR, trialinds, winSec, chLabs, alphaRange)
 IAF = NaN;
@@ -341,52 +336,6 @@ if powerIAF > max(pks)
 end
 end
 
-function cf = iaf_specparam_fooof(dataTFR, trialinds, winSec, chLabs, alphaRange)
-cf = NaN;
-if isempty(trialinds) || isempty(chLabs) || exist('ft_freqanalysis_Arne_FOOOF', 'file') ~= 2
-    return
-end
-try
-    cfg_fooof = [];
-    cfg_fooof.method = 'mtmfft';
-    cfg_fooof.taper = 'hanning';
-    cfg_fooof.foilim = [2 40];
-    cfg_fooof.pad = 5;
-    cfg_fooof.output = 'fooof';
-    cfg_fooof.keeptrials = 'no';
-    cfg_sel = [];
-    cfg_sel.latency = winSec;
-    cfg_sel.trials = trialinds(:)';
-    cfg_sel.channel = chLabs(:);
-    dat = ft_selectdata(cfg_sel, dataTFR);
-    fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat);
-    if iscell(fooof_out.fooofparams)
-        rep = fooof_out.fooofparams{1};
-    else
-        rep = fooof_out.fooofparams;
-    end
-    cfs = [];
-    for k = 1:numel(rep)
-        if ~isfield(rep(k), 'peak_params') || isempty(rep(k).peak_params)
-            continue
-        end
-        pk = rep(k).peak_params;
-        inb = pk(:, 1) >= alphaRange(1) & pk(:, 1) <= alphaRange(2);
-        if ~any(inb)
-            continue
-        end
-        pk = pk(inb, :);
-        [~, im] = max(pk(:, 2));
-        cfs(end + 1) = pk(im, 1); %#ok<AGROW>
-    end
-    if ~isempty(cfs)
-        cf = median(cfs, 'omitnan');
-    end
-catch
-    cf = NaN;
-end
-end
-
 function v = robust_roi_pow(S, channelIdx, band)
 fmask = S.freq >= band(1) & S.freq <= band(2);
 if ~any(fmask)
@@ -413,5 +362,32 @@ if isempty(x)
     v = NaN;
 else
     v = mean(x, 'omitnan');
+end
+end
+
+function eeg_data_sternberg = merge_iaf_specparam_sternberg(eeg_data_sternberg, subjects, featurePath)
+for subj = 1:length(subjects)
+    datapath = fullfile(featurePath, subjects{subj}, 'eeg');
+    fpath = fullfile(datapath, 'IAF_specParam_sternberg.mat');
+    if exist(fpath, 'file') ~= 2
+        continue
+    end
+    S = load(fpath);
+    if ~isfield(S, 'fooof_specparam')
+        continue
+    end
+    recs = S.fooof_specparam;
+    if ~isstruct(recs)
+        continue
+    end
+    for k = 1:numel(recs)
+        if ~isfield(recs(k), 'ID') || ~isfield(recs(k), 'Condition') || ~isfield(recs(k), 'IAF_specParam')
+            continue
+        end
+        m = find([eeg_data_sternberg.ID] == recs(k).ID & [eeg_data_sternberg.Condition] == recs(k).Condition, 1, 'first');
+        if ~isempty(m)
+            eeg_data_sternberg(m).IAF_specParam = recs(k).IAF_specParam;
+        end
+    end
 end
 end

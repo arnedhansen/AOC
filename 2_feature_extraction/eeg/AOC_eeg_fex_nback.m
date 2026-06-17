@@ -1,13 +1,14 @@
 %% AOC EEG Feature Extraction — N-Back
 % Computes subject-level EEG features from preprocessed N-back EEG.
-% Saves `eeg_data_nback` (MAT + CSV). FOOOF TFR products are produced in
-% AOC_eeg_fex_nback_TFR.m.
+% Saves `eeg_data_nback` (MAT + CSV).
+% Run order: AOC_eeg_fex_nback_TFR.m -> AOC_eeg_fex_nback_FOOOF.m -> this script.
+% If IAF_specParam_nback.mat is available per subject, IAF_specParam is merged automatically.
 %
 % Extracted features:
 %   Power Spectrum windows (raw + baselined) via mtmconvol (2 Hz foi grid; unchanged)
 %   IAF (condition-wise): concatenated [0 2]s retention data per condition, mtmfft + DPSS,
 %       same peak rules as legacy; not read from the 2 Hz windowed spectra above
-%   IAF_specParam: FOOOF alpha peak centre frequency (Hz) per condition (occ channels, median CF)
+%   IAF_specParam: loaded from AOC_eeg_fex_nback_FOOOF.m outputs when available
 %   Alpha power in IAF band (early/late/full; raw + dB)
 %   Lateralization index (late baselined)
 %   ERSD_early / ERSD_late / ERSD_full: computed in AOC_eeg_fex_nback_TFR.m
@@ -17,9 +18,6 @@
 startup
 [subjects, paths, ~ , ~] = setup('AOC');
 path = paths.features;
-
-% TEMP: set true to compute IAF_specParam via FOOOF (ft_freqanalysis_Arne_FOOOF).
-RUN_FOOOF = false;
 
 for subj = 1:length(subjects)
     try
@@ -179,16 +177,10 @@ for subj = 1:length(subjects)
         [IAF2, powerIAF2] = iaf_from_concat_dpss(dataTFR, ind2, winIAF, chLabs, alphaRange);
         [IAF3, powerIAF3] = iaf_from_concat_dpss(dataTFR, ind3, winIAF, chLabs, alphaRange);
 
-        % FOOOF alpha peak CF (median across occ channels), optional if ft_freqanalysis_Arne_FOOOF on path
-        if RUN_FOOOF
-            IAF_specParam1 = iaf_specparam_fooof(dataTFR, ind1, winIAF, chLabs, alphaRange);
-            IAF_specParam2 = iaf_specparam_fooof(dataTFR, ind2, winIAF, chLabs, alphaRange);
-            IAF_specParam3 = iaf_specparam_fooof(dataTFR, ind3, winIAF, chLabs, alphaRange);
-        else
-            IAF_specParam1 = NaN;
-            IAF_specParam2 = NaN;
-            IAF_specParam3 = NaN;
-        end
+        % FOOOF output is merged from dedicated script output files.
+        IAF_specParam1 = NaN;
+        IAF_specParam2 = NaN;
+        IAF_specParam3 = NaN;
 
         % Compute lateralization index on LATE BASELINED spectra (dB)
         powloads = {pow1_bl_late, pow2_bl_late, pow3_bl_late};
@@ -245,6 +237,7 @@ for subj = 1:length(subjects)
         fprintf('Continuing to next subject...\n');
     end
 end
+eeg_data_nback = merge_iaf_specparam_nback(eeg_data_nback, subjects, paths.features);
 save(fullfile(paths.features, 'AOC_eeg_matrix_nback.mat'), 'eeg_data_nback')
 writetable(struct2table(eeg_data_nback), fullfile(paths.features, 'AOC_eeg_matrix_nback.csv'))
 
@@ -346,53 +339,6 @@ if powerIAF > max(pks)
 end
 end
 
-function cf = iaf_specparam_fooof(dataTFR, trialinds, winSec, chLabs, alphaRange)
-% Median FOOOF peak centre frequency in alphaRange across selected channels (trial-averaged spectrum).
-cf = NaN;
-if isempty(trialinds) || isempty(chLabs) || exist('ft_freqanalysis_Arne_FOOOF', 'file') ~= 2
-    return
-end
-try
-    cfg_fooof = [];
-    cfg_fooof.method = 'mtmfft';
-    cfg_fooof.taper = 'hanning';
-    cfg_fooof.foilim = [2 40];
-    cfg_fooof.pad = 5;
-    cfg_fooof.output = 'fooof';
-    cfg_fooof.keeptrials = 'no';
-    cfg_sel = [];
-    cfg_sel.latency = winSec;
-    cfg_sel.trials = trialinds(:)';
-    cfg_sel.channel = chLabs(:);
-    dat = ft_selectdata(cfg_sel, dataTFR);
-    fooof_out = ft_freqanalysis_Arne_FOOOF(cfg_fooof, dat);
-    if iscell(fooof_out.fooofparams)
-        rep = fooof_out.fooofparams{1};
-    else
-        rep = fooof_out.fooofparams;
-    end
-    cfs = [];
-    for k = 1:numel(rep)
-        if ~isfield(rep(k), 'peak_params') || isempty(rep(k).peak_params)
-            continue
-        end
-        pk = rep(k).peak_params;
-        inb = pk(:, 1) >= alphaRange(1) & pk(:, 1) <= alphaRange(2);
-        if ~any(inb)
-            continue
-        end
-        pk = pk(inb, :);
-        [~, im] = max(pk(:, 2));
-        cfs(end + 1) = pk(im, 1); %#ok<AGROW>
-    end
-    if ~isempty(cfs)
-        cf = median(cfs, 'omitnan');
-    end
-catch
-    cf = NaN;
-end
-end
-
 function v = robust_roi_pow(S, channelIdx, band)
 fmask = S.freq >= band(1) & S.freq <= band(2);
 if ~any(fmask)
@@ -419,5 +365,32 @@ if isempty(x)
     v = NaN;
 else
     v = mean(x, 'omitnan');
+end
+end
+
+function eeg_data_nback = merge_iaf_specparam_nback(eeg_data_nback, subjects, featurePath)
+for subj = 1:length(subjects)
+    datapath = fullfile(featurePath, subjects{subj}, 'eeg');
+    fpath = fullfile(datapath, 'IAF_specParam_nback.mat');
+    if exist(fpath, 'file') ~= 2
+        continue
+    end
+    S = load(fpath);
+    if ~isfield(S, 'fooof_specparam')
+        continue
+    end
+    recs = S.fooof_specparam;
+    if ~isstruct(recs)
+        continue
+    end
+    for k = 1:numel(recs)
+        if ~isfield(recs(k), 'ID') || ~isfield(recs(k), 'Condition') || ~isfield(recs(k), 'IAF_specParam')
+            continue
+        end
+        m = find([eeg_data_nback.ID] == recs(k).ID & [eeg_data_nback.Condition] == recs(k).Condition, 1, 'first');
+        if ~isempty(m)
+            eeg_data_nback(m).IAF_specParam = recs(k).IAF_specParam;
+        end
+    end
 end
 end

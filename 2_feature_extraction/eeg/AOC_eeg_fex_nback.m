@@ -201,10 +201,10 @@ for subj = 1:length(subjects)
         LatIdx2 = LatIdx(2);
         LatIdx3 = LatIdx(3);
 
-        % Alpha power in IAF band (raw + baselined) for early/late/full
-        IAF_band1 = [IAF1-4 IAF1+2]; if any(isnan(IAF_band1)); IAF_band1 = alphaRange; end
-        IAF_band2 = [IAF2-4 IAF2+2]; if any(isnan(IAF_band2)); IAF_band2 = alphaRange; end
-        IAF_band3 = [IAF3-4 IAF3+2]; if any(isnan(IAF_band3)); IAF_band3 = alphaRange; end
+        % Alpha power in subject IAF band [IAF-4 IAF+2]; fixed [8 14] only when IAF is undefined
+        IAF_band1 = iaf_alpha_band(IAF1, alphaRange);
+        IAF_band2 = iaf_alpha_band(IAF2, alphaRange);
+        IAF_band3 = iaf_alpha_band(IAF3, alphaRange);
 
         AlphaPower_raw_early = [robust_roi_pow(pow1_raw_early, channelIdx, IAF_band1); robust_roi_pow(pow2_raw_early, channelIdx, IAF_band2); robust_roi_pow(pow3_raw_early, channelIdx, IAF_band3)];
         AlphaPower_raw_late  = [robust_roi_pow(pow1_raw_late,  channelIdx, IAF_band1); robust_roi_pow(pow2_raw_late,  channelIdx, IAF_band2); robust_roi_pow(pow3_raw_late,  channelIdx, IAF_band3)];
@@ -295,7 +295,7 @@ try
     cfgf.taper = 'dpss';
     cfgf.tapsmofrq = 2;
     cfgf.foilim = [6 18];
-    cfgf.pad = 5;
+    cfgf.pad = 'nextpow2';
     fr = ft_freqanalysis(cfgf, datc);
     ps = mean(fr.powspctrm, 1);
     [IAF, powerIAF] = iaf_peak_rules(fr.freq(:), ps(:), alphaRange);
@@ -322,22 +322,23 @@ if isempty(pks)
 end
 [~, ind] = max(pks);
 IAF = alphaFreqs(locs(ind));
-df = median(diff(alphaFreqs));
-if ~isfinite(df) || df <= 0
-    df = min(diff(alphaFreqs));
-    if ~isfinite(df) || df <= 0
-        return
-    end
-end
-if IAF <= alphaRange(1) + df || IAF >= alphaRange(2) - df
-    IAF = NaN;
-    return
-end
 bandIdx = freq > (IAF - 4) & freq < (IAF + 2);
 if ~any(bandIdx)
     return
 end
 powerIAF = mean(spec(bandIdx));
+% Legacy: peak at alpha-band edge (8 or 14 Hz on 2 Hz grid) → keep IAF, NaN power at IAF only
+if locs(ind) == 1 || locs(ind) == numel(alphaFreqs)
+    powerIAF = NaN;
+end
+end
+
+function band = iaf_alpha_band(IAF, alphaRange)
+if isnan(IAF)
+    band = alphaRange;
+else
+    band = [IAF - 4, IAF + 2];
+end
 end
 
 function v = robust_roi_pow(S, channelIdx, band)

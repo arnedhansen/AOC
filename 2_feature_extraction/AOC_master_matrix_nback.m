@@ -1,9 +1,8 @@
 %% AOC Master Matrix — N-Back
-% Merges four sources by `ID`,`Condition`:
+% Merges three sources by `ID`,`Condition`:
 %   (a) behavioral
 %   (b) gaze
-%   (c) EEG non-FOOOF (`AOC_eeg_matrix_nback.mat`)
-%   (d) EEG FOOOF-only (`AOC_eeg_matrix_nback_FOOOF.mat`)
+%   (c) EEG (`AOC_eeg_matrix_nback.mat`)
 % Includes key-uniqueness checks before merge to prevent row inflation.
 %
 % Key outputs:
@@ -16,13 +15,7 @@
 %     AlphaPower_bl_early / _late / _full   (dB baseline [-1.5 -0.5]s)
 %     ERSD_early / ERSD_late / ERSD_full — fixed [8 14] Hz dB on tfr*_bl, O/I occ channels, windows [0 1] / [1 2] / [0 2]s
 %         (AOC_eeg_fex_nback_TFR.m → AOC_eeg_matrix_nback_ERSD.mat)
-%     IAF (concat [0 2]s retention, mtmfft+DPSS peak); IAF_specParam (FOOOF alpha CF, median occ)
-%
-%   EEG — FOOOF alpha (IAF band, occ channels):
-%     AlphaPower_FOOOF_full          [0 2]s, no baseline
-%     AlphaPower_FOOOF_bl_full       [0 2]s, baselined absolute
-%     AlphaPower_FOOOF_bl_early      [0 1]s, baselined
-%     AlphaPower_FOOOF_bl_late       [1 2]s, baselined
+%     IAF (concat [0 2]s retention, mtmfft+DPSS peak)
 %
 %   Gaze — baselined (BL window [-1.5 -0.5]s; % change for all gaze metrics):
 %     GazeDeviationFullBL / EarlyBL / LateBL
@@ -47,9 +40,8 @@ demog = table2struct(demog(1:120, :));
 % Behavioral
 load(fullfile(featPath, 'AOC_behavioral_matrix_nback.mat'));  % behav_data_nback
 
-% EEG (split products)
+% EEG
 load(fullfile(featPath, 'AOC_eeg_matrix_nback.mat'));         % eeg_data_nback
-load(fullfile(featPath, 'AOC_eeg_matrix_nback_FOOOF.mat'));   % eeg_data_nback_FOOOF
 
 % Gaze
 load(fullfile(featPath, 'AOC_gaze_matrix_nback.mat'));        % gaze_data_nback
@@ -69,17 +61,13 @@ behav_table = struct2table(behav_data_nback);
 gaze_table  = struct2table(gaze_data_nback);
 eeg_table   = struct2table(eeg_data_nback);
 eeg_table   = join_ersd_table(eeg_table, featPath, 'AOC_eeg_matrix_nback_ERSD.mat', 'eeg_data_nback_ERSD');
-eeg_fooof_table = struct2table(eeg_data_nback_FOOOF);
 
 assert_unique_keys(eeg_table, {'ID', 'Condition'}, 'eeg_data_nback');
-assert_unique_keys(eeg_fooof_table, {'ID', 'Condition'}, 'eeg_data_nback_FOOOF');
 
 % Merge by ID and Condition; keep all existing columns from input matrices.
 merged_table = outerjoin(behav_table, gaze_table, ...
     'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
 merged_table = outerjoin(merged_table, eeg_table, ...
-    'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
-merged_table = outerjoin(merged_table, eeg_fooof_table, ...
     'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
 merged_data_nback = table2struct(merged_table);
 

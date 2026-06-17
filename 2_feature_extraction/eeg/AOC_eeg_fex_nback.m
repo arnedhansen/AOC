@@ -1,17 +1,13 @@
 %% AOC EEG Feature Extraction — N-Back
 % Computes subject-level EEG features from preprocessed N-back EEG.
-% Saves `eeg_data_nback` (MAT + CSV).
-% Run order: AOC_eeg_fex_nback_TFR.m -> AOC_eeg_fex_nback_FOOOF.m -> this script.
-% If IAF_specParam_nback.mat is available per subject, IAF_specParam is merged automatically.
+% Saves `eeg_data_nback` (MAT + CSV) and subject-level TFR products.
 %
 % Extracted features:
-%   Power Spectrum windows (raw + baselined) via mtmconvol (2 Hz foi grid; unchanged)
-%   IAF (condition-wise): concatenated [0 2]s retention data per condition, mtmfft + DPSS,
-%       same peak rules as legacy; not read from the 2 Hz windowed spectra above
-%   IAF_specParam: loaded from AOC_eeg_fex_nback_FOOOF.m outputs when available
+%   Power Spectrum windows (raw + baselined) via mtmconvol (2 Hz foi grid)
+%   IAF (condition-wise): concatenated [0 2] s retention data per condition, mtmfft + DPSS
 %   Alpha power in IAF band (early/late/full; raw + dB)
 %   Lateralization index (late baselined)
-%   ERSD_early / ERSD_late / ERSD_full: computed in AOC_eeg_fex_nback_TFR.m
+%   ERSD_early / ERSD_late / ERSD_full (fixed [8 14] Hz on baselined TFR, occipital ROI)
 
 %% POWSPCTRM (Baseline + Early/Late/Full) (subject-level)
 % Setup
@@ -50,7 +46,7 @@ for subj = 1:length(subjects)
         cfg.foi        = 2:2:40;
         cfg.t_ftimwin  = ones(size(cfg.foi)) * 0.5;  % 500 ms window for all frequencies
         cfg.toi        = -1.25:0.05:2.25;
-        cfg.pad        = 'maxperlen';
+        cfg.pad        = 'nextpow2';
         cfg.keeptrials = 'no';
 
         cfg.trials = ind1; tfr1 = ft_freqanalysis(cfg, dataTFR);
@@ -64,6 +60,13 @@ for subj = 1:length(subjects)
         tfr1_bl = ft_freqbaseline(cfgb, tfr1);
         tfr2_bl = ft_freqbaseline(cfgb, tfr2);
         tfr3_bl = ft_freqbaseline(cfgb, tfr3);
+
+        % Save trial-averaged TFR outputs
+        save('tfr_nback.mat', 'tfr1', 'tfr2', 'tfr3', 'tfr1_bl', 'tfr2_bl', 'tfr3_bl')
+
+        % Save ERSD timecourse (occipital, 8 to 14 Hz, dB) per condition for later figures
+        ersd_timecourse = compute_ersd_timecourse({tfr1_bl, tfr2_bl, tfr3_bl}, tfr1_bl.label, [1; 2; 3]);
+        save('ersd_nback_timecourse.mat', 'ersd_timecourse')
 
         % Convert to window-collapsed POWSPCTRM (chan x freq)
         freq_range = [2 40];
@@ -150,11 +153,12 @@ powerIAF1 = [];
 powerIAF2 = [];
 powerIAF3 = [];
 IAF_results = struct();
-eeg_data_nback = struct('ID', {}, 'Condition', {}, 'IAF', {}, 'IAF_specParam', {}, 'Lateralization', {}, ...
+eeg_data_nback = struct('ID', {}, 'Condition', {}, 'IAF', {}, 'Lateralization', {}, ...
+    'ERSD_early', {}, 'ERSD_late', {}, 'ERSD_full', {}, ...
     'AlphaPower_raw_early', {}, 'AlphaPower_raw_late', {}, 'AlphaPower_raw_full', {}, ...
     'AlphaPower_bl_early', {}, 'AlphaPower_bl_late', {}, 'AlphaPower_bl_full', {});
 
-winIAF = [0 2];  % full retention (IAF / IAF_specParam)
+winIAF = [0 2];  % full retention
 
 for subj = 1:length(subjects)
     try
@@ -177,10 +181,10 @@ for subj = 1:length(subjects)
         [IAF2, powerIAF2] = iaf_from_concat_dpss(dataTFR, ind2, winIAF, chLabs, alphaRange);
         [IAF3, powerIAF3] = iaf_from_concat_dpss(dataTFR, ind3, winIAF, chLabs, alphaRange);
 
-        % FOOOF output is merged from dedicated script output files.
-        IAF_specParam1 = NaN;
-        IAF_specParam2 = NaN;
-        IAF_specParam3 = NaN;
+        % ERSD from cached baselined TFR (avoid duplicate spectral transforms)
+        tfr_cache = load('tfr_nback.mat', 'tfr1_bl', 'tfr2_bl', 'tfr3_bl');
+        [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars( ...
+            {tfr_cache.tfr1_bl, tfr_cache.tfr2_bl, tfr_cache.tfr3_bl}, tfr_cache.tfr1_bl.label);
 
         % Compute lateralization index on LATE BASELINED spectra (dB)
         powloads = {pow1_bl_late, pow2_bl_late, pow3_bl_late};
@@ -212,8 +216,10 @@ for subj = 1:length(subjects)
         subID = str2num(subjects{subj});
         subj_data_eeg = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell([1; 2; 3]), ...
             'IAF', num2cell([IAF1; IAF2; IAF3]), ...
-            'IAF_specParam', num2cell([IAF_specParam1; IAF_specParam2; IAF_specParam3]), ...
             'Lateralization', num2cell([LatIdx1; LatIdx2; LatIdx3]), ...
+            'ERSD_early', num2cell(ERSD_early), ...
+            'ERSD_late', num2cell(ERSD_late), ...
+            'ERSD_full', num2cell(ERSD_full), ...
             'AlphaPower_raw_early', num2cell(AlphaPower_raw_early), ...
             'AlphaPower_raw_late', num2cell(AlphaPower_raw_late), ...
             'AlphaPower_raw_full', num2cell(AlphaPower_raw_full), ...
@@ -237,7 +243,6 @@ for subj = 1:length(subjects)
         fprintf('Continuing to next subject...\n');
     end
 end
-eeg_data_nback = merge_iaf_specparam_nback(eeg_data_nback, subjects, paths.features);
 save(fullfile(paths.features, 'AOC_eeg_matrix_nback.mat'), 'eeg_data_nback')
 writetable(struct2table(eeg_data_nback), fullfile(paths.features, 'AOC_eeg_matrix_nback.csv'))
 
@@ -333,10 +338,6 @@ if ~any(bandIdx)
     return
 end
 powerIAF = mean(spec(bandIdx));
-if powerIAF > max(pks)
-    IAF = NaN;
-    powerIAF = NaN;
-end
 end
 
 function v = robust_roi_pow(S, channelIdx, band)
@@ -344,6 +345,82 @@ fmask = S.freq >= band(1) & S.freq <= band(2);
 if ~any(fmask)
     v = NaN;
     return
+end
+
+function [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars(tfPack, labels)
+ERSD_early = nan(numel(tfPack), 1);
+ERSD_late = nan(numel(tfPack), 1);
+ERSD_full = nan(numel(tfPack), 1);
+occ_ch = occ_channels_from_labels(labels);
+latencyWins = {[0 1], [1 2], [0 2]};
+for ic = 1:numel(tfPack)
+    tf = tfPack{ic};
+    chUse = occ_ch(ismember(occ_ch, tf.label));
+    if isempty(chUse)
+        continue
+    end
+    for iw = 1:3
+        cfgE = [];
+        cfgE.channel = chUse;
+        cfgE.avgoverchan = 'yes';
+        cfgE.frequency = [8 14];
+        cfgE.avgoverfreq = 'yes';
+        cfgE.latency = latencyWins{iw};
+        cfgE.avgovertime = 'yes';
+        try
+            outE = ft_selectdata(cfgE, tf);
+            v = mean(outE.powspctrm(:), 'omitnan');
+        catch
+            v = NaN;
+        end
+        if iw == 1
+            ERSD_early(ic) = v;
+        elseif iw == 2
+            ERSD_late(ic) = v;
+        else
+            ERSD_full(ic) = v;
+        end
+    end
+end
+end
+
+function ch = occ_channels_from_labels(labels)
+ch = {};
+for i = 1:numel(labels)
+    lab = labels{i};
+    if contains(lab, {'O'}) || contains(lab, {'I'})
+        ch{end + 1} = lab;
+    end
+end
+
+function ersd_tc = compute_ersd_timecourse(tfPack, labels, condVals)
+occ_ch = occ_channels_from_labels(labels);
+nCond = numel(tfPack);
+timeVec = tfPack{1}.time(:)';
+nTime = numel(timeVec);
+tc = nan(nCond, nTime);
+for ic = 1:nCond
+    tf = tfPack{ic};
+    chUse = occ_ch(ismember(occ_ch, tf.label));
+    if isempty(chUse)
+        continue
+    end
+    cfgE = [];
+    cfgE.channel = chUse;
+    cfgE.avgoverchan = 'yes';
+    cfgE.frequency = [8 14];
+    cfgE.avgoverfreq = 'yes';
+    outE = ft_selectdata(cfgE, tf);
+    tc(ic, :) = outE.powspctrm(:)';
+end
+ersd_tc = struct();
+ersd_tc.time = timeVec;
+ersd_tc.condition = condVals(:);
+ersd_tc.ersd_occ_8_14_db = tc;
+end
+if isempty(ch)
+    ch = labels;
+end
 end
 
 x = S.powspctrm(channelIdx, fmask);
@@ -368,29 +445,3 @@ else
 end
 end
 
-function eeg_data_nback = merge_iaf_specparam_nback(eeg_data_nback, subjects, featurePath)
-for subj = 1:length(subjects)
-    datapath = fullfile(featurePath, subjects{subj}, 'eeg');
-    fpath = fullfile(datapath, 'IAF_specParam_nback.mat');
-    if exist(fpath, 'file') ~= 2
-        continue
-    end
-    S = load(fpath);
-    if ~isfield(S, 'fooof_specparam')
-        continue
-    end
-    recs = S.fooof_specparam;
-    if ~isstruct(recs)
-        continue
-    end
-    for k = 1:numel(recs)
-        if ~isfield(recs(k), 'ID') || ~isfield(recs(k), 'Condition') || ~isfield(recs(k), 'IAF_specParam')
-            continue
-        end
-        m = find([eeg_data_nback.ID] == recs(k).ID & [eeg_data_nback.Condition] == recs(k).Condition, 1, 'first');
-        if ~isempty(m)
-            eeg_data_nback(m).IAF_specParam = recs(k).IAF_specParam;
-        end
-    end
-end
-end

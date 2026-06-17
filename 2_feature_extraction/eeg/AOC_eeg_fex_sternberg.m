@@ -1,17 +1,14 @@
 %% AOC EEG Feature Extraction — Sternberg
 % Computes subject-level EEG features from preprocessed Sternberg EEG.
-% Saves `eeg_data_sternberg` (MAT + CSV).
-% Run order: AOC_eeg_fex_sternberg_TFR.m -> AOC_eeg_fex_sternberg_FOOOF.m -> this script.
-% If IAF_specParam_sternberg.mat is available per subject, IAF_specParam is merged automatically.
+% Saves `eeg_data_sternberg` (MAT + CSV) and subject-level TFR products.
 %
 % Extracted features:
 %   Power Spectrum (Early [0 1], Late [1 2], Full [0 2]) + Baseline [-1.5 -0.5]
-%   Baselined spectra (dB) for each window (mtmconvol, 2 Hz foi grid; unchanged)
+%   Baselined spectra (dB) for each window (mtmconvol, 2 Hz foi grid)
 %   IAF (condition-wise): concatenated [1 2]s (late retention), mtmfft + DPSS, legacy peak rules
-%   IAF_specParam: loaded from AOC_eeg_fex_sternberg_FOOOF.m outputs when available
 %   Alpha power in IAF band (early/late/full; raw + dB)
 %   Lateralization index (late baselined)
-%   ERSD_early / ERSD_late / ERSD_full: computed in AOC_eeg_fex_sternberg_TFR.m
+%   ERSD_early / ERSD_late / ERSD_full (fixed [8 14] Hz on baselined TFR, occipital ROI)
 
 %% POWSPCTRM (Baseline + Early/Late/Full)
 % Setup
@@ -50,7 +47,7 @@ for subj = 1:length(subjects)
         cfg.foi        = 2:2:40;
         cfg.t_ftimwin  = ones(size(cfg.foi)) * 0.5;  % 500 ms window for all frequencies
         cfg.toi        = -1.5:0.05:3;
-        cfg.pad        = 'maxperlen';
+        cfg.pad        = 'nextpow2';
         cfg.keeptrials = 'no';
 
         cfg.trials = ind2; tfr2 = ft_freqanalysis(cfg, dataTFR); % chan_freq_time
@@ -64,6 +61,13 @@ for subj = 1:length(subjects)
         tfr2_bl = ft_freqbaseline(cfgb, tfr2);
         tfr4_bl = ft_freqbaseline(cfgb, tfr4);
         tfr6_bl = ft_freqbaseline(cfgb, tfr6);
+
+        % Save trial-averaged TFR outputs
+        save('tfr_stern.mat', 'tfr2', 'tfr4', 'tfr6', 'tfr2_bl', 'tfr4_bl', 'tfr6_bl')
+
+        % Save ERSD timecourse (occipital, 8 to 14 Hz, dB) per condition for later figures
+        ersd_timecourse = compute_ersd_timecourse({tfr2_bl, tfr4_bl, tfr6_bl}, tfr2_bl.label, [2; 4; 6]);
+        save('ersd_sternberg_timecourse.mat', 'ersd_timecourse')
 
         % Convert to window-collapsed POWSPCTRM (chan x freq)
         freq_range = [2 40];
@@ -149,11 +153,12 @@ powerIAF2 = [];
 powerIAF4 = [];
 powerIAF6 = [];
 IAF_results = struct();
-eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'IAF', {}, 'IAF_specParam', {}, 'Lateralization', {}, ...
+eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'IAF', {}, 'Lateralization', {}, ...
+    'ERSD_early', {}, 'ERSD_late', {}, 'ERSD_full', {}, ...
     'AlphaPower_raw_early', {}, 'AlphaPower_raw_late', {}, 'AlphaPower_raw_full', {}, ...
     'AlphaPower_bl_early', {}, 'AlphaPower_bl_late', {}, 'AlphaPower_bl_full', {});
 
-winIAF = [1 2];  % late retention only (IAF / IAF_specParam); pow windows unchanged
+winIAF = [1 2];  % late retention only; pow windows unchanged
 
 for subj = 1:length(subjects)
     try
@@ -176,10 +181,10 @@ for subj = 1:length(subjects)
         [IAF4, powerIAF4] = iaf_from_concat_dpss(dataTFR, ind4, winIAF, chLabs, alphaRange);
         [IAF6, powerIAF6] = iaf_from_concat_dpss(dataTFR, ind6, winIAF, chLabs, alphaRange);
 
-        % FOOOF output is merged from dedicated script output files.
-        IAF_specParam2 = NaN;
-        IAF_specParam4 = NaN;
-        IAF_specParam6 = NaN;
+        % ERSD from cached baselined TFR (avoid duplicate spectral transforms)
+        tfr_cache = load('tfr_stern.mat', 'tfr2_bl', 'tfr4_bl', 'tfr6_bl');
+        [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars( ...
+            {tfr_cache.tfr2_bl, tfr_cache.tfr4_bl, tfr_cache.tfr6_bl}, tfr_cache.tfr2_bl.label);
 
         % Compute lateralization index on LATE BASELINED spectra (dB)
         powloads = {pow2_bl_late, pow4_bl_late, pow6_bl_late};
@@ -211,8 +216,10 @@ for subj = 1:length(subjects)
         subID = str2num(subjects{subj});
         subj_data_eeg = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell([2; 4; 6]), ...
             'IAF', num2cell([IAF2; IAF4; IAF6]), ...
-            'IAF_specParam', num2cell([IAF_specParam2; IAF_specParam4; IAF_specParam6]), ...
             'Lateralization', num2cell([LatIdx2; LatIdx4; LatIdx6]), ...
+            'ERSD_early', num2cell(ERSD_early), ...
+            'ERSD_late', num2cell(ERSD_late), ...
+            'ERSD_full', num2cell(ERSD_full), ...
             'AlphaPower_raw_early', num2cell(AlphaPower_raw_early), ...
             'AlphaPower_raw_late', num2cell(AlphaPower_raw_late), ...
             'AlphaPower_raw_full', num2cell(AlphaPower_raw_full), ...
@@ -236,7 +243,6 @@ for subj = 1:length(subjects)
         fprintf('Continuing to next subject...\n');
     end
 end
-eeg_data_sternberg = merge_iaf_specparam_sternberg(eeg_data_sternberg, subjects, paths.features);
 save(fullfile(paths.features, 'AOC_eeg_matrix_sternberg.mat'), 'eeg_data_sternberg')
 writetable(struct2table(eeg_data_sternberg), fullfile(paths.features, 'AOC_eeg_matrix_sternberg.csv'))
 
@@ -330,10 +336,6 @@ if ~any(bandIdx)
     return
 end
 powerIAF = mean(spec(bandIdx));
-if powerIAF > max(pks)
-    IAF = NaN;
-    powerIAF = NaN;
-end
 end
 
 function v = robust_roi_pow(S, channelIdx, band)
@@ -341,6 +343,82 @@ fmask = S.freq >= band(1) & S.freq <= band(2);
 if ~any(fmask)
     v = NaN;
     return
+end
+
+function [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars(tfPack, labels)
+ERSD_early = nan(numel(tfPack), 1);
+ERSD_late = nan(numel(tfPack), 1);
+ERSD_full = nan(numel(tfPack), 1);
+occ_ch = occ_channels_from_labels(labels);
+latencyWins = {[0 1], [1 2], [0 2]};
+for ic = 1:numel(tfPack)
+    tf = tfPack{ic};
+    chUse = occ_ch(ismember(occ_ch, tf.label));
+    if isempty(chUse)
+        continue
+    end
+    for iw = 1:3
+        cfgE = [];
+        cfgE.channel = chUse;
+        cfgE.avgoverchan = 'yes';
+        cfgE.frequency = [8 14];
+        cfgE.avgoverfreq = 'yes';
+        cfgE.latency = latencyWins{iw};
+        cfgE.avgovertime = 'yes';
+        try
+            outE = ft_selectdata(cfgE, tf);
+            v = mean(outE.powspctrm(:), 'omitnan');
+        catch
+            v = NaN;
+        end
+        if iw == 1
+            ERSD_early(ic) = v;
+        elseif iw == 2
+            ERSD_late(ic) = v;
+        else
+            ERSD_full(ic) = v;
+        end
+    end
+end
+end
+
+function ch = occ_channels_from_labels(labels)
+ch = {};
+for i = 1:numel(labels)
+    lab = labels{i};
+    if contains(lab, {'O'}) || contains(lab, {'I'})
+        ch{end + 1} = lab;
+    end
+end
+
+function ersd_tc = compute_ersd_timecourse(tfPack, labels, condVals)
+occ_ch = occ_channels_from_labels(labels);
+nCond = numel(tfPack);
+timeVec = tfPack{1}.time(:)';
+nTime = numel(timeVec);
+tc = nan(nCond, nTime);
+for ic = 1:nCond
+    tf = tfPack{ic};
+    chUse = occ_ch(ismember(occ_ch, tf.label));
+    if isempty(chUse)
+        continue
+    end
+    cfgE = [];
+    cfgE.channel = chUse;
+    cfgE.avgoverchan = 'yes';
+    cfgE.frequency = [8 14];
+    cfgE.avgoverfreq = 'yes';
+    outE = ft_selectdata(cfgE, tf);
+    tc(ic, :) = outE.powspctrm(:)';
+end
+ersd_tc = struct();
+ersd_tc.time = timeVec;
+ersd_tc.condition = condVals(:);
+ersd_tc.ersd_occ_8_14_db = tc;
+end
+if isempty(ch)
+    ch = labels;
+end
 end
 
 x = S.powspctrm(channelIdx, fmask);
@@ -362,32 +440,5 @@ if isempty(x)
     v = NaN;
 else
     v = mean(x, 'omitnan');
-end
-end
-
-function eeg_data_sternberg = merge_iaf_specparam_sternberg(eeg_data_sternberg, subjects, featurePath)
-for subj = 1:length(subjects)
-    datapath = fullfile(featurePath, subjects{subj}, 'eeg');
-    fpath = fullfile(datapath, 'IAF_specParam_sternberg.mat');
-    if exist(fpath, 'file') ~= 2
-        continue
-    end
-    S = load(fpath);
-    if ~isfield(S, 'fooof_specparam')
-        continue
-    end
-    recs = S.fooof_specparam;
-    if ~isstruct(recs)
-        continue
-    end
-    for k = 1:numel(recs)
-        if ~isfield(recs(k), 'ID') || ~isfield(recs(k), 'Condition') || ~isfield(recs(k), 'IAF_specParam')
-            continue
-        end
-        m = find([eeg_data_sternberg.ID] == recs(k).ID & [eeg_data_sternberg.Condition] == recs(k).Condition, 1, 'first');
-        if ~isempty(m)
-            eeg_data_sternberg(m).IAF_specParam = recs(k).IAF_specParam;
-        end
-    end
 end
 end

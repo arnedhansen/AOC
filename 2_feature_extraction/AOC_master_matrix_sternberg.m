@@ -1,9 +1,8 @@
 %% AOC Master Matrix — Sternberg
-% Merges four sources by `ID`,`Condition`:
+% Merges three sources by `ID`,`Condition`:
 %   (a) behavioral
 %   (b) gaze
-%   (c) EEG non-FOOOF (`AOC_eeg_matrix_sternberg.mat`)
-%   (d) EEG FOOOF-only (`AOC_eeg_matrix_sternberg_FOOOF.mat`)
+%   (c) EEG (`AOC_eeg_matrix_sternberg.mat`)
 % Includes key-uniqueness checks before merge to prevent row inflation.
 %
 % Key outputs:
@@ -16,13 +15,7 @@
 %     AlphaPower_bl_early / _late / _full   (dB baseline [-1.5 -0.5]s)
 %     ERSD_early / ERSD_late / ERSD_full — fixed [8 14] Hz dB on tfr*_bl, O/I occ channels, windows [0 1] / [1 2] / [0 2]s
 %         (AOC_eeg_fex_sternberg_TFR.m → AOC_eeg_matrix_sternberg_ERSD.mat)
-%     IAF (concat [1 2]s retention, mtmfft+DPSS peak); IAF_specParam (FOOOF alpha CF, median occ)
-%
-%   EEG — FOOOF alpha (IAF band, occ channels):
-%     AlphaPower_FOOOF_full          [0 2]s, no baseline
-%     AlphaPower_FOOOF_bl_full       [0 2]s, baselined absolute
-%     AlphaPower_FOOOF_bl_early      [0 1]s, baselined
-%     AlphaPower_FOOOF_bl_late       [1 2]s, baselined
+%     IAF (concat [1 2]s retention, mtmfft+DPSS peak)
 %
 %   Gaze — baselined (BL window [-1.5 -0.5]s; % for GD/SPL/MS/BCEA,pupil):
 %     GazeDeviationFullBL / EarlyBL / LateBL
@@ -47,9 +40,8 @@ demog = table2struct(demog(1:120, :));
 % Behavioral
 load(fullfile(featPath, 'AOC_behavioral_matrix_sternberg.mat'));  % behav_data_sternberg
 
-% EEG (split products)
+% EEG
 load(fullfile(featPath, 'AOC_eeg_matrix_sternberg.mat'));         % eeg_data_sternberg
-load(fullfile(featPath, 'AOC_eeg_matrix_sternberg_FOOOF.mat'));   % eeg_data_sternberg_FOOOF
 
 % Gaze
 load(fullfile(featPath, 'AOC_gaze_matrix_sternberg.mat'));        % gaze_data_sternberg
@@ -69,30 +61,14 @@ behav_table = struct2table(behav_data_sternberg);
 gaze_table  = struct2table(gaze_data_sternberg);
 eeg_table   = struct2table(eeg_data_sternberg);
 eeg_table   = join_ersd_table(eeg_table, featPath, 'AOC_eeg_matrix_sternberg_ERSD.mat', 'eeg_data_sternberg_ERSD');
-eeg_fooof_table = struct2table(eeg_data_sternberg_FOOOF);
 
 assert_unique_keys(eeg_table, {'ID', 'Condition'}, 'eeg_data_sternberg');
-if height(eeg_fooof_table) > 0
-    assert_unique_keys(eeg_fooof_table, {'ID', 'Condition'}, 'eeg_data_sternberg_FOOOF');
-end
 
 % Merge by ID and Condition; keep all existing columns from input matrices.
 merged_table = outerjoin(behav_table, gaze_table, ...
     'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
 merged_table = outerjoin(merged_table, eeg_table, ...
     'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
-if height(eeg_fooof_table) > 0
-    merged_table = outerjoin(merged_table, eeg_fooof_table, ...
-        'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
-else
-    warning('AOC_master_matrix_sternberg:EmptyFOOOF', ...
-        ['eeg_data_sternberg_FOOOF is empty; FOOOF columns are set to NaN. ', ...
-        'Re-run AOC_eeg_fex_sternberg_TFR.m after non-FOOOF EEG (IAF CSV).']);
-    merged_table.AlphaPower_FOOOF_full = nan(height(merged_table), 1);
-    merged_table.AlphaPower_FOOOF_bl_full = nan(height(merged_table), 1);
-    merged_table.AlphaPower_FOOOF_bl_early = nan(height(merged_table), 1);
-    merged_table.AlphaPower_FOOOF_bl_late = nan(height(merged_table), 1);
-end
 merged_data_sternberg = table2struct(merged_table);
 
 %% Save as .mat

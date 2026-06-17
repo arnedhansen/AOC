@@ -1,10 +1,6 @@
-%% AOC EEG ERD/ERS — N-Back (time course + topos)
-% Loads baselined TFR per subject, grand-averages with individuals, plots fixed-band
-% [8 14] Hz occipital time course (mean +- SEM) and topoplots averaged over [0 2]s.
-% Occipital channels: labels containing O or I (same rule as AOC_eeg_fex_* IAF ROI).
-%
-% Key outputs:
-%   Figures under paths.figures/eeg/ersd
+%% AOC EEG ERD/ERS N Back time course plus topos
+% Time course is loaded from saved ERSD outputs produced during feature extraction.
+% No ERSD recomputation is performed here.
 
 %% Setup
 startup
@@ -12,35 +8,60 @@ startup
 path = paths.features;
 figDir = fullfile(paths.figures, 'eeg', 'ersd');
 if ~isfolder(figDir), mkdir(figDir); end
-
 subjects = setdiff(subjects, {'361'});
 
-%% Load TFR
-tfr1_all = cell(1, numel(subjects));
-tfr2_all = cell(1, numel(subjects));
-tfr3_all = cell(1, numel(subjects));
+%% Load subject ERSD timecourses and cached TFR for topoplots
+tc1 = [];
+tc2 = [];
+tc3 = [];
+timeVec = [];
+tfr1_all = {};
+tfr2_all = {};
+tfr3_all = {};
+
 for subj = 1:numel(subjects)
     dp = fullfile(path, subjects{subj}, 'eeg');
-    fmat = fullfile(dp, 'tfr_nback.mat');
-    if ~isfile(fmat)
-        warning('Missing %s', fmat);
+    f_tc = fullfile(dp, 'ersd_nback_timecourse.mat');
+    f_tfr = fullfile(dp, 'tfr_nback.mat');
+    if ~isfile(f_tc) || ~isfile(f_tfr)
+        warning('Missing ERSD or TFR file for subject %s', subjects{subj});
         continue
     end
-    cd(dp);
-    load tfr_nback tfr1_bl tfr2_bl tfr3_bl
-    tfr1_all{subj} = tfr1_bl;
-    tfr2_all{subj} = tfr2_bl;
-    tfr3_all{subj} = tfr3_bl;
-    fprintf('Loaded n-back TFR %d / %d\n', subj, numel(subjects));
+
+    S = load(f_tc, 'ersd_timecourse');
+    if ~isfield(S, 'ersd_timecourse')
+        warning('Invalid ERSD timecourse file for subject %s', subjects{subj});
+        continue
+    end
+    E = S.ersd_timecourse;
+    conds = E.condition(:);
+    if ~all(ismember([1; 2; 3], conds))
+        warning('Missing n back conditions in ERSD timecourse for subject %s', subjects{subj});
+        continue
+    end
+
+    if isempty(timeVec)
+        timeVec = E.time(:)';
+    elseif numel(timeVec) ~= numel(E.time) || any(abs(timeVec - E.time(:)') > 1e-12)
+        warning('Time vector mismatch in subject %s', subjects{subj});
+        continue
+    end
+
+    tcMat = E.ersd_occ_8_14_db;
+    tc1 = [tc1; tcMat(conds == 1, :)];
+    tc2 = [tc2; tcMat(conds == 2, :)];
+    tc3 = [tc3; tcMat(conds == 3, :)];
+
+    T = load(f_tfr, 'tfr1_bl', 'tfr2_bl', 'tfr3_bl');
+    tfr1_all{end + 1} = T.tfr1_bl;
+    tfr2_all{end + 1} = T.tfr2_bl;
+    tfr3_all{end + 1} = T.tfr3_bl;
+    fprintf('Loaded n back ERSD timecourse %d / %d\n', subj, numel(subjects));
 end
 
-nonEmpty = ~cellfun(@isempty, tfr1_all);
-tfr1_all = tfr1_all(nonEmpty);
-tfr2_all = tfr2_all(nonEmpty);
-tfr3_all = tfr3_all(nonEmpty);
-nSubj = numel(tfr1_all);
+nSubj = size(tc1, 1);
 if nSubj == 0
-    error('No tfr_nback.mat found for any subject. Run AOC_eeg_fex_nback_TFR.m.');
+    error('No ERSD timecourse files found. Run AOC_eeg_fex_nback.m first.');
 end
 
 ref = tfr1_all{1};
@@ -48,14 +69,42 @@ chPlot = {};
 for i = 1:numel(ref.label)
     label = ref.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
-        chPlot{end+1} = label;
+        chPlot{end + 1} = label;
     end
 end
 if isempty(chPlot)
-    error('No occipital (O/I) channels present in TFR labels.');
+    error('No occipital O or I channels in TFR labels.');
 end
 
-%% Grand average with individuals
+%% Timecourse figure from cached ERSD timecourses
+figure('Position', [0 0 1512 982], 'Color', 'w');
+fontSize = 22;
+mask = timeVec >= -0.5 & timeVec <= 2;
+x = timeVec(mask);
+
+y3 = mean(tc3(:, mask), 1, 'omitnan');
+e3 = std(tc3(:, mask), 0, 1, 'omitnan') ./ sqrt(nSubj);
+y2 = mean(tc2(:, mask), 1, 'omitnan');
+e2 = std(tc2(:, mask), 0, 1, 'omitnan') ./ sqrt(nSubj);
+y1 = mean(tc1(:, mask), 1, 'omitnan');
+e1 = std(tc1(:, mask), 0, 1, 'omitnan') ./ sqrt(nSubj);
+
+h3 = shadedErrorBars(x, y3, e3, [0.97, 0.26, 0.26]); hold on;
+h2 = shadedErrorBars(x, y2, e2, [0.30, 0.75, 0.93]);
+h1 = shadedErrorBars(x, y1, e1, [0, 0, 0]);
+
+set(gca, 'FontSize', fontSize);
+title('N back task');
+xlabel('Time [s]');
+ylabel('Power change [dB]');
+xlim([-0.5 2]);
+ylim([-3 3]);
+grid on;
+box on;
+legend([h3.line, h2.line, h1.line], {'3 back', '2 back', '1 back'}, 'Location', 'northeast', 'FontSize', 18);
+saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_nback_timecourse.png'));
+
+%% Topoplots from cached baselined TFR
 cfg = [];
 cfg.keepindividual = 'yes';
 ga_nb_1 = ft_freqgrandaverage(cfg, tfr1_all{:});
@@ -69,38 +118,6 @@ ga_nb_1_erd = ft_selectdata(cfg, ga_nb_1);
 ga_nb_2_erd = ft_selectdata(cfg, ga_nb_2);
 ga_nb_3_erd = ft_selectdata(cfg, ga_nb_3);
 
-%% Time course figure
-close all
-figure('Position', [0 0 1512 982], 'Color', 'w');
-fontSize = 22;
-
-cfgT = [];
-cfgT.channel = chPlot;
-cfgT.avgoverchan = 'yes';
-cfgT.latency = [-0.5 2];
-
-tlk1 = ft_selectdata(cfgT, ga_nb_1_erd);
-tlk2 = ft_selectdata(cfgT, ga_nb_2_erd);
-tlk3 = ft_selectdata(cfgT, ga_nb_3_erd);
-
-% 3-back (red), 2-back (cyan), 1-back (black)
-plot_erds_line_sem(tlk3, [0.97, 0.26, 0.26], nSubj);
-hold on;
-plot_erds_line_sem(tlk2, [0.30, 0.75, 0.93], nSubj);
-plot_erds_line_sem(tlk1, [0 0 0], nSubj);
-
-set(gca, 'FontSize', fontSize);
-title('N-back task');
-xlabel('Time [s]');
-ylabel('Power change [dB]');
-xlim([-0.5 2]);
-ylim([-3 3]);
-grid on;
-box on;
-legend({'3-back', '2-back', '1-back'}, 'Location', 'northeast', 'FontSize', 18);
-saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_nback_timecourse.png'));
-
-%% Topoplots [0 2]s
 cfg = [];
 cfg.layout = headmodel.layANThead;
 cfg.figure = 'gcf';
@@ -114,29 +131,19 @@ cfg.highlightsize = 20;
 cfg.comment = 'no';
 
 figure('Position', [0 0 1512 982], 'Color', 'w');
-subplot(1, 3, 1);
-ft_topoplotER(cfg, ga_nb_1_erd);
-subplot(1, 3, 2);
-ft_topoplotER(cfg, ga_nb_2_erd);
-subplot(1, 3, 3);
-ft_topoplotER(cfg, ga_nb_3_erd);
+subplot(1, 3, 1); ft_topoplotER(cfg, ga_nb_1_erd);
+subplot(1, 3, 2); ft_topoplotER(cfg, ga_nb_2_erd);
+subplot(1, 3, 3); ft_topoplotER(cfg, ga_nb_3_erd);
 saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_nback_topos.png'));
 
-function plot_erds_line_sem(tlk, col, nSubj)
-    x = tlk.time(:);
-    ps = squeeze(tlk.powspctrm);
-    if isvector(ps)
-        y = ps(:);
-        e = zeros(size(y));
-    else
-        y = mean(ps, 1)';
-        e = std(ps, 0, 1)' ./ sqrt(nSubj);
-    end
-    low = y - e;
-    high = y + e;
-    hp = patch([x; x(end:-1:1); x(1)], [low; high(end:-1:1); low(1)], col, 'HandleVisibility', 'off');
-    hold on;
-    hl = line(x, y);
-    set(hp, 'FaceColor', col, 'EdgeColor', 'none', 'FaceAlpha', 0.2);
-    set(hl, 'Color', col, 'LineWidth', 2);
+function h = shadedErrorBars(x, y, e, col)
+x = x(:);
+y = y(:);
+e = e(:);
+low = y - e;
+high = y + e;
+h.patch = patch([x; flipud(x)], [low; flipud(high)], col, ...
+    'FaceAlpha', 0.2, 'EdgeColor', 'none', 'HandleVisibility', 'off');
+hold on
+h.line = plot(x, y, 'Color', col, 'LineWidth', 2);
 end

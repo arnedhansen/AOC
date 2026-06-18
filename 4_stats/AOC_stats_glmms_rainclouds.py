@@ -42,8 +42,8 @@ warnings.filterwarnings(
 )
 
 # %% Task window sources (merged tables from AOC_master_matrix_*.m)
-# n-back: full epoch [0 2]s for EEG alpha (raw / dB / FOOOF baselined) and baselined gaze (% change from FullBL).
-# Sternberg: late epoch [1 2]s for EEG alpha and baselined gaze (LateBL).
+# n-back: full epoch [0 2]s for EEG alpha (raw / dB / FOOOF baselined), ERSD, and baselined gaze (% change from FullBL).
+# Sternberg: late epoch [1 2]s for EEG alpha, ERSD, and baselined gaze (LateBL).
 
 RAW_ALPHA_BY_TASK = {
     "nback": "AlphaPower_raw_full",
@@ -58,6 +58,11 @@ ALPHA_BL_BY_TASK = {
 FOOOF_ALPHA_BY_TASK = {
     "nback": "AlphaPower_FOOOF_bl_full",
     "sternberg": "AlphaPower_FOOOF_bl_late",
+}
+
+ERSD_BY_TASK = {
+    "nback": "ERSD_full",
+    "sternberg": "ERSD_late",
 }
 
 GAZE_BL_SOURCE_BY_TASK = {
@@ -101,6 +106,12 @@ def enforce_task_window_columns(df: pd.DataFrame, task_name: str) -> pd.DataFram
         df["AlphaPower_FOOOF_bl"] = pd.to_numeric(df[fooof_src], errors="coerce")
     elif fooof_src:
         print(f"[{task_name}] WARNING: {fooof_src} missing; AlphaPower_FOOOF_bl not set.")
+
+    ersd_src = ERSD_BY_TASK.get(task_name)
+    if ersd_src and ersd_src in df.columns:
+        df["ERSD"] = pd.to_numeric(df[ersd_src], errors="coerce")
+    elif ersd_src:
+        print(f"[{task_name}] WARNING: {ersd_src} missing; ERSD not set.")
 
     gaze_map = GAZE_BL_SOURCE_BY_TASK.get(task_name, {})
     for canonical, src in gaze_map.items():
@@ -157,14 +168,15 @@ MERGED_CSV_NBACK = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/feature
 # `GazeDeviation` / `MSRate` are raw (non-baselined) metrics from the merged gaze matrices: full [0 2]s
 # on n-back and late [1 2]s on Sternberg (`AOC_gaze_fex_*.m`).
 # Canonical gaze-BL and EEG baselined columns come from `enforce_task_window_columns`
-# (n-back: *_full / GazeDeviationFullBL / MSRateFullBL; Sternberg: *_late / LateBL).
+# (n-back: *_full / GazeDeviationFullBL / MSRateFullBL / ERSD_full;
+#  Sternberg: *_late / LateBL / ERSD_late). IAF is read directly from the merged matrix.
 
 variables  = [
     "Accuracy", "ReactionTime",
     "GazeDeviation", "MSRate",
     "GazeDeviationBL", "MSRateBL",
     "AlphaPower", "AlphaPower_bl", "AlphaPower_FOOOF_bl",
-    "IAF",
+    "IAF", "ERSD",
 ]
 y_labels   = [
     "Accuracy [%]", "Reaction Time [s]",
@@ -174,13 +186,14 @@ y_labels   = [
     "Alpha Power [dB]",
     "Alpha Power [dB]",
     "IAF [Hz]",
+    "ERSD [dB]",
 ]
 save_names = [
     "acc", "rt",
     "gazedev", "ms",
     "gazedev_bl", "ms_bl",
     "pow_raw", "pow_bl", "pow_specparam_bl",
-    "iaf",
+    "iaf", "ersd",
 ]
 
 # Manual y ticks and ylims per variable
@@ -195,6 +208,7 @@ yticks_map = {
     "AlphaPower_bl"       : np.arange(-4, 4.1, 1),
     "AlphaPower_FOOOF_bl" : np.arange(-0.3, 0.31, 0.1),
     "IAF"           : np.arange(8, 14, 1),
+    "ERSD"          : np.arange(-3.5, 3, 1),
 }
 ylims_map = {
     "Accuracy"      : (60, 102),
@@ -207,6 +221,7 @@ ylims_map = {
     "AlphaPower_bl"       : (-4, 4),
     "AlphaPower_FOOOF_bl" : (-0.325, 0.325),
     "IAF"           : (8, 14.1),
+    "ERSD"          : (-3.5, 3),
 }
 
 # %% Task configurations
@@ -508,201 +523,198 @@ for task in tasks:
         outputs[f"mixedlm_fixed_{sname}_{task['name']}"] = fe_df.copy()
         print(f"Saved fixed effects  → {os.path.basename(fe_csv)}")
 
-        # %% Figure (IAF: models/tables only; no raincloud file)
-        if var == "IAF":
-            print(f"Skipping raincloud figure for {var} [{task['name']}]")
-        else:
-            fig, ax = plt.subplots(figsize=(8, 6), facecolor="white")
-            fig.patch.set_alpha(1.0)
-            ax.patch.set_alpha(1.0)
-            ax.set_facecolor("white")
+        # %% Figure
+        fig, ax = plt.subplots(figsize=(8, 6), facecolor="white")
+        fig.patch.set_alpha(1.0)
+        ax.patch.set_alpha(1.0)
+        ax.set_facecolor("white")
 
-            # %% Manual raincloud parameters
-            viol_alpha  = 0.60
-            dot_alpha   = 0.50
-            dot_size    = 30
-            box_width   = 0.20
+        # %% Manual raincloud parameters
+        viol_alpha  = 0.60
+        dot_alpha   = 0.50
+        dot_size    = 30
+        box_width   = 0.20
+        cloud_offset = -0.20
+        max_violsw  = 0.40
+        bw_method   = 0.15
+        if var == "Accuracy":
             cloud_offset = -0.20
-            max_violsw  = 0.40
-            bw_method   = 0.15
-            if var == "Accuracy":
-                cloud_offset = -0.20
-                max_violsw   = 0.50
-                bw_method    = 0.25
+            max_violsw   = 0.50
+            bw_method    = 0.25
 
-            # x positions for categories
-            xpos = {c: i for i, c in enumerate(condition_order)}
+        # x positions for categories
+        xpos = {c: i for i, c in enumerate(condition_order)}
 
-            # Deterministic jitter
-            rng = np.random.default_rng(12345)
+        # Deterministic jitter
+        rng = np.random.default_rng(12345)
 
-            # %% Draw per condition
-            for cond_lab in condition_order:
-                yvals = dvar.loc[dvar["Condition"] == cond_lab, var].dropna().to_numpy()
-                if yvals.size == 0:
-                    continue
+        # %% Draw per condition
+        for cond_lab in condition_order:
+            yvals = dvar.loc[dvar["Condition"] == cond_lab, var].dropna().to_numpy()
+            if yvals.size == 0:
+                continue
 
-                # VIOLIN (left half)
-                # Determine hard cap for this variable
-                ymax_cap = ylims_map[var][1] if var in ylims_map else float(dvar[var].max())
-                ymin_cap = ylims_map[var][0] if var in ylims_map else float(dvar[var].min())
-                yr = ymax_cap - ymin_cap
+            # VIOLIN (left half)
+            # Determine hard cap for this variable
+            ymax_cap = ylims_map[var][1] if var in ylims_map else float(dvar[var].max())
+            ymin_cap = ylims_map[var][0] if var in ylims_map else float(dvar[var].min())
+            yr = ymax_cap - ymin_cap
 
-                pad_top = min(0.02 * yr, 0.3)
-                y_grid_top = ymin_cap + yr + pad_top
+            pad_top = min(0.02 * yr, 0.3)
+            y_grid_top = ymin_cap + yr + pad_top
 
-                # build KDE
-                kde = gaussian_kde(yvals, bw_method=bw_method)
+            # build KDE
+            kde = gaussian_kde(yvals, bw_method=bw_method)
 
-                # grid
-                y_grid = np.linspace(ymin_cap, y_grid_top, 400)
+            # grid
+            y_grid = np.linspace(ymin_cap, y_grid_top, 400)
 
-                dens = kde(y_grid)
-                scale = (max_violsw / np.nanmax(dens)) if np.nanmax(dens) > 0 else 0.0
+            dens = kde(y_grid)
+            scale = (max_violsw / np.nanmax(dens)) if np.nanmax(dens) > 0 else 0.0
 
-                x_left  = xpos[cond_lab] + cloud_offset - dens * scale
-                x_right = np.full_like(y_grid, xpos[cond_lab] + cloud_offset)
+            x_left  = xpos[cond_lab] + cloud_offset - dens * scale
+            x_right = np.full_like(y_grid, xpos[cond_lab] + cloud_offset)
 
-                poly_x = np.concatenate([x_right, x_left[::-1]])
-                poly_y = np.concatenate([y_grid, y_grid[::-1]])
-                ax.fill(poly_x, poly_y,
-                        facecolor=pal_dict[cond_lab], edgecolor="none",
-                        alpha=viol_alpha, clip_on=True)
+            poly_x = np.concatenate([x_right, x_left[::-1]])
+            poly_y = np.concatenate([y_grid, y_grid[::-1]])
+            ax.fill(poly_x, poly_y,
+                    facecolor=pal_dict[cond_lab], edgecolor="none",
+                    alpha=viol_alpha, clip_on=True)
 
-                # DOTS
-                x_jit = xpos[cond_lab] + rng.uniform(-box_width / 2, box_width / 2, size=yvals.size)
-                ax.scatter(x_jit, yvals, s=dot_size, alpha=dot_alpha, color=pal_dict[cond_lab], linewidths=0, zorder=3)
+            # DOTS
+            x_jit = xpos[cond_lab] + rng.uniform(-box_width / 2, box_width / 2, size=yvals.size)
+            ax.scatter(x_jit, yvals, s=dot_size, alpha=dot_alpha, color=pal_dict[cond_lab], linewidths=0, zorder=3)
 
-                # BOXPLOT
-                bp = ax.boxplot(
-                    [yvals], positions=[xpos[cond_lab]], widths=box_width, vert=True,
-                    patch_artist=True, showfliers=False, whis=(5, 95),
-                    medianprops=dict(color="black", linewidth=1.5),
-                    boxprops=dict(linewidth=1.0, edgecolor="black"),
-                    whiskerprops=dict(linewidth=1.0, color="black"),
-                    capprops=dict(linewidth=1.0, color="black"),
-                    meanline=False, showmeans=False
-                )
-                for patch in bp["boxes"]:
-                    patch.set_facecolor(mpl.colors.to_rgba(pal_dict[cond_lab], 0.05))
-                    patch.set_edgecolor("black")
-                for elem in ["whiskers", "caps", "medians"]:
-                    for artist in bp[elem]:
-                        artist.set_color("black")
+            # BOXPLOT
+            bp = ax.boxplot(
+                [yvals], positions=[xpos[cond_lab]], widths=box_width, vert=True,
+                patch_artist=True, showfliers=False, whis=(5, 95),
+                medianprops=dict(color="black", linewidth=1.5),
+                boxprops=dict(linewidth=1.0, edgecolor="black"),
+                whiskerprops=dict(linewidth=1.0, color="black"),
+                capprops=dict(linewidth=1.0, color="black"),
+                meanline=False, showmeans=False
+            )
+            for patch in bp["boxes"]:
+                patch.set_facecolor(mpl.colors.to_rgba(pal_dict[cond_lab], 0.05))
+                patch.set_edgecolor("black")
+            for elem in ["whiskers", "caps", "medians"]:
+                for artist in bp[elem]:
+                    artist.set_color("black")
 
-            # No legend
-            leg = ax.get_legend()
-            if leg is not None:
-                leg.remove()
+        # No legend
+        leg = ax.get_legend()
+        if leg is not None:
+            leg.remove()
 
-            # Clean spines and grid
-            for spine in ax.spines.values():
-                spine.set_visible(False)
-            ax.yaxis.grid(True, linewidth=1, alpha=0.35)
-            ax.xaxis.grid(False)
+        # Clean spines and grid
+        for spine in ax.spines.values():
+            spine.set_visible(False)
+        ax.yaxis.grid(True, linewidth=1, alpha=0.35)
+        ax.xaxis.grid(False)
 
-            # Labels and x-ticks
-            ax.set_title("")
-            ax.set_xticks(range(len(condition_order)))
-            ax.set_xticklabels(condition_order)
-            ax.set_xlabel("")
-            if len(condition_order) >= 2:
-                ax.annotate(
-                    task["xlabel"],
-                    xy=(xpos[condition_order[1]], 0),
-                    xycoords=("data", "axes fraction"),
-                    xytext=(0, -28),
-                    textcoords="offset points",
-                    ha="center", va="top"
-                )
-
-            # %% Bracket layout with shared (global) ymax per variable
-            # If manual limits exist, use them for bracket layout;
-            # otherwise fall back to the data/global upper.
-            if var in ylims_map:
-                ymin, ymax_cap = ylims_map[var]
-            else:
-                ymin = float(dvar[var].min()) if np.isfinite(dvar[var].min()) else 0.0
-                ymax_data_local = float(dvar[var].max()) if np.isfinite(dvar[var].max()) else ymin
-                ymax_cap = global_upper.get(var, np.nan)
-                if not np.isfinite(ymax_cap):
-                    ymax_cap = ymax_data_local
-
-            range_y = max(ymax_cap - ymin, 1.0)
-
-            step = 0.10 * range_y
-
-            y_positions = []
-            start = ymax_cap + 0.075 * range_y
-            for i in range(len(task["comparisons"])):
-                y_positions.append(start + i * step)
-
-            # y-label at data midpoint
-            if var in ylims_map:
-                ymin_cur, ymax_cur = ylims_map[var]
-            else:
-                ymin_cur = float(dvar[var].min()) if np.isfinite(dvar[var].min()) else 0.0
-                ymax_cur = float(dvar[var].max()) if np.isfinite(dvar[var].max()) else 1.0
-            ymid = 0.5 * (ymin_cur + ymax_cur)
-            ax.set_ylabel("")
-            ax.yaxis.get_label().set_visible(False)
-            ax.text(
-                -0.12,
-                ymid,
-                ylab,
-                transform=ax.get_yaxis_transform(which='grid'),
-                rotation=90,
-                ha='center',
-                va='center'
+        # Labels and x-ticks
+        ax.set_title("")
+        ax.set_xticks(range(len(condition_order)))
+        ax.set_xticklabels(condition_order)
+        ax.set_xlabel("")
+        if len(condition_order) >= 2:
+            ax.annotate(
+                task["xlabel"],
+                xy=(xpos[condition_order[1]], 0),
+                xycoords=("data", "axes fraction"),
+                xytext=(0, -28),
+                textcoords="offset points",
+                ha="center", va="top"
             )
 
-            # Signif labels
-            labels = []
-            for (g1, g2) in task["comparisons"]:
-                row = pw.loc[(pw["Group1"] == g1) & (pw["Group2"] == g2)]
-                labels.append("n.s." if row.empty else p_to_signif(float(row["p_adj"].iloc[0])))
+        # %% Bracket layout with shared (global) ymax per variable
+        # If manual limits exist, use them for bracket layout;
+        # otherwise fall back to the data/global upper.
+        if var in ylims_map:
+            ymin, ymax_cap = ylims_map[var]
+        else:
+            ymin = float(dvar[var].min()) if np.isfinite(dvar[var].min()) else 0.0
+            ymax_data_local = float(dvar[var].max()) if np.isfinite(dvar[var].max()) else ymin
+            ymax_cap = global_upper.get(var, np.nan)
+            if not np.isfinite(ymax_cap):
+                ymax_cap = ymax_data_local
 
-            # %% slightly increase bracket spacing only for Accuracy in N-back
-            if (task["name"] == "nback") and (var == "Accuracy"):
-                yr = ax.get_ylim()[1] - ax.get_ylim()[0]
-                # assume you already computed y_positions; just spread them a bit more
-                step_bump = 0.025 * yr   # +2.5% of axis range on each successive bracket
-                y_positions = [y + i * step_bump for i, y in enumerate(y_positions)]
+        range_y = max(ymax_cap - ymin, 1.0)
 
-            add_stat_brackets(
-                ax=ax,
-                xcats=condition_order,
-                comparisons=task["comparisons"],
-                y_positions=y_positions,
-                labels=labels,
-                xmap=xpos
-            )
+        step = 0.10 * range_y
 
-            # %% Manual y-ticks (identical for both tasks)
-            if var in yticks_map:
-                ax.set_yticks(yticks_map[var])
+        y_positions = []
+        start = ymax_cap + 0.075 * range_y
+        for i in range(len(task["comparisons"])):
+            y_positions.append(start + i * step)
 
-            if var in ylims_map:
-                ymin_set, ymax_set = ylims_map[var]
-                # extend a bit to make sure brackets are inside
-                extra = 0.12 * (ymax_set - ymin_set)
-                ax.set_ylim(ymin_set, ymax_set + extra)
-            else:
-                ax.set_ylim(ymin, ymax_cap + 0.15 * (ymax_cap - ymin))
+        # y-label at data midpoint
+        if var in ylims_map:
+            ymin_cur, ymax_cur = ylims_map[var]
+        else:
+            ymin_cur = float(dvar[var].min()) if np.isfinite(dvar[var].min()) else 0.0
+            ymax_cur = float(dvar[var].max()) if np.isfinite(dvar[var].max()) else 1.0
+        ymid = 0.5 * (ymin_cur + ymax_cur)
+        ax.set_ylabel("")
+        ax.yaxis.get_label().set_visible(False)
+        ax.text(
+            -0.12,
+            ymid,
+            ylab,
+            transform=ax.get_yaxis_transform(which='grid'),
+            rotation=90,
+            ha='center',
+            va='center'
+        )
+
+        # Signif labels
+        labels = []
+        for (g1, g2) in task["comparisons"]:
+            row = pw.loc[(pw["Group1"] == g1) & (pw["Group2"] == g2)]
+            labels.append("n.s." if row.empty else p_to_signif(float(row["p_adj"].iloc[0])))
+
+        # %% slightly increase bracket spacing only for Accuracy in N-back
+        if (task["name"] == "nback") and (var == "Accuracy"):
+            yr = ax.get_ylim()[1] - ax.get_ylim()[0]
+            # assume you already computed y_positions; just spread them a bit more
+            step_bump = 0.025 * yr   # +2.5% of axis range on each successive bracket
+            y_positions = [y + i * step_bump for i, y in enumerate(y_positions)]
+
+        add_stat_brackets(
+            ax=ax,
+            xcats=condition_order,
+            comparisons=task["comparisons"],
+            y_positions=y_positions,
+            labels=labels,
+            xmap=xpos
+        )
+
+        # %% Manual y-ticks (identical for both tasks)
+        if var in yticks_map:
+            ax.set_yticks(yticks_map[var])
+
+        if var in ylims_map:
+            ymin_set, ymax_set = ylims_map[var]
+            # extend a bit to make sure brackets are inside
+            extra = 0.12 * (ymax_set - ymin_set)
+            ax.set_ylim(ymin_set, ymax_set + extra)
+        else:
+            ax.set_ylim(ymin, ymax_cap + 0.15 * (ymax_cap - ymin))
 
 
-            # %% Save raincloud figure for each variable
-            fig.tight_layout()
-            fig.savefig(
-                os.path.join(output_dir, f"AOC_stats_rainclouds_{sname}_{task['name']}.png"),
-                dpi=300,
-                transparent=False,
-                facecolor=fig.get_facecolor(),
-                edgecolor=fig.get_edgecolor() if hasattr(fig, "get_edgecolor") else "white"
-            )
-            plt.close(fig)
-            saveNameFig = os.path.join(f"AOC_stats_rainclouds_{sname}_{task['name']}.png")
-            print(f"Saved raincloud fig. → {saveNameFig}")
+        # %% Save raincloud figure for each variable
+        fig.tight_layout()
+        fig.savefig(
+            os.path.join(output_dir, f"AOC_stats_rainclouds_{sname}_{task['name']}.png"),
+            dpi=300,
+            transparent=False,
+            facecolor=fig.get_facecolor(),
+            edgecolor=fig.get_edgecolor() if hasattr(fig, "get_edgecolor") else "white"
+        )
+        plt.close(fig)
+        saveNameFig = os.path.join(f"AOC_stats_rainclouds_{sname}_{task['name']}.png")
+        print(f"Saved raincloud fig. → {saveNameFig}")
 
     # Save omnibus Condition test (MixedLM LRT) for this task
     lrt_df = pd.DataFrame(

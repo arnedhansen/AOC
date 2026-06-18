@@ -4,7 +4,7 @@
 
 %% Setup
 startup
-[subjects, paths, ~, headmodel] = setup('AOC');
+[subjects, paths, colors, headmodel] = setup('AOC');
 path = paths.features;
 figDir = fullfile(paths.figures, 'eeg', 'ersd');
 if ~isfolder(figDir), mkdir(figDir); end
@@ -23,23 +23,9 @@ for subj = 1:numel(subjects)
     dp = fullfile(path, subjects{subj}, 'eeg');
     f_tc = fullfile(dp, 'ersd_nback_timecourse.mat');
     f_tfr = fullfile(dp, 'tfr_nback.mat');
-    if ~isfile(f_tc) || ~isfile(f_tfr)
-        warning('Missing ERSD or TFR file for subject %s', subjects{subj});
-        continue
-    end
-
     S = load(f_tc, 'ersd_timecourse');
-    if ~isfield(S, 'ersd_timecourse')
-        warning('Invalid ERSD timecourse file for subject %s', subjects{subj});
-        continue
-    end
     E = S.ersd_timecourse;
     conds = E.condition(:);
-    if ~all(ismember([1; 2; 3], conds))
-        warning('Missing n back conditions in ERSD timecourse for subject %s', subjects{subj});
-        continue
-    end
-
     if isempty(timeVec)
         timeVec = E.time(:)';
     elseif numel(timeVec) ~= numel(E.time) || any(abs(timeVec - E.time(:)') > 1e-12)
@@ -60,10 +46,6 @@ for subj = 1:numel(subjects)
 end
 
 nSubj = size(tc1, 1);
-if nSubj == 0
-    error('No ERSD timecourse files found. Run AOC_eeg_fex_nback.m first.');
-end
-
 ref = tfr1_all{1};
 chPlot = {};
 for i = 1:numel(ref.label)
@@ -72,13 +54,11 @@ for i = 1:numel(ref.label)
         chPlot{end + 1} = label;
     end
 end
-if isempty(chPlot)
-    error('No occipital O or I channels in TFR labels.');
-end
 
-%% Timecourse figure from cached ERSD timecourses
+%% Plot ERSD Timecourse 
+close all
 figure('Position', [0 0 1512 982], 'Color', 'w');
-fontSize = 22;
+fontSize = 30;
 mask = timeVec >= -0.5 & timeVec <= 2;
 x = timeVec(mask);
 
@@ -89,27 +69,43 @@ e2 = std(tc2(:, mask), 0, 1, 'omitnan') ./ sqrt(nSubj);
 y1 = mean(tc1(:, mask), 1, 'omitnan');
 e1 = std(tc1(:, mask), 0, 1, 'omitnan') ./ sqrt(nSubj);
 
-h3 = shadedErrorBars(x, y3, e3, [0.97, 0.26, 0.26]); hold on;
-h2 = shadedErrorBars(x, y2, e2, [0.30, 0.75, 0.93]);
-h1 = shadedErrorBars(x, y1, e1, [0, 0, 0]);
+hold on;
+eb3 = shadedErrorBar(x, y3, e3, 'lineProps', {'-', 'Color', colors(3, :)});
+eb2 = shadedErrorBar(x, y2, e2, 'lineProps', {'-', 'Color', colors(2, :)});
+eb1 = shadedErrorBar(x, y1, e1, 'lineProps', {'-', 'Color', colors(1, :)});
+ebs = [eb3, eb2, eb1];
+cIdx = [3, 2, 1];
+for k = 1:numel(ebs)
+    set(ebs(k).mainLine, 'LineWidth', 2, 'Color', colors(cIdx(k), :));
+    set(ebs(k).patch, 'FaceColor', colors(cIdx(k), :), 'FaceAlpha', 0.20);
+    set(ebs(k).edge(1), 'Color', 'none');
+    set(ebs(k).edge(2), 'Color', 'none');
+end
+xline(0, '--', 'Color', [0.75 0.75 0.75], 'LineWidth', 1);
+yline(0, '--', 'Color', [0.75 0.75 0.75], 'LineWidth', 1);
 
 set(gca, 'FontSize', fontSize);
-title('N back task');
 xlabel('Time [s]');
-ylabel('Power change [dB]');
+ylabel('Power [dB]');
 xlim([-0.5 2]);
-ylim([-3 3]);
-grid on;
-box on;
-legend([h3.line, h2.line, h1.line], {'3 back', '2 back', '1 back'}, 'Location', 'northeast', 'FontSize', 18);
+ylim([-3.25 0.65]);
+leg_p3 = patch(NaN, NaN, colors(3, :), 'EdgeColor', 'none');
+leg_p2 = patch(NaN, NaN, colors(2, :), 'EdgeColor', 'none');
+leg_p1 = patch(NaN, NaN, colors(1, :), 'EdgeColor', 'none');
+legend([leg_p1, leg_p2, leg_p3], {'1-back', '2-back', '3-back'}, ...
+    'Location', 'southeast', 'FontSize', 25, 'Box', 'off');
+drawnow; pause(0.05);
 saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_nback_timecourse.png'));
 
-%% Topoplots from cached baselined TFR
+%% Topoplots
+close all
 cfg = [];
 cfg.keepindividual = 'yes';
 ga_nb_1 = ft_freqgrandaverage(cfg, tfr1_all{:});
 ga_nb_2 = ft_freqgrandaverage(cfg, tfr2_all{:});
 ga_nb_3 = ft_freqgrandaverage(cfg, tfr3_all{:});
+
+xlimTopo = [0 2];
 
 cfg = [];
 cfg.frequency = [8 14];
@@ -118,32 +114,38 @@ ga_nb_1_erd = ft_selectdata(cfg, ga_nb_1);
 ga_nb_2_erd = ft_selectdata(cfg, ga_nb_2);
 ga_nb_3_erd = ft_selectdata(cfg, ga_nb_3);
 
+cmap = interp1(linspace(0, 1, 5), ...
+    [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], ...
+    linspace(0, 1, 64));
+
+topoData = {ga_nb_1_erd, ga_nb_2_erd, ga_nb_3_erd};
+topoTitles = {'1-back', '2-back', '3-back'};
+
 cfg = [];
 cfg.layout = headmodel.layANThead;
-cfg.figure = 'gcf';
-cfg.zlim = [-2 2];
-cfg.xlim = [0 2];
+cfg.zlim = 'maxabs';
+cfg.xlim = xlimTopo;
 cfg.marker = 'off';
 cfg.highlight = 'on';
 cfg.highlightchannel = chPlot;
 cfg.highlightsymbol = '.';
 cfg.highlightsize = 20;
 cfg.comment = 'no';
+cfg.gridscale = 300;
+cfg.colormap = cmap;
 
-figure('Position', [0 0 1512 982], 'Color', 'w');
-subplot(1, 3, 1); ft_topoplotER(cfg, ga_nb_1_erd);
-subplot(1, 3, 2); ft_topoplotER(cfg, ga_nb_2_erd);
-subplot(1, 3, 3); ft_topoplotER(cfg, ga_nb_3_erd);
-saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_nback_topos.png'));
-
-function h = shadedErrorBars(x, y, e, col)
-x = x(:);
-y = y(:);
-e = e(:);
-low = y - e;
-high = y + e;
-h.patch = patch([x; flipud(x)], [low; flipud(high)], col, ...
-    'FaceAlpha', 0.2, 'EdgeColor', 'none', 'HandleVisibility', 'off');
-hold on
-h.line = plot(x, y, 'Color', col, 'LineWidth', 2);
+figure('Position', [0 0 1512 982*0.6], 'Color', 'w');
+tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'loose');
+for k = 1:3
+    ax = nexttile(k);
+    cfg.figure = ax;
+    ft_topoplotER(cfg, topoData{k});
+    if k == 3
+        cb = colorbar(ax, 'eastoutside');
+        cb.Label.String = 'Power [dB]';
+    end
+    set(ax, 'FontSize', fontSize);
+    title(ax, topoTitles{k}, 'Interpreter', 'none');
 end
+drawnow; pause(0.05);
+saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_nback_topos.png'));

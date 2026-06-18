@@ -4,7 +4,7 @@
 %
 % Extracted features:
 %   Power Spectrum windows (raw + baselined) via mtmconvol (2 Hz foi grid)
-%   IAF (condition-wise): legacy peak on raw powspctrm [0 2] s full retention (occipital ROI, [8 14] Hz)
+%   IAF (condition-wise): mtmfft+DPSS on retention window, trial-averaged (N-back [0 2] s), findpeaks [8 14] Hz
 %   Alpha power in (IAF-4, IAF+2) Hz (early/late/full; raw + dB); NaN if no valid IAF
 %   Lateralization index (late baselined)
 %   ERSD_early / ERSD_late / ERSD_full (fixed [8 14] Hz on per-trial baselined TFR, occipital ROI)
@@ -170,14 +170,21 @@ for subj = 1:length(subjects)
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath);
         load('power_nback_windows.mat');
+        load dataEEG_TFR_nback
+
+        ind1 = find(dataTFR.trialinfo(:, 1) == 21);
+        ind2 = find(dataTFR.trialinfo(:, 1) == 22);
+        ind3 = find(dataTFR.trialinfo(:, 1) == 23);
 
         % Channels selection based on CBPT
         channelIdx = find(ismember(pow1_raw_full.label, channels));
+        chLabs = pow1_raw_full.label(channelIdx);
 
-        % IAF: condition-wise raw powspctrm, full retention [0 2] s, occipital ROI
-        [IAF1, powerIAF1] = iaf_from_powspctrm(pow1_raw_full, channelIdx, alphaRange);
-        [IAF2, powerIAF2] = iaf_from_powspctrm(pow2_raw_full, channelIdx, alphaRange);
-        [IAF3, powerIAF3] = iaf_from_powspctrm(pow3_raw_full, channelIdx, alphaRange);
+        % IAF: trial-averaged mtmfft on full retention [0 2] s, occipital ROI (~0.5 Hz resolution)
+        winIAF = [0 2];
+        [IAF1, powerIAF1] = iaf_from_retention_mtmfft(dataTFR, ind1, winIAF, chLabs, alphaRange);
+        [IAF2, powerIAF2] = iaf_from_retention_mtmfft(dataTFR, ind2, winIAF, chLabs, alphaRange);
+        [IAF3, powerIAF3] = iaf_from_retention_mtmfft(dataTFR, ind3, winIAF, chLabs, alphaRange);
 
         % ERSD from cached baselined TFR (avoid duplicate spectral transforms)
         tfr_cache = load('tfr_nback.mat', 'tfr1_bl', 'tfr2_bl', 'tfr3_bl');
@@ -245,10 +252,38 @@ save(fullfile(paths.features, 'AOC_eeg_matrix_nback.mat'), 'eeg_data_nback')
 writetable(struct2table(eeg_data_nback), fullfile(paths.features, 'AOC_eeg_matrix_nback.csv'))
 
 %%
-function [IAF, powerIAF] = iaf_from_powspctrm(S, channelIdx, alphaRange)
-% IAF from ROI-mean windowed powspctrm (chan x freq).
-ps = mean(S.powspctrm(channelIdx, :), 1);
-[IAF, powerIAF] = iaf_peak_rules(S.freq(:), ps(:), alphaRange);
+function [IAF, powerIAF] = iaf_from_retention_mtmfft(dataTFR, trialinds, winSec, chLabs, alphaRange)
+% Trial-averaged multitaper FFT on retention window; ROI-mean spectrum; legacy peak rules.
+% Trials are averaged inside ft_freqanalysis (keeptrials = no), not concatenated.
+IAF = NaN;
+powerIAF = NaN;
+if isempty(trialinds) || isempty(chLabs)
+    return
+end
+try
+    cfg_sel = [];
+    cfg_sel.latency = winSec;
+    cfg_sel.trials = trialinds(:)';
+    cfg_sel.channel = chLabs(:);
+    dw = ft_selectdata(cfg_sel, dataTFR);
+    if isempty(dw.trial)
+        return
+    end
+    cfgf = [];
+    cfgf.method = 'mtmfft';
+    cfgf.output = 'pow';
+    cfgf.taper = 'dpss';
+    cfgf.tapsmofrq = 2;
+    cfgf.foilim = [6 18];
+    cfgf.pad = 'nextpow2';
+    cfgf.keeptrials = 'no';
+    fr = ft_freqanalysis(cfgf, dw);
+    ps = mean(fr.powspctrm, 1);
+    [IAF, powerIAF] = iaf_peak_rules(fr.freq(:), ps(:), alphaRange);
+catch
+    IAF = NaN;
+    powerIAF = NaN;
+end
 end
 
 function [IAF, powerIAF] = iaf_peak_rules(freq, spec, alphaRange)

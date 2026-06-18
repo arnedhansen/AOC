@@ -8,7 +8,7 @@
 %   IAF (condition-wise): legacy peak on raw powspctrm [1 2] s late retention (occipital ROI, [8 14] Hz)
 %   Alpha power in (IAF-4, IAF+2) Hz (early/late/full; raw + dB); NaN if no valid IAF
 %   Lateralization index (late baselined)
-%   ERSD_early / ERSD_late / ERSD_full (fixed [8 14] Hz on baselined TFR, occipital ROI)
+%   ERSD_early / ERSD_late / ERSD_full (fixed [8 14] Hz on per-trial baselined TFR, occipital ROI)
 
 %% POWSPCTRM (Baseline + Early/Late/Full)
 % Setup
@@ -48,19 +48,25 @@ for subj = 1:length(subjects)
         cfg.t_ftimwin  = ones(size(cfg.foi)) * 0.5;  % 500 ms window for all frequencies
         cfg.toi        = -1.5:0.05:3;
         cfg.pad        = 'nextpow2';
-        cfg.keeptrials = 'no';
+        cfg.keeptrials = 'yes';
 
         cfg.trials = ind2; tfr2 = ft_freqanalysis(cfg, dataTFR); % chan_freq_time
         cfg.trials = ind4; tfr4 = ft_freqanalysis(cfg, dataTFR);
         cfg.trials = ind6; tfr6 = ft_freqanalysis(cfg, dataTFR);
 
-        % Baselined TFR (dB)
+        % Per-trial baseline (dB), then average across trials
         cfgb              = [];
         cfgb.baseline     = window.base;
         cfgb.baselinetype = 'db';
         tfr2_bl = ft_freqbaseline(cfgb, tfr2);
         tfr4_bl = ft_freqbaseline(cfgb, tfr4);
         tfr6_bl = ft_freqbaseline(cfgb, tfr6);
+        tfr2    = trial_average_tfr(tfr2);
+        tfr4    = trial_average_tfr(tfr4);
+        tfr6    = trial_average_tfr(tfr6);
+        tfr2_bl = trial_average_tfr(tfr2_bl);
+        tfr4_bl = trial_average_tfr(tfr4_bl);
+        tfr6_bl = trial_average_tfr(tfr6_bl);
 
         % Save trial-averaged TFR outputs
         save('tfr_stern.mat', 'tfr2', 'tfr4', 'tfr6', 'tfr2_bl', 'tfr4_bl', 'tfr6_bl')
@@ -379,4 +385,10 @@ ersd_tc = struct();
 ersd_tc.time = timeVec;
 ersd_tc.condition = condVals(:);
 ersd_tc.ersd_occ_8_14_db = tc;
+end
+
+function tf_avg = trial_average_tfr(tf)
+cfg = [];
+cfg.avgoverrpt = 'yes';
+tf_avg = ft_selectdata(cfg, tf);
 end

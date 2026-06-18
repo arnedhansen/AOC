@@ -15,7 +15,7 @@
 %     AlphaPower_bl_early / _late / _full   (dB baseline [-1.5 -0.5]s)
 %     ERSD_early / ERSD_late / ERSD_full — fixed [8 14] Hz dB on tfr*_bl, O/I occ channels, windows [0 1] / [1 2] / [0 2]s
 %         (AOC_eeg_fex_sternberg_TFR.m → AOC_eeg_matrix_sternberg_ERSD.mat)
-%     IAF (concat [1 2]s retention, mtmfft+DPSS peak)
+%     IAF
 %
 %   Gaze — baselined (BL window [-1.5 -0.5]s; % for GD/SPL/MS/BCEA,pupil):
 %     GazeDeviationFullBL / EarlyBL / LateBL

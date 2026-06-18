@@ -5,8 +5,8 @@
 % Extracted features:
 %   Power Spectrum (Early [0 1], Late [1 2], Full [0 2]) + Baseline [-1.5 -0.5]
 %   Baselined spectra (dB) for each window (mtmconvol, 2 Hz foi grid)
-%   IAF (condition-wise): concatenated [1 2]s (late retention), mtmfft + DPSS, legacy peak rules
-%   Alpha power in IAF band (early/late/full; raw + dB)
+%   IAF (condition-wise): legacy peak on raw powspctrm [1 2] s late retention (occipital ROI, [8 14] Hz)
+%   Alpha power in (IAF-4, IAF+2) Hz (early/late/full; raw + dB); NaN if no valid IAF
 %   Lateralization index (late baselined)
 %   ERSD_early / ERSD_late / ERSD_full (fixed [8 14] Hz on baselined TFR, occipital ROI)
 
@@ -158,28 +158,20 @@ eeg_data_sternberg = struct('ID', {}, 'Condition', {}, 'IAF', {}, 'Lateralizatio
     'AlphaPower_raw_early', {}, 'AlphaPower_raw_late', {}, 'AlphaPower_raw_full', {}, ...
     'AlphaPower_bl_early', {}, 'AlphaPower_bl_late', {}, 'AlphaPower_bl_full', {});
 
-winIAF = [1 2];  % late retention only; pow windows unchanged
-
 for subj = 1:length(subjects)
     try
         clc; fprintf('[EEG FEX - STERNBERG] Alpha power, IAF and lateralization for Subject %d / %d \n', subj, length(subjects))
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath);
         load('power_stern_windows.mat');
-        load dataEEG_TFR_sternberg
-
-        ind2 = find(dataTFR.trialinfo(:, 1) == 22);
-        ind4 = find(dataTFR.trialinfo(:, 1) == 24);
-        ind6 = find(dataTFR.trialinfo(:, 1) == 26);
 
         % Channel selection
         channelIdx = find(ismember(pow2_raw_full.label, channels));
-        chLabs = pow2_raw_full.label(channelIdx);
 
-        % IAF: concatenated late retention [1 2]s + mtmfft + DPSS, same peak rules
-        [IAF2, powerIAF2] = iaf_from_concat_dpss(dataTFR, ind2, winIAF, chLabs, alphaRange);
-        [IAF4, powerIAF4] = iaf_from_concat_dpss(dataTFR, ind4, winIAF, chLabs, alphaRange);
-        [IAF6, powerIAF6] = iaf_from_concat_dpss(dataTFR, ind6, winIAF, chLabs, alphaRange);
+        % IAF: condition-wise raw powspctrm, late retention [1 2] s, occipital ROI
+        [IAF2, powerIAF2] = iaf_from_powspctrm(pow2_raw_late, channelIdx, alphaRange);
+        [IAF4, powerIAF4] = iaf_from_powspctrm(pow4_raw_late, channelIdx, alphaRange);
+        [IAF6, powerIAF6] = iaf_from_powspctrm(pow6_raw_late, channelIdx, alphaRange);
 
         % ERSD from cached baselined TFR (avoid duplicate spectral transforms)
         tfr_cache = load('tfr_stern.mat', 'tfr2_bl', 'tfr4_bl', 'tfr6_bl');
@@ -201,7 +193,7 @@ for subj = 1:length(subjects)
         LatIdx4 = LatIdx(2);
         LatIdx6 = LatIdx(3);
 
-        % Alpha power in subject IAF band [IAF-4 IAF+2]; fixed [8 14] only when IAF is undefined
+        % Alpha power in subject IAF band (IAF-4, IAF+2); NaN when IAF undefined
         IAF_band2 = iaf_alpha_band(IAF2, alphaRange);
         IAF_band4 = iaf_alpha_band(IAF4, alphaRange);
         IAF_band6 = iaf_alpha_band(IAF6, alphaRange);
@@ -246,61 +238,9 @@ end
 save(fullfile(paths.features, 'AOC_eeg_matrix_sternberg.mat'), 'eeg_data_sternberg')
 writetable(struct2table(eeg_data_sternberg), fullfile(paths.features, 'AOC_eeg_matrix_sternberg.csv'))
 
-function datc = local_ft_concat_trials(dw)
-nTr = numel(dw.trial);
-nCh = size(dw.trial{1}, 1);
-Ttot = 0;
-for k = 1:nTr
-    Ttot = Ttot + size(dw.trial{k}, 2);
-end
-datc = struct();
-datc.label = dw.label;
-datc.fsample = dw.fsample;
-datc.trial = {zeros(nCh, Ttot)};
-t0 = 1;
-for k = 1:nTr
-    tk = size(dw.trial{k}, 2);
-    datc.trial{1}(:, t0:t0 + tk - 1) = dw.trial{k};
-    t0 = t0 + tk;
-end
-datc.time = {(0:Ttot - 1) ./ dw.fsample};
-datc.sampleinfo = [1 Ttot];
-if isfield(dw, 'hdr') && ~isempty(dw.hdr)
-    datc.hdr = dw.hdr;
-end
-end
-
-
-function [IAF, powerIAF] = iaf_from_concat_dpss(dataTFR, trialinds, winSec, chLabs, alphaRange)
-IAF = NaN;
-powerIAF = NaN;
-if isempty(trialinds) || isempty(chLabs)
-    return
-end
-try
-    cfg_sel = [];
-    cfg_sel.latency = winSec;
-    cfg_sel.trials = trialinds(:)';
-    cfg_sel.channel = chLabs(:);
-    dw = ft_selectdata(cfg_sel, dataTFR);
-    if isempty(dw.trial)
-        return
-    end
-    datc = local_ft_concat_trials(dw);
-    cfgf = [];
-    cfgf.method = 'mtmfft';
-    cfgf.output = 'pow';
-    cfgf.taper = 'dpss';
-    cfgf.tapsmofrq = 2;
-    cfgf.foilim = [6 18];
-    cfgf.pad = 'nextpow2';
-    fr = ft_freqanalysis(cfgf, datc);
-    ps = mean(fr.powspctrm, 1);
-    [IAF, powerIAF] = iaf_peak_rules(fr.freq(:), ps(:), alphaRange);
-catch
-    IAF = NaN;
-    powerIAF = NaN;
-end
+function [IAF, powerIAF] = iaf_from_powspctrm(S, channelIdx, alphaRange)
+ps = mean(S.powspctrm(channelIdx, :), 1);
+[IAF, powerIAF] = iaf_peak_rules(S.freq(:), ps(:), alphaRange);
 end
 
 function [IAF, powerIAF] = iaf_peak_rules(freq, spec, alphaRange)
@@ -321,11 +261,9 @@ end
 [~, ind] = max(pks);
 IAF = alphaFreqs(locs(ind));
 bandIdx = freq > (IAF - 4) & freq < (IAF + 2);
-if ~any(bandIdx)
-    return
+if any(bandIdx)
+    powerIAF = mean(spec(bandIdx));
 end
-powerIAF = mean(spec(bandIdx));
-% Legacy: peak at alpha-band edge (8 or 14 Hz on 2 Hz grid) → keep IAF, NaN power at IAF only
 if locs(ind) == 1 || locs(ind) == numel(alphaFreqs)
     powerIAF = NaN;
 end
@@ -333,14 +271,14 @@ end
 
 function band = iaf_alpha_band(IAF, alphaRange)
 if isnan(IAF)
-    band = alphaRange;
+    band = [NaN NaN];
 else
     band = [IAF - 4, IAF + 2];
 end
 end
 
 function v = robust_roi_pow(S, channelIdx, band)
-fmask = S.freq >= band(1) & S.freq <= band(2);
+fmask = S.freq > band(1) & S.freq < band(2);
 if ~any(fmask)
     v = NaN;
     return

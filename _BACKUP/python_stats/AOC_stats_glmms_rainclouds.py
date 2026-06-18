@@ -152,7 +152,7 @@ mpl.rcParams.update({
 })
 
 # Manual y-label x position in axes grid coords (more negative = further from tick labels)
-YLABEL_GRID_X = -0.125
+YLABEL_GRID_X = -0.05
 
 sns.set_style("white")  # clean white background, no grey panel
 

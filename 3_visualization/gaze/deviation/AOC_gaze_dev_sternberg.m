@@ -11,7 +11,7 @@ if ~isfolder(fig_dir), mkdir(fig_dir); end
 fig_dir_ctrl = fullfile(paths.figures, 'controls', 'gaze', 'deviation');
 if ~isfolder(fig_dir_ctrl), mkdir(fig_dir_ctrl); end
 
-fontSize = 25;
+fontSize = 40;
 fs = 500;
 t_full = -0.5:1/fs:2;
 t_plot = t_full(2:end);
@@ -28,7 +28,7 @@ max_interp_gap_sec = 0.20;
 min_subject_coverage = 0.85;
 winsor_pct = 10;
 
-%% Aggregate subject data using feature-extraction-comparable preprocessing
+%% Aggregate subject data
 merged_file = fullfile(feat_dir, 'AOC_merged_data_sternberg.mat');
 S = load(merged_file, 'merged_data_sternberg');
 T = struct2table(S.merged_data_sternberg);
@@ -121,6 +121,7 @@ for s = 1:nSubj
 end
 
 %% Plot baselined gaze deviation
+close all
 win_sm = max(1, round(smooth_sec * fs));
 figure('Position', [0 0 1512 982], 'Color', 'w');
 hold on
@@ -161,18 +162,19 @@ xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Gaze Deviation [%]');
 xlim([-0.5 2]);
-ylim([-15 375]);
+ylim([-25 125]);
 set(gca, 'FontSize', fontSize - 4);
 box off
 legend_handles = gobjects(1, 3);
 for c = 1:3
     legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
 end
-legend(legend_handles, cond_labels, 'Location', 'northeast', 'FontSize', fontSize - 2, 'Box', 'off');
+legend(legend_handles, cond_labels, 'Location', 'northeast', 'FontSize', fontSize*0.666, 'Box', 'off');
 
-saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_sternberg_conditions.png'));
+saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_sternberg.png'));
 
-%% Plot raw gaze deviation (no baseline normalization)
+%% Plot raw gaze deviation
+close all
 figure('Position', [0 0 1512 982], 'Color', 'w');
 hold on
 for c = 1:3
@@ -207,73 +209,20 @@ end
 yline(0, '--');
 xline(0, '--k');
 xlabel('Time [s]');
-ylabel('Raw Gaze Deviation [px]');
+ylabel('Gaze Deviation [px]');
 xlim([-0.5 2]);
+ylim([10 40]);
 set(gca, 'FontSize', fontSize - 4);
 box off
 legend_handles = gobjects(1, 3);
 for c = 1:3
     legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
 end
-legend(legend_handles, cond_labels, 'Location', 'northeast', 'FontSize', fontSize - 2, 'Box', 'off');
+legend(legend_handles, cond_labels, 'Location', 'northeast', 'FontSize', fontSize*0.666, 'Box', 'off');
 
-saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_sternberg_conditions_raw.png'));
+saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_sternberg_raw.png'));
 
-%% Debug plots: individual subject trajectories per condition
-for c = 1:3
-    X = squeeze(gaze_tc_bl(:, c, :));
-    X(~isfinite(X)) = NaN;
-
-    % Use the same outlier exclusion in debug participant plots.
-    med_metric = median(X(:, idx_viable), 2, 'omitnan');
-    [X, ~] = exclude_outlier_trajectories(X, med_metric, outlier_k_iqr);
-
-    max_interp_gap_smp = max(1, round(max_interp_gap_sec * fs));
-    for s = 1:size(X, 1)
-        X(s, :) = fill_short_nan_gaps(X(s, :), max_interp_gap_smp);
-    end
-
-    subj_cov = mean(isfinite(X(:, idx_viable)), 2);
-    keep_cov = subj_cov >= min_subject_coverage;
-    X = X(keep_cov, :);
-
-    if win_sm > 1
-        X = movmean(X, win_sm, 2, 'omitnan');
-    end
-
-    figure('Position', [0 0 1512 982], 'Color', 'w');
-    hold on
-
-    % Plot each participant with low opacity (or lightened color fallback).
-    for s = 1:size(X, 1)
-        xs = X(s, :);
-        if ~any(isfinite(xs))
-            continue
-        end
-        h = plot(t_plot, xs, '-', 'LineWidth', 0.8, 'Color', colors(c, :));
-        try
-            h.Color(4) = 0.18;
-        catch
-            h.Color = 0.70 * colors(c, :) + 0.30 * [1 1 1];
-        end
-    end
-
-    [m, ~] = winsorized_nanmean_se(X, winsor_pct);
-    plot(t_plot, m, '-', 'LineWidth', 3.0, 'Color', colors(c, :));
-
-    yline(0, '--');
-    xline(0, '--k');
-    xlabel('Time [s]');
-    ylabel('Gaze Deviation [%]');
-    xlim([-0.5 2]);
-    %ylim([-10 375]);
-    title(sprintf('Sternberg %s: individual trajectories + mean', cond_labels{c}));
-    set(gca, 'FontSize', fontSize - 4);
-    box off
-
-    fname = sprintf('AOC_gaze_dev_sternberg_individual_%s.png', regexprep(lower(cond_labels{c}), '\s+', '_'));
-    saveas(gcf, fullfile(fig_dir_ctrl, fname));
-end
+%%
 
 function conds = parse_trialinfo_conds(trialinfo)
 conds = [];

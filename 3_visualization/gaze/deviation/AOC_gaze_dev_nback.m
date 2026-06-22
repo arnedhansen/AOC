@@ -10,7 +10,7 @@ feat_dir = paths.features;
 fig_dir = fullfile(paths.figures, 'gaze', 'deviation');
 if ~isfolder(fig_dir), mkdir(fig_dir); end
 
-fontSize = 25;
+fontSize = 40;
 fs = 500;
 t_full = -0.5:1/fs:2;
 t_plot = t_full(2:end);
@@ -28,7 +28,7 @@ max_interp_gap_sec = 0.20;
 min_subject_coverage = 0.85;
 winsor_pct = 10;
 
-%% Aggregate subject data using feature-extraction-comparable preprocessing
+%% Aggregate subject data 
 merged_file = fullfile(feat_dir, 'AOC_merged_data_nback.mat');
 S = load(merged_file, 'merged_data_nback');
 T = struct2table(S.merged_data_nback);
@@ -121,6 +121,7 @@ for s = 1:nSubj
 end
 
 %% Plot baselined gaze deviation
+close all
 win_sm = max(1, round(smooth_sec * fs));
 figure('Position', [0 0 1512 982], 'Color', 'w');
 hold on
@@ -161,18 +162,18 @@ xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Gaze Deviation [%]');
 xlim([-0.5 2]);
-ylim([-10 140])
+ylim([-25 125]);
 set(gca, 'FontSize', fontSize - 4);
 box off
 legend_handles = gobjects(1, 3);
 for c = 1:3
     legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
 end
-legend(legend_handles, cond_labels, 'Location', 'northeast', 'FontSize', fontSize - 2, 'Box', 'off');
+legend(legend_handles, cond_labels, 'Location', 'northeast', 'FontSize', fontSize*0.666, 'Box', 'off');
+saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_nback.png'));
 
-saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_nback_conditions.png'));
-
-%% Plot raw gaze deviation time courses (non-baselined)
+%% Plot raw gaze deviation time courses
+close all
 figure('Position', [0 0 1512 982], 'Color', 'w');
 hold on
 for c = 1:3
@@ -208,18 +209,19 @@ end
 yline(0, '--');
 xline(0, '--k');
 xlabel('Time [s]');
-ylabel('Raw Gaze Deviation [px]');
+ylabel('Gaze Deviation [px]');
 xlim([-0.5 2]);
+ylim([10 40]);
 set(gca, 'FontSize', fontSize - 4);
 box off
 legend_handles = gobjects(1, 3);
 for c = 1:3
     legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
 end
-legend(legend_handles, cond_labels, 'Location', 'northeast', 'FontSize', fontSize - 2, 'Box', 'off');
+legend(legend_handles, cond_labels, 'Location', 'northeast', 'FontSize', fontSize*0.666, 'Box', 'off');
+saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_nback_raw.png'));
 
-saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_nback_conditions_raw.png'));
-
+%%
 function conds = parse_trialinfo_conds(trialinfo)
 conds = [];
 if isempty(trialinfo)
@@ -349,5 +351,4 @@ lo = prctile(xw, pct);
 hi = prctile(xw, 100 - pct);
 xw(xw < lo) = lo;
 xw(xw > hi) = hi;
-end
 end

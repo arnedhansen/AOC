@@ -103,7 +103,7 @@ yline(0, '--', 'Color', [0.75 0.75 0.75], 'LineWidth', 1);
 
 set(gca, 'FontSize', fontSize);
 xlabel('Time [s]');
-ylabel('Power [dB]');
+ylabel('Power Change [dB]');
 xlim([-0.5 2]);
 ylim([-3 3]);
 leg_p6 = patch(NaN, NaN, colors(3, :), 'EdgeColor', 'none');
@@ -145,7 +145,7 @@ for k = 1:3
     ft_topoplotER(cfg, topoData{k});
     if k == 3
         cb = colorbar(ax, 'eastoutside');
-        cb.Label.String = 'Power [dB]';
+        cb.Label.String = 'Power Change [dB]';
     end
     set(ax, 'FontSize', fontSize);
     title(ax, topoTitles{k}, 'Interpreter', 'none');

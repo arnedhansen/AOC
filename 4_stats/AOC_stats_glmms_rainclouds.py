@@ -455,7 +455,7 @@ y_labels = [
     "Alpha Power [\u03BCV²/Hz]",
     "Alpha Power [dB]",
     "IAF [Hz]",
-    "ERS/ERD [dB]",
+    "Power Change [dB]",
 ]
 save_names = [
     "acc", "rt",

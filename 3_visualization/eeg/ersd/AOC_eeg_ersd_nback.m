@@ -1,6 +1,6 @@
 %% AOC EEG ERD/ERS N Back time course plus topos
-% Time course is loaded from saved ERSD outputs produced during feature extraction.
-% No ERSD recomputation is performed here.
+% Trial-averaged TFR is baselined [-1.5 -0.5] dB per subject, then grand-averaged
+% (matches supervisor occ_alpha_power_script.m).
 
 %% Setup
 startup
@@ -10,36 +10,27 @@ figDir = fullfile(paths.figures, 'eeg', 'ersd');
 if ~isfolder(figDir), mkdir(figDir); end
 subjects = setdiff(subjects, {'361'});
 
-%% Load subject ERSD timecourses and cached TFR for topoplots
-tc1 = [];
-tc2 = [];
-tc3 = [];
-timeVec = [];
+baseline_window = [-1.5 -0.5];
+cfgb = [];
+cfgb.baseline = baseline_window;
+cfgb.baselinetype = 'db';
+
+%% Load trial-averaged TFR, baseline per subject
 tfr1_all = {};
 tfr2_all = {};
 tfr3_all = {};
 
 for subj = 1:numel(subjects)
     dp = fullfile(path, subjects{subj}, 'eeg');
-    f_tc = fullfile(dp, 'ersd_nback_timecourse.mat');
     f_tfr = fullfile(dp, 'tfr_nback.mat');
-    S = load(f_tc, 'ersd_timecourse');
-    E = S.ersd_timecourse;
-    conds = E.condition(:);
-    timeVec = E.time(:)';
-    tcMat = E.ersd_occ_8_14_db;
-    tc1 = [tc1; tcMat(conds == 1, :)];
-    tc2 = [tc2; tcMat(conds == 2, :)];
-    tc3 = [tc3; tcMat(conds == 3, :)];
-
-    T = load(f_tfr, 'tfr1_bl', 'tfr2_bl', 'tfr3_bl');
-    tfr1_all{end + 1} = T.tfr1_bl;
-    tfr2_all{end + 1} = T.tfr2_bl;
-    tfr3_all{end + 1} = T.tfr3_bl;
-    fprintf('Loaded n back ERSD timecourse %d / %d\n', subj, numel(subjects));
+    T = load(f_tfr, 'tfr1', 'tfr2', 'tfr3');
+    tfr1_all{end + 1} = ft_freqbaseline(cfgb, T.tfr1);
+    tfr2_all{end + 1} = ft_freqbaseline(cfgb, T.tfr2);
+    tfr3_all{end + 1} = ft_freqbaseline(cfgb, T.tfr3);
+    fprintf('Loaded n back TFR %d / %d\n', subj, numel(subjects));
 end
 
-nSubj = size(tc1, 1);
+nSubj = numel(tfr1_all);
 ref = tfr1_all{1};
 chPlot = {};
 for i = 1:numel(ref.label)
@@ -49,12 +40,44 @@ for i = 1:numel(ref.label)
     end
 end
 
-%% Plot ERSD Timecourse 
+%% Grand average (keep individual subjects) and select alpha band
+cfg = [];
+cfg.keepindividual = 'yes';
+ga_nb_1 = ft_freqgrandaverage(cfg, tfr1_all{:});
+ga_nb_2 = ft_freqgrandaverage(cfg, tfr2_all{:});
+ga_nb_3 = ft_freqgrandaverage(cfg, tfr3_all{:});
+
+cfg = [];
+cfg.frequency = [8 14];
+cfg.avgoverfreq = 'yes';
+ga_nb_1_erd = ft_selectdata(cfg, ga_nb_1);
+ga_nb_2_erd = ft_selectdata(cfg, ga_nb_2);
+ga_nb_3_erd = ft_selectdata(cfg, ga_nb_3);
+
+%% Plot ERSD time course (occipital ROI, mean +/- SEM across subjects)
+cfg = [];
+cfg.channel = chPlot;
+cfg.avgoverchan = 'yes';
+cfg.latency = [-.5 2];
+tlk1 = ft_selectdata(cfg, ga_nb_1_erd);
+tlk2 = ft_selectdata(cfg, ga_nb_2_erd);
+tlk3 = ft_selectdata(cfg, ga_nb_3_erd);
+timeVec = tlk1.time(:)';
+
 close all
 figure('Position', [0 0 1512 982], 'Color', 'w');
 fontSize = 30;
 mask = timeVec >= -0.5 & timeVec <= 2;
 x = timeVec(mask);
+
+tc1 = squeeze(tlk1.powspctrm);
+tc2 = squeeze(tlk2.powspctrm);
+tc3 = squeeze(tlk3.powspctrm);
+if isvector(tc1)
+    tc1 = tc1(:)';
+    tc2 = tc2(:)';
+    tc3 = tc3(:)';
+end
 
 y3 = mean(tc3(:, mask), 1, 'omitnan');
 e3 = std(tc3(:, mask), 0, 1, 'omitnan') ./ sqrt(nSubj);
@@ -91,22 +114,8 @@ legend([leg_p1, leg_p2, leg_p3], {'1-back', '2-back', '3-back'}, ...
 drawnow; pause(0.05);
 saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_nback_timecourse.png'));
 
-%% Topoplots
-close all
-cfg = [];
-cfg.keepindividual = 'yes';
-ga_nb_1 = ft_freqgrandaverage(cfg, tfr1_all{:});
-ga_nb_2 = ft_freqgrandaverage(cfg, tfr2_all{:});
-ga_nb_3 = ft_freqgrandaverage(cfg, tfr3_all{:});
-
+%% Topoplots (retention [0 2] s)
 xlimTopo = [0 2];
-
-cfg = [];
-cfg.frequency = [8 14];
-cfg.avgoverfreq = 'yes';
-ga_nb_1_erd = ft_selectdata(cfg, ga_nb_1);
-ga_nb_2_erd = ft_selectdata(cfg, ga_nb_2);
-ga_nb_3_erd = ft_selectdata(cfg, ga_nb_3);
 
 cmap = interp1(linspace(0, 1, 5), ...
     [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], ...
@@ -117,7 +126,7 @@ topoTitles = {'1-back', '2-back', '3-back'};
 
 cfg = [];
 cfg.layout = headmodel.layANThead;
-cfg.zlim = 'maxabs';
+cfg.zlim = [-2 2];
 cfg.xlim = xlimTopo;
 cfg.marker = 'off';
 cfg.highlight = 'on';

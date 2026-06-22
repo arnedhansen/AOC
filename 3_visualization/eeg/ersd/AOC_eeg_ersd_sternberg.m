@@ -1,6 +1,6 @@
 %% AOC EEG ERD/ERS Sternberg time course plus topos
-% Time course is loaded from saved ERSD outputs produced during feature extraction.
-% No ERSD recomputation is performed here.
+% Trial-averaged TFR is baselined [-1.5 -0.5] dB per subject, then grand-averaged
+% (matches supervisor occ_alpha_power_script.m).
 
 %% Setup
 startup
@@ -10,36 +10,27 @@ figDir = fullfile(paths.figures, 'eeg', 'ersd');
 if ~isfolder(figDir), mkdir(figDir); end
 subjects = setdiff(subjects, {'361'});
 
-%% Load subject ERSD timecourses and cached TFR for topoplots
-tc2 = [];
-tc4 = [];
-tc6 = [];
-timeVec = [];
+baseline_window = [-1.5 -0.5];
+cfgb = [];
+cfgb.baseline = baseline_window;
+cfgb.baselinetype = 'db';
+
+%% Load trial-averaged TFR, baseline per subject
 tfr2_all = {};
 tfr4_all = {};
 tfr6_all = {};
 
 for subj = 1:numel(subjects)
     dp = fullfile(path, subjects{subj}, 'eeg');
-    f_tc = fullfile(dp, 'ersd_sternberg_timecourse.mat');
     f_tfr = fullfile(dp, 'tfr_stern.mat');
-    S = load(f_tc, 'ersd_timecourse');
-    E = S.ersd_timecourse;
-    conds = E.condition(:);
-    timeVec = E.time(:)';
-    tcMat = E.ersd_occ_8_14_db;
-    tc2 = [tc2; tcMat(conds == 2, :)];
-    tc4 = [tc4; tcMat(conds == 4, :)];
-    tc6 = [tc6; tcMat(conds == 6, :)];
-
-    T = load(f_tfr, 'tfr2_bl', 'tfr4_bl', 'tfr6_bl');
-    tfr2_all{end + 1} = T.tfr2_bl;
-    tfr4_all{end + 1} = T.tfr4_bl;
-    tfr6_all{end + 1} = T.tfr6_bl;
-    fprintf('Loaded Sternberg ERSD timecourse %d / %d\n', subj, numel(subjects));
+    T = load(f_tfr, 'tfr2', 'tfr4', 'tfr6');
+    tfr2_all{end + 1} = ft_freqbaseline(cfgb, T.tfr2);
+    tfr4_all{end + 1} = ft_freqbaseline(cfgb, T.tfr4);
+    tfr6_all{end + 1} = ft_freqbaseline(cfgb, T.tfr6);
+    fprintf('Loaded Sternberg TFR %d / %d\n', subj, numel(subjects));
 end
 
-nSubj = size(tc2, 1);
+nSubj = numel(tfr2_all);
 ref = tfr2_all{1};
 chPlot = {};
 for i = 1:numel(ref.label)
@@ -49,12 +40,44 @@ for i = 1:numel(ref.label)
     end
 end
 
-%% Plot ERSD Timecourse
+%% Grand average (keep individual subjects) and select alpha band
+cfg = [];
+cfg.keepindividual = 'yes';
+ga_sb_2 = ft_freqgrandaverage(cfg, tfr2_all{:});
+ga_sb_4 = ft_freqgrandaverage(cfg, tfr4_all{:});
+ga_sb_6 = ft_freqgrandaverage(cfg, tfr6_all{:});
+
+cfg = [];
+cfg.frequency = [8 14];
+cfg.avgoverfreq = 'yes';
+ga_sb_2_erd = ft_selectdata(cfg, ga_sb_2);
+ga_sb_4_erd = ft_selectdata(cfg, ga_sb_4);
+ga_sb_6_erd = ft_selectdata(cfg, ga_sb_6);
+
+%% Plot ERSD time course (occipital ROI, mean +/- SEM across subjects)
+cfg = [];
+cfg.channel = chPlot;
+cfg.avgoverchan = 'yes';
+cfg.latency = [-.5 3];
+tlk2 = ft_selectdata(cfg, ga_sb_2_erd);
+tlk4 = ft_selectdata(cfg, ga_sb_4_erd);
+tlk6 = ft_selectdata(cfg, ga_sb_6_erd);
+timeVec = tlk2.time(:)';
+
 close all
 figure('Position', [0 0 1512 982], 'Color', 'w');
 fontSize = 30;
-mask = timeVec >= -0.5 & timeVec <= 3;
+mask = timeVec >= -0.5 & timeVec <= 2;
 x = timeVec(mask);
+
+tc2 = squeeze(tlk2.powspctrm);
+tc4 = squeeze(tlk4.powspctrm);
+tc6 = squeeze(tlk6.powspctrm);
+if isvector(tc2)
+    tc2 = tc2(:)';
+    tc4 = tc4(:)';
+    tc6 = tc6(:)';
+end
 
 y6 = mean(tc6(:, mask), 1, 'omitnan');
 e6 = std(tc6(:, mask), 0, 1, 'omitnan') ./ sqrt(nSubj);
@@ -82,7 +105,7 @@ set(gca, 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Power [dB]');
 xlim([-0.5 2]);
-ylim([-3.25 0.65]);
+ylim([-3 3]);
 leg_p6 = patch(NaN, NaN, colors(3, :), 'EdgeColor', 'none');
 leg_p4 = patch(NaN, NaN, colors(2, :), 'EdgeColor', 'none');
 leg_p2 = patch(NaN, NaN, colors(1, :), 'EdgeColor', 'none');
@@ -91,21 +114,8 @@ legend([leg_p2, leg_p4, leg_p6], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
 drawnow; pause(0.05);
 saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_sternberg_timecourse.png'));
 
-%% Topoplots from cached baselined TFR
-cfg = [];
-cfg.keepindividual = 'yes';
-ga_sb_2 = ft_freqgrandaverage(cfg, tfr2_all{:});
-ga_sb_4 = ft_freqgrandaverage(cfg, tfr4_all{:});
-ga_sb_6 = ft_freqgrandaverage(cfg, tfr6_all{:});
-
+%% Topoplots (late retention [1 2] s)
 xlimTopo = [1 2];
-
-cfg = [];
-cfg.frequency = [8 14];
-cfg.avgoverfreq = 'yes';
-ga_sb_2_erd = ft_selectdata(cfg, ga_sb_2);
-ga_sb_4_erd = ft_selectdata(cfg, ga_sb_4);
-ga_sb_6_erd = ft_selectdata(cfg, ga_sb_6);
 
 cmap = interp1(linspace(0, 1, 5), ...
     [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], ...
@@ -116,7 +126,7 @@ topoTitles = {'WM load 2', 'WM load 4', 'WM load 6'};
 
 cfg = [];
 cfg.layout = headmodel.layANThead;
-cfg.zlim = 'maxabs';
+cfg.zlim = [-2 2];
 cfg.xlim = xlimTopo;
 cfg.marker = 'off';
 cfg.highlight = 'on';

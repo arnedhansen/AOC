@@ -139,7 +139,7 @@ end
 
 %% Plot
 close all
-overallFontSize = 35;
+overallFontSize = 50;
 centerX = 400;
 centerY = 300;
 diffColMap = customcolormap_preset('red-white-blue');
@@ -177,13 +177,32 @@ ft_singleplotTFR(cfg, statData);
 xlim([0 800]);
 ylim([0 600]);
 yticks([0 150 300 450 600]);
-xlabel('Screen Width [px]');
-ylabel('Screen Height [px]');
+set(gca, 'FontSize', fontSize);
+xlabel('Screen Width [px]', 'FontSize', fontSize);
+ylabel('Screen Height [px]', 'FontSize', fontSize);
 cb = colorbar;
+set(cb, 'FontSize', fontSize);
 ylabel(cb, 'Cohen''s d', 'FontSize', fontSize);
 hold on
 plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
-set(gca, 'FontSize', fontSize);
 title(panelTitle, 'FontSize', 30);
-saveas(gcf, outPath);
+
+fitHeatmapLayout(gca, cb, fontSize);
+
+exportgraphics(gcf, outPath, 'Resolution', 300, 'BackgroundColor', 'white');
+end
+
+function fitHeatmapLayout(ax, cb, fontSize)
+% Manual layout: TightInset/LooseInset do not reserve space for axis/colorbar labels.
+s = fontSize / 50;
+left = 0.15 + 0.06 * s;
+bottom = 0.20 + 0.08 * s;
+topPad = 0.06 + 0.03 * s;
+cbW = 0.02;
+rightPad = 0.06 + 0.10 * s;
+cbX = 1 - rightPad - cbW;
+axW = cbX - left - 0.015;
+axH = 1 - bottom - topPad;
+ax.Position = [left bottom axW axH];
+cb.Position = [cbX bottom cbW axH];
 end

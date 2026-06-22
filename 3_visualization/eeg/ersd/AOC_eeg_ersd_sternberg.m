@@ -105,7 +105,7 @@ set(gca, 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Power Change [dB]');
 xlim([-0.5 2]);
-ylim([-3 3]);
+ylim([-3 0.5]);
 leg_p6 = patch(NaN, NaN, colors(3, :), 'EdgeColor', 'none');
 leg_p4 = patch(NaN, NaN, colors(2, :), 'EdgeColor', 'none');
 leg_p2 = patch(NaN, NaN, colors(1, :), 'EdgeColor', 'none');

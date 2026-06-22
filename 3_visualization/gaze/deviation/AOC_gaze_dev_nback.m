@@ -10,7 +10,7 @@ feat_dir = paths.features;
 fig_dir = fullfile(paths.figures, 'gaze', 'deviation');
 if ~isfolder(fig_dir), mkdir(fig_dir); end
 
-fontSize = 40;
+fontSize = 50;
 fs = 500;
 t_full = -0.5:1/fs:2;
 t_plot = t_full(2:end);

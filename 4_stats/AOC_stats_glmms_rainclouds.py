@@ -450,8 +450,8 @@ variables = [
 ]
 y_labels = [
     "Accuracy [%]", "Reaction Time [s]",
-    "Gaze Deviation [px]", "Microsaccade Rate [MS/s]",
-    "Gaze Deviation [%]", "Microsaccade Rate [%]",
+    "Gaze Deviation [px]", "Microsaccade Rate [Hz]",
+    "Gaze Deviation [%]", "Microsaccade Rate Change [%]",
     "Alpha Power [\u03BCV²/Hz]",
     "Alpha Power [dB]",
     "IAF [Hz]",

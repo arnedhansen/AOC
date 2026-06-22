@@ -52,7 +52,7 @@ tasks(1).topo_latency = [1 2];
 tasks(1).gaze_fname = 'gaze_series_sternberg_trials.mat';
 tasks(1).ersd_var = 'ERSD_late';
 
-fontSize = 20;
+fontSize = 30;
 tfr_winsor_cfg = struct();
 tfr_winsor_cfg.enable = true;
 tfr_winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
@@ -159,7 +159,7 @@ ylabel('ERSD [dB]');
 title(sprintf('ERS/ERD Split [%s | %s]', task_tag, split_mode), 'Interpreter', 'none');
 legend([h_excl, h_erd, h_ers], {'Excluded', 'ERD', 'ERS'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
 set(gca, 'FontSize', fontSize);
-box on
+box off
 saveas(gcf, fullfile(fig_dir_task, sprintf('%s_inclusion.png', fig_prefix)));
 close(gcf);
 
@@ -633,7 +633,7 @@ for grp = 1:2
     title(ttl, 'FontSize', fsz + 4);
     legend([eb.mainLine], cond_labels, 'FontSize', fsz - 2, 'Location', 'best', 'Box', 'off');
     set(gca, 'FontSize', fsz);
-    box on
+    box off
 end
 saveas(gcf, out_file);
 close(gcf);
@@ -836,21 +836,7 @@ cfg.gridscale = 300;
 cfg.comment = 'no';
 cfg.xlim = topo_latency;
 cfg.colormap = rdbu_cmap(64);
-
-all_vals = [];
-for c = 1:3
-    all_vals = [all_vals; ga_red{c}.powspctrm(:); ga_amp{c}.powspctrm(:)];
-end
-all_vals = all_vals(isfinite(all_vals));
-if isempty(all_vals)
-    cfg.zlim = 'maxabs';
-else
-    mx = prctile(abs(all_vals), 95);
-    if mx <= 0
-        mx = max(abs(all_vals));
-    end
-    cfg.zlim = [-mx mx];
-end
+cfg.zlim = 'maxabs';
 
 figure('Position', fig_pos, 'Color', 'w');
 for c = 1:3
@@ -911,22 +897,7 @@ cfg.gridscale = 300;
 cfg.comment = 'no';
 cfg.xlim = topo_latency;
 cfg.colormap = rdbu_cmap(64);
-
-all_vals = [ga_red.powspctrm(:); ga_amp.powspctrm(:)];
-all_vals = all_vals(isfinite(all_vals));
-if isempty(all_vals)
-    cfg.zlim = 'maxabs';
-else
-    mx = prctile(abs(all_vals), 95);
-    if mx <= 0
-        mx = max(abs(all_vals));
-    end
-    if ~isfinite(mx) || mx <= 0
-        cfg.zlim = 'maxabs';
-    else
-        cfg.zlim = [-mx mx];
-    end
-end
+cfg.zlim = 'maxabs';
 
 figure('Position', fig_pos, 'Color', 'w');
 ax = subplot(1, 2, 1);
@@ -1326,7 +1297,7 @@ legend([e1.mainLine, e2.mainLine], ...
     {sprintf('%s (n=%d)', label_a, size(tc_a, 1)), sprintf('%s (n=%d)', label_b, size(tc_b, 1))}, ...
     'Location', 'northeast', 'FontSize', fsz-2, 'Box', 'off');
 set(gca, 'FontSize', fsz-4);
-box on
+box off
 
 nexttile; hold on
 n_perm = 10000;
@@ -1386,7 +1357,7 @@ xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Effect Size [Cohen''s d]');
 xlim([-0.5 3]);
-box on
+box off
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)
     title({'WARNING: No significant clusters; shading shows uncorrected t < -t_{crit} (3-back > 1-back)'}, ...
@@ -1504,7 +1475,7 @@ set(e2.edge(2), 'Color', 'none');
 xline(0, '--k');
 ylabel(ylab);
 xlim([-0.5 3]);
-box on
+box off
 set(gca, 'FontSize', fsz-4);
 % Legend with colored patch boxes (clearer than thin lines)
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
@@ -1622,7 +1593,7 @@ xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Effect Size [Cohen''s d]');
 xlim([-0.5 3]);
-box on
+box off
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)
     title({'WARNING: No significant clusters; shading shows uncorrected t > t_{crit}'}, ...
@@ -1742,7 +1713,7 @@ if show_eeg
     xlabel('Time [s]');
     ylabel('EEG Cohen''s d');
     xlim([-0.5 3]);
-    box on
+    box off
     set(gca, 'FontSize', fsz-4);
     if ~any(sig_cluster_eeg) && any(sig_uncorr_eeg)
         title({'WARNING: No significant clusters; shading shows uncorrected t > t_{crit}'}, ...

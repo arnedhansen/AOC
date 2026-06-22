@@ -24,7 +24,7 @@ fprintf('\n=== AOC Split ERS/ERD (N-back) ===\n');
 fprintf('Figure directory: %s\n', fig_dir);
 
 fig_pos = [0 0 1512 982];
-fontSize = 20;
+fontSize = 30;
 
 % Split definition 
 nback_split_mode = 'median';
@@ -144,7 +144,7 @@ ylabel('ERSD [dB]');
 title(sprintf('ERS/ERD Split [%s | %s]', task_tag, nback_split_mode), 'Interpreter', 'none');
 legend([h_excl, h_erd, h_ers], {'Excluded', 'ERD', 'ERS'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
 set(gca, 'FontSize', fontSize);
-box on
+box off
 saveas(gcf, fullfile(fig_dir, sprintf('%s_inclusion.png', fig_prefix)));
 close(gcf);
 
@@ -526,7 +526,7 @@ set(e2.edge(2), 'Color', 'none');
 xline(0, '--k');
 ylabel(ylab);
 xlim([-0.5 3]);
-box on
+box off
 set(gca, 'FontSize', fsz-4);
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
 leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
@@ -642,7 +642,7 @@ xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Effect Size [Cohen''s d]');
 xlim([-0.5 3]);
-box on
+box off
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)
     title({'WARNING: No significant clusters; shading shows uncorrected t > t_{crit}'}, ...
@@ -758,7 +758,7 @@ if show_eeg
     xlabel('Time [s]');
     ylabel('EEG Cohen''s d');
     xlim([-0.5 3]);
-    box on
+    box off
     set(gca, 'FontSize', fsz-4);
     if ~any(sig_cluster_eeg) && any(sig_uncorr_eeg)
         title({'WARNING: No significant clusters; shading shows uncorrected t > t_{crit}'}, ...

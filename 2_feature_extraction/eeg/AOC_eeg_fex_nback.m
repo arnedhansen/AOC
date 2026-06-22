@@ -7,7 +7,7 @@
 %   IAF (condition-wise): mtmfft+DPSS on retention window, trial-averaged (N-back [0 2] s), findpeaks [8 14] Hz
 %   Alpha power in (IAF-4, IAF+2) Hz (early/late/full; raw + dB); NaN if no valid IAF
 %   Lateralization index (late baselined)
-%   ERSD_early / ERSD_late / ERSD_full (fixed [8 14] Hz on trial-averaged baselined TFR, occipital ROI)
+%   ERSD_early / ERSD_late / ERSD_full (fixed [8 14] Hz on per-trial baselined TFR, occipital ROI)
 
 %% POWSPCTRM (Baseline + Early/Late/Full) (subject-level)
 % Setup
@@ -47,19 +47,25 @@ for subj = 1:length(subjects)
         cfg.t_ftimwin  = ones(size(cfg.foi)) * 0.5;  % 500 ms window for all frequencies
         cfg.toi        = -1.5:0.05:2.25;  % full baseline [-1.5 -0.5] coverage
         cfg.pad        = 'nextpow2';
-        cfg.keeptrials = 'no';
+        cfg.keeptrials = 'yes';
 
         cfg.trials = ind1; tfr1 = ft_freqanalysis(cfg, dataTFR);
         cfg.trials = ind2; tfr2 = ft_freqanalysis(cfg, dataTFR);
         cfg.trials = ind3; tfr3 = ft_freqanalysis(cfg, dataTFR);
 
-        % Trial-averaged TFR, then dB baseline (matches supervisor / FieldTrip default)
+        % Per-trial baseline (dB), then average across trials
         cfgb              = [];
         cfgb.baseline     = window.base;
         cfgb.baselinetype = 'db';
         tfr1_bl = ft_freqbaseline(cfgb, tfr1);
         tfr2_bl = ft_freqbaseline(cfgb, tfr2);
         tfr3_bl = ft_freqbaseline(cfgb, tfr3);
+        tfr1    = trial_average_tfr(tfr1);
+        tfr2    = trial_average_tfr(tfr2);
+        tfr3    = trial_average_tfr(tfr3);
+        tfr1_bl = trial_average_tfr(tfr1_bl);
+        tfr2_bl = trial_average_tfr(tfr2_bl);
+        tfr3_bl = trial_average_tfr(tfr3_bl);
 
         % Save trial-averaged TFR outputs
         save('tfr_nback.mat', 'tfr1', 'tfr2', 'tfr3', 'tfr1_bl', 'tfr2_bl', 'tfr3_bl')
@@ -418,4 +424,10 @@ ersd_tc = struct();
 ersd_tc.time = timeVec;
 ersd_tc.condition = condVals(:);
 ersd_tc.ersd_occ_8_14_db = tc;
+end
+
+function tf_avg = trial_average_tfr(tf)
+cfg = [];
+cfg.avgoverrpt = 'yes';
+tf_avg = ft_selectdata(cfg, tf);
 end

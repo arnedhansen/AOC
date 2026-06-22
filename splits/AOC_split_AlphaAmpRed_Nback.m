@@ -115,8 +115,8 @@ end
 fprintf('\n=== Split Summary [%s | %s] (%s, pooled loads) ===\n', task_tag, nback_split_mode, ersd_var);
 fprintf('Subjects total: %d\n', nSubj);
 fprintf('%s\n', split_info_str);
-fprintf('ERD: %d\n', numel(erd_ids));
-fprintf('ERS: %d\n', numel(ers_ids));
+fprintf('Stronger ERD: %d\n', numel(erd_ids));
+fprintf('Weaker ERD: %d\n', numel(ers_ids));
 if ~isempty(invalid_ids)
     fprintf('Excluded (invalid/pathological ERSD): %d\n', numel(invalid_ids));
 end
@@ -142,7 +142,7 @@ h_ers = scatter(x_vals(idx_ers), ersd_mean(idx_ers), 80, [0.8 0.2 0.2], 'filled'
 xlabel('Participant (index)');
 ylabel('ERSD [dB]');
 title(sprintf('ERS/ERD Split [%s | %s]', task_tag, nback_split_mode), 'Interpreter', 'none');
-legend([h_excl, h_erd, h_ers], {'Excluded', 'ERD', 'ERS'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
+legend([h_excl, h_erd, h_ers], {'Excluded', 'Stronger ERD', 'Weaker ERD'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
 set(gca, 'FontSize', fontSize);
 box off
 saveas(gcf, fullfile(fig_dir, sprintf('%s_inclusion.png', fig_prefix)));
@@ -530,7 +530,7 @@ box off
 set(gca, 'FontSize', fsz-4);
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
 leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
-legend([leg_p1 leg_p2], {'ERD', 'ERS'}, 'Location', 'northeast', 'FontSize', fsz-2, 'Box', 'off');
+legend([leg_p1 leg_p2], {'Stronger ERD', 'Weaker ERD'}, 'Location', 'northeast', 'FontSize', fsz-2, 'Box', 'off');
 if contains(save_tag, 'gaze_deviation_pct')
     upper = max(mR + sR, mA + sA);
     lower = min(mR - sR, mA - sA);

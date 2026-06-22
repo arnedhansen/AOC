@@ -68,6 +68,8 @@ run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\heatmap\AO
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\heatmap\AOC_gaze_heatmap_nback_split.m');
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\deviation\AOC_gaze_dev_sternberg.m');
 run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\deviation\AOC_gaze_dev_nback.m');
+run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\microsaccades\AOC_gaze_microsaccades_sternberg.m');
+run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\microsaccades\AOC_gaze_microsaccades_nback.m');
 
 %% 4 Split analyses
 run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed.m');

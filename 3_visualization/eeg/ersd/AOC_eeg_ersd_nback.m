@@ -19,11 +19,17 @@ cfgb.baselinetype = 'db';
 tfr1_all = {};
 tfr2_all = {};
 tfr3_all = {};
+tfr1_raw_all = {};
+tfr2_raw_all = {};
+tfr3_raw_all = {};
 
 for subj = 1:numel(subjects)
     dp = fullfile(path, subjects{subj}, 'eeg');
     f_tfr = fullfile(dp, 'tfr_nback.mat');
     T = load(f_tfr, 'tfr1', 'tfr2', 'tfr3');
+    tfr1_raw_all{end + 1} = T.tfr1;
+    tfr2_raw_all{end + 1} = T.tfr2;
+    tfr3_raw_all{end + 1} = T.tfr3;
     tfr1_all{end + 1} = ft_freqbaseline(cfgb, T.tfr1);
     tfr2_all{end + 1} = ft_freqbaseline(cfgb, T.tfr2);
     tfr3_all{end + 1} = ft_freqbaseline(cfgb, T.tfr3);
@@ -53,6 +59,15 @@ cfg.avgoverfreq = 'yes';
 ga_nb_1_erd = ft_selectdata(cfg, ga_nb_1);
 ga_nb_2_erd = ft_selectdata(cfg, ga_nb_2);
 ga_nb_3_erd = ft_selectdata(cfg, ga_nb_3);
+
+cfg_ga = [];
+cfg_ga.keepindividual = 'yes';
+ga_nb_1_raw = ft_freqgrandaverage(cfg_ga, tfr1_raw_all{:});
+ga_nb_2_raw = ft_freqgrandaverage(cfg_ga, tfr2_raw_all{:});
+ga_nb_3_raw = ft_freqgrandaverage(cfg_ga, tfr3_raw_all{:});
+ga_nb_1_raw_alpha = ft_selectdata(cfg, ga_nb_1_raw);
+ga_nb_2_raw_alpha = ft_selectdata(cfg, ga_nb_2_raw);
+ga_nb_3_raw_alpha = ft_selectdata(cfg, ga_nb_3_raw);
 
 %% Plot ERSD time course (occipital ROI, mean +/- SEM across subjects)
 cfg = [];
@@ -152,3 +167,53 @@ for k = 1:3
 end
 drawnow; pause(0.05);
 saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_nback_topos.png'));
+
+%% Topoplots (baseline window, raw uncorrected power)
+xlimTopo = baseline_window;
+
+topoData = {ga_nb_1_raw_alpha, ga_nb_2_raw_alpha, ga_nb_3_raw_alpha};
+topoTitles = {'1-back', '2-back', '3-back'};
+
+cfg_sel = [];
+cfg_sel.channel = chPlot;
+cfg_sel.latency = xlimTopo;
+cfg_sel.avgoverchan = 'yes';
+cfg_sel.avgovertime = 'yes';
+bl_vals = [];
+for k = 1:3
+    tmp = ft_selectdata(cfg_sel, topoData{k});
+    bl_vals = [bl_vals; tmp.powspctrm(:)]; %#ok<AGROW>
+end
+bl_vals = bl_vals(isfinite(bl_vals));
+global_max = 5%prctile(bl_vals, 99);
+
+cmap = customcolormap([0 0.5 1], [0.8 0 0; 1 0.5 0; 1 1 1]);
+
+cfg = [];
+cfg.layout = headmodel.layANThead;
+cfg.zlim = [global_max / 3 global_max];
+cfg.xlim = xlimTopo;
+cfg.marker = 'off';
+cfg.highlight = 'on';
+cfg.highlightchannel = chPlot;
+cfg.highlightsymbol = '.';
+cfg.highlightsize = 20;
+cfg.comment = 'no';
+cfg.gridscale = 300;
+cfg.colormap = cmap;
+
+figure('Position', [0 0 1512 982*0.6], 'Color', 'w');
+tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'loose');
+for k = 1:3
+    ax = nexttile(k);
+    cfg.figure = ax;
+    ft_topoplotER(cfg, topoData{k});
+    if k == 3
+        cb = colorbar(ax, 'eastoutside');
+        cb.Label.String = 'Power [\muV^2/Hz]';
+    end
+    set(ax, 'FontSize', fontSize);
+    title(ax, topoTitles{k}, 'Interpreter', 'none');
+end
+drawnow; pause(0.05);
+saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_nback_topos_baseline_window.png'));

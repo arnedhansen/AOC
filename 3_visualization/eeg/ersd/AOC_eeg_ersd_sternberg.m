@@ -19,11 +19,17 @@ cfgb.baselinetype = 'db';
 tfr2_all = {};
 tfr4_all = {};
 tfr6_all = {};
+tfr2_raw_all = {};
+tfr4_raw_all = {};
+tfr6_raw_all = {};
 
 for subj = 1:numel(subjects)
     dp = fullfile(path, subjects{subj}, 'eeg');
     f_tfr = fullfile(dp, 'tfr_stern.mat');
     T = load(f_tfr, 'tfr2', 'tfr4', 'tfr6');
+    tfr2_raw_all{end + 1} = T.tfr2;
+    tfr4_raw_all{end + 1} = T.tfr4;
+    tfr6_raw_all{end + 1} = T.tfr6;
     tfr2_all{end + 1} = ft_freqbaseline(cfgb, T.tfr2);
     tfr4_all{end + 1} = ft_freqbaseline(cfgb, T.tfr4);
     tfr6_all{end + 1} = ft_freqbaseline(cfgb, T.tfr6);
@@ -54,6 +60,15 @@ ga_sb_2_erd = ft_selectdata(cfg, ga_sb_2);
 ga_sb_4_erd = ft_selectdata(cfg, ga_sb_4);
 ga_sb_6_erd = ft_selectdata(cfg, ga_sb_6);
 
+cfg_ga = [];
+cfg_ga.keepindividual = 'yes';
+ga_sb_2_raw = ft_freqgrandaverage(cfg_ga, tfr2_raw_all{:});
+ga_sb_4_raw = ft_freqgrandaverage(cfg_ga, tfr4_raw_all{:});
+ga_sb_6_raw = ft_freqgrandaverage(cfg_ga, tfr6_raw_all{:});
+ga_sb_2_raw_alpha = ft_selectdata(cfg, ga_sb_2_raw);
+ga_sb_4_raw_alpha = ft_selectdata(cfg, ga_sb_4_raw);
+ga_sb_6_raw_alpha = ft_selectdata(cfg, ga_sb_6_raw);
+
 %% Plot ERSD time course (occipital ROI, mean +/- SEM across subjects)
 cfg = [];
 cfg.channel = chPlot;
@@ -67,7 +82,7 @@ timeVec = tlk2.time(:)';
 close all
 figure('Position', [0 0 1512 982], 'Color', 'w');
 fontSize = 30;
-mask = timeVec >= -0.5 & timeVec <= 2;
+mask = timeVec >= -.5 & timeVec <= 2;
 x = timeVec(mask);
 
 tc2 = squeeze(tlk2.powspctrm);
@@ -152,3 +167,54 @@ for k = 1:3
 end
 drawnow; pause(0.05);
 saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_sternberg_topos.png'));
+
+%% Topoplots (baseline window)
+close all
+xlimTopo = baseline_window;
+
+topoData = {ga_sb_2_raw_alpha, ga_sb_4_raw_alpha, ga_sb_6_raw_alpha};
+topoTitles = {'WM load 2', 'WM load 4', 'WM load 6'};
+
+cfg_sel = [];
+cfg_sel.channel = chPlot;
+cfg_sel.latency = xlimTopo;
+cfg_sel.avgoverchan = 'yes';
+cfg_sel.avgovertime = 'yes';
+bl_vals = [];
+for k = 1:3
+    tmp = ft_selectdata(cfg_sel, topoData{k});
+    bl_vals = [bl_vals; tmp.powspctrm(:)];
+end
+bl_vals = bl_vals(isfinite(bl_vals));
+global_max = 5%prctile(bl_vals, 99);
+
+cmap = customcolormap([0 0.5 1], [0.8 0 0; 1 0.5 0; 1 1 1]);
+
+cfg = [];
+cfg.layout = headmodel.layANThead;
+cfg.zlim = [global_max / 3 global_max];
+cfg.xlim = xlimTopo;
+cfg.marker = 'off';
+cfg.highlight = 'on';
+cfg.highlightchannel = chPlot;
+cfg.highlightsymbol = '.';
+cfg.highlightsize = 20;
+cfg.comment = 'no';
+cfg.gridscale = 300;
+cfg.colormap = cmap;
+
+figure('Position', [0 0 1512 982*0.6], 'Color', 'w');
+tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'loose');
+for k = 1:3
+    ax = nexttile(k);
+    cfg.figure = ax;
+    ft_topoplotER(cfg, topoData{k});
+    if k == 3
+        cb = colorbar(ax, 'eastoutside');
+        cb.Label.String = 'Power [\muV^2/Hz]';
+    end
+    set(ax, 'FontSize', fontSize);
+    title(ax, topoTitles{k}, 'Interpreter', 'none');
+end
+drawnow; pause(0.05);
+saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_sternberg_topos_baseline_window.png'));

@@ -126,7 +126,7 @@ topoTitles = {'1-back', '2-back', '3-back'};
 
 cfg = [];
 cfg.layout = headmodel.layANThead;
-cfg.zlim = [-2 2];
+cfg.zlim = 'maxabs';
 cfg.xlim = xlimTopo;
 cfg.marker = 'off';
 cfg.highlight = 'on';

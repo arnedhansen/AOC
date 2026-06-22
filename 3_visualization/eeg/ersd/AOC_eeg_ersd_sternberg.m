@@ -126,7 +126,7 @@ topoTitles = {'WM load 2', 'WM load 4', 'WM load 6'};
 
 cfg = [];
 cfg.layout = headmodel.layANThead;
-cfg.zlim = [-2 2];
+cfg.zlim = 'maxabs';
 cfg.xlim = xlimTopo;
 cfg.marker = 'off';
 cfg.highlight = 'on';

@@ -1,4 +1,6 @@
 #!/usr/bin/env Rscript
+# Builds Word / CSV full model tables from exported GLMM stats CSVs.
+# Run after AOC_stats_glmm_export.R (or run export script, which sources this file).
 
 suppressPackageStartupMessages({
   library(officer)
@@ -65,19 +67,16 @@ merge_pairwise_effectsizes <- function(pair_df, eff_df, task_name, dv_name) {
 
 display_dv <- function(dv) {
   out <- as.character(dv)
-  out[out == "AlphaPower_FOOOF_bl_full"] <- "AlphaPowerSpecParamBaselineFull"
-  out[out == "AlphaPower_FOOOF_bl_late"] <- "AlphaPowerSpecParamBaselineLate"
-  out[out == "AlphaPower"] <- "AlphaPower"
+  out[out == "ERSD"] <- "ERS/ERD"
   out
 }
 
 prettify_model_label <- function(model_label, dv_label = NULL, predictor_label = NULL) {
   x <- as.character(model_label)
   x <- gsub("^DV\\s*~", paste0(dv_label, " ~"), x)
-  x <- gsub("\\(1\\|ID\\)", "(1|SubjectID)", x)
+  x <- gsub("\\(1\\|ID\\)", "(1|Subject)", x)
+  x <- gsub("\\(1\\|SubjectID\\)", "(1|Subject)", x)
   x <- gsub("_c\\b", "", x)
-  x <- gsub("AlphaPower_FOOOF_bl_full", "AlphaPowerSpecParamBaselineFull", x)
-  x <- gsub("AlphaPower_FOOOF_bl_late", "AlphaPowerSpecParamBaselineLate", x)
   x <- gsub("\\s+", " ", x)
   x <- trimws(x)
   if (!is.null(predictor_label) && nzchar(predictor_label)) {
@@ -86,16 +85,49 @@ prettify_model_label <- function(model_label, dv_label = NULL, predictor_label =
   x
 }
 
-clean_term <- function(term) {
+clean_term <- function(term, load_ref = NULL) {
   term <- as.character(term)
   out <- term
   out[out == "Intercept"] <- "Intercept"
-  out[out == "Group Var"] <- "Random intercept variance (SubjectID)"
-  out[out == "Condition"] <- "Condition"
+  out[out == "Group Var"] <- "Random intercept variance (Subject)"
+  out[out == "Load"] <- "Load"
   out[out == "Interaction"] <- "Interaction term"
   out[out == "GazeDeviation_c"] <- "Gaze deviation (centered)"
   out[out == "MSRate_c"] <- "Microsaccade rate (centered)"
+  out[out == "GazeDeviationBL_c"] <- "Gaze deviation baseline (centered)"
+  out[out == "MSRateBL_c"] <- "Microsaccade rate baseline (centered)"
 
+  # lme4 Load main effects (treatment coding)
+  load_main <- grepl("^Load", out) & !grepl(":", out)
+  if (any(load_main)) {
+    lvls <- sub("^Load", "", out[load_main])
+    ref_txt <- if (!is.null(load_ref) && nzchar(load_ref)) load_ref else "reference"
+    out[load_main] <- paste0("Load: ", lvls, " vs ", ref_txt)
+  }
+
+  # lme4 gaze:Load interactions
+  int_lme4 <- grepl("_c:Load|^Load.*_c:", out)
+  if (any(int_lme4)) {
+    for (i in which(int_lme4)) {
+      parts <- strsplit(out[i], ":", fixed = TRUE)[[1]]
+      pred <- parts[1]
+      load_part <- parts[2]
+      lvl <- sub("^Load", "", load_part)
+      pred <- gsub("_c$", "", pred)
+      pred <- switch(
+        pred,
+        GazeDeviation = "Gaze deviation (centered)",
+        MSRate = "Microsaccade rate (centered)",
+        GazeDeviationBL = "Gaze deviation baseline (centered)",
+        MSRateBL = "Microsaccade rate baseline (centered)",
+        pred
+      )
+      ref_txt <- if (!is.null(load_ref) && nzchar(load_ref)) load_ref else "reference"
+      out[i] <- paste0("Interaction: ", pred, " x Load (", lvl, " vs ", ref_txt, ")")
+    }
+  }
+
+  # statsmodels legacy Condition terms (fallback)
   cond_pattern <- "^C\\(Condition, Treatment\\(reference=\"([^\"]+)\"\\)\\)\\[T\\.(.+)\\]$"
   cond_hits <- grepl(cond_pattern, out)
   if (any(cond_hits)) {
@@ -117,9 +149,9 @@ clean_term <- function(term) {
   out
 }
 
-clean_fixed <- function(df) {
+clean_fixed <- function(df, load_ref = NULL) {
   out <- df
-  out$Term <- clean_term(out$Term)
+  out$Term <- clean_term(out$Term, load_ref = load_ref)
   out$`β` <- fmt_num(out$beta)
   out$SE <- fmt_num(out$SE)
   out$Statistic <- fmt_num(out$stat)
@@ -130,9 +162,9 @@ clean_fixed <- function(df) {
   out
 }
 
-clean_random <- function(df) {
+clean_random <- function(df, load_ref = NULL) {
   out <- df
-  out$Term <- clean_term(out$Term)
+  out$Term <- clean_term(out$Term, load_ref = load_ref)
   out$Variance <- fmt_num(out$beta)
   out$SE <- fmt_num(out$SE)
   out$Statistic <- fmt_num(out$stat)
@@ -143,9 +175,9 @@ clean_random <- function(df) {
   out
 }
 
-clean_lrt <- function(df) {
+clean_lrt <- function(df, load_ref = NULL) {
   out <- df
-  out$Term <- clean_term(out$Term)
+  out$Term <- clean_term(out$Term, load_ref = load_ref)
   out$df <- fmt_num(out$df)
   out$`χ²` <- fmt_num(out$LR_Chi2)
   out$`p-value` <- fmt_p(out$p)
@@ -233,121 +265,150 @@ doc_add_table <- function(doc, title, df, table_type = c("fixed", "random", "lrt
   body_add_flextable(doc, ft)
 }
 
-pair_nback <- read.csv(file.path(stats_dir, "AOC_pairwise_mixedlm_nback.csv"), stringsAsFactors = FALSE)
-pair_stern <- read.csv(file.path(stats_dir, "AOC_pairwise_mixedlm_sternberg.csv"), stringsAsFactors = FALSE)
+pair_nback <- safe_read_csv(file.path(stats_dir, "AOC_pairwise_mixedlm_nback.csv"))
+pair_stern <- safe_read_csv(file.path(stats_dir, "AOC_pairwise_mixedlm_sternberg.csv"))
+if (is.null(pair_nback)) pair_nback <- data.frame()
+if (is.null(pair_stern)) pair_stern <- data.frame()
 eff_nback <- safe_read_csv(file.path(stats_dir, "AOC_pairwise_effectsizes_nback.csv"))
 eff_stern <- safe_read_csv(file.path(stats_dir, "AOC_pairwise_effectsizes_sternberg.csv"))
+
+load_ref_for_task <- function(task_name) {
+  if (tolower(task_name) == "nback") "1-back" else "WM load 2"
+}
 
 model_specs <- list(
   list(
     id = "nback_accuracy",
     title = "N-back Accuracy",
     fixed = "AOC_mixedlm_fixed_acc_nback.csv",
-    pair_src = pair_nback[pair_nback$Variable == "Accuracy", ]
+    pair_src = if (nrow(pair_nback) > 0) pair_nback[pair_nback$Variable == "Accuracy", ] else NULL
   ),
   list(
     id = "sternberg_accuracy",
     title = "Sternberg Accuracy",
     fixed = "AOC_mixedlm_fixed_acc_sternberg.csv",
-    pair_src = pair_stern[pair_stern$Variable == "Accuracy", ]
+    pair_src = if (nrow(pair_stern) > 0) pair_stern[pair_stern$Variable == "Accuracy", ] else NULL
   ),
   list(
     id = "nback_reactiontime",
     title = "N-back Reaction Time",
     fixed = "AOC_mixedlm_fixed_rt_nback.csv",
-    pair_src = pair_nback[pair_nback$Variable == "ReactionTime", ]
+    pair_src = if (nrow(pair_nback) > 0) pair_nback[pair_nback$Variable == "ReactionTime", ] else NULL
   ),
   list(
     id = "sternberg_reactiontime",
     title = "Sternberg Reaction Time",
     fixed = "AOC_mixedlm_fixed_rt_sternberg.csv",
-    pair_src = pair_stern[pair_stern$Variable == "ReactionTime", ]
+    pair_src = if (nrow(pair_stern) > 0) pair_stern[pair_stern$Variable == "ReactionTime", ] else NULL
   ),
   list(
     id = "nback_gazedeviation",
     title = "N-back Gaze Deviation",
     fixed = "AOC_mixedlm_fixed_gazedev_nback.csv",
-    pair_src = pair_nback[pair_nback$Variable == "GazeDeviation", ]
+    pair_src = if (nrow(pair_nback) > 0) pair_nback[pair_nback$Variable == "GazeDeviation", ] else NULL
   ),
   list(
     id = "sternberg_gazedeviation",
     title = "Sternberg Gaze Deviation",
     fixed = "AOC_mixedlm_fixed_gazedev_sternberg.csv",
-    pair_src = pair_stern[pair_stern$Variable == "GazeDeviation", ]
+    pair_src = if (nrow(pair_stern) > 0) pair_stern[pair_stern$Variable == "GazeDeviation", ] else NULL
   ),
   list(
     id = "nback_msrate",
     title = "N-back Microsaccade Rate",
     fixed = "AOC_mixedlm_fixed_ms_nback.csv",
-    pair_src = pair_nback[pair_nback$Variable == "MSRate", ]
+    pair_src = if (nrow(pair_nback) > 0) pair_nback[pair_nback$Variable == "MSRate", ] else NULL
   ),
   list(
     id = "sternberg_msrate",
     title = "Sternberg Microsaccade Rate",
     fixed = "AOC_mixedlm_fixed_ms_sternberg.csv",
-    pair_src = pair_stern[pair_stern$Variable == "MSRate", ]
+    pair_src = if (nrow(pair_stern) > 0) pair_stern[pair_stern$Variable == "MSRate", ] else NULL
   ),
   list(
-    id = "nback_alphapower",
-    title = "N-back Alpha Power",
-    fixed = "AOC_mixedlm_fixed_pow_nback.csv",
-    pair_src = pair_nback[pair_nback$Variable == "AlphaPower", ]
+    id = "nback_ersd",
+    title = "N-back ERS/ERD",
+    fixed = "AOC_mixedlm_fixed_ersd_nback.csv",
+    pair_src = if (nrow(pair_nback) > 0) pair_nback[pair_nback$Variable == "ERSD", ] else NULL
   ),
   list(
-    id = "sternberg_alphapower",
-    title = "Sternberg Alpha Power",
-    fixed = "AOC_mixedlm_fixed_pow_sternberg.csv",
-    pair_src = pair_stern[pair_stern$Variable == "AlphaPower", ]
+    id = "sternberg_ersd",
+    title = "Sternberg ERS/ERD",
+    fixed = "AOC_mixedlm_fixed_ersd_sternberg.csv",
+    pair_src = if (nrow(pair_stern) > 0) pair_stern[pair_stern$Variable == "ERSD", ] else NULL
   ),
   list(
-    id = "nback_alphapower_fooof_bl",
-    title = "N-back AlphaPower specParam Baseline",
-    fixed = "AOC_mixedlm_fixed_pow_specparam_bl_nback.csv",
-    pair_src = pair_nback[pair_nback$Variable == "AlphaPower_FOOOF_bl", ]
+    id = "nback_ersd_by_gazedeviation",
+    title = "N-back ERS/ERD by GazeDeviation",
+    fixed = "AOC_ersd_fixed_gazedeviation_nback.csv",
+    lrt = "AOC_ersd_lrtTbl_gazedeviation_nback.csv",
+    pair = "AOC_ersd_contrasts_gazedeviation_nback.csv"
   ),
   list(
-    id = "sternberg_alphapower_fooof_bl",
-    title = "Sternberg AlphaPower specParam Baseline",
-    fixed = "AOC_mixedlm_fixed_pow_specparam_bl_sternberg.csv",
-    pair_src = pair_stern[pair_stern$Variable == "AlphaPower_FOOOF_bl", ]
+    id = "sternberg_ersd_by_gazedeviation",
+    title = "Sternberg ERS/ERD by GazeDeviation",
+    fixed = "AOC_ersd_fixed_gazedeviation_sternberg.csv",
+    lrt = "AOC_ersd_lrtTbl_gazedeviation_sternberg.csv",
+    pair = "AOC_ersd_contrasts_gazedeviation_sternberg.csv"
   ),
   list(
-    id = "nback_alpha_by_gazedeviation",
-    title = "N-back AlphaPower by GazeDeviation",
-    fixed = "AOC_alpha_fixed_alphapower_gazedeviation_nback.csv",
-    lrt = "AOC_alpha_lrtTbl_alphapower_gazedeviation_nback.csv",
-    pair = "AOC_alpha_contrasts_alphapower_gazedeviation_nback.csv"
+    id = "nback_ersd_by_msrate",
+    title = "N-back ERS/ERD by MSRate",
+    fixed = "AOC_ersd_fixed_msrate_nback.csv",
+    lrt = "AOC_ersd_lrtTbl_msrate_nback.csv",
+    pair = "AOC_ersd_contrasts_msrate_nback.csv"
   ),
   list(
-    id = "sternberg_alpha_by_gazedeviation",
-    title = "Sternberg AlphaPower by GazeDeviation",
-    fixed = "AOC_alpha_fixed_alphapower_gazedeviation_sternberg.csv",
-    lrt = "AOC_alpha_lrtTbl_alphapower_gazedeviation_sternberg.csv",
-    pair = "AOC_alpha_contrasts_alphapower_gazedeviation_sternberg.csv"
+    id = "sternberg_ersd_by_msrate",
+    title = "Sternberg ERS/ERD by MSRate",
+    fixed = "AOC_ersd_fixed_msrate_sternberg.csv",
+    lrt = "AOC_ersd_lrtTbl_msrate_sternberg.csv",
+    pair = "AOC_ersd_contrasts_msrate_sternberg.csv"
   ),
   list(
-    id = "nback_alpha_by_msrate",
-    title = "N-back AlphaPower by MSRate",
-    fixed = "AOC_alpha_fixed_alphapower_msrate_nback.csv",
-    lrt = "AOC_alpha_lrtTbl_alphapower_msrate_nback.csv",
-    pair = "AOC_alpha_contrasts_alphapower_msrate_nback.csv"
+    id = "nback_ersd_by_gazedev_bl",
+    title = "N-back ERS/ERD by GazeDeviationBL (exploratory)",
+    fixed = "AOC_ersd_exploratory_fixed_gazedev_bl_nback.csv",
+    lrt = "AOC_ersd_exploratory_lrtTbl_gazedev_bl_nback.csv",
+    pair = "AOC_ersd_exploratory_contrasts_gazedev_bl_nback.csv"
   ),
   list(
-    id = "sternberg_alpha_by_msrate",
-    title = "Sternberg AlphaPower by MSRate",
-    fixed = "AOC_alpha_fixed_alphapower_msrate_sternberg.csv",
-    lrt = "AOC_alpha_lrtTbl_alphapower_msrate_sternberg.csv",
-    pair = "AOC_alpha_contrasts_alphapower_msrate_sternberg.csv"
+    id = "sternberg_ersd_by_gazedev_bl",
+    title = "Sternberg ERS/ERD by GazeDeviationBL (exploratory)",
+    fixed = "AOC_ersd_exploratory_fixed_gazedev_bl_sternberg.csv",
+    lrt = "AOC_ersd_exploratory_lrtTbl_gazedev_bl_sternberg.csv",
+    pair = "AOC_ersd_exploratory_contrasts_gazedev_bl_sternberg.csv"
+  ),
+  list(
+    id = "nback_ersd_by_ms_bl",
+    title = "N-back ERS/ERD by MSRateBL (exploratory)",
+    fixed = "AOC_ersd_exploratory_fixed_ms_bl_nback.csv",
+    lrt = "AOC_ersd_exploratory_lrtTbl_ms_bl_nback.csv",
+    pair = "AOC_ersd_exploratory_contrasts_ms_bl_nback.csv"
+  ),
+  list(
+    id = "sternberg_ersd_by_ms_bl",
+    title = "Sternberg ERS/ERD by MSRateBL (exploratory)",
+    fixed = "AOC_ersd_exploratory_fixed_ms_bl_sternberg.csv",
+    lrt = "AOC_ersd_exploratory_lrtTbl_ms_bl_sternberg.csv",
+    pair = "AOC_ersd_exploratory_contrasts_ms_bl_sternberg.csv"
   )
 )
 
 for (spec in model_specs) {
-  fixed_raw <- read.csv(file.path(stats_dir, spec$fixed), stringsAsFactors = FALSE)
+  fixed_path <- file.path(stats_dir, spec$fixed)
+  if (!file.exists(fixed_path)) {
+    message("Skipping ", spec$id, " (missing ", spec$fixed, ")")
+    next
+  }
+  fixed_raw <- read.csv(fixed_path, stringsAsFactors = FALSE)
+  task_name <- tolower(as.character(unique(fixed_raw$Task)[1]))
+  load_ref <- load_ref_for_task(task_name)
   random_mask <- grepl("Var$|Cov$|Group Var", fixed_raw$Term)
-  fixed_tbl <- clean_fixed(fixed_raw[!random_mask, , drop = FALSE])
+  fixed_tbl <- clean_fixed(fixed_raw[!random_mask, , drop = FALSE], load_ref = load_ref)
   random_tbl <- NULL
   if (any(random_mask)) {
-    random_tbl <- clean_random(fixed_raw[random_mask, , drop = FALSE])
+    random_tbl <- clean_random(fixed_raw[random_mask, , drop = FALSE], load_ref = load_ref)
   }
 
   fixed_csv_path <- file.path(out_dir, paste0(spec$id, "_fixed.csv"))
@@ -358,7 +419,6 @@ for (spec in model_specs) {
 
   pair_tbl <- NULL
   pair_raw <- NULL
-  task_name <- tolower(as.character(unique(fixed_raw$Task)[1]))
   dv_name <- as.character(unique(fixed_raw$DV)[1])
   eff_df <- if (!is.na(task_name) && task_name == "nback") eff_nback else eff_stern
   if (!is.null(spec$pair_src)) {
@@ -387,9 +447,12 @@ for (spec in model_specs) {
 
   lrt_tbl <- NULL
   if (!is.null(spec$lrt)) {
-    lrt_raw <- read.csv(file.path(stats_dir, spec$lrt), stringsAsFactors = FALSE)
-    lrt_tbl <- clean_lrt(lrt_raw)
-    write.csv(lrt_tbl, file.path(out_dir, paste0(spec$id, "_lrt.csv")), row.names = FALSE)
+    lrt_path <- file.path(stats_dir, spec$lrt)
+    if (file.exists(lrt_path)) {
+      lrt_raw <- read.csv(lrt_path, stringsAsFactors = FALSE)
+      lrt_tbl <- clean_lrt(lrt_raw, load_ref = load_ref)
+      write.csv(lrt_tbl, file.path(out_dir, paste0(spec$id, "_lrt.csv")), row.names = FALSE)
+    }
   }
 
   doc <- read_docx()

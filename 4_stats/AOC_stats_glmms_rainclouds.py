@@ -1,13 +1,21 @@
 # %% AOC Stats Rainclouds — Combined (Sternberg + N-Back)
-# Loads fixed-path merged CSVs, maps window-specific EEG and baselined-gaze columns (n-back: full; Sternberg: late),
-# then runs mixed models and raincloud plots. Saves figures and model/LRT tables.
+# Loads merged CSVs, maps window-specific columns, applies IQR filtering, and saves raincloud figures.
+# Significance brackets on all rainclouds: R pairwise CSV when available (confirmatory DVs),
+# otherwise figure-only MixedLM contrasts in Python.
+#
+# Run order:
+#   Rscript AOC_stats_glmm_nback.R
+#   Rscript AOC_stats_glmm_sternberg.R
+#   Rscript AOC_stats_glmm_export.R
+#   python AOC_stats_glmms_rainclouds.py
 #
 # Key outputs:
-#   Raincloud figures; mixed-model/LRT tables
+#   Raincloud figures in figures/stats/rainclouds/
 
 # %% Imports
 import sys, os
 import warnings
+from typing import Optional
 sys.path.insert(0, os.path.expanduser("/Users/Arne/Documents/GitHub"))
 import numpy as np
 import pandas as pd
@@ -15,34 +23,15 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy.stats import gaussian_kde
-import statsmodels.formula.api as smf
-from statsmodels.stats.outliers_influence import variance_inflation_factor
-from patsy import dmatrix
 from statsmodels.tools.sm_exceptions import ConvergenceWarning
 
-from functions.stats_helpers import (
-    iqr_outlier_filter, p_to_signif
-)
-
+from functions.stats_helpers import iqr_outlier_filter, p_to_signif, mixedlm_pairwise_contrasts
 from functions.rainclouds_plotting_helpers import add_stat_brackets
 
-from functions.export_model_table import export_model_table
-
-from functions.mixedlm_helpers import (
-    fit_mixedlm, drop1_lrt, pairwise_condition_contrasts_at_mean_gaze, mixedlm_fixed_effects_to_df, lr_effect_sizes
-)
-
-# Suppress known, non-fatal statsmodels optimizer warnings to keep logs readable.
 warnings.filterwarnings("ignore", category=ConvergenceWarning, module="statsmodels")
-warnings.filterwarnings(
-    "ignore",
-    message="Random effects covariance is singular",
-    category=UserWarning,
-    module="statsmodels"
-)
 
 # %% Task window sources (merged tables from AOC_master_matrix_*.m)
-# n-back: full epoch [0 2]s for EEG alpha (raw / dB / FOOOF baselined), ERSD, and baselined gaze (% change from FullBL).
+# n-back: full epoch [0 2]s for EEG alpha, ERSD, and baselined gaze (% change from FullBL).
 # Sternberg: late epoch [1 2]s for EEG alpha, ERSD, and baselined gaze (LateBL).
 
 RAW_ALPHA_BY_TASK = {
@@ -53,11 +42,6 @@ RAW_ALPHA_BY_TASK = {
 ALPHA_BL_BY_TASK = {
     "nback": "AlphaPower_bl_full",
     "sternberg": "AlphaPower_bl_late",
-}
-
-FOOOF_ALPHA_BY_TASK = {
-    "nback": "AlphaPower_FOOOF_bl_full",
-    "sternberg": "AlphaPower_FOOOF_bl_late",
 }
 
 ERSD_BY_TASK = {
@@ -75,6 +59,9 @@ GAZE_BL_SOURCE_BY_TASK = {
         "MSRateBL": "MSRateLateBL",
     },
 }
+
+# DVs with confirmatory R GLMMs; use R pairwise p-values for brackets when CSV is present
+R_BRACKET_VARS = {"Accuracy", "ReactionTime", "GazeDeviation", "MSRate", "ERSD"}
 
 
 def enforce_task_raw_alpha(df: pd.DataFrame, task_name: str) -> pd.DataFrame:
@@ -101,12 +88,6 @@ def enforce_task_window_columns(df: pd.DataFrame, task_name: str) -> pd.DataFram
     elif bl_src:
         print(f"[{task_name}] WARNING: {bl_src} missing; AlphaPower_bl not set.")
 
-    fooof_src = FOOOF_ALPHA_BY_TASK.get(task_name)
-    if fooof_src and fooof_src in df.columns:
-        df["AlphaPower_FOOOF_bl"] = pd.to_numeric(df[fooof_src], errors="coerce")
-    elif fooof_src:
-        print(f"[{task_name}] WARNING: {fooof_src} missing; AlphaPower_FOOOF_bl not set.")
-
     ersd_src = ERSD_BY_TASK.get(task_name)
     if ersd_src and ersd_src in df.columns:
         df["ERSD"] = pd.to_numeric(df[ersd_src], errors="coerce")
@@ -122,12 +103,307 @@ def enforce_task_window_columns(df: pd.DataFrame, task_name: str) -> pd.DataFram
 
     return df
 
+
+def label_condition(dat: pd.DataFrame, task: dict) -> pd.DataFrame:
+    """Map numeric or string Condition values to ordered categorical labels."""
+    out = dat.copy()
+    cond = out["Condition"]
+    if np.issubdtype(cond.dtype, np.number):
+        uniq = sorted(pd.unique(cond.dropna()).tolist())
+        applied_map = None
+        for candidate_map in task["cond_to_label_numeric"]:
+            if set(uniq).issubset(set(candidate_map.keys())):
+                applied_map = candidate_map
+                break
+        if applied_map is None:
+            applied_map = {
+                val: task["categories"][i]
+                for i, val in enumerate(uniq[: len(task["categories"])])
+            }
+        out["Condition"] = out["Condition"].map(applied_map)
+    else:
+        out["Condition"] = (
+            out["Condition"].astype(str).str.replace(r"\s+", " ", regex=True).str.strip()
+        )
+
+    out["Condition"] = pd.Categorical(out["Condition"], categories=task["categories"], ordered=True)
+    if out["ID"].dtype != "O":
+        out["ID"] = out["ID"].astype(str)
+    return out
+
+
+def load_task_data(task: dict, variables: list) -> pd.DataFrame:
+    """Load, map columns, label conditions, and apply IQR outlier filtering."""
+    dat = pd.read_csv(task["input_csv"])
+    dat = enforce_task_window_columns(dat, task["name"])
+    dat.loc[dat["Accuracy"] > 100, "Accuracy"] = np.nan
+    dat = label_condition(dat, task)
+    vars_present = [v for v in variables if v in dat.columns]
+    dat = iqr_outlier_filter(dat, vars_present, by="Condition")
+    return dat
+
+
+def load_pairwise_contrasts(stats_dir: str, task_name: str) -> Optional[pd.DataFrame]:
+    """Load R-exported pairwise contrasts for bracket annotations."""
+    path = os.path.join(stats_dir, f"AOC_pairwise_mixedlm_{task_name}.csv")
+    if not os.path.isfile(path):
+        print(f"WARNING: pairwise contrasts not found → {path}")
+        print("         Figure brackets will use Python MixedLM contrasts instead.")
+        return None
+    return pd.read_csv(path)
+
+
+def bracket_labels_for_var(
+    pw: Optional[pd.DataFrame],
+    var: str,
+    comparisons: list,
+) -> list[str]:
+    """Map model-based pairwise p_adj values to significance bracket labels."""
+    labels = []
+    for g1, g2 in comparisons:
+        if pw is None or pw.empty:
+            labels.append("n.s.")
+            continue
+        sub = pw.loc[pw["Variable"] == var]
+        row = sub.loc[
+            ((sub["Group1"] == g1) & (sub["Group2"] == g2))
+            | ((sub["Group1"] == g2) & (sub["Group2"] == g1))
+        ]
+        if row.empty:
+            labels.append("n.s.")
+        else:
+            labels.append(p_to_signif(float(row["p_adj"].iloc[0])))
+    return labels
+
+
+def bracket_labels_from_python_mixedlm(
+    dvar: pd.DataFrame,
+    var: str,
+    comparisons: list,
+    task_name: str,
+) -> list[str]:
+    """Figure-only Load contrasts for raincloud brackets (not written to stats CSVs)."""
+    df = dvar.rename(columns={var: "value"}).copy()
+    df["Condition"] = pd.Categorical(df["Condition"], categories=df["Condition"].cat.categories, ordered=True)
+    try:
+        pw = mixedlm_pairwise_contrasts(
+            df, value_col="value", group_col="Condition", id_col="ID", p_adjust="fdr_bh"
+        )
+    except Exception as exc:
+        print(f"WARNING: figure-only MixedLM brackets failed for {var} [{task_name}]: {exc}")
+        return ["n.s."] * len(comparisons)
+
+    labels = []
+    for g1, g2 in comparisons:
+        row = pw.loc[(pw["group1"] == g1) & (pw["group2"] == g2)]
+        labels.append("n.s." if row.empty else p_to_signif(float(row["p_adj"].iloc[0])))
+    return labels
+
+
+def bracket_labels_for_raincloud(
+    dvar: pd.DataFrame,
+    var: str,
+    comparisons: list,
+    pw: Optional[pd.DataFrame],
+    task_name: str,
+) -> list[str]:
+    """R pairwise contrasts for confirmatory DVs when available; else Python MixedLM."""
+    if pw is not None and not pw.empty and var in R_BRACKET_VARS:
+        sub = pw.loc[pw["Variable"] == var]
+        if not sub.empty:
+            return bracket_labels_for_var(pw, var, comparisons)
+    return bracket_labels_from_python_mixedlm(dvar, var, comparisons, task_name)
+
+
+def plot_raincloud(
+    dvar: pd.DataFrame,
+    var: str,
+    ylab: str,
+    sname: str,
+    task: dict,
+    condition_order: list,
+    pal_dict: dict,
+    global_upper: dict,
+    yticks_map: dict,
+    ylims_map: dict,
+    output_dir: str,
+    pw: Optional[pd.DataFrame],
+    figure_save_dpi: int,
+) -> None:
+    """Draw and save one raincloud figure."""
+    fig, ax = plt.subplots(figsize=(8, 6), facecolor="white")
+    fig.patch.set_alpha(1.0)
+    ax.patch.set_alpha(1.0)
+    ax.set_facecolor("white")
+
+    viol_alpha = 0.60
+    dot_alpha = 0.50
+    dot_size = 30
+    box_width = 0.20
+    cloud_offset = -0.20
+    max_violsw = 0.40
+    bw_method = 0.15
+    if var == "Accuracy":
+        cloud_offset = -0.20
+        max_violsw = 0.50
+        bw_method = 0.25
+
+    xpos = {c: i for i, c in enumerate(condition_order)}
+    rng = np.random.default_rng(12345)
+
+    for cond_lab in condition_order:
+        yvals = dvar.loc[dvar["Condition"] == cond_lab, var].dropna().to_numpy()
+        if yvals.size == 0:
+            continue
+
+        ymax_cap = ylims_map[var][1] if var in ylims_map else float(dvar[var].max())
+        ymin_cap = ylims_map[var][0] if var in ylims_map else float(dvar[var].min())
+        yr = ymax_cap - ymin_cap
+
+        pad_top = min(0.02 * yr, 0.3)
+        y_grid_top = ymin_cap + yr + pad_top
+
+        kde = gaussian_kde(yvals, bw_method=bw_method)
+        y_grid = np.linspace(ymin_cap, y_grid_top, 400)
+
+        dens = kde(y_grid)
+        scale = (max_violsw / np.nanmax(dens)) if np.nanmax(dens) > 0 else 0.0
+
+        x_left = xpos[cond_lab] + cloud_offset - dens * scale
+        x_right = np.full_like(y_grid, xpos[cond_lab] + cloud_offset)
+
+        poly_x = np.concatenate([x_right, x_left[::-1]])
+        poly_y = np.concatenate([y_grid, y_grid[::-1]])
+        ax.fill(
+            poly_x, poly_y,
+            facecolor=pal_dict[cond_lab], edgecolor="none",
+            alpha=viol_alpha, clip_on=True,
+        )
+
+        x_jit = xpos[cond_lab] + rng.uniform(-box_width / 2, box_width / 2, size=yvals.size)
+        ax.scatter(
+            x_jit, yvals, s=dot_size, alpha=dot_alpha,
+            color=pal_dict[cond_lab], linewidths=0, zorder=3,
+        )
+
+        bp = ax.boxplot(
+            [yvals], positions=[xpos[cond_lab]], widths=box_width, vert=True,
+            patch_artist=True, showfliers=False, whis=(5, 95),
+            medianprops=dict(color="black", linewidth=1.5),
+            boxprops=dict(linewidth=1.0, edgecolor="black"),
+            whiskerprops=dict(linewidth=1.0, color="black"),
+            capprops=dict(linewidth=1.0, color="black"),
+            meanline=False, showmeans=False,
+        )
+        for patch in bp["boxes"]:
+            patch.set_facecolor(mpl.colors.to_rgba(pal_dict[cond_lab], 0.05))
+            patch.set_edgecolor("black")
+        for elem in ["whiskers", "caps", "medians"]:
+            for artist in bp[elem]:
+                artist.set_color("black")
+
+    leg = ax.get_legend()
+    if leg is not None:
+        leg.remove()
+
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    ax.yaxis.grid(True, linewidth=1, alpha=0.35)
+    ax.xaxis.grid(False)
+
+    ax.set_title("")
+    ax.set_xticks(range(len(condition_order)))
+    ax.set_xticklabels(condition_order)
+    ax.set_xlabel("")
+    if len(condition_order) >= 2:
+        ax.annotate(
+            task["xlabel"],
+            xy=(xpos[condition_order[1]], 0),
+            xycoords=("data", "axes fraction"),
+            xytext=(0, -28),
+            textcoords="offset points",
+            ha="center", va="top",
+        )
+
+    if var in ylims_map:
+        ymin, ymax_cap = ylims_map[var]
+    else:
+        ymin = float(dvar[var].min()) if np.isfinite(dvar[var].min()) else 0.0
+        ymax_data_local = float(dvar[var].max()) if np.isfinite(dvar[var].max()) else ymin
+        ymax_cap = global_upper.get(var, np.nan)
+        if not np.isfinite(ymax_cap):
+            ymax_cap = ymax_data_local
+
+    range_y = max(ymax_cap - ymin, 1.0)
+    step = 0.10 * range_y
+    y_positions = []
+    start = ymax_cap + 0.075 * range_y
+    for i in range(len(task["comparisons"])):
+        y_positions.append(start + i * step)
+
+    if var in ylims_map:
+        ymin_cur, ymax_cur = ylims_map[var]
+    else:
+        ymin_cur = float(dvar[var].min()) if np.isfinite(dvar[var].min()) else 0.0
+        ymax_cur = float(dvar[var].max()) if np.isfinite(dvar[var].max()) else 1.0
+    ymid = 0.5 * (ymin_cur + ymax_cur)
+    ax.set_ylabel("")
+    ax.yaxis.get_label().set_visible(False)
+    ax.text(
+        YLABEL_GRID_X,
+        ymid,
+        ylab,
+        transform=ax.get_yaxis_transform(which="grid"),
+        rotation=90,
+        ha="center",
+        va="center",
+    )
+
+    labels = bracket_labels_for_raincloud(
+        dvar, var, task["comparisons"], pw, task["name"]
+    )
+    if (task["name"] == "nback") and (var == "Accuracy"):
+        yr_ax = ax.get_ylim()[1] - ax.get_ylim()[0]
+        step_bump = 0.025 * yr_ax
+        y_positions = [y + i * step_bump for i, y in enumerate(y_positions)]
+
+    add_stat_brackets(
+        ax=ax,
+        xcats=condition_order,
+        comparisons=task["comparisons"],
+        y_positions=y_positions,
+        labels=labels,
+        xmap=xpos,
+    )
+
+    if var in yticks_map:
+        ax.set_yticks(yticks_map[var])
+
+    if var in ylims_map:
+        ymin_set, ymax_set = ylims_map[var]
+        extra = 0.12 * (ymax_set - ymin_set)
+        ax.set_ylim(ymin_set, ymax_set + extra)
+    else:
+        ax.set_ylim(ymin, ymax_cap + 0.15 * (ymax_cap - ymin))
+
+    fig.tight_layout()
+    fig.subplots_adjust(left=0.17)
+    out_path = os.path.join(output_dir, f"AOC_stats_rainclouds_{sname}_{task['name']}.png")
+    fig.savefig(
+        out_path,
+        dpi=figure_save_dpi,
+        transparent=False,
+        facecolor=fig.get_facecolor(),
+        edgecolor=fig.get_edgecolor() if hasattr(fig, "get_edgecolor") else "white",
+    )
+    plt.close(fig)
+    print(f"Saved raincloud fig. → {os.path.basename(out_path)}")
+
+
 # %% Parameters
 
-# Colours
 pal = ["#93B8C4", "#82AD82", "#D998A2"]  # AOC pastels
 
-# Plot appearance
 FIGURE_SAVE_DPI = 600
 mpl.rcParams.update({
     "figure.dpi": 160,
@@ -151,43 +427,32 @@ mpl.rcParams.update({
     "axes.edgecolor": "white",
 })
 
-# Manual y-label x position in axes grid coords (more negative = further from tick labels)
 YLABEL_GRID_X = -0.125
 
-sns.set_style("white")  # clean white background, no grey panel
+sns.set_style("white")
 
 # %% I/O Paths
-base_dir   = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC"
+base_dir = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC"
 output_dir = f"{base_dir}/figures/stats/rainclouds"
-output_dir_stats = f"{base_dir}/data/stats"
-lrt_dir = f"{base_dir}/data/stats/lrt"
+stats_dir = f"{base_dir}/data/stats"
 os.makedirs(output_dir, exist_ok=True)
-os.makedirs(output_dir_stats, exist_ok=True)
-os.makedirs(lrt_dir, exist_ok=True)
 
-MERGED_CSV_STERNBERG = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_merged_data_sternberg.csv"
-MERGED_CSV_NBACK = "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/features/AOC_merged_data_nback.csv"
+MERGED_CSV_STERNBERG = f"{base_dir}/data/features/AOC_merged_data_sternberg.csv"
+MERGED_CSV_NBACK = f"{base_dir}/data/features/AOC_merged_data_nback.csv"
 
 # %% Variables and labelling
-# `GazeDeviation` / `MSRate` are raw (non-baselined) metrics from the merged gaze matrices: full [0 2]s
-# on n-back and late [1 2]s on Sternberg (`AOC_gaze_fex_*.m`).
-# Canonical gaze-BL and EEG baselined columns come from `enforce_task_window_columns`
-# (n-back: *_full / GazeDeviationFullBL / MSRateFullBL / ERSD_full;
-#  Sternberg: *_late / LateBL / ERSD_late). IAF is read directly from the merged matrix.
-
-variables  = [
+variables = [
     "Accuracy", "ReactionTime",
     "GazeDeviation", "MSRate",
     "GazeDeviationBL", "MSRateBL",
-    "AlphaPower", "AlphaPower_bl", "AlphaPower_FOOOF_bl",
+    "AlphaPower", "AlphaPower_bl",
     "IAF", "ERSD",
 ]
-y_labels   = [
+y_labels = [
     "Accuracy [%]", "Reaction Time [s]",
     "Gaze Deviation [px]", "Microsaccade Rate [MS/s]",
     "Gaze Deviation [%]", "Microsaccade Rate [%]",
     "Alpha Power [\u03BCV²/Hz]",
-    "Alpha Power [dB]",
     "Alpha Power [dB]",
     "IAF [Hz]",
     "ERS/ERD [dB]",
@@ -196,92 +461,71 @@ save_names = [
     "acc", "rt",
     "gazedev", "ms",
     "gazedev_bl", "ms_bl",
-    "pow_raw", "pow_bl", "pow_specparam_bl",
+    "pow_raw", "pow_bl",
     "iaf", "ersd",
 ]
 
-# Manual y ticks and ylims per variable
 yticks_map = {
-    "Accuracy"      : np.arange(60, 101, 10),
-    "ReactionTime"  : np.arange(0.25, 1.5, 0.25),
-    "GazeDeviation" : np.arange(0, 80, 10),
-    "MSRate"        : np.arange(0, 4, 1),
-    "AlphaPower"    : np.arange(0, 12, 1),
-    "GazeDeviationBL" : np.arange(-50, 350, 50),
-    "MSRateBL"        : np.arange(-100, 125, 25),
-    "AlphaPower_bl"       : np.arange(-4, 4.1, 1),
-    "AlphaPower_FOOOF_bl" : np.arange(-0.3, 0.31, 0.1),
-    "IAF"           : np.arange(8, 15, 1),
-    "ERSD"          : np.arange(-3, 4, 1),
+    "Accuracy": np.arange(60, 110, 10),
+    "ReactionTime": np.arange(0.25, 1.5, 0.25),
+    "GazeDeviation": np.arange(0, 80, 10),
+    "MSRate": np.arange(0, 4, 1),
+    "AlphaPower": np.arange(0, 12, 1),
+    "GazeDeviationBL": np.arange(-50, 350, 50),
+    "MSRateBL": np.arange(-100, 125, 25),
+    "AlphaPower_bl": np.arange(-4, 4.1, 1),
+    "IAF": np.arange(8, 15, 1),
+    "ERSD": np.arange(-3, 4, 1),
 }
 ylims_map = {
-    "Accuracy"      : (60, 102),
-    "ReactionTime"  : (0.25, 1.35),
-    "GazeDeviation" : (0, 70),
-    "MSRate"        : (0, 3.75),
-    "AlphaPower"    : (0, 11),
-    "GazeDeviationBL" : (-50, 300),
-    "MSRateBL"        : (-110, 110),
-    "AlphaPower_bl"       : (-4, 4),
-    "AlphaPower_FOOOF_bl" : (-0.325, 0.325),
-    "IAF"           : (8, 14),
-    "ERSD"          : (-3.75, 3.75),
+    "Accuracy": (58, 101),
+    "ReactionTime": (0.25, 1.35),
+    "GazeDeviation": (0, 70),
+    "MSRate": (0, 3.75),
+    "AlphaPower": (0, 11),
+    "GazeDeviationBL": (-50, 300),
+    "MSRateBL": (-110, 110),
+    "AlphaPower_bl": (-4, 4),
+    "IAF": (8, 14),
+    "ERSD": (-3.75, 3.75),
 }
 
 # %% Task configurations
 tasks = [
     {
-        "name"       : "sternberg",
-        "input_csv"  : MERGED_CSV_STERNBERG,
-        # Accept numeric encodings {1,2,3} or {2,4,6}; otherwise normalise existing strings
-        "cond_to_label_numeric": [{1: "WM load 2", 2: "WM load 4", 3: "WM load 6"},
-                                  {2: "WM load 2", 4: "WM load 4", 6: "WM load 6"}],
-        "categories" : ["WM load 2", "WM load 4", "WM load 6"],
-        "comparisons": [("WM load 2", "WM load 4"), ("WM load 2", "WM load 6"), ("WM load 4", "WM load 6")],
-        "xlabel"     : "Condition"
+        "name": "sternberg",
+        "input_csv": MERGED_CSV_STERNBERG,
+        "cond_to_label_numeric": [
+            {1: "WM load 2", 2: "WM load 4", 3: "WM load 6"},
+            {2: "WM load 2", 4: "WM load 4", 6: "WM load 6"},
+        ],
+        "categories": ["WM load 2", "WM load 4", "WM load 6"],
+        "comparisons": [
+            ("WM load 2", "WM load 4"),
+            ("WM load 2", "WM load 6"),
+            ("WM load 4", "WM load 6"),
+        ],
+        "xlabel": "Condition",
     },
     {
-        "name"       : "nback",
-        "input_csv"  : MERGED_CSV_NBACK,
+        "name": "nback",
+        "input_csv": MERGED_CSV_NBACK,
         "cond_to_label_numeric": [{1: "1-back", 2: "2-back", 3: "3-back"}],
-        "categories" : ["1-back", "2-back", "3-back"],
-        "comparisons": [("1-back", "2-back"), ("1-back", "3-back"), ("2-back", "3-back")],
-        "xlabel"     : "Condition"
-    }
+        "categories": ["1-back", "2-back", "3-back"],
+        "comparisons": [
+            ("1-back", "2-back"),
+            ("1-back", "3-back"),
+            ("2-back", "3-back"),
+        ],
+        "xlabel": "Condition",
+    },
 ]
 
 # %% Pre-scan for global upper bounds (shared bracket baseline per variable)
 global_upper = {var: np.nan for var in variables}
 
 for _task in tasks:
-    _dat = pd.read_csv(_task["input_csv"])
-    _dat = enforce_task_window_columns(_dat, _task["name"])
-    _dat.loc[_dat["Accuracy"] > 100, "Accuracy"] = np.nan  # same impossible-value rule
-
-    # normalise/label Condition exactly like in the main loop
-    _cond = _dat["Condition"]
-    if np.issubdtype(_cond.dtype, np.number):
-        _uniq = sorted(pd.unique(_cond.dropna()).tolist())
-        _applied_map = None
-        for _cand in _task["cond_to_label_numeric"]:
-            if set(_uniq).issubset(set(_cand.keys())):
-                _applied_map = _cand
-                break
-        if _applied_map is None:
-            _applied_map = {val: _task["categories"][i] for i, val in enumerate(_uniq[:len(_task["categories"])])}
-        _dat["Condition"] = _dat["Condition"].map(_applied_map)
-    else:
-        _dat["Condition"] = _dat["Condition"].astype(str).str.replace(r"\s+", " ", regex=True).str.strip()
-
-    _dat["Condition"] = pd.Categorical(_dat["Condition"], categories=_task["categories"], ordered=True)
-    if _dat["ID"].dtype != "O":
-        _dat["ID"] = _dat["ID"].astype(str)
-
-    # apply the same outlier filter as the main pipeline (existing columns only)
-    vars_present = [v for v in variables if v in _dat.columns]
-    _dat = iqr_outlier_filter(_dat, vars_present, by="Condition")
-
-    # update global upper bounds
+    _dat = load_task_data(_task, variables)
     for var in variables:
         if var not in _dat.columns:
             continue
@@ -290,102 +534,14 @@ for _task in tasks:
             if not np.isfinite(global_upper[var]) or (vmax > global_upper[var]):
                 global_upper[var] = float(vmax)
 
-# %% Processing + plotting
-outputs = {}
-
+# %% Raincloud plotting
 for task in tasks:
+    dat = load_task_data(task, variables)
+    pw = load_pairwise_contrasts(stats_dir, task["name"])
 
-    # %% Load
-    dat = pd.read_csv(task["input_csv"])
-    dat = enforce_task_window_columns(dat, task["name"])
-
-    # Remove impossible values
-    dat.loc[dat["Accuracy"] > 100, "Accuracy"] = np.nan
-
-    # %% Condition labelling (robust to numeric or already-labelled strings)
-    cond = dat["Condition"]
-    if np.issubdtype(cond.dtype, np.number):
-        uniq = sorted(pd.unique(cond.dropna()).tolist())
-        applied_map = None
-        for candidate_map in task["cond_to_label_numeric"]:
-            if set(uniq).issubset(set(candidate_map.keys())):
-                applied_map = candidate_map
-                break
-        if applied_map is None:
-            # Fallback by rank order
-            applied_map = {val: task["categories"][i] for i, val in enumerate(uniq[:len(task["categories"])])}
-        dat["Condition"] = dat["Condition"].map(applied_map)
-    else:
-        dat["Condition"] = dat["Condition"].astype(str).str.replace(r"\s+", " ", regex=True).str.strip()
-
-    dat["Condition"] = pd.Categorical(dat["Condition"], categories=task["categories"], ordered=True)
-
-    # Ensure ID is string for grouping
-    if dat["ID"].dtype != "O":
-        dat["ID"] = dat["ID"].astype(str)
-
-    # Outlier removal per condition & variable (1.5×IQR)
-    vars_present = [v for v in variables if v in dat.columns]
-    dat = iqr_outlier_filter(dat, vars_present, by="Condition")
-
-    # %% Descriptive statistics per condition (save as CSV)
-    desc_rows = []
-
-    for var in variables:
-        if var not in dat.columns:
-            continue
-
-        subdat = dat.loc[~dat[var].isna(), ["ID", "Condition", var]].copy()
-        if subdat.empty:
-            continue
-
-        # Group by Condition (subjects already collapsed to one row per condition)
-        for cond_lab, g in subdat.groupby("Condition", observed=True):
-            if g.empty:
-                continue
-
-            vals = g[var].to_numpy()
-
-            n     = vals.size
-            mean  = np.nanmean(vals)
-            sd    = np.nanstd(vals, ddof=1)
-            sem   = sd / np.sqrt(n) if n > 0 else np.nan
-            med   = np.nanmedian(vals)
-            q1    = np.nanpercentile(vals, 25)
-            q3    = np.nanpercentile(vals, 75)
-            iqr   = q3 - q1
-
-            desc_rows.append([
-                task["name"], var, cond_lab, n,
-                round(mean, 2), round(sd, 2), round(sem, 2),
-                round(med, 2), round(q1, 2), round(q3, 2), round(iqr, 2)
-            ])
-
-    desc_table = pd.DataFrame(
-        desc_rows,
-        columns=[
-            "Task", "Variable", "Condition", "N",
-            "Mean", "SD", "SEM",
-            "Median", "Q1", "Q3", "IQR"
-        ]
-    )
-
-    # Save descriptive summary for the task
-    out_csv = os.path.join(output_dir_stats, f"AOC_descriptives_{task['name']}.csv")
-    desc_table.to_csv(out_csv, index=False)
-    outputs[f"descriptives_{task['name']}"] = desc_table.copy()
-    print(f"Saved descriptives → {out_csv}")
-
-    # Category order / palette mapping
     condition_order = list(dat["Condition"].dropna().unique())
     pal_dict = dict(zip(condition_order, pal))
 
-    condition_lrt_rows = []       # omnibus Condition test from MixedLM (LRT)
-    pairwise_effsize_rows = []    # collects pairwise effect sizes for this task
-    condition_pairwise_rows = []  # model-based pairwise contrasts for this task
-    condition_fixed_rows = []     # pooled fixed-effect rows for this task
-
-    # %% Loop variables
     for var, ylab, sname in zip(variables, y_labels, save_names):
         if var not in dat.columns:
             continue
@@ -394,662 +550,22 @@ for task in tasks:
         if dvar.empty:
             continue
 
-        # Ensure categorical ordering
         dvar["Condition"] = pd.Categorical(dvar["Condition"], categories=condition_order, ordered=True)
 
-        # %% Fit mixed model to export as a Word table
-        # Random-intercept model (subjects), Condition as fixed effect.
-        dvar_m = dvar.rename(columns={var: "value"}).copy()
-        # Ensure Condition is categorical with your order (already set above)
-        dvar_m["Condition"] = pd.Categorical(dvar_m["Condition"],
-                                            categories=condition_order, ordered=True)
-
-        # Use treatment coding with the FIRST level as reference (your ordered categories)
-        # reml=False -> so the reported log-likelihood is comparable across models.
-        # If it struggles to converge, it will fall back to random-intercepts only and try a different optimizer.
-        model_result = None
-        try:
-            # Random intercepts only
-            m = smf.mixedlm(
-                f'value ~ C(Condition, Treatment(reference="{condition_order[0]}"))',
-                data=dvar_m, groups=dvar_m["ID"]
-            )
-            model_result = m.fit(method="lbfgs", reml=False, maxiter=200, disp=False)
-        except Exception:
-            try:
-                # Try Nelder-Mead as a fallback
-                model_result = m.fit(method="nm", reml=False, maxiter=400, disp=False)
-            except Exception:
-                print(f"WARNING: MixedLM failed for {var} [{task['name']}]; skipping variable.")
-                condition_lrt_rows.append([task["name"], var, np.nan, np.nan, np.nan, np.nan, int(dvar_m.shape[0])])
-                continue
-
-        # Omnibus Condition test from the same model family via LRT:
-        # full model (Condition) vs intercept-only model.
-        try:
-            m_null = smf.mixedlm("value ~ 1", data=dvar_m, groups=dvar_m["ID"])
-            null_result = m_null.fit(method="lbfgs", reml=False, maxiter=200, disp=False)
-        except Exception:
-            null_result = m_null.fit(method="nm", reml=False, maxiter=400, disp=False)
-
-        lrt_cond = drop1_lrt(model_result, null_result)
-        condition_lrt_rows.append([
-            task["name"], var,
-            lrt_cond["df_diff"], lrt_cond["LR"], lrt_cond["p"],
-            lr_effect_sizes(lrt_cond["LR"], lrt_cond["df_diff"], int(dvar_m.shape[0]))[0],
-            int(dvar_m.shape[0])
-        ])
-
-        # Export to Word
-        doc_name = f"AOC_modeltable_{sname}_{task['name']}.docx"
-        doc_path = os.path.join(output_dir_stats, doc_name)
-        export_model_table(model_result, doc_path)
-        print(f"Saved model table    → {doc_name}")
-
-        # Print GLMM summary to console
-        print(f"\n{'─'*60}")
-        print(f"  GLMM: {var} ~ Condition + (1|ID)  [{task['name']}]")
-        print(f"{'─'*60}")
-        try:
-            print(model_result.summary())
-        except Exception:
-            print(model_result.summary2())
-        print(f"  Omnibus Condition LRT: χ²({int(lrt_cond['df_diff'])}) = {lrt_cond['LR']:.3f}, p = {lrt_cond['p']:.4f}")
-
-        # Pairwise contrasts from the SAME fitted MixedLM
-        design_prefix = f'C(Condition, Treatment(reference="{condition_order[0]}"))'
-        pw = pairwise_condition_contrasts_at_mean_gaze(
-            model_result,
-            condition_order,
-            design_prefix=design_prefix
-        )
-        if not pw.empty:
-            print(f"  Pairwise contrasts (FDR-BH): {var} [{task['name']}]")
-            for _, r in pw.iterrows():
-                sig = p_to_signif(float(r["p_adj"]))
-                print(f"    {r['Group2']} vs {r['Group1']}: "
-                      f"β = {float(r['Estimate']):.3f}, "
-                      f"95% CI [{float(r['CI95_low']):.3f}, {float(r['CI95_high']):.3f}], "
-                      f"p_adj = {float(r['p_adj']):.4f} {sig}")
-
-            # keep a long-format table for manuscript value checks
-            pw_long = pw.copy()
-            pw_long.insert(0, "Task", task["name"])
-            pw_long.insert(1, "Variable", var)
-            pw_long.insert(2, "ModelLabel", "DV ~ Condition + (1|ID)")
-            pw_long.insert(3, "N_obs", int(dvar_m.shape[0]))
-            condition_pairwise_rows.extend(pw_long.to_dict("records"))
-
-        # %% Pairwise within-subject effect sizes (Cohen's dz) + 95% CI of mean difference
-        # build wide table to get paired diffs
-        wide = dvar.pivot(index='ID', columns='Condition', values=var)
-        for (g1, g2) in task["comparisons"]:
-            if (g1 in wide.columns) and (g2 in wide.columns):
-                diffs = (wide[g2] - wide[g1]).dropna()
-                n = diffs.shape[0]
-                if n >= 2 and np.nanstd(diffs, ddof=1) > 0:
-                    md   = float(np.nanmean(diffs))
-                    sd_d = float(np.nanstd(diffs, ddof=1))
-                    dz   = md / sd_d
-                    # 95% CI for mean difference (paired t): md ± t*sd_d/sqrt(n)
-                    from scipy import stats
-                    tcrit = stats.t.ppf(0.975, df=n-1)
-                    se_md = sd_d / np.sqrt(n)
-                    ci_lo = md - tcrit * se_md
-                    ci_hi = md + tcrit * se_md
-                else:
-                    md = dz = ci_lo = ci_hi = np.nan
-                    n = int(n)
-                # attach adjusted p from model-based pairwise contrasts
-                padj = np.nan
-                row = pw.loc[(pw["Group1"] == g1) & (pw["Group2"] == g2)]
-                if not row.empty and "p_adj" in row:
-                    try:
-                        padj = float(row["p_adj"].iloc[0])
-                    except Exception:
-                        padj = np.nan
-                pairwise_effsize_rows.append([
-                    task["name"], var, g1, g2, n, md, dz, ci_lo, ci_hi, padj
-                ])
-
-        # Also save fixed effects (β, SE, z/t, p, CI) to CSV and outputs
-        fe_df = mixedlm_fixed_effects_to_df(
-            model_result,
-            task=task["name"],
-            variable=var,
-            model_label="DV ~ Condition + (1|ID)"
-        )
-        fe_long = fe_df.copy()
-        fe_long.insert(3, "N_obs", int(dvar_m.shape[0]))
-        condition_fixed_rows.extend(fe_long.to_dict("records"))
-        fe_csv = os.path.join(output_dir_stats, f"AOC_mixedlm_fixed_{sname}_{task['name']}.csv")
-        fe_df.to_csv(fe_csv, index=False)
-        outputs[f"mixedlm_fixed_{sname}_{task['name']}"] = fe_df.copy()
-        print(f"Saved fixed effects  → {os.path.basename(fe_csv)}")
-
-        # %% Figure
-        fig, ax = plt.subplots(figsize=(8, 6), facecolor="white")
-        fig.patch.set_alpha(1.0)
-        ax.patch.set_alpha(1.0)
-        ax.set_facecolor("white")
-
-        # %% Manual raincloud parameters
-        viol_alpha  = 0.60
-        dot_alpha   = 0.50
-        dot_size    = 30
-        box_width   = 0.20
-        cloud_offset = -0.20
-        max_violsw  = 0.40
-        bw_method   = 0.15
-        if var == "Accuracy":
-            cloud_offset = -0.20
-            max_violsw   = 0.50
-            bw_method    = 0.25
-
-        # x positions for categories
-        xpos = {c: i for i, c in enumerate(condition_order)}
-
-        # Deterministic jitter
-        rng = np.random.default_rng(12345)
-
-        # %% Draw per condition
-        for cond_lab in condition_order:
-            yvals = dvar.loc[dvar["Condition"] == cond_lab, var].dropna().to_numpy()
-            if yvals.size == 0:
-                continue
-
-            # VIOLIN (left half)
-            # Determine hard cap for this variable
-            ymax_cap = ylims_map[var][1] if var in ylims_map else float(dvar[var].max())
-            ymin_cap = ylims_map[var][0] if var in ylims_map else float(dvar[var].min())
-            yr = ymax_cap - ymin_cap
-
-            pad_top = min(0.02 * yr, 0.3)
-            y_grid_top = ymin_cap + yr + pad_top
-
-            # build KDE
-            kde = gaussian_kde(yvals, bw_method=bw_method)
-
-            # grid
-            y_grid = np.linspace(ymin_cap, y_grid_top, 400)
-
-            dens = kde(y_grid)
-            scale = (max_violsw / np.nanmax(dens)) if np.nanmax(dens) > 0 else 0.0
-
-            x_left  = xpos[cond_lab] + cloud_offset - dens * scale
-            x_right = np.full_like(y_grid, xpos[cond_lab] + cloud_offset)
-
-            poly_x = np.concatenate([x_right, x_left[::-1]])
-            poly_y = np.concatenate([y_grid, y_grid[::-1]])
-            ax.fill(poly_x, poly_y,
-                    facecolor=pal_dict[cond_lab], edgecolor="none",
-                    alpha=viol_alpha, clip_on=True)
-
-            # DOTS
-            x_jit = xpos[cond_lab] + rng.uniform(-box_width / 2, box_width / 2, size=yvals.size)
-            ax.scatter(x_jit, yvals, s=dot_size, alpha=dot_alpha, color=pal_dict[cond_lab], linewidths=0, zorder=3)
-
-            # BOXPLOT
-            bp = ax.boxplot(
-                [yvals], positions=[xpos[cond_lab]], widths=box_width, vert=True,
-                patch_artist=True, showfliers=False, whis=(5, 95),
-                medianprops=dict(color="black", linewidth=1.5),
-                boxprops=dict(linewidth=1.0, edgecolor="black"),
-                whiskerprops=dict(linewidth=1.0, color="black"),
-                capprops=dict(linewidth=1.0, color="black"),
-                meanline=False, showmeans=False
-            )
-            for patch in bp["boxes"]:
-                patch.set_facecolor(mpl.colors.to_rgba(pal_dict[cond_lab], 0.05))
-                patch.set_edgecolor("black")
-            for elem in ["whiskers", "caps", "medians"]:
-                for artist in bp[elem]:
-                    artist.set_color("black")
-
-        # No legend
-        leg = ax.get_legend()
-        if leg is not None:
-            leg.remove()
-
-        # Clean spines and grid
-        for spine in ax.spines.values():
-            spine.set_visible(False)
-        ax.yaxis.grid(True, linewidth=1, alpha=0.35)
-        ax.xaxis.grid(False)
-
-        # Labels and x-ticks
-        ax.set_title("")
-        ax.set_xticks(range(len(condition_order)))
-        ax.set_xticklabels(condition_order)
-        ax.set_xlabel("")
-        if len(condition_order) >= 2:
-            ax.annotate(
-                task["xlabel"],
-                xy=(xpos[condition_order[1]], 0),
-                xycoords=("data", "axes fraction"),
-                xytext=(0, -28),
-                textcoords="offset points",
-                ha="center", va="top"
-            )
-
-        # %% Bracket layout with shared (global) ymax per variable
-        # If manual limits exist, use them for bracket layout;
-        # otherwise fall back to the data/global upper.
-        if var in ylims_map:
-            ymin, ymax_cap = ylims_map[var]
-        else:
-            ymin = float(dvar[var].min()) if np.isfinite(dvar[var].min()) else 0.0
-            ymax_data_local = float(dvar[var].max()) if np.isfinite(dvar[var].max()) else ymin
-            ymax_cap = global_upper.get(var, np.nan)
-            if not np.isfinite(ymax_cap):
-                ymax_cap = ymax_data_local
-
-        range_y = max(ymax_cap - ymin, 1.0)
-
-        step = 0.10 * range_y
-
-        y_positions = []
-        start = ymax_cap + 0.075 * range_y
-        for i in range(len(task["comparisons"])):
-            y_positions.append(start + i * step)
-
-        # y-label at data midpoint
-        if var in ylims_map:
-            ymin_cur, ymax_cur = ylims_map[var]
-        else:
-            ymin_cur = float(dvar[var].min()) if np.isfinite(dvar[var].min()) else 0.0
-            ymax_cur = float(dvar[var].max()) if np.isfinite(dvar[var].max()) else 1.0
-        ymid = 0.5 * (ymin_cur + ymax_cur)
-        ax.set_ylabel("")
-        ax.yaxis.get_label().set_visible(False)
-        ax.text(
-            YLABEL_GRID_X,
-            ymid,
-            ylab,
-            transform=ax.get_yaxis_transform(which='grid'),
-            rotation=90,
-            ha='center',
-            va='center'
+        plot_raincloud(
+            dvar=dvar,
+            var=var,
+            ylab=ylab,
+            sname=sname,
+            task=task,
+            condition_order=condition_order,
+            pal_dict=pal_dict,
+            global_upper=global_upper,
+            yticks_map=yticks_map,
+            ylims_map=ylims_map,
+            output_dir=output_dir,
+            pw=pw,
+            figure_save_dpi=FIGURE_SAVE_DPI,
         )
 
-        # Signif labels
-        labels = []
-        for (g1, g2) in task["comparisons"]:
-            row = pw.loc[(pw["Group1"] == g1) & (pw["Group2"] == g2)]
-            labels.append("n.s." if row.empty else p_to_signif(float(row["p_adj"].iloc[0])))
-
-        # %% slightly increase bracket spacing only for Accuracy in N-back
-        if (task["name"] == "nback") and (var == "Accuracy"):
-            yr = ax.get_ylim()[1] - ax.get_ylim()[0]
-            # assume you already computed y_positions; just spread them a bit more
-            step_bump = 0.025 * yr   # +2.5% of axis range on each successive bracket
-            y_positions = [y + i * step_bump for i, y in enumerate(y_positions)]
-
-        add_stat_brackets(
-            ax=ax,
-            xcats=condition_order,
-            comparisons=task["comparisons"],
-            y_positions=y_positions,
-            labels=labels,
-            xmap=xpos
-        )
-
-        # %% Manual y-ticks (identical for both tasks)
-        if var in yticks_map:
-            ax.set_yticks(yticks_map[var])
-
-        if var in ylims_map:
-            ymin_set, ymax_set = ylims_map[var]
-            # extend a bit to make sure brackets are inside
-            extra = 0.12 * (ymax_set - ymin_set)
-            ax.set_ylim(ymin_set, ymax_set + extra)
-        else:
-            ax.set_ylim(ymin, ymax_cap + 0.15 * (ymax_cap - ymin))
-
-
-        # %% Save raincloud figure for each variable
-        fig.tight_layout()
-        fig.subplots_adjust(left=0.17)
-        fig.savefig(
-            os.path.join(output_dir, f"AOC_stats_rainclouds_{sname}_{task['name']}.png"),
-            dpi=FIGURE_SAVE_DPI,
-            transparent=False,
-            facecolor=fig.get_facecolor(),
-            edgecolor=fig.get_edgecolor() if hasattr(fig, "get_edgecolor") else "white"
-        )
-        plt.close(fig)
-        saveNameFig = os.path.join(f"AOC_stats_rainclouds_{sname}_{task['name']}.png")
-        print(f"Saved raincloud fig. → {saveNameFig}")
-
-    # Save omnibus Condition test (MixedLM LRT) for this task
-    lrt_df = pd.DataFrame(
-        condition_lrt_rows,
-        columns=["Task", "Variable", "df_diff", "LR_Chi2", "p", "R2_LR", "N_obs"]
-    )
-    lrt_csv = os.path.join(lrt_dir, f"AOC_condition_lrt_{task['name']}.csv")
-    lrt_df.to_csv(lrt_csv, index=False)
-    outputs[f"condition_lrt_{task['name']}"] = lrt_df.copy()
-    print(f"Saved Condition LRT → {lrt_csv}")
-
-    # Save pairwise effect sizes for this task
-    pw_eff_df = pd.DataFrame(
-        pairwise_effsize_rows,
-        columns=["Task", "Variable", "Group1", "Group2", "N", "MeanDiff", "Cohens_dz", "CI95_low", "CI95_high", "p_adj"]
-    )
-    pw_csv = os.path.join(output_dir_stats, f"AOC_pairwise_effectsizes_{task['name']}.csv")
-    pw_eff_df.to_csv(pw_csv, index=False)
-    outputs[f"pairwise_effect_sizes_{task['name']}"] = pw_eff_df.copy()
-    print(f"Saved pairwise effect sizes → {pw_csv}")
-
-    # Save pooled model-based pairwise contrasts for task
-    pw_model_df = pd.DataFrame(condition_pairwise_rows)
-    pw_model_csv = os.path.join(output_dir_stats, f"AOC_pairwise_mixedlm_{task['name']}.csv")
-    pw_model_df.to_csv(pw_model_csv, index=False)
-    outputs[f"pairwise_mixedlm_{task['name']}"] = pw_model_df.copy()
-    print(f"Saved model-based pairwise contrasts → {pw_model_csv}")
-
-    # Save pooled fixed effects for all confirmatory outcomes in task
-    fixed_all_df = pd.DataFrame(condition_fixed_rows)
-    fixed_all_csv = os.path.join(output_dir_stats, f"AOC_mixedlm_fixed_allvars_{task['name']}.csv")
-    fixed_all_df.to_csv(fixed_all_csv, index=False)
-    outputs[f"mixedlm_fixed_allvars_{task['name']}"] = fixed_all_df.copy()
-    print(f"Saved pooled fixed effects → {fixed_all_csv}")
-
-# %% Alpha variants ~ Gaze variants * Condition + (1|ID)
-# Exploratory grid (per task): every alpha DV × every gaze predictor, i.e.
-#   {AlphaPower, AlphaPower_bl, AlphaPower_FOOOF_bl} × {GazeDeviation, MSRate, GazeDeviationBL, MSRateBL}
-# so raw and baselined EEG, raw and baselined gaze, and specParam baselined alpha are all crossed
-# (e.g. AlphaPower_FOOOF_bl ~ GazeDeviationBL * Condition when columns exist).
-print("\n=== Alpha variants ~ Gaze variants * Condition mixed models (per task) ===")
-
-exploratory_drop1_all = []
-exploratory_lrtTbl_all = []
-exploratory_contrasts_all = []
-exploratory_fixed_all = []
-exploratory_vif_all = []
-
-for task in tasks:
-    print(f"\nTask: {task['name']}")
-    dat = pd.read_csv(task["input_csv"])
-    dat = enforce_task_window_columns(dat, task["name"])
-    dat.loc[dat["Accuracy"] > 100, "Accuracy"] = np.nan
-
-    # Harmonise Condition labels and order (same logic as above)
-    cond = dat["Condition"]
-    ref_level = task["categories"][0]
-    if np.issubdtype(cond.dtype, np.number):
-        uniq = sorted(pd.unique(cond.dropna()).tolist())
-        applied_map = None
-        for cand in task["cond_to_label_numeric"]:
-            if set(uniq).issubset(set(cand.keys())):
-                applied_map = cand
-                break
-        if applied_map is None:
-            applied_map = {val: task["categories"][i] for i, val in enumerate(uniq[:len(task["categories"])])}
-        dat["Condition"] = dat["Condition"].map(applied_map)
-    else:
-        dat["Condition"] = dat["Condition"].astype(str).str.replace(r"\s+", " ", regex=True).str.strip()
-
-    dat["Condition"] = pd.Categorical(dat["Condition"], categories=task["categories"], ordered=True)
-    if dat["ID"].dtype != "O":
-        dat["ID"] = dat["ID"].astype(str)
-
-    # Apply same outlier handling
-    vars_present = [v for v in variables if v in dat.columns]
-    dat = iqr_outlier_filter(dat, vars_present, by="Condition")
-
-    # Keep essential columns
-    alpha_vars = ["AlphaPower", "AlphaPower_bl", "AlphaPower_FOOOF_bl"]
-    gaze_vars = ["GazeDeviation", "MSRate", "GazeDeviationBL", "MSRateBL"]
-    cols_needed = ["ID", "Condition"] + alpha_vars + gaze_vars
-    dat = dat[[c for c in cols_needed if c in dat.columns]].copy()
-
-    # Drop rows with missing DV or predictors, separately for each alpha/gaze combination
-    for alpha_var in alpha_vars:
-        if alpha_var not in dat.columns:
-            continue
-
-        for gaze_var in gaze_vars:
-            if gaze_var not in dat.columns:
-                continue
-
-            sub = dat[["ID", "Condition", alpha_var, gaze_var]].dropna().copy()
-
-            # Ensure we have all condition levels for at least some subjects
-            if sub.empty or sub["ID"].nunique() < 2:
-                print(f" - Not enough data for {alpha_var} ~ {gaze_var}. Skipping.")
-                continue
-
-            # Mean-centre gaze within task (keeps units; recommended to reduce collinearity)
-            sub[gaze_var + "_c"] = sub[gaze_var] - sub[gaze_var].mean()
-            rhs_full = f'{gaze_var}_c * C(Condition, Treatment(reference="{ref_level}"))'
-
-            # VIF diagnostics for alpha~gaze*condition predictors (registration-aligned check)
-            vif_df = pd.DataFrame()
-            try:
-                X_vif = dmatrix(rhs_full, data=sub, return_type="dataframe")
-                vif_cols = [c for c in X_vif.columns if c != "Intercept"]
-                if len(vif_cols) > 0:
-                    X_num = X_vif[vif_cols].to_numpy(dtype=float)
-                    vif_rows = []
-                    for i, col in enumerate(vif_cols):
-                        vif_rows.append({
-                            "Task": task["name"],
-                            "AlphaDV": alpha_var,
-                            "GazePredictor": gaze_var,
-                            "Predictor": col,
-                            "VIF": float(variance_inflation_factor(X_num, i))
-                        })
-                    vif_df = pd.DataFrame(vif_rows)
-            except Exception as e:
-                print(f"  WARNING: VIF diagnostics failed for {alpha_var} ~ {gaze_var} [{task['name']}]: {e}")
-
-            # MixedLM (REML=False for LRT comparability)
-            formula_full = (
-                f'{alpha_var} ~ {rhs_full}'
-            )
-            try:
-                full_res = fit_mixedlm(formula_full, data=sub, group="ID", reml=False)
-            except Exception:
-                full_res = fit_mixedlm(formula_full, data=sub, group="ID", reml=False, method="nm", maxiter=800)
-
-            formula_red = (
-                f'{alpha_var} ~ {gaze_var}_c + C(Condition, Treatment(reference="{ref_level}"))'
-            )
-            try:
-                red_res = fit_mixedlm(formula_red, data=sub, group="ID", reml=False)
-            except Exception:
-                red_res = fit_mixedlm(formula_red, data=sub, group="ID", reml=False, method="nm", maxiter=800)
-
-            # drop1-style LRT for interaction
-            lrt = drop1_lrt(full_res, red_res)
-            lrt_df = pd.DataFrame([{
-                "Task": task["name"],
-                "AlphaDV": alpha_var,
-                "GazePredictor": gaze_var,
-                "LL_full": lrt["LL_full"], "LL_reduced": lrt["LL_reduced"],
-                "df_full": lrt["df_full"], "df_reduced": lrt["df_reduced"],
-                "df_diff": lrt["df_diff"], "LR": lrt["LR"], "p": lrt["p"]
-            }])
-
-            # Select final model based on LRT
-            if np.isfinite(lrt["p"]) and (lrt["p"] < 0.05):
-                final_res = full_res
-                final_formula = formula_full
-                interaction_kept = True
-            else:
-                final_res = red_res
-                final_formula = formula_red
-                interaction_kept = False
-
-            # Model without Condition (keeps gaze only)
-            formula_nocond = f'{alpha_var} ~ {gaze_var}_c'
-            try:
-                res_nocond = fit_mixedlm(formula_nocond, data=sub, group="ID", reml=False)
-            except Exception:
-                res_nocond = fit_mixedlm(formula_nocond, data=sub, group="ID", reml=False, method="nm", maxiter=800)
-            lrt_cond = drop1_lrt(red_res, res_nocond)
-
-            # Model without gaze (keeps Condition only)
-            formula_nogaze = f'{alpha_var} ~ C(Condition, Treatment(reference="{ref_level}"))'
-            try:
-                res_nogaze = fit_mixedlm(formula_nogaze, data=sub, group="ID", reml=False)
-            except Exception:
-                res_nogaze = fit_mixedlm(formula_nogaze, data=sub, group="ID", reml=False, method="nm", maxiter=800)
-            lrt_gaze = drop1_lrt(red_res, res_nogaze)
-
-            # Build LRT table with LR-based effect sizes
-            rows_lrt = []
-            n_obs = sub.shape[0]
-
-            R2_cond, f2_cond = lr_effect_sizes(lrt_cond["LR"], lrt_cond["df_diff"], n_obs)
-            rows_lrt.append({
-                "Term": "Condition",
-                "df": lrt_cond["df_diff"],
-                "LR_Chi2": lrt_cond["LR"],
-                "p": lrt_cond["p"],
-                "R2_LR": R2_cond,
-                "f2_LR": f2_cond
-            })
-
-            R2_gaze, f2_gaze = lr_effect_sizes(lrt_gaze["LR"], lrt_gaze["df_diff"], n_obs)
-            rows_lrt.append({
-                "Term": f"{gaze_var}_c",
-                "df": lrt_gaze["df_diff"],
-                "LR_Chi2": lrt_gaze["LR"],
-                "p": lrt_gaze["p"],
-                "R2_LR": R2_gaze,
-                "f2_LR": f2_gaze
-            })
-
-            if interaction_kept and np.isfinite(lrt["p"]):
-                R2_int, f2_int = lr_effect_sizes(lrt["LR"], lrt["df_diff"], n_obs)
-                rows_lrt.append({
-                    "Term": "Interaction",
-                    "df": lrt["df_diff"],
-                    "LR_Chi2": lrt["LR"],
-                    "p": lrt["p"],
-                    "R2_LR": R2_int,
-                    "f2_LR": f2_int
-                })
-
-            for row in rows_lrt:
-                row["N_obs"] = int(n_obs)
-
-            lrtTbl_df = pd.DataFrame(rows_lrt, columns=["Term", "df", "LR_Chi2", "p", "R2_LR", "f2_LR"])
-            lrtTbl_df.insert(0, "Task", task["name"])
-            lrtTbl_df.insert(1, "AlphaDV", alpha_var)
-            lrtTbl_df.insert(2, "GazePredictor", gaze_var)
-
-            # Pairwise contrasts across Condition at mean gaze (centred = 0)
-            cond_levels = list(sub["Condition"].cat.categories)
-            design_prefix = f'C(Condition, Treatment(reference="{ref_level}"))'
-            contrast_df = pairwise_condition_contrasts_at_mean_gaze(
-                final_res, cond_levels, design_prefix=design_prefix
-            )
-            contrast_df.insert(0, "Task", task["name"])
-            contrast_df.insert(1, "AlphaDV", alpha_var)
-            contrast_df.insert(2, "GazePredictor", gaze_var)
-
-            # Export model table (DOCX)
-            doc_name = f"AOC_alpha_mixedlm_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}.docx"
-            doc_path = os.path.join(output_dir_stats, doc_name)
-            export_model_table(final_res, doc_path)
-            print(f"Saved model table → {doc_name}")
-
-            print(f"\n{'─'*60}")
-            print(f"  {alpha_var} ~ {gaze_var} * Condition  [{task['name']}]")
-            print(f"  Final formula: {final_formula}")
-            print(f"  Interaction kept: {interaction_kept}")
-            print(f"{'─'*60}")
-            try:
-                print(final_res.summary())
-            except Exception:
-                pass
-            print(f"\n  LRT table:")
-            print(lrtTbl_df.to_string(index=False))
-            if not contrast_df.empty:
-                print(f"\n  Pairwise condition contrasts at mean gaze:")
-                print(contrast_df.to_string(index=False))
-
-            fe_alpha_df = mixedlm_fixed_effects_to_df(
-                final_res,
-                task=task["name"],
-                variable=alpha_var,
-                model_label=f"{alpha_var} ~ {gaze_var}_c * Condition + (1|ID)" if interaction_kept
-                else f"{alpha_var} ~ {gaze_var}_c + Condition + (1|ID)"
-            )
-            fe_alpha_csv = os.path.join(output_dir_stats, f"AOC_alpha_fixed_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}.csv")
-            fe_alpha_df.to_csv(fe_alpha_csv, index=False)
-            outputs[f"alpha_fixed_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}"] = fe_alpha_df.copy()
-            print(f"Saved alpha fixed-effects → {os.path.basename(fe_alpha_csv)}")
-
-            lrt_csv = os.path.join(output_dir_stats, f"AOC_alpha_drop1_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}.csv")
-            lrtTbl_csv = os.path.join(output_dir_stats, f"AOC_alpha_lrtTbl_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}.csv")
-            con_csv = os.path.join(output_dir_stats, f"AOC_alpha_contrasts_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}.csv")
-            lrt_df.to_csv(lrt_csv, index=False)
-            lrtTbl_df.to_csv(lrtTbl_csv, index=False)
-            contrast_df.to_csv(con_csv, index=False)
-            outputs[f"alpha_drop1_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}"] = lrt_df.copy()
-            outputs[f"alpha_lrtTbl_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}"] = lrtTbl_df.copy()
-            outputs[f"alpha_contrasts_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}"] = contrast_df.copy()
-            print(f"Saved LRT/LRT Table/Contrasts → {os.path.basename(lrt_csv)}, {os.path.basename(lrtTbl_csv)}, {os.path.basename(con_csv)}")
-
-            if not vif_df.empty:
-                vif_csv = os.path.join(output_dir_stats, f"AOC_alpha_vif_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}.csv")
-                vif_df.to_csv(vif_csv, index=False)
-                outputs[f"alpha_vif_{alpha_var.lower()}_{gaze_var.lower()}_{task['name']}"] = vif_df.copy()
-                print(f"Saved VIF diagnostics → {os.path.basename(vif_csv)}")
-
-            exploratory_drop1_all.append(lrt_df.copy())
-            exploratory_lrtTbl_all.append(lrtTbl_df.copy())
-            exploratory_contrasts_all.append(contrast_df.copy())
-            exploratory_fixed_all.append(fe_alpha_df.copy())
-            if not vif_df.empty:
-                exploratory_vif_all.append(vif_df.copy())
-
-# Save pooled exploratory tables for manuscript-wide checks
-if exploratory_drop1_all:
-    pooled_drop1 = pd.concat(exploratory_drop1_all, ignore_index=True)
-    pooled_drop1_csv = os.path.join(output_dir_stats, "AOC_alpha_drop1_all.csv")
-    pooled_drop1.to_csv(pooled_drop1_csv, index=False)
-    outputs["alpha_drop1_all"] = pooled_drop1.copy()
-    print(f"Saved pooled exploratory drop1 → {pooled_drop1_csv}")
-
-if exploratory_lrtTbl_all:
-    pooled_lrtTbl = pd.concat(exploratory_lrtTbl_all, ignore_index=True)
-    pooled_lrtTbl_csv = os.path.join(output_dir_stats, "AOC_alpha_lrtTbl_all.csv")
-    pooled_lrtTbl.to_csv(pooled_lrtTbl_csv, index=False)
-    outputs["alpha_lrtTbl_all"] = pooled_lrtTbl.copy()
-    print(f"Saved pooled exploratory LRT tables → {pooled_lrtTbl_csv}")
-
-if exploratory_contrasts_all:
-    pooled_contrasts = pd.concat(exploratory_contrasts_all, ignore_index=True)
-    pooled_contrasts_csv = os.path.join(output_dir_stats, "AOC_alpha_contrasts_all.csv")
-    pooled_contrasts.to_csv(pooled_contrasts_csv, index=False)
-    outputs["alpha_contrasts_all"] = pooled_contrasts.copy()
-    print(f"Saved pooled exploratory contrasts → {pooled_contrasts_csv}")
-
-if exploratory_fixed_all:
-    pooled_fixed = pd.concat(exploratory_fixed_all, ignore_index=True)
-    pooled_fixed_csv = os.path.join(output_dir_stats, "AOC_alpha_fixed_all.csv")
-    pooled_fixed.to_csv(pooled_fixed_csv, index=False)
-    outputs["alpha_fixed_all"] = pooled_fixed.copy()
-    print(f"Saved pooled exploratory fixed effects → {pooled_fixed_csv}")
-
-if exploratory_vif_all:
-    pooled_vif = pd.concat(exploratory_vif_all, ignore_index=True)
-    pooled_vif_csv = os.path.join(output_dir_stats, "AOC_alpha_vif_all.csv")
-    pooled_vif.to_csv(pooled_vif_csv, index=False)
-    outputs["alpha_vif_all"] = pooled_vif.copy()
-    print(f"Saved pooled exploratory VIF diagnostics → {pooled_vif_csv}")
-
-# %% Display all stored dataframes
-pd.set_option("display.max_rows", None)
-pd.set_option("display.max_columns", None)
-pd.set_option("display.width", 0)
-print("\n=== Output DataFrames ===\n")
-for name, df in outputs.items():
-    print(f"{name}: {df.shape[0]} rows × {df.shape[1]} columns")
-    print(df.to_string(index=False))
-    print("\n")
+print("\nRaincloud figures saved to:", output_dir)

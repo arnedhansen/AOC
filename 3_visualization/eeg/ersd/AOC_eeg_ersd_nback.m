@@ -168,7 +168,8 @@ end
 drawnow; pause(0.05);
 saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_nback_topos.png'));
 
-%% Topoplots (baseline window, raw uncorrected power)
+%% Topoplots (baseline window)
+close all
 xlimTopo = baseline_window;
 
 topoData = {ga_nb_1_raw_alpha, ga_nb_2_raw_alpha, ga_nb_3_raw_alpha};
@@ -185,7 +186,7 @@ for k = 1:3
     bl_vals = [bl_vals; tmp.powspctrm(:)]; %#ok<AGROW>
 end
 bl_vals = bl_vals(isfinite(bl_vals));
-global_max = 5%prctile(bl_vals, 99);
+global_max = 4%prctile(bl_vals, 99);
 
 cmap = customcolormap([0 0.5 1], [0.8 0 0; 1 0.5 0; 1 1 1]);
 

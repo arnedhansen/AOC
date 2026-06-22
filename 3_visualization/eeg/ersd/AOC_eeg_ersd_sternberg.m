@@ -26,13 +26,7 @@ for subj = 1:numel(subjects)
     S = load(f_tc, 'ersd_timecourse');
     E = S.ersd_timecourse;
     conds = E.condition(:);
-    if isempty(timeVec)
-        timeVec = E.time(:)';
-    elseif numel(timeVec) ~= numel(E.time) || any(abs(timeVec - E.time(:)') > 1e-12)
-        warning('Time vector mismatch in subject %s', subjects{subj});
-        continue
-    end
-
+    timeVec = E.time(:)';
     tcMat = E.ersd_occ_8_14_db;
     tc2 = [tc2; tcMat(conds == 2, :)];
     tc4 = [tc4; tcMat(conds == 4, :)];

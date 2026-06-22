@@ -1,7 +1,8 @@
-%% AOC Split ERS/ERD (N-back)
-% Subject-level split on pooled ERSD_full (median or fixed threshold), then
-% ERD vs ERS gaze deviation time courses (percent baseline) with
-% cluster-based permutation testing (FieldTrip).
+%% AOC Split Alpha Amp/Red (N-back)
+% Subject-level split on pooled FOOOF alpha (median or fixed threshold), then
+% Reduction vs Amplification gaze deviation time courses (percent baseline) with
+% cluster-based permutation testing (FieldTrip), matching the former unified
+% AOC_split_AlphaAmpRed.m N-back branch.
 
 %% Setup
 startup
@@ -11,7 +12,7 @@ pathAOC = paths.features;
 addpath(paths.seb_path);
 
 feat_dir = paths.features;
-fig_dir = fullfile(paths.figures, 'splits', 'SplitERSERD', 'Nback');
+fig_dir = fullfile(paths.figures, 'splits', 'SplitAlphaAmpRed', 'Nback');
 stats_dir = paths.splits_stats;
 if ~isfolder(fig_dir)
     mkdir(fig_dir);
@@ -20,7 +21,7 @@ if ~isfolder(stats_dir)
     mkdir(stats_dir);
 end
 
-fprintf('\n=== AOC Split ERS/ERD (N-back) ===\n');
+fprintf('\n=== AOC Split Alpha Amp/Red (N-back) ===\n');
 fprintf('Figure directory: %s\n', fig_dir);
 
 fig_pos = [0 0 1512 982];
@@ -38,7 +39,7 @@ else
 end
 
 task_tag = 'nback';
-fig_prefix = sprintf('AOC_splitERSERD_%s_%s', task_tag, split_label);
+fig_prefix = sprintf('AOC_splitAlphaAmpRed_%s_%s', task_tag, split_label);
 
 cond_vals = [1 2 3];
 cond_codes = [21 22 23];
@@ -46,8 +47,10 @@ cond_labels = {'1-back', '2-back', '3-back'};
 gaze_fname = 'gaze_series_nback_trials.mat';
 tfr_fname_primary = 'tfr_nback.mat';
 tfr_fname_long = 'tfr_nback_long.mat';
-tfr_vars = {'tfr1_bl', 'tfr2_bl', 'tfr3_bl'};
-ersd_tc_fname = 'ersd_nback_timecourse.mat';
+tfr_vars = {'tfr1_fooof_bl', 'tfr2_fooof_bl', 'tfr3_fooof_bl'};
+power_fname = 'power_nback_fooof.mat';
+pow_vars = {'pow1_fooof_bl', 'pow2_fooof_bl', 'pow3_fooof_bl'};
+power_missing_label = power_fname;
 
 %% Load merged subject table
 merged_file = fullfile(feat_dir, 'AOC_merged_data_nback.mat');
@@ -59,22 +62,25 @@ if ~isfield(S, 'merged_data_nback')
     error('Variable merged_data_nback not found in: %s', merged_file);
 end
 T = struct2table(S.merged_data_nback);
-ersd_var = 'ERSD_full';
-if ~ismember(ersd_var, T.Properties.VariableNames)
-    error('Variable %s not found in merged_data_nback.', ersd_var);
+vn = T.Properties.VariableNames;
+if any(strcmp(vn, 'AlphaPower_FOOOF_bl'))
+    alpha_col = 'AlphaPower_FOOOF_bl';
+else
+    alpha_col = 'AlphaPower_FOOOF_bl_late';
+    fprintf('Using %s for alpha split (AlphaPower_FOOOF_bl not in merged table).\n', alpha_col);
 end
 
 uIDs = unique(T.ID);
 nSubj = numel(uIDs);
-ersd_mean = nan(nSubj, 1);
+alpha_mean = nan(nSubj, 1);
 for i = 1:nSubj
     sid = uIDs(i);
     mask = T.ID == sid;
-    ersd_mean(i) = mean(T.(ersd_var)(mask), 'omitnan');
+    alpha_mean(i) = mean(T.(alpha_col)(mask), 'omitnan');
 end
 
-split_valid = isfinite(ersd_mean);
-vals = ersd_mean(split_valid);
+split_valid = isfinite(alpha_mean);
+vals = alpha_mean(split_valid);
 if numel(vals) >= 4
     q1_split = prctile(vals, 25);
     q3_split = prctile(vals, 75);
@@ -82,73 +88,79 @@ if numel(vals) >= 4
     if isfinite(iqr_split) && iqr_split > 0
         lo_split = q1_split - 3 * iqr_split;
         hi_split = q3_split + 3 * iqr_split;
-        split_valid = split_valid & (ersd_mean >= lo_split) & (ersd_mean <= hi_split);
+        split_valid = split_valid & (alpha_mean >= lo_split) & (alpha_mean <= hi_split);
     end
 end
 
-valid_ersd_mean = ersd_mean(split_valid);
-if isempty(valid_ersd_mean)
-    error('No finite subject-level ERSD values found for split.');
+valid_alpha_mean = alpha_mean(split_valid);
+if isempty(valid_alpha_mean)
+    error('No finite subject-level alpha values found for split.');
 end
 
-ersd_split_threshold = NaN;
+alpha_split_threshold = NaN;
 split_info_str = '';
 switch lower(nback_split_mode)
     case 'median'
-        ersd_split_threshold = median(valid_ersd_mean, 'omitnan');
-        erd_ids = uIDs(split_valid & (ersd_mean < ersd_split_threshold));
-        ers_ids = uIDs(split_valid & (ersd_mean >= ersd_split_threshold));
+        alpha_split_threshold = median(valid_alpha_mean, 'omitnan');
+        reduction_ids = uIDs(split_valid & (alpha_mean < alpha_split_threshold));
+        amplification_ids = uIDs(split_valid & (alpha_mean >= alpha_split_threshold));
         zero_ids = [];
         invalid_ids = uIDs(~split_valid);
-        split_info_str = sprintf('Median split at %.4f', ersd_split_threshold);
+        split_info_str = sprintf('Median split at %.4f', alpha_split_threshold);
     case 'fixed'
-        ersd_split_threshold = nback_split_fixed_value;
-        erd_ids = uIDs(split_valid & (ersd_mean < ersd_split_threshold));
-        ers_ids = uIDs(split_valid & (ersd_mean >= ersd_split_threshold));
+        alpha_split_threshold = nback_split_fixed_value;
+        reduction_ids = uIDs(split_valid & (alpha_mean < alpha_split_threshold));
+        amplification_ids = uIDs(split_valid & (alpha_mean >= alpha_split_threshold));
         zero_ids = [];
         invalid_ids = uIDs(~split_valid);
-        split_info_str = sprintf('Fixed split at %.4f', ersd_split_threshold);
+        split_info_str = sprintf('Fixed split at %.4f', alpha_split_threshold);
     otherwise
         error('Unsupported nback_split_mode: %s', nback_split_mode);
 end
 
-fprintf('\n=== Split Summary [%s | %s] (%s, pooled loads) ===\n', task_tag, nback_split_mode, ersd_var);
+fprintf('\n=== Split Summary [%s | %s] (%s, pooled loads) ===\n', task_tag, nback_split_mode, alpha_col);
 fprintf('Subjects total: %d\n', nSubj);
 fprintf('%s\n', split_info_str);
-fprintf('ERD: %d\n', numel(erd_ids));
-fprintf('ERS: %d\n', numel(ers_ids));
+fprintf('Reduction: %d\n', numel(reduction_ids));
+fprintf('Amplification: %d\n', numel(amplification_ids));
 if ~isempty(invalid_ids)
-    fprintf('Excluded (invalid/pathological ERSD): %d\n', numel(invalid_ids));
+    fprintf('Excluded (invalid/pathological alpha): %d\n', numel(invalid_ids));
 end
 
-if numel(erd_ids) < 2 || numel(ers_ids) < 2
-    error('Insufficient subjects per split group (ERD=%d, ERS=%d).', ...
-        numel(erd_ids), numel(ers_ids));
+if numel(reduction_ids) < 2 || numel(amplification_ids) < 2
+    error('Insufficient subjects per split group (red=%d, amp=%d).', ...
+        numel(reduction_ids), numel(amplification_ids));
 end
 
-%% ERSD split inclusion figure
-fprintf('\n=== Plotting ERSD split inclusion figure ===\n');
+%% Alpha split inclusion figure
+fprintf('\n=== Plotting alpha split inclusion figure ===\n');
 figure('Position', fig_pos, 'Color', 'w');
 hold on
 yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 2);
-yline(ersd_split_threshold, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
+yline(alpha_split_threshold, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
 x_vals = (1:nSubj)';
-idx_erd = ismember(uIDs, erd_ids);
-idx_ers = ismember(uIDs, ers_ids);
+idx_red = ismember(uIDs, reduction_ids);
+idx_amp = ismember(uIDs, amplification_ids);
 idx_excl = ismember(uIDs, zero_ids) | ismember(uIDs, invalid_ids);
-h_excl = scatter(x_vals(idx_excl), ersd_mean(idx_excl), 80, [0.5 0.5 0.5], 'filled', 'MarkerFaceAlpha', 0.7);
-h_erd = scatter(x_vals(idx_erd), ersd_mean(idx_erd), 80, [0.2 0.4 0.8], 'filled', 'MarkerFaceAlpha', 0.8);
-h_ers = scatter(x_vals(idx_ers), ersd_mean(idx_ers), 80, [0.8 0.2 0.2], 'filled', 'MarkerFaceAlpha', 0.8);
+h_excl = scatter(x_vals(idx_excl), alpha_mean(idx_excl), 80, [0.5 0.5 0.5], 'filled', 'MarkerFaceAlpha', 0.7);
+h_red = scatter(x_vals(idx_red), alpha_mean(idx_red), 80, [0.2 0.4 0.8], 'filled', 'MarkerFaceAlpha', 0.8);
+h_amp = scatter(x_vals(idx_amp), alpha_mean(idx_amp), 80, [0.8 0.2 0.2], 'filled', 'MarkerFaceAlpha', 0.8);
 xlabel('Participant (index)');
-ylabel('ERSD [dB]');
-title(sprintf('ERS/ERD Split [%s | %s]', task_tag, nback_split_mode), 'Interpreter', 'none');
-legend([h_excl, h_erd, h_ers], {'Excluded', 'ERD', 'ERS'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
+ylabel('Alpha Power [dB]');
+title(sprintf('Alpha Split [%s | %s]', task_tag, nback_split_mode), 'Interpreter', 'none');
+legend([h_excl, h_red, h_amp], {'Excluded', 'Reduction', 'Amplification'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
 set(gca, 'FontSize', fontSize);
 box on
 saveas(gcf, fullfile(fig_dir, sprintf('%s_inclusion.png', fig_prefix)));
 close(gcf);
 
 %% Preallocate
+pow_red = cell(1, 3);
+pow_amp = cell(1, 3);
+for c = 1:3
+    pow_red{c} = {};
+    pow_amp{c} = {};
+end
 tfr_red = cell(1, 3);
 tfr_amp = cell(1, 3);
 tfr_red_subj = [];
@@ -159,7 +171,7 @@ for c = 1:3
 end
 
 metrics = struct();
-metrics.ERSD = nan(nSubj, 3);
+metrics.Alpha = nan(nSubj, 3);
 metrics.Dev = nan(nSubj, 3);
 
 fs = 500;
@@ -167,16 +179,15 @@ t_full = -0.5:1/fs:3;
 t_plot = t_full(2:end);
 Tf = numel(t_plot);
 dev_tc = nan(nSubj, 3, Tf);
-ersd_tc = nan(nSubj, 3, Tf);
 
-missing_ersd = {};
+missing_eeg = {};
 missing_tfr = {};
 missing_gaze = {};
 
 %% Aggregate per-subject data
 fprintf('\n=== Aggregating N-back data (%d subjects) ===\n', nSubj);
 for s = 1:nSubj
-    clc; fprintf('[SPLIT ERS/ERD - NBACK] Subject %d / %d\n', s, nSubj);
+    clc; fprintf('[SPLIT ALPHA AMP - NBACK] Subject %d / %d\n', s, nSubj);
     sid = uIDs(s);
     sid_str = num2str(sid);
     subj_folder = resolve_subject_folder(subjects, sid);
@@ -188,12 +199,25 @@ for s = 1:nSubj
     for c = 1:3
         cmask = subj_rows.Condition == cond_vals(c);
         if any(cmask)
-            metrics.ERSD(s, c) = mean(subj_rows.(ersd_var)(cmask), 'omitnan');
+            metrics.Alpha(s, c) = mean(subj_rows.(alpha_col)(cmask), 'omitnan');
             metrics.Dev(s, c) = mean(subj_rows.GazeDeviationFullBL(cmask), 'omitnan');
         end
     end
 
     eeg_dir = fullfile(pathAOC, subj_folder, 'eeg');
+    try
+        P = load(fullfile(eeg_dir, power_fname), pow_vars{:});
+        pow_conds = {P.(pow_vars{1}), P.(pow_vars{2}), P.(pow_vars{3})};
+        for c = 1:3
+            if ismember(sid, reduction_ids)
+                pow_red{c}{end+1} = pow_conds{c};
+            elseif ismember(sid, amplification_ids)
+                pow_amp{c}{end+1} = pow_conds{c};
+            end
+        end
+    catch
+        missing_eeg{end+1} = sid_str; 
+    end
 
     tfr_file = fullfile(eeg_dir, tfr_fname_primary);
     if ~isfile(tfr_file)
@@ -205,12 +229,12 @@ for s = 1:nSubj
         try
             R = load(tfr_file, tfr_vars{:});
             tfr_conds = {R.(tfr_vars{1}), R.(tfr_vars{2}), R.(tfr_vars{3})};
-            if ismember(sid, erd_ids)
+            if ismember(sid, reduction_ids)
                 for c = 1:3
                     tfr_red{c}{end+1} = tfr_conds{c};
                 end
                 tfr_red_subj(end+1) = s; 
-            elseif ismember(sid, ers_ids)
+            elseif ismember(sid, amplification_ids)
                 for c = 1:3
                     tfr_amp{c}{end+1} = tfr_conds{c};
                 end
@@ -219,24 +243,6 @@ for s = 1:nSubj
         catch
             missing_tfr{end+1} = sid_str; 
         end
-    end
-
-    try
-        E = load(fullfile(eeg_dir, ersd_tc_fname), 'ersd_timecourse');
-        tcStruct = E.ersd_timecourse;
-        t_ersd = tcStruct.time(:)';
-        tcMat = tcStruct.ersd_occ_8_14_db;
-        cond_ersd = tcStruct.condition(:);
-        for c = 1:3
-            row_idx = find(cond_ersd == cond_vals(c), 1);
-            if isempty(row_idx)
-                continue
-            end
-            tc_row = double(tcMat(row_idx, :));
-            ersd_tc(s, c, :) = interp1(t_ersd, tc_row, t_plot, 'linear', NaN);
-        end
-    catch
-        missing_ersd{end+1} = sid_str;
     end
 
     gaze_file = fullfile(feat_dir, subj_folder, 'gaze', gaze_fname);
@@ -304,22 +310,35 @@ for s = 1:nSubj
     end
 end
 
-is_red = ismember(uIDs, erd_ids);
-is_amp = ismember(uIDs, ers_ids);
+is_red = ismember(uIDs, reduction_ids);
+is_amp = ismember(uIDs, amplification_ids);
 
-%% Occipital channels (from baselined TFR)
+%% Occipital channels (prefer power; else TFR)
 channels = {};
 for c = 1:3
-    if ~isempty(tfr_red{c})
-        channels = occ_channels_from_labels(tfr_red{c}{1}.label);
+    if ~isempty(pow_red{c})
+        p0 = pow_red{c}{1};
+        channels = occ_channels_from_labels(p0.label);
         break
-    elseif ~isempty(tfr_amp{c})
-        channels = occ_channels_from_labels(tfr_amp{c}{1}.label);
+    elseif ~isempty(pow_amp{c})
+        p0 = pow_amp{c}{1};
+        channels = occ_channels_from_labels(p0.label);
         break
     end
 end
 if isempty(channels)
-    error('No baselined TFR data available for channel definition.');
+    for c = 1:3
+        if ~isempty(tfr_red{c})
+            channels = occ_channels_from_labels(tfr_red{c}{1}.label);
+            break
+        elseif ~isempty(tfr_amp{c})
+            channels = occ_channels_from_labels(tfr_amp{c}{1}.label);
+            break
+        end
+    end
+end
+if isempty(channels)
+    error('No EEG data available for channel definition.');
 end
 
 %% Gaze percent baseline and time-course CBPT
@@ -348,8 +367,9 @@ is_amp_tc = is_amp & tc_complete_subj;
 fprintf('Time-course completeness filter: finite frac >= %.3f in [0,3]s + finite endpoint at 3s\n', tc_complete_min_frac);
 fprintf('Excluded incomplete gaze time-course subjects (in split groups): %d\n', sum(tc_excluded_subj & (is_red | is_amp)));
 
-fprintf('\n=== Preparing ERSD time courses ===\n');
-eeg_tc = ersd_tc;
+t_full_eeg = linspace(-0.5, 3, Tf);
+fprintf('\n=== Extracting EEG alpha time course from TFR ===\n');
+eeg_tc = extract_alpha_timecourse_tfr(tfr_red, tfr_amp, tfr_red_subj, tfr_amp_subj, nSubj, channels, Tf, t_full_eeg);
 eeg_tc(tc_excluded_subj, :, :) = NaN;
 
 fontSizeTC = 25;
@@ -358,19 +378,19 @@ ds_factor = 50;
 tc_viz_smooth_sec = 0.10;
 
 plot_timecourse_with_effect_CBPT(gaze_tc, is_red_tc, is_amp_tc, colors, ...
-    gaze_ylabel, sprintf('%s_%s_gaze_deviation_pct', task_tag, split_label), fig_dir, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'ERSD [dB]', tc_viz_smooth_sec);
+    gaze_ylabel, sprintf('%s_%s_gaze_deviation_pct', task_tag, split_label), fig_dir, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'Alpha Power [dB]', tc_viz_smooth_sec);
 
 for c = 1:numel(cond_vals)
     tc_cond = gaze_tc(:, c, :);
     eeg_tc_cond = eeg_tc(:, c, :);
     save_tag_cond = sprintf('%s_%s_gaze_deviation_pct_%s', task_tag, split_label, sanitize_label_for_fname(cond_labels{c}));
     plot_timecourse_with_effect_CBPT(tc_cond, is_red_tc, is_amp_tc, colors, ...
-        gaze_ylabel, save_tag_cond, fig_dir, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'ERSD [dB]', tc_viz_smooth_sec);
+        gaze_ylabel, save_tag_cond, fig_dir, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'Alpha Power [dB]', tc_viz_smooth_sec);
 end
 
 %% Diagnostics
 fprintf('\n=== Data Diagnostics [nback] ===\n');
-fprintf('Missing ERSD timecourse (%s): %d\n', ersd_tc_fname, numel(unique(missing_ersd)));
+fprintf('Missing EEG power (%s): %d\n', power_missing_label, numel(unique(missing_eeg)));
 fprintf('Missing TFR files: %d\n', numel(unique(missing_tfr)));
 fprintf('Missing gaze files/fields: %d\n', numel(unique(missing_gaze)));
 fprintf('Figures saved to: %s\n', fig_dir);
@@ -388,7 +408,7 @@ LoadValue_col = nan(n_rows, 1);
 LoadLabel_col = strings(n_rows, 1);
 Group_col = strings(n_rows, 1);
 Included_col = false(n_rows, 1);
-ERSD_col = nan(n_rows, 1);
+Alpha_col = nan(n_rows, 1);
 GazeDev_col = nan(n_rows, 1);
 GazeSummary_col = nan(n_rows, 1);
 
@@ -399,14 +419,14 @@ for s = 1:nSubj
         ID_col(r) = uIDs(s);
         LoadValue_col(r) = cond_vals(c);
         LoadLabel_col(r) = string(cond_labels{c});
-        ERSD_col(r) = metrics.ERSD(s, c);
+        Alpha_col(r) = metrics.Alpha(s, c);
         GazeDev_col(r) = metrics.Dev(s, c);
         GazeSummary_col(r) = dev_summary_by_load(s, c);
         if is_red(s)
-            Group_col(r) = "ERD";
+            Group_col(r) = "Reduction";
             Included_col(r) = is_red_tc(s);
         elseif is_amp(s)
-            Group_col(r) = "ERS";
+            Group_col(r) = "Amplification";
             Included_col(r) = is_amp_tc(s);
         else
             Group_col(r) = "Excluded";
@@ -415,16 +435,16 @@ for s = 1:nSubj
     end
 end
 
-if ~isvarname(ersd_var)
-    error('ERSD column name is not a valid table variable name: %s', ersd_var);
+if ~isvarname(alpha_col)
+    error('Alpha column name is not a valid table variable name: %s', alpha_col);
 end
 stats_tbl = table( ...
     ID_col, LoadValue_col, LoadLabel_col, Group_col, Included_col, ...
-    ERSD_col, GazeDev_col, GazeSummary_col, ...
+    Alpha_col, GazeDev_col, GazeSummary_col, ...
     'VariableNames', {'ID', 'LoadValue', 'LoadLabel', 'Group', 'Included', ...
-    ersd_var, 'GazeDeviationFullBL', 'GazeDev_pct_0_2s'});
+    alpha_col, 'GazeDeviationFullBL', 'GazeDev_pct_0_2s'});
 
-csv_out = fullfile(stats_dir, sprintf('AOC_splitERSERD_%s_%s_stats_input.csv', task_tag, split_label));
+csv_out = fullfile(stats_dir, sprintf('AOC_splitAmpRed_%s_%s_stats_input.csv', task_tag, split_label));
 writetable(stats_tbl, csv_out);
 fprintf('CSV saved to: %s\n', csv_out);
 
@@ -482,7 +502,7 @@ function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, colors, ylab, save
 if nargin < 11 || isempty(ds_factor), ds_factor = 50; end
 if nargin < 12, eeg_tc = []; end
 if nargin < 13, addEEG_TC = ~isempty(eeg_tc); end
-if nargin < 14, eeg_ylab = 'ERSD [dB]'; end
+if nargin < 14, eeg_ylab = 'Alpha Power [dB]'; end
 if nargin < 15 || isempty(smooth_sec), smooth_sec = 0.05; end
 dt = 1 / fs;
 nT = size(tc, 3);
@@ -530,7 +550,7 @@ box on
 set(gca, 'FontSize', fsz-4);
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
 leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
-legend([leg_p1 leg_p2], {'ERD', 'ERS'}, 'Location', 'northeast', 'FontSize', fsz-2, 'Box', 'off');
+legend([leg_p1 leg_p2], {'Reduction', 'Amplification'}, 'Location', 'northeast', 'FontSize', fsz-2, 'Box', 'off');
 if contains(save_tag, 'gaze_deviation_pct')
     upper = max(mR + sR, mA + sA);
     lower = min(mR - sR, mA - sA);
@@ -766,7 +786,7 @@ if show_eeg
     end
 end
 
-saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_timecourse_%s_CBPT.png', save_tag)));
+saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitAlphaAmpRed_timecourse_%s_CBPT.png', save_tag)));
 close(gcf);
 end
 

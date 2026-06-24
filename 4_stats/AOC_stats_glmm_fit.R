@@ -186,6 +186,10 @@ run_paper_glmm <- function(task_config) {
     ReactionTime = fit_dv_load(dat, "ReactionTime", "ReactionTime ~ Load + (1|Subject)"),
     GazeDeviation = fit_dv_load(dat, "GazeDeviation", "GazeDeviation ~ Load + (1|Subject)"),
     MSRate = fit_dv_load(dat, "MSRate", "MSRate ~ Load + (1|Subject)"),
+    GazeDeviationBL = fit_dv_load(
+      dat, "GazeDeviationBL", "GazeDeviationBL ~ Load + (1|Subject)"
+    ),
+    MSRateBL = fit_dv_load(dat, "MSRateBL", "MSRateBL ~ Load + (1|Subject)"),
     ERSD = fit_dv_load(dat, EEG_DV, sprintf("%s ~ Load + (1|Subject)", EEG_DV))
   )
 

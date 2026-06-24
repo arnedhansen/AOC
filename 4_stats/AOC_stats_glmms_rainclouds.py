@@ -427,7 +427,7 @@ mpl.rcParams.update({
     "axes.edgecolor": "white",
 })
 
-YLABEL_GRID_X = -0.125
+YLABEL_GRID_X = -0.15
 
 sns.set_style("white")
 
@@ -451,7 +451,7 @@ variables = [
 y_labels = [
     "Accuracy [%]", "Reaction Time [s]",
     "Gaze Deviation [px]", "Microsaccade Rate [Hz]",
-    "Gaze Deviation [%]", "Microsaccade Rate Change [%]",
+    "Gaze Deviation Change [%]", "Microsaccade Rate Change [%]",
     "Alpha Power [\u03BCV²/Hz]",
     "Alpha Power [dB]",
     "IAF [Hz]",

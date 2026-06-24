@@ -34,6 +34,8 @@ LOAD_SNAME <- c(
   ReactionTime = "rt",
   GazeDeviation = "gazedev",
   MSRate = "ms",
+  GazeDeviationBL = "gazedev_bl",
+  MSRateBL = "ms_bl",
   ERSD = "ersd"
 )
 

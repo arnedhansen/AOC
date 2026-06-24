@@ -13,7 +13,7 @@
 %   EEG — Raw alpha power (IAF band from multitaper IAF, occ channels):
 %     AlphaPower_raw_early / _late / _full
 %     AlphaPower_bl_early / _late / _full   (dB baseline [-1.5 -0.5]s)
-%     ERSD_early / ERSD_late / ERSD_full — fixed [8 14] Hz dB on per-trial baselined tfr*_bl, O/I occ channels, windows [0 1] / [1 2] / [0 2]s
+%     ERSD_early / ERSD_late / ERSD_full — fixed [8 14] Hz dB on baselined tfr*_bl, O/I occ channels, windows [0 1] / [1 2] / [0 2]s
 %     IAF
 %
 %   Gaze — baselined (BL window [-1.5 -0.5]s; % change for all gaze metrics):

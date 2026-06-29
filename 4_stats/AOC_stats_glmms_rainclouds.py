@@ -60,8 +60,13 @@ GAZE_BL_SOURCE_BY_TASK = {
     },
 }
 
-# DVs with confirmatory R GLMMs; use R pairwise p-values for brackets when CSV is present
-R_BRACKET_VARS = {"Accuracy", "ReactionTime", "GazeDeviation", "MSRate", "ERSD"}
+# DVs with R GLMM load models; use R pairwise p-values for brackets when CSV is present
+R_BRACKET_VARS = {
+    "Accuracy", "ReactionTime",
+    "GazeDeviation", "MSRate",
+    "GazeDeviationBL", "MSRateBL",
+    "ERSD",
+}
 
 
 def enforce_task_raw_alpha(df: pd.DataFrame, task_name: str) -> pd.DataFrame:

@@ -157,7 +157,7 @@ for c = 1:3
     set(eb.edge(2), 'Color', 'none');
 end
 
-yline(0, '--');
+yline(0, '--', 'Color', [0.75 0.75 0.75], 'LineWidth', 1);
 xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Gaze Deviation [%]');

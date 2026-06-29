@@ -1,6 +1,5 @@
 %% AOC EEG ERD/ERS N Back time course plus topos
 % Trial-averaged TFR is baselined [-1.5 -0.5] dB per subject, then grand-averaged
-% (matches supervisor occ_alpha_power_script.m).
 
 %% Setup
 startup
@@ -81,7 +80,8 @@ timeVec = tlk1.time(:)';
 
 close all
 figure('Position', [0 0 1512 982], 'Color', 'w');
-fontSize = 30;
+fontSize = 50;
+legendFontSize = fontSize * 0.666;
 mask = timeVec >= -0.5 & timeVec <= 2;
 x = timeVec(mask);
 
@@ -121,27 +121,43 @@ xlabel('Time [s]');
 ylabel('Power Change [dB]');
 xlim([-0.5 2]);
 ylim([-3 0.5]);
-leg_p3 = patch(NaN, NaN, colors(3, :), 'EdgeColor', 'none');
-leg_p2 = patch(NaN, NaN, colors(2, :), 'EdgeColor', 'none');
-leg_p1 = patch(NaN, NaN, colors(1, :), 'EdgeColor', 'none');
+leg_p1 = patch(NaN, NaN, colors(1, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(1, :), 'LineWidth', 1.5);
+leg_p2 = patch(NaN, NaN, colors(2, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(2, :), 'LineWidth', 1.5);
+leg_p3 = patch(NaN, NaN, colors(3, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(3, :), 'LineWidth', 1.5);
 legend([leg_p1, leg_p2, leg_p3], {'1-back', '2-back', '3-back'}, ...
-    'Location', 'southeast', 'FontSize', 25, 'Box', 'off');
+    'Location', 'southeast', 'FontSize', legendFontSize, 'Box', 'off');
 drawnow; pause(0.05);
 saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_nback_timecourse.png'));
 
 %% Topoplots (retention [0 2] s)
 xlimTopo = [0 2];
+fontSize = 40;
+
+topoData = {ga_nb_1_erd, ga_nb_2_erd, ga_nb_3_erd};
+topoTitles = {'1-back', '2-back', '3-back'};
+
+cfg_zlim = [];
+cfg_zlim.latency = xlimTopo;
+cfg_zlim.avgovertime = 'yes';
+zlimMax = 0;
+for k = 1:3
+    tmp = ft_selectdata(cfg_zlim, topoData{k});
+    dat = tmp.powspctrm;
+    if size(dat, 1) > 1 && numel(tmp.label) > 1
+        dat = mean(dat, 1, 'omitnan');
+    end
+    dat = dat(isfinite(dat(:)));
+    zlimMax = max(zlimMax, max(abs(dat(:))));
+end
+zlimTopo = [-zlimMax zlimMax];
 
 cmap = interp1(linspace(0, 1, 5), ...
     [0.02 0.19 0.58; 0.40 0.67 0.87; 0.97 0.97 0.97; 0.94 0.50 0.36; 0.40 0 0.05], ...
     linspace(0, 1, 64));
 
-topoData = {ga_nb_1_erd, ga_nb_2_erd, ga_nb_3_erd};
-topoTitles = {'1-back', '2-back', '3-back'};
-
 cfg = [];
 cfg.layout = headmodel.layANThead;
-cfg.zlim = 'maxabs';
+cfg.zlim = zlimTopo;
 cfg.xlim = xlimTopo;
 cfg.marker = 'off';
 cfg.highlight = 'on';
@@ -153,18 +169,26 @@ cfg.gridscale = 300;
 cfg.colormap = cmap;
 
 figure('Position', [0 0 1512 982*0.6], 'Color', 'w');
-tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'loose');
+tl = tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'loose');
+topoAxes = gobjects(1, 3);
 for k = 1:3
-    ax = nexttile(k);
+    ax = nexttile(tl, k);
+    topoAxes(k) = ax;
     cfg.figure = ax;
     ft_topoplotER(cfg, topoData{k});
-    if k == 3
-        cb = colorbar(ax, 'eastoutside');
-        cb.Label.String = 'Power Change [dB]';
-    end
     set(ax, 'FontSize', fontSize);
-    title(ax, topoTitles{k}, 'Interpreter', 'none');
+    title(ax, topoTitles{k}, 'Interpreter', 'none', 'FontSize', fontSize);
 end
+set(topoAxes, 'XLim', xlim(topoAxes(1)), 'YLim', ylim(topoAxes(1)));
+for k = 1:3
+    axis(topoAxes(k), 'equal');
+    axis(topoAxes(k), 'off');
+end
+cb = colorbar(topoAxes(end));
+cb.Layout.Tile = 'east';
+cb.Label.String = 'Power Change [dB]';
+cb.FontSize = fontSize;
+cb.Label.FontSize = fontSize;
 drawnow; pause(0.05);
 saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_nback_topos.png'));
 
@@ -204,17 +228,25 @@ cfg.gridscale = 300;
 cfg.colormap = cmap;
 
 figure('Position', [0 0 1512 982*0.6], 'Color', 'w');
-tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'loose');
+tl = tiledlayout(1, 3, 'TileSpacing', 'compact', 'Padding', 'loose');
+topoAxes = gobjects(1, 3);
 for k = 1:3
-    ax = nexttile(k);
+    ax = nexttile(tl, k);
+    topoAxes(k) = ax;
     cfg.figure = ax;
     ft_topoplotER(cfg, topoData{k});
-    if k == 3
-        cb = colorbar(ax, 'eastoutside');
-        cb.Label.String = 'Power [\muV^2/Hz]';
-    end
     set(ax, 'FontSize', fontSize);
-    title(ax, topoTitles{k}, 'Interpreter', 'none');
+    title(ax, topoTitles{k}, 'Interpreter', 'none', 'FontSize', fontSize);
 end
+set(topoAxes, 'XLim', xlim(topoAxes(1)), 'YLim', ylim(topoAxes(1)));
+for k = 1:3
+    axis(topoAxes(k), 'equal');
+    axis(topoAxes(k), 'off');
+end
+cb = colorbar(topoAxes(end));
+cb.Layout.Tile = 'east';
+cb.Label.String = 'Power [\muV^2/Hz]';
+cb.FontSize = fontSize;
+cb.Label.FontSize = fontSize;
 drawnow; pause(0.05);
 saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_nback_topos_baseline_window.png'));

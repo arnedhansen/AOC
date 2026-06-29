@@ -390,7 +390,7 @@ fprintf('Using baselined gaze measures (percent change) for task %s.\n', task_ta
 
 % Plot time courses (always save both: gaze-only and combined EEG+gaze)
 close all
-fontSizeTC = 25;
+fontSizeTC = 40;
 rng(123)
 ds_factor = 10; % downsampling to ds_factor*2ms windows
 tc_viz_smooth_sec = 0.05; % slight display-only smoothing for time-course plots
@@ -1355,7 +1355,7 @@ plot(t_plot, d, 'k-', 'LineWidth', 3.5);
 yline(0, '--');
 xline(0, '--k');
 xlabel('Time [s]');
-ylabel('Effect Size [Cohen''s d]');
+ylabel('Cohen''s d');
 xlim([-0.5 3]);
 box off
 set(gca, 'FontSize', fsz-4);
@@ -1478,9 +1478,9 @@ xlim([-0.5 3]);
 box off
 set(gca, 'FontSize', fsz-4);
 % Legend with colored patch boxes (clearer than thin lines)
-leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
-leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
-legend([leg_p1 leg_p2], {'ERD', 'ERS'}, 'Location', 'northeast', 'FontSize', fsz-2, 'Box', 'off');
+leg_p1 = patch(NaN, NaN, colors(1,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(1,:), 'LineWidth', 1.5);
+leg_p2 = patch(NaN, NaN, colors(3,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(3,:), 'LineWidth', 1.5);
+legend([leg_p1 leg_p2], {'ERD', 'ERS'}, 'Location', 'northeast', 'FontSize', fsz*0.75, 'Box', 'off');
 if contains(save_tag, 'gaze_deviation_pct')
     % ylim from shaded envelopes (mean ± SEM), not just the main lines
     upper = max(mR + sR, mA + sA);
@@ -1591,7 +1591,7 @@ plot(t_plot, d, 'k-', 'LineWidth', 3.5);
 yline(0, '--');
 xline(0, '--k');
 xlabel('Time [s]');
-ylabel('Effect Size [Cohen''s d]');
+ylabel('Cohen''s d');
 xlim([-0.5 3]);
 box off
 set(gca, 'FontSize', fsz-4);
@@ -1643,8 +1643,8 @@ if show_eeg
     xlim([-0.5 3]);
     box off
     set(gca, 'FontSize', fsz-4);
-    leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
-    leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
+    leg_p1 = patch(NaN, NaN, colors(1,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(1,:), 'LineWidth', 1.5);
+    leg_p2 = patch(NaN, NaN, colors(3,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(3,:), 'LineWidth', 1.5);
     % Align y-labels to same horizontal position
     drawnow;
     pos_g = get(ax_gaze, 'Position');

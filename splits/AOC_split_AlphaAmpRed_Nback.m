@@ -528,8 +528,8 @@ ylabel(ylab);
 xlim([-0.5 3]);
 box off
 set(gca, 'FontSize', fsz-4);
-leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
-leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
+leg_p1 = patch(NaN, NaN, colors(1,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(1,:), 'LineWidth', 1.5);
+leg_p2 = patch(NaN, NaN, colors(3,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(3,:), 'LineWidth', 1.5);
 legend([leg_p1 leg_p2], {'Stronger ERD', 'Weaker ERD'}, 'Location', 'northeast', 'FontSize', fsz-2, 'Box', 'off');
 if contains(save_tag, 'gaze_deviation_pct')
     upper = max(mR + sR, mA + sA);
@@ -690,8 +690,8 @@ if show_eeg
     xlim([-0.5 3]);
     box off
     set(gca, 'FontSize', fsz-4);
-    leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
-    leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
+    leg_p1 = patch(NaN, NaN, colors(1,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(1,:), 'LineWidth', 1.5);
+    leg_p2 = patch(NaN, NaN, colors(3,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(3,:), 'LineWidth', 1.5);
     drawnow;
     pos_g = get(ax_gaze, 'Position');
     pos_e = get(ax_eeg, 'Position');

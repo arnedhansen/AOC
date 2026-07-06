@@ -1579,7 +1579,7 @@ set(gca, 'FontSize', fsz-4);
 % Legend with colored patch boxes (clearer than thin lines)
 leg_p1 = patch(NaN, NaN, colors(1,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(1,:), 'LineWidth', 1.5);
 leg_p2 = patch(NaN, NaN, colors(3,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(3,:), 'LineWidth', 1.5);
-legend([leg_p1 leg_p2], {[' ' group_lbl_low], [' ' group_lbl_high]}, 'Location', 'northeast', 'FontSize', fsz*0.75, 'Box', 'off');
+legend([leg_p1 leg_p2], {[' ' group_lbl_low], [' ' group_lbl_high]}, 'Location', 'best', 'FontSize', fsz*0.75, 'Box', 'off');
 if contains(save_tag, 'GazeDev_pct')
     % ylim from shaded envelopes (mean ± SEM), not just the main lines
     upper = max(mR + sR, mA + sA);
@@ -1640,10 +1640,6 @@ for k = 1:numel(clusters)
 end
 sig_uncorr = (abs(tvals_cl) > thr.tcrit) & isfinite(tvals_cl);
 sig = sig_cluster;
-if ~any(sig) && any(sig_uncorr)
-    sig = sig_uncorr;
-    log_cbpt_report(cbpt_report_file, {sprintf('  [%s] (cluster n.s.; shading uncorrected |t|>tcrit)', save_tag)});
-end
 d_ds = d(1:ds_factor:end);
 if any(sig_cluster)
     sig = sig & isfinite(d_ds);
@@ -1676,10 +1672,6 @@ ylabel('Cohen''s d');
 xlim([-0.5 2]);
 box off
 set(gca, 'FontSize', fsz-4);
-if ~any(sig_cluster) && any(sig_uncorr)
-    title({'WARNING: No significant clusters; shading shows uncorrected |t| > t_{crit}'}, ...
-        'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'Interpreter', 'tex');
-end
 
 % ERSD time course panel in combined figure.
 % Error bars: between-subject SEM = std(sample) / sqrt(n) at each time point.

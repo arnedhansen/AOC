@@ -74,7 +74,6 @@ if ispc
 
     %% 4 Split analyses
     run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed_GazeDev.m');
-    run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed_GazeDev_Nback.m');
     run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed_MS.m');
 
     %% Stats

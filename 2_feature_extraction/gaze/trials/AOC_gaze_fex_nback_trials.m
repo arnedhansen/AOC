@@ -3,7 +3,7 @@
 %
 % Extracted features:
 %   GazeDeviation, ScanPathLength, PupilSize, MSRate (Early/Late/Full, baselined)
-%   ScanPathSeries, ScanPathSeriesT (time series). Windows: BL [-1.5 -0.5], early [0 1], late [1 2], full [0 2] s
+%   MSSeries, ScanPathSeries, ScanPathSeriesT (time series). Windows: BL [-1.5 -0.5], early [0 1], late [1 2], full [0 2] s
 
 %% Setup
 startup
@@ -99,6 +99,7 @@ for subj = 1:length(subjects)
 
     ScanPathSeriesT       = cell(nTrials,1);
     ScanPathSeries        = cell(nTrials,1);
+    MSSeries              = nan(nTrials, 50);   % events/bin
 
     gaze_x = cell(1,nTrials);
     gaze_y = cell(1,nTrials);
@@ -437,6 +438,45 @@ for subj = 1:length(subjects)
         ScanPathSeriesBins{trl} = step_series_bin;   % averaged step lengths per 50 ms bin
         ScanPathSeries{trl}     = step_series;         % their corresponding time centres
 
+        %% Microsaccade Time Series [-0.5, 2]
+        bin_size    = 0.05; % 50 ms
+        bin_samples = round(bin_size * fsample);
+        n_bins      = length(t_series(1):bin_size:t_series(2)) - 1;
+
+        xpos_series = dat_series(1, :);
+        ypos_series = dat_series(2, :);
+        vel_full    = [xpos_series; ypos_series];
+        valid_xy    = isfinite(xpos_series) & isfinite(ypos_series);
+        T_full      = sum(valid_xy) / fsample;
+
+        if T_full > 0
+            [~, msf] = detect_microsaccades(fsample, vel_full, size(vel_full, 2));
+            ms_onsets = zeros(1, numel(xpos_series));
+            if ~isempty(msf) && isfield(msf, 'Onset') && ~isempty(msf.Onset)
+                onsets = msf.Onset(msf.Onset >= 1 & msf.Onset <= numel(ms_onsets));
+                ms_onsets(onsets) = 1;
+            end
+            MSSeries_trl = nan(1, n_bins);
+            for b = 1:n_bins
+                idx_start = (b - 1) * bin_samples + 1;
+                idx_end   = b * bin_samples;
+                if idx_end > numel(ms_onsets)
+                    idx_end = numel(ms_onsets);
+                end
+                n_events = sum(ms_onsets(idx_start:idx_end));
+                n_valid  = sum(valid_xy(idx_start:idx_end));
+                eff_sec  = n_valid / fsample;
+                if eff_sec > 0
+                    MSSeries_trl(b) = n_events;
+                else
+                    MSSeries_trl(b) = NaN;
+                end
+            end
+            MSSeries(trl, :) = MSSeries_trl;
+        else
+            MSSeries(trl, :) = nan(1, n_bins);
+        end
+
         %% Save trial-wise values
         ID(trl)        = str2double(subjects{subj});
         Trial(trl)     = trial_num(trl);
@@ -544,7 +584,7 @@ for subj = 1:length(subjects)
 
     % Also save per-trial gaze series and trialinfo (for convenience)
     trialinfo = dataETlong.trialinfo';
-    save([savepath 'gaze_series_nback_trials.mat'], 'gaze_x', 'gaze_y', 'trialinfo', 'ScanPathSeriesT', 'ScanPathSeries', 'ScanPathSeriesBins');
+    save([savepath 'gaze_series_nback_trials.mat'], 'gaze_x', 'gaze_y', 'trialinfo', 'ScanPathSeriesT', 'ScanPathSeries', 'ScanPathSeriesBins', 'MSSeries');
 end
 
 % Grand save across subjects

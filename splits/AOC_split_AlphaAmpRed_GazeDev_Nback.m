@@ -1,18 +1,7 @@
-%% AOC Split ERS/ERD (Subject-Level) — Sternberg
-% Subject-level split (fixed across conditions) using merged_data_sternberg:
-%   mean ERSD_late across load levels (occipital 8-14 Hz dB, [1 2]s window)
-%   split0 mode: < 0 -> ERD, >= 0 -> ERS
-%
-% Uses ERSD sources (Sternberg only):ddoi
-%   ersd_sternberg_timecourse.mat, tfr_stern.mat (baselined TFR, no FOOOF)
-% plus merged gaze/behavioral metrics.
-%
-% Generates (per task):
-% - ERSD split inclusion figure (participants by ERSD, thresholds, group assignment)
-% - TFRs per condition for both groups (baselined, 8-14 Hz)
-% - Topoplots per condition for both groups (ERSD window on baselined TFR)
-% - Rainclouds for ERSD and gaze deviation
-% - Time-course panels for gaze deviation (percent baseline) and ERSD: collapsed and per condition
+%% AOC Split ERS/ERD (Subject-Level) — N-back — GazeDev
+% Subject-level median split on pooled ERSD_full, then ERD vs ERS gaze deviation
+% time courses (percent baseline) with cluster-based permutation testing.
+% Plot aesthetics match AOC_split_AlphaAmpRed_GazeDev.m (Sternberg).
 
 %% Setup
 startup
@@ -22,35 +11,40 @@ pathAOC = paths.features;
 addpath(paths.seb_path);
 
 feat_dir = paths.features;
-fig_dir = fullfile(paths.figures, 'splits', 'SplitERSERD');
+fig_dir_root = fullfile(paths.figures, 'splits', 'SplitERSERD');
+fig_dir_task = fullfile(fig_dir_root, 'NbackGazeDev');
 stats_dir = paths.splits_stats;
-if ~isfolder(fig_dir)
-    mkdir(fig_dir);
+if ~isfolder(fig_dir_root)
+    mkdir(fig_dir_root);
+end
+if ~isfolder(fig_dir_task)
+    mkdir(fig_dir_task);
 end
 if ~isfolder(stats_dir)
     mkdir(stats_dir);
 end
-fprintf('\n=== AOC Split ERS/ERD (Sternberg only; split0) ===\n');
-fprintf('Figure directory: %s\n', fig_dir);
+fprintf('\n=== AOC Split ERS/ERD (N-back; median split) ===\n');
+fprintf('Main figure directory: %s\n', fig_dir_root);
+fprintf('Supplementary figure directory: %s\n', fig_dir_task);
 
 % Keep canonical figure size requested.
 fig_pos = [0 0 1512 982];
 
-% Sternberg-only task definition:
-tasks(1).tag = 'sternberg';
-tasks(1).split_mode = 'zero';
-tasks(1).split_label = 'split0';
-tasks(1).merged_file = 'AOC_merged_data_sternberg.mat';
-tasks(1).merged_var = 'merged_data_sternberg';
-tasks(1).cond_vals = [2 4 6];
-tasks(1).cond_codes = [22 24 26];
-tasks(1).cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
-tasks(1).tfr_fname = 'tfr_stern.mat';
-tasks(1).tfr_vars = {'tfr2_bl', 'tfr4_bl', 'tfr6_bl'};
-tasks(1).ersd_tc_fname = 'ersd_sternberg_timecourse.mat';
+% N-back task definition:
+tasks(1).tag = 'nback';
+tasks(1).split_label = 'splitMedian';
+tasks(1).merged_file = 'AOC_merged_data_nback.mat';
+tasks(1).merged_var = 'merged_data_nback';
+tasks(1).cond_vals = [1 2 3];
+tasks(1).cond_codes = [21 22 23];
+tasks(1).cond_labels = {'1-back', '2-back', '3-back'};
+tasks(1).tfr_fname = 'tfr_nback.mat';
+tasks(1).tfr_fname_alt = 'tfr_nback_long.mat';
+tasks(1).tfr_vars = {'tfr1_bl', 'tfr2_bl', 'tfr3_bl'};
+tasks(1).ersd_tc_fname = 'ersd_nback_timecourse.mat';
 tasks(1).topo_latency = [1 2];
-tasks(1).gaze_fname = 'gaze_series_sternberg_trials.mat';
-tasks(1).ersd_var = 'ERSD_late';
+tasks(1).gaze_fname = 'gaze_series_nback_trials.mat';
+tasks(1).ersd_var = 'ERSD_full';
 
 fontSize = 30;
 tfr_winsor_cfg = struct();
@@ -60,13 +54,11 @@ tfr_winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
 for ti = 1:numel(tasks)
 tk = tasks(ti);
 task_tag = tk.tag;
-split_mode = tk.split_mode;
 split_label = tk.split_label;
 cond_vals = tk.cond_vals;
 cond_codes = tk.cond_codes;
 cond_labels = tk.cond_labels;
-fig_prefix = sprintf('AOC_splitERSERD_%s_%s', task_tag, split_label);
-fig_dir_task = fig_dir;
+fig_prefix = sprintf('AOC_splitERSERD_GazeDev_%s_%s', task_tag, split_label);
 
 fprintf('\n\n========== TASK: %s ==========\n', upper(task_tag));
 
@@ -119,18 +111,20 @@ valid_ersd_mean = ersd_mean(split_valid);
 if isempty(valid_ersd_mean)
     error('No finite subject-level ERSD values found for split.');
 end
-ersd_split_threshold = 0;
+ersd_split_threshold = NaN;
+split_info_str = '';
+ersd_split_threshold = median(valid_ersd_mean, 'omitnan');
 erd_ids = uIDs(split_valid & (ersd_mean < ersd_split_threshold));
 ers_ids = uIDs(split_valid & (ersd_mean >= ersd_split_threshold));
 zero_ids = [];
 invalid_ids = uIDs(~split_valid);
-split_info_str = 'Split at 0.0000 (no near-zero exclusion)';
+split_info_str = sprintf('Median split at %.4f', ersd_split_threshold);
 
-fprintf('\n=== Split Summary [%s | %s] (%s, [1 2]s) ===\n', task_tag, split_mode, tk.ersd_var);
+fprintf('\n=== Split Summary [%s | %s] (%s, pooled loads) ===\n', task_tag, split_label, tk.ersd_var);
 fprintf('Subjects total: %d\n', nSubj);
 fprintf('%s\n', split_info_str);
-fprintf('ERD (< 0.0000): %d\n', numel(erd_ids));
-fprintf('ERS (>= 0.0000): %d\n', numel(ers_ids));
+fprintf('ERD (< %.4f): %d\n', ersd_split_threshold, numel(erd_ids));
+fprintf('ERS (>= %.4f): %d\n', ersd_split_threshold, numel(ers_ids));
 if ~isempty(invalid_ids)
     fprintf('Excluded (invalid/pathological ERSD): %d\n', numel(invalid_ids));
 end
@@ -146,7 +140,7 @@ fprintf('\n=== Plotting ERSD split inclusion figure ===\n');
 figure('Position', fig_pos, 'Color', 'w');
 hold on
 yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 2);
-yline(0, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
+yline(ersd_split_threshold, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
 x_vals = (1:nSubj)';
 idx_erd = ismember(uIDs, erd_ids);
 idx_ers = ismember(uIDs, ers_ids);
@@ -154,10 +148,13 @@ idx_excl = ismember(uIDs, zero_ids) | ismember(uIDs, invalid_ids);
 h_excl = scatter(x_vals(idx_excl), ersd_mean(idx_excl), 80, [0.5 0.5 0.5], 'filled', 'MarkerFaceAlpha', 0.7);
 h_erd = scatter(x_vals(idx_erd), ersd_mean(idx_erd), 80, [0.2 0.4 0.8], 'filled', 'MarkerFaceAlpha', 0.8);
 h_ers = scatter(x_vals(idx_ers), ersd_mean(idx_ers), 80, [0.8 0.2 0.2], 'filled', 'MarkerFaceAlpha', 0.8);
+legend_excl = sprintf('Excluded (n=%d)', sum(idx_excl));
+legend_erd = sprintf('More ERD (n=%d)', sum(idx_erd));
+legend_ers = sprintf('Less ERD (n=%d)', sum(idx_ers));
 xlabel('Participant (index)');
 ylabel('ERSD [dB]');
-title(sprintf('ERS/ERD Split [%s | %s]', task_tag, split_mode), 'Interpreter', 'none');
-legend([h_excl, h_erd, h_ers], {'Excluded', 'ERD', 'ERS'}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
+title(sprintf('More vs Less ERD Split [%s | %s]', task_tag, split_label), 'Interpreter', 'none');
+legend([h_excl, h_erd, h_ers], {legend_excl, legend_erd, legend_ers}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
 set(gca, 'FontSize', fontSize);
 box off
 saveas(gcf, fullfile(fig_dir_task, sprintf('%s_inclusion.png', fig_prefix)));
@@ -194,7 +191,7 @@ missing_gaze = {};
 %% Aggregate per-subject data
 fprintf('\n=== Aggregating per-subject data (%d subjects) ===\n', nSubj);
 for s = 1:nSubj
-    clc; fprintf('[SPLIT ERS/ERD - STERNBERG] Aggregating Sternberg data for Subject %d / %d \n', s, nSubj);
+    clc; fprintf('[SPLIT ERS/ERD - NBACK] Aggregating N-back data for Subject %d / %d \n', s, nSubj);
     sid = uIDs(s);
     sid_str = num2str(sid);
     subj_folder = resolve_subject_folder(subjects, sid);
@@ -214,8 +211,15 @@ for s = 1:nSubj
 
     % EEG TFR sources (baselined; no FOOOF)
     eeg_dir = fullfile(pathAOC, subj_folder, 'eeg');
+    tfr_file = fullfile(eeg_dir, tk.tfr_fname);
+    if ~isfile(tfr_file) && isfield(tk, 'tfr_fname_alt')
+        tfr_file = fullfile(eeg_dir, tk.tfr_fname_alt);
+    end
     try
-        R = load(fullfile(eeg_dir, tk.tfr_fname), tk.tfr_vars{:});
+        if ~isfile(tfr_file)
+            error('Missing TFR file.');
+        end
+        R = load(tfr_file, tk.tfr_vars{:});
         tfr_conds = {R.(tk.tfr_vars{1}), R.(tk.tfr_vars{2}), R.(tk.tfr_vars{3})};
         if ismember(sid, erd_ids)
             for c = 1:3
@@ -384,7 +388,7 @@ dev_bl_3d(dev_bl_3d <= 0 | ~isfinite(dev_bl_3d)) = NaN;
 gaze_tc = (dev_tc ./ dev_bl_3d - 1) * 100;
 gaze_tc(~isfinite(gaze_tc)) = NaN;
 gaze_ylabel = 'Gaze Deviation [%]';
-gaze_tag_base = 'gaze_deviation_pct';
+gaze_tag_base = 'GazeDev_pct';
 gaze_csv_varname = 'GazeDev_pct_0_2s';
 fprintf('Using baselined gaze measures (percent change) for task %s.\n', task_tag);
 
@@ -417,7 +421,7 @@ if any(tc_excluded_subj & (is_red | is_amp))
 end
 
 plot_timecourse_with_effect_CBPT(gaze_tc, is_red_tc, is_amp_tc, colors, ...
-    gaze_ylabel, sprintf('%s_%s_%s', task_tag, split_label, gaze_tag_base), fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'ERSD [dB]', tc_viz_smooth_sec);
+    gaze_ylabel, sprintf('%s_%s_%s', task_tag, split_label, gaze_tag_base), fig_dir_root, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'ERSD [dB]', tc_viz_smooth_sec);
 plot_timecourse_individuals(gaze_tc, is_red_tc, is_amp_tc, colors, ...
     gaze_ylabel, 'Collapsed over conditions', ...
     sprintf('%s_%s_%s_individuals_collapsed', task_tag, split_label, gaze_tag_base), ...
@@ -441,7 +445,8 @@ fprintf('\n=== Data Diagnostics [%s] ===\n', task_tag);
 fprintf('Missing ERSD timecourse (%s): %d\n', tk.ersd_tc_fname, numel(unique(missing_ersd)));
 fprintf('Missing TFR files: %d\n', numel(unique(missing_tfr)));
 fprintf('Missing gaze files/fields: %d\n', numel(unique(missing_gaze)));
-fprintf('Figures saved to: %s\n', fig_dir_task);
+fprintf('Main figures saved to: %s\n', fig_dir_root);
+fprintf('Supplementary figures saved to: %s\n', fig_dir_task);
 
 %% Export CSV for Python statistics script
 fprintf('\n=== Exporting CSV for Python stats ===\n');
@@ -472,10 +477,10 @@ for s = 1:nSubj
         GazeSummary_col(r) = dev_summary_by_load(s, c);
 
         if is_red(s)
-            Group_col(r) = "ERD";
+            Group_col(r) = "More ERD";
             Included_col(r) = is_red_tc(s);
         elseif is_amp(s)
-            Group_col(r) = "ERS";
+            Group_col(r) = "Less ERD";
             Included_col(r) = is_amp_tc(s);
         else
             Group_col(r) = "Excluded";
@@ -491,7 +496,7 @@ stats_tbl = table( ...
     'ID', 'LoadValue', 'LoadLabel', 'Group', 'Included', ...
     tk.ersd_var, 'GazeDeviationFullBL', gaze_csv_varname});
 
-csv_out = fullfile(stats_dir, sprintf('AOC_splitERSERD_%s_%s_stats_input.csv', task_tag, split_label));
+csv_out = fullfile(stats_dir, sprintf('AOC_splitERSERD_GazeDev_%s_%s_stats_input.csv', task_tag, split_label));
 writetable(stats_tbl, csv_out);
 fprintf('CSV saved to: %s\n', csv_out);
 
@@ -605,7 +610,7 @@ figure('Position', fig_pos, 'Color', 'w');
 tiledlayout(1, 2, 'TileSpacing', 'compact');
 
 pw2 = {pow_red, pow_amp};
-ttls = {'ERD', 'ERS'};
+ttls = {'More ERD', 'Less ERD'};
 for grp = 1:2
     nexttile; hold on
     pow_cells = pw2{grp};
@@ -712,9 +717,9 @@ for c = 1:3
     %cbar.Ticks = cb_ticks;
     cbar.Label.String = 'Power [dB]';
     cbar.Label.FontSize = fsz_tfr;
-    title(ax, sprintf('ERD - %s', cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
+    title(ax, sprintf('More ERD - %s', cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
 
-    % Column 2: ERS (rows 1–3)
+    % Column 2: Less ERD (rows 1–3)
     ax = subplot(3, 2, (c-1)*2 + 2);
     cfg.figure = ax;
     ft_singleplotTFR(cfg, ga_amp{c});
@@ -728,7 +733,7 @@ for c = 1:3
     %cbar.Ticks = cb_ticks;
     cbar.Label.String = 'Power [dB]';
     cbar.Label.FontSize = fsz_tfr;
-    title(ax, sprintf('ERS - %s', cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
+    title(ax, sprintf('Less ERD - %s', cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
 end
 saveas(gcf, fullfile(fig_dir, sprintf('%s_tfr_all.png', fig_prefix)));
 close(gcf);
@@ -845,14 +850,14 @@ for c = 1:3
     ft_topoplotER(cfg, ga_red{c});
     colorbar(ax);
     set(ax, 'FontSize', fsz);
-    title(ax, sprintf('ERD - %s', cond_labels{c}), 'Interpreter', 'none');
+    title(ax, sprintf('More ERD - %s', cond_labels{c}), 'Interpreter', 'none');
 
     ax = subplot(2, 3, 3 + c);
     cfg.figure = ax;
     ft_topoplotER(cfg, ga_amp{c});
     colorbar(ax);
     set(ax, 'FontSize', fsz);
-    title(ax, sprintf('ERS - %s', cond_labels{c}), 'Interpreter', 'none');
+    title(ax, sprintf('Less ERD - %s', cond_labels{c}), 'Interpreter', 'none');
 end
 saveas(gcf, fullfile(fig_dir, sprintf('%s_topo_all.png', fig_prefix)));
 close(gcf);
@@ -905,14 +910,14 @@ cfg.figure = ax;
 ft_topoplotER(cfg, ga_red);
 colorbar(ax);
 set(ax, 'FontSize', fsz);
-title(ax, 'ERD - collapsed over conditions', 'Interpreter', 'none');
+title(ax, 'More ERD - collapsed over conditions', 'Interpreter', 'none');
 
 ax = subplot(1, 2, 2);
 cfg.figure = ax;
 ft_topoplotER(cfg, ga_amp);
 colorbar(ax);
 set(ax, 'FontSize', fsz);
-title(ax, 'ERS - collapsed over conditions', 'Interpreter', 'none');
+title(ax, 'Less ERD - collapsed over conditions', 'Interpreter', 'none');
 
 saveas(gcf, fullfile(fig_dir, sprintf('%s_topo_collapsedConditions.png', fig_prefix)));
 close(gcf);
@@ -978,7 +983,7 @@ for c = 1:3
     ft_topoplotER(cfg, ga_red{c});
     colorbar(ax);
     set(ax, 'FontSize', fsz);
-    title(ax, sprintf('ERD - %s', cond_labels{c}), 'Interpreter', 'none');
+    title(ax, sprintf('More ERD - %s', cond_labels{c}), 'Interpreter', 'none');
 
     % Row 2: ERS (cols 1–3)
     ax = subplot(2, 3, 3 + c);
@@ -986,7 +991,7 @@ for c = 1:3
     ft_topoplotER(cfg, ga_amp{c});
     colorbar(ax);
     set(ax, 'FontSize', fsz);
-    title(ax, sprintf('ERS - %s', cond_labels{c}), 'Interpreter', 'none');
+    title(ax, sprintf('Less ERD - %s', cond_labels{c}), 'Interpreter', 'none');
 end
 saveas(gcf, fullfile(fig_dir, sprintf('%s_topo_all.png', fig_prefix)));
 close(gcf);
@@ -1058,7 +1063,7 @@ rectangle('Position', [0 8 3 6], 'EdgeColor', 'k', 'LineWidth', 2);
 cbar.FontSize = fsz_tfr - 4;
 cbar.Label.String = 'Power [dB]';
 cbar.Label.FontSize = fsz_tfr;
-title(ax, 'ERD', 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
+title(ax, 'More ERD', 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
 
 ax = subplot(2, 1, 2);
 cfg.figure = ax;
@@ -1073,7 +1078,7 @@ rectangle('Position', [0 8 3 6], 'EdgeColor', 'k', 'LineWidth', 2);
 cbar.FontSize = fsz_tfr - 4;
 cbar.Label.String = 'Power [dB]';
 cbar.Label.FontSize = fsz_tfr;
-title(ax, 'ERS', 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
+title(ax, 'Less ERD', 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
 
 saveas(gcf, fullfile(fig_dir, sprintf('%s_tfr_collapsedConditions.png', fig_prefix)));
 end
@@ -1140,14 +1145,14 @@ cfg.figure = ax;
 ft_topoplotER(cfg, ga_red);
 colorbar(ax);
 set(ax, 'FontSize', fsz);
-title(ax, 'ERD - collapsed over conditions', 'Interpreter', 'none');
+title(ax, 'More ERD - collapsed over conditions', 'Interpreter', 'none');
 
 ax = subplot(1, 2, 2);
 cfg.figure = ax;
 ft_topoplotER(cfg, ga_amp);
 colorbar(ax);
 set(ax, 'FontSize', fsz);
-title(ax, 'ERS - collapsed over conditions', 'Interpreter', 'none');
+title(ax, 'Less ERD - collapsed over conditions', 'Interpreter', 'none');
 
 saveas(gcf, fullfile(fig_dir, sprintf('%s_topo_collapsedConditions.png', fig_prefix)));
 close(gcf);
@@ -1194,7 +1199,7 @@ for m = 1:size(metric_defs, 1)
     yline(0, '--', 'Color', [0.4 0.4 0.4]);
     ylim(ylim_shared);
     set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
-    title('ERD', 'Interpreter', 'none');
+    title('More ERD', 'Interpreter', 'none');
     ylabel(ylab, 'Interpreter', 'none');
     box off
 
@@ -1205,7 +1210,7 @@ for m = 1:size(metric_defs, 1)
     yline(0, '--', 'Color', [0.4 0.4 0.4]);
     ylim(ylim_shared);
     set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
-    title('ERS', 'Interpreter', 'none');
+    title('Less ERD', 'Interpreter', 'none');
     ylabel(ylab, 'Interpreter', 'none');
     box off
 
@@ -1300,7 +1305,7 @@ set(gca, 'FontSize', fsz-4);
 box off
 
 nexttile; hold on
-n_perm = 10000;
+n_perm = 1000;
 min_per_group = 3;
 d = nan(1, nT);
 for t = 1:nT
@@ -1314,18 +1319,18 @@ tc_a_ds = tc_a(:, 1:ds_factor:end);
 tc_b_ds = tc_b(:, 1:ds_factor:end);
 t_plot_ds = t_plot(1:ds_factor:end);
 dt_ds = ds_factor * dt;
-[clusters, tvals_cl, thr] = ft_cluster_permutation_1d(tc_a_ds, tc_b_ds, n_perm, 0.05, 'onetail_neg', t_plot_ds);
+[clusters, tvals_cl, thr] = ft_cluster_permutation_1d(tc_a_ds, tc_b_ds, n_perm, 0.05, 'twotail', t_plot_ds);
 sig_cluster = false(1, numel(t_plot_ds));
 for k = 1:numel(clusters)
     if clusters(k).p < 0.05
         sig_cluster(clusters(k).idx) = true;
     end
 end
-sig_uncorr = (tvals_cl < -thr.tcrit) & isfinite(tvals_cl);
+sig_uncorr = (abs(tvals_cl) > thr.tcrit) & isfinite(tvals_cl);
 sig = sig_cluster;
 if ~any(sig) && any(sig_uncorr)
     sig = sig_uncorr;
-    fprintf('  [%s] (cluster n.s.; shading uncorrected t<-tcrit for 3-back > 1-back)\n', save_tag);
+    fprintf('  [%s] (cluster n.s.; shading uncorrected |t|>tcrit for 3-back vs 1-back)\n', save_tag);
 end
 d_ds = d(1:ds_factor:end);
 if any(sig_cluster)
@@ -1360,10 +1365,10 @@ xlim([-0.5 3]);
 box off
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)
-    title({'WARNING: No significant clusters; shading shows uncorrected t < -t_{crit} (3-back > 1-back)'}, ...
+    title({'WARNING: No significant clusters; shading shows uncorrected |t| > t_{crit} (3-back vs 1-back)'}, ...
         'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'Interpreter', 'tex');
 end
-saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_timecourse_%s.png', save_tag)));
+saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_GazeDev_timecourse_%s.png', save_tag)));
 close(gcf);
 end
 
@@ -1405,7 +1410,7 @@ end
 xline(0, '--k');
 xlim([-0.5 3]);
 ylabel(ylab);
-title(sprintf('ERD (n=%d) - %s', size(R, 1), title_tag), 'Interpreter', 'none');
+title(sprintf('More ERD (n=%d) - %s', size(R, 1), title_tag), 'Interpreter', 'none');
 set(gca, 'FontSize', fsz - 6);
 box off
 
@@ -1418,11 +1423,11 @@ xline(0, '--k');
 xlim([-0.5 3]);
 xlabel('Time [s]');
 ylabel(ylab);
-title(sprintf('ERS (n=%d) - %s', size(A, 1), title_tag), 'Interpreter', 'none');
+title(sprintf('Less ERD (n=%d) - %s', size(A, 1), title_tag), 'Interpreter', 'none');
 set(gca, 'FontSize', fsz - 6);
 box off
 
-saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_timecourse_%s.png', save_tag)));
+saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_GazeDev_timecourse_%s.png', save_tag)));
 close(gcf);
 end
 
@@ -1480,8 +1485,8 @@ set(gca, 'FontSize', fsz-4);
 % Legend with colored patch boxes (clearer than thin lines)
 leg_p1 = patch(NaN, NaN, colors(1,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(1,:), 'LineWidth', 1.5);
 leg_p2 = patch(NaN, NaN, colors(3,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(3,:), 'LineWidth', 1.5);
-legend([leg_p1 leg_p2], {'ERD', 'ERS'}, 'Location', 'northeast', 'FontSize', fsz*0.75, 'Box', 'off');
-if contains(save_tag, 'gaze_deviation_pct')
+legend([leg_p1 leg_p2], {' More ERD', ' Less ERD'}, 'Location', 'northeast', 'FontSize', fsz*0.75, 'Box', 'off');
+if contains(save_tag, 'GazeDev_pct')
     % ylim from shaded envelopes (mean ± SEM), not just the main lines
     upper = max(mR + sR, mA + sA);
     lower = min(mR - sR, mA - sA);
@@ -1493,7 +1498,7 @@ if contains(save_tag, 'gaze_deviation_pct')
     end
 end
 nexttile; hold on
-n_perm = 10000;
+n_perm = 1000;
 min_per_group = 3;
 d = nan(1, nT);
 for t = 1:nT
@@ -1508,12 +1513,12 @@ Aall_ds = Aall(:, 1:ds_factor:end);
 nT_ds = size(Rall_ds, 2);
 t_plot_ds = t_plot(1:ds_factor:end);
 dt_ds = ds_factor * dt;
-[clusters, tvals_cl, thr, maxMassNull, maxExtentNull] = ft_cluster_permutation_1d(Rall_ds, Aall_ds, n_perm, 0.05, 'onetail_pos', t_plot_ds);
-nAbove = sum(tvals_cl > thr.tcrit & isfinite(tvals_cl));
+[clusters, tvals_cl, thr, maxMassNull, maxExtentNull] = ft_cluster_permutation_1d(Rall_ds, Aall_ds, n_perm, 0.05, 'twotail', t_plot_ds);
+nExtreme = sum(abs(tvals_cl) > thr.tcrit & isfinite(tvals_cl));
 maxClMass = max([0, arrayfun(@(k) clusters(k).mass, 1:numel(clusters))]);
 maxClExtent = max([0, arrayfun(@(k) clusters(k).extent, 1:numel(clusters))]);
-fprintf('  [%s] n_red=%d n_amp=%d tcrit=%.2f (one-tailed Red>Amp) t>tcrit at %d timepts; max cluster mass=%.1f; max cluster extent=%d\n', ...
-    save_tag, nR, nA, thr.tcrit, nAbove, maxClMass, maxClExtent);
+fprintf('  [%s] n_red=%d n_amp=%d tcrit=%.2f (two-tailed Red vs Amp) |t|>tcrit at %d timepts; max cluster mass=%.1f; max cluster extent=%d\n', ...
+    save_tag, nR, nA, thr.tcrit, nExtreme, maxClMass, maxClExtent);
 if ~isempty(maxMassNull)
     fprintf('    CBPT gaze: nT_ds=%d (%.0f ms bins); null mass: median=%.1f, 90th=%.1f, 95th=%.1f; null extent: median=%d, 90th=%d, 95th=%d\n', ...
         nT_ds, ds_factor*1000/fs, median(maxMassNull), prctile(maxMassNull, 90), prctile(maxMassNull, 95), ...
@@ -1544,8 +1549,8 @@ if ~isempty(clusters)
 else
     t_fin = tvals_cl(isfinite(tvals_cl));
     if ~isempty(t_fin)
-        [t_max, idx_max] = max(tvals_cl);
-        fprintf('    No clusters formed (no contiguous t>tcrit); largest t=%.2f at t=%.2fs\n', ...
+        [t_max, idx_max] = max(abs(tvals_cl));
+        fprintf('    No clusters formed (no contiguous |t|>tcrit); largest |t|=%.2f at t=%.2fs\n', ...
             t_max, t_plot_ds(idx_max));
     else
         fprintf('    No clusters; no valid t-values\n');
@@ -1557,11 +1562,11 @@ for k = 1:numel(clusters)
         sig_cluster(clusters(k).idx) = true;
     end
 end
-sig_uncorr = (tvals_cl > thr.tcrit) & isfinite(tvals_cl);
+sig_uncorr = (abs(tvals_cl) > thr.tcrit) & isfinite(tvals_cl);
 sig = sig_cluster;
 if ~any(sig) && any(sig_uncorr)
     sig = sig_uncorr;
-    fprintf('  [%s] (cluster n.s.; shading uncorrected t>tcrit)\n', save_tag);
+    fprintf('  [%s] (cluster n.s.; shading uncorrected |t|>tcrit)\n', save_tag);
 end
 d_ds = d(1:ds_factor:end);
 if any(sig_cluster)
@@ -1596,7 +1601,7 @@ xlim([-0.5 3]);
 box off
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)
-    title({'WARNING: No significant clusters; shading shows uncorrected t > t_{crit}'}, ...
+    title({'WARNING: No significant clusters; shading shows uncorrected |t| > t_{crit}'}, ...
         'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'Interpreter', 'tex');
 end
 
@@ -1666,18 +1671,18 @@ if show_eeg
 
     EegR_ds = EegR(:, 1:ds_factor:end);
     EegA_ds = EegA(:, 1:ds_factor:end);
-    [clusters_eeg, tvals_cl_eeg, thr_eeg] = ft_cluster_permutation_1d(EegR_ds, EegA_ds, n_perm, 0.05, 'onetail_pos', t_plot_ds);
+    [clusters_eeg, tvals_cl_eeg, thr_eeg] = ft_cluster_permutation_1d(EegR_ds, EegA_ds, n_perm, 0.05, 'twotail', t_plot_ds);
     sig_cluster_eeg = false(1, nT_ds);
     for k = 1:numel(clusters_eeg)
         if clusters_eeg(k).p < 0.05
             sig_cluster_eeg(clusters_eeg(k).idx) = true;
         end
     end
-    sig_uncorr_eeg = (tvals_cl_eeg > thr_eeg.tcrit) & isfinite(tvals_cl_eeg);
+    sig_uncorr_eeg = (abs(tvals_cl_eeg) > thr_eeg.tcrit) & isfinite(tvals_cl_eeg);
     sig_eeg = sig_cluster_eeg;
     if ~any(sig_eeg) && any(sig_uncorr_eeg)
         sig_eeg = sig_uncorr_eeg;
-        fprintf('  [%s EEG] (cluster n.s.; shading uncorrected t>tcrit)\n', save_tag);
+        fprintf('  [%s EEG] (cluster n.s.; shading uncorrected |t|>tcrit)\n', save_tag);
     end
 
     d_eeg_ds = d_eeg(1:ds_factor:end);
@@ -1716,12 +1721,12 @@ if show_eeg
     box off
     set(gca, 'FontSize', fsz-4);
     if ~any(sig_cluster_eeg) && any(sig_uncorr_eeg)
-        title({'WARNING: No significant clusters; shading shows uncorrected t > t_{crit}'}, ...
+        title({'WARNING: No significant clusters; shading shows uncorrected |t| > t_{crit}'}, ...
             'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'Interpreter', 'tex');
     end
 end
 
-saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_timecourse_%s_CBPT.png', save_tag)));
+saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_GazeDev_timecourse_%s_CBPT.png', save_tag)));
 end
 
 function [clusters, tvals, thr, maxMassNull, maxExtentNull] = ft_cluster_permutation_1d(Rall, Aall, nPerm, alpha, tail, t_plot_ds)

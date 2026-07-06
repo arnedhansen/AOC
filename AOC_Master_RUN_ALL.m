@@ -73,8 +73,9 @@ if ispc
     run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\microsaccades\AOC_gaze_microsaccades_nback.m');
 
     %% 4 Split analyses
-    run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed.m');
-    run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed_Nback.m');
+    run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed_GazeDev.m');
+    run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed_GazeDev_Nback.m');
+    run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed_MS.m');
 
     %% Stats
     % For the stats and raincloud plots, run the Python scripts.
@@ -138,8 +139,9 @@ else
     run('/Users/Arne/Documents/GitHub/AOC/3_visualization/gaze/microsaccades/AOC_gaze_microsaccades_nback.m');
 
     %% 4 Split analyses
-    run('/Users/Arne/Documents/GitHub/AOC/splits/AOC_split_AlphaAmpRed.m');
-    run('/Users/Arne/Documents/GitHub/AOC/splits/AOC_split_AlphaAmpRed_Nback.m');
+    run('/Users/Arne/Documents/GitHub/AOC/splits/AOC_split_AlphaAmpRed_GazeDev.m');
+    run('/Users/Arne/Documents/GitHub/AOC/splits/AOC_split_AlphaAmpRed_GazeDev_Nback.m');
+    run('/Users/Arne/Documents/GitHub/AOC/splits/AOC_split_AlphaAmpRed_MS.m');
 
     %% Stats
     % For the stats and raincloud plots, run the Python scripts.

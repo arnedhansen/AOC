@@ -1,14 +1,12 @@
-%% AOC Split ERS/ERD (Subject-Level) — Sternberg — GazeDev
-% Subject-level split (fixed across conditions) using merged_data_sternberg:
-%   mean ERSD_late across load levels (occipital 8-14 Hz dB, [1 2]s window)
-%   split0 mode: < 0 -> ERD, >= 0 -> ERS
+%% AOC Split ERS/ERD (Subject-Level) — GazeDev (Sternberg + N-back)
+% Subject-level ERSD split per task, then gaze deviation time courses
+% (percent baseline) with cluster-based permutation testing.
 %
-% Uses ERSD sources (Sternberg only):
-%   ersd_sternberg_timecourse.mat, tfr_stern.mat (baselined TFR, no FOOOF)
-% plus merged gaze/behavioral metrics.
+% Sternberg: split0 on mean ERSD_late ([1 2]s), < 0 -> ERD, >= 0 -> ERS
+% N-back: median split on pooled ERSD_full, < median -> More ERD, >= median -> Less ERD
 %
 % Generates (per task):
-% - ERSD split inclusion figure (participants by ERSD, thresholds, group assignment)
+% - ERSD split inclusion figure
 % - TFRs per condition for both groups (baselined, 8-14 Hz)
 % - Topoplots per condition for both groups (ERSD window on baselined TFR)
 % - Rainclouds for ERSD and gaze deviation
@@ -23,25 +21,20 @@ addpath(paths.seb_path);
 
 feat_dir = paths.features;
 fig_dir_root = fullfile(paths.figures, 'splits', 'SplitERSERD');
-fig_dir_task = fullfile(fig_dir_root, 'SternbergGazeDev');
 stats_dir = paths.splits_stats;
 if ~isfolder(fig_dir_root)
     mkdir(fig_dir_root);
 end
-if ~isfolder(fig_dir_task)
-    mkdir(fig_dir_task);
-end
 if ~isfolder(stats_dir)
     mkdir(stats_dir);
 end
-fprintf('\n=== AOC Split ERS/ERD (Sternberg only; split0) ===\n');
+fprintf('\n=== AOC Split ERS/ERD — Gaze Deviation (Sternberg + N-back) ===\n');
 fprintf('Main figure directory: %s\n', fig_dir_root);
-fprintf('Supplementary figure directory: %s\n', fig_dir_task);
 
 % Keep canonical figure size requested.
 fig_pos = [0 0 1512 982];
 
-% Sternberg-only task definition:
+% Sternberg task (split0 on mean ERSD_late)
 tasks(1).tag = 'sternberg';
 tasks(1).split_label = 'split0';
 tasks(1).merged_file = 'AOC_merged_data_sternberg.mat';
@@ -50,11 +43,34 @@ tasks(1).cond_vals = [2 4 6];
 tasks(1).cond_codes = [22 24 26];
 tasks(1).cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
 tasks(1).tfr_fname = 'tfr_stern.mat';
+tasks(1).tfr_fname_alt = '';
 tasks(1).tfr_vars = {'tfr2_bl', 'tfr4_bl', 'tfr6_bl'};
 tasks(1).ersd_tc_fname = 'ersd_sternberg_timecourse.mat';
 tasks(1).topo_latency = [1 2];
 tasks(1).gaze_fname = 'gaze_series_sternberg_trials.mat';
 tasks(1).ersd_var = 'ERSD_late';
+tasks(1).fig_subdir = 'SternbergGazeDev';
+tasks(1).group_lbl_low = 'ERD';
+tasks(1).group_lbl_high = 'ERS';
+
+% N-back task (median split on pooled ERSD_full)
+tasks(2).tag = 'nback';
+tasks(2).split_label = 'splitMedian';
+tasks(2).merged_file = 'AOC_merged_data_nback.mat';
+tasks(2).merged_var = 'merged_data_nback';
+tasks(2).cond_vals = [1 2 3];
+tasks(2).cond_codes = [21 22 23];
+tasks(2).cond_labels = {'1-back', '2-back', '3-back'};
+tasks(2).tfr_fname = 'tfr_nback.mat';
+tasks(2).tfr_fname_alt = 'tfr_nback_long.mat';
+tasks(2).tfr_vars = {'tfr1_bl', 'tfr2_bl', 'tfr3_bl'};
+tasks(2).ersd_tc_fname = 'ersd_nback_timecourse.mat';
+tasks(2).topo_latency = [1 2];
+tasks(2).gaze_fname = 'gaze_series_nback_trials.mat';
+tasks(2).ersd_var = 'ERSD_full';
+tasks(2).fig_subdir = 'NbackGazeDev';
+tasks(2).group_lbl_low = 'More ERD';
+tasks(2).group_lbl_high = 'Less ERD';
 
 fontSize = 30;
 tfr_winsor_cfg = struct();
@@ -69,6 +85,11 @@ cond_vals = tk.cond_vals;
 cond_codes = tk.cond_codes;
 cond_labels = tk.cond_labels;
 fig_prefix = sprintf('AOC_splitERSERD_GazeDev_%s_%s', task_tag, split_label);
+fig_dir_task = fullfile(fig_dir_root, tk.fig_subdir);
+if ~isfolder(fig_dir_task)
+    mkdir(fig_dir_task);
+end
+fprintf('Supplementary figure directory: %s\n', fig_dir_task);
 
 fprintf('\n\n========== TASK: %s ==========\n', upper(task_tag));
 
@@ -121,18 +142,32 @@ valid_ersd_mean = ersd_mean(split_valid);
 if isempty(valid_ersd_mean)
     error('No finite subject-level ERSD values found for split.');
 end
-ersd_split_threshold = 0;
+ersd_split_threshold = NaN;
+split_info_str = '';
+zero_ids = [];
+if strcmpi(task_tag, 'sternberg')
+    ersd_split_threshold = 0;
+    split_summary_suffix = sprintf('%s, [1 2]s', tk.ersd_var);
+    split_info_str = 'Split at 0.0000 (no near-zero exclusion)';
+else
+    ersd_split_threshold = median(valid_ersd_mean, 'omitnan');
+    split_summary_suffix = sprintf('%s, pooled loads', tk.ersd_var);
+    split_info_str = sprintf('Median split at %.4f', ersd_split_threshold);
+end
 erd_ids = uIDs(split_valid & (ersd_mean < ersd_split_threshold));
 ers_ids = uIDs(split_valid & (ersd_mean >= ersd_split_threshold));
-zero_ids = [];
 invalid_ids = uIDs(~split_valid);
-split_info_str = 'Split at 0.0000 (no near-zero exclusion)';
 
-fprintf('\n=== Split Summary [%s | %s] (%s, [1 2]s) ===\n', task_tag, split_label, tk.ersd_var);
+fprintf('\n=== Split Summary [%s | %s] (%s) ===\n', task_tag, split_label, split_summary_suffix);
 fprintf('Subjects total: %d\n', nSubj);
 fprintf('%s\n', split_info_str);
-fprintf('ERD (< 0.0000): %d\n', numel(erd_ids));
-fprintf('ERS (>= 0.0000): %d\n', numel(ers_ids));
+if strcmpi(task_tag, 'sternberg')
+    fprintf('ERD (< 0.0000): %d\n', numel(erd_ids));
+    fprintf('ERS (>= 0.0000): %d\n', numel(ers_ids));
+else
+    fprintf('%s (< %.4f): %d\n', tk.group_lbl_low, ersd_split_threshold, numel(erd_ids));
+    fprintf('%s (>= %.4f): %d\n', tk.group_lbl_high, ersd_split_threshold, numel(ers_ids));
+end
 if ~isempty(invalid_ids)
     fprintf('Excluded (invalid/pathological ERSD): %d\n', numel(invalid_ids));
 end
@@ -148,7 +183,11 @@ fprintf('\n=== Plotting ERSD split inclusion figure ===\n');
 figure('Position', fig_pos, 'Color', 'w');
 hold on
 yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 2);
-yline(0, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
+if strcmpi(task_tag, 'sternberg')
+    yline(0, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
+else
+    yline(ersd_split_threshold, '-', 'Color', [0.8 0.2 0.2], 'LineWidth', 2);
+end
 x_vals = (1:nSubj)';
 idx_erd = ismember(uIDs, erd_ids);
 idx_ers = ismember(uIDs, ers_ids);
@@ -157,14 +196,20 @@ h_excl = scatter(x_vals(idx_excl), ersd_mean(idx_excl), 80, [0.5 0.5 0.5], 'fill
 h_erd = scatter(x_vals(idx_erd), ersd_mean(idx_erd), 80, [0.2 0.4 0.8], 'filled', 'MarkerFaceAlpha', 0.8);
 h_ers = scatter(x_vals(idx_ers), ersd_mean(idx_ers), 80, [0.8 0.2 0.2], 'filled', 'MarkerFaceAlpha', 0.8);
 legend_excl = sprintf('Excluded (n=%d)', sum(idx_excl));
-legend_erd = sprintf('ERD (n=%d)', sum(idx_erd));
-legend_ers = sprintf('ERS (n=%d)', sum(idx_ers));
+legend_erd = sprintf('%s (n=%d)', tk.group_lbl_low, sum(idx_erd));
+legend_ers = sprintf('%s (n=%d)', tk.group_lbl_high, sum(idx_ers));
 xlabel('Participant (index)');
 ylabel('ERSD [dB]');
-title(sprintf('ERS/ERD Split [%s | %s]', task_tag, split_label), 'Interpreter', 'none');
+if strcmpi(task_tag, 'nback')
+    inclusion_title = sprintf('More vs Less ERD Split [%s | %s]', task_tag, split_label);
+else
+    inclusion_title = sprintf('ERS/ERD Split [%s | %s]', task_tag, split_label);
+end
+title(inclusion_title, 'Interpreter', 'none');
 legend([h_excl, h_erd, h_ers], {legend_excl, legend_erd, legend_ers}, 'Location', 'best', 'FontSize', fontSize - 2, 'Box', 'off');
 set(gca, 'FontSize', fontSize);
 box off
+pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir_task, sprintf('%s_inclusion.png', fig_prefix)));
 close(gcf);
 
@@ -186,7 +231,7 @@ metrics.Dev = nan(nSubj, 3);          % GazeDeviationFullBL [% change]
 
 % Time courses per subject x condition (full resolution, pre-outlier exclusion)
 fs = 500;
-t_full = -0.5:1/fs:3;
+t_full = -0.5:1/fs:2;
 t_plot = t_full(2:end);
 Tf = numel(t_plot);
 dev_tc = nan(nSubj, 3, Tf);
@@ -199,7 +244,7 @@ missing_gaze = {};
 %% Aggregate per-subject data
 fprintf('\n=== Aggregating per-subject data (%d subjects) ===\n', nSubj);
 for s = 1:nSubj
-    clc; fprintf('[SPLIT ERS/ERD - STERNBERG] Aggregating Sternberg data for Subject %d / %d \n', s, nSubj);
+    clc; fprintf('[SPLIT ERS/ERD GAZEDEV - %s] Aggregating data for Subject %d / %d \n', upper(task_tag), s, nSubj);
     sid = uIDs(s);
     sid_str = num2str(sid);
     subj_folder = resolve_subject_folder(subjects, sid);
@@ -219,8 +264,15 @@ for s = 1:nSubj
 
     % EEG TFR sources (baselined; no FOOOF)
     eeg_dir = fullfile(pathAOC, subj_folder, 'eeg');
+    tfr_file = fullfile(eeg_dir, tk.tfr_fname);
+    if ~isfile(tfr_file) && isfield(tk, 'tfr_fname_alt') && ~isempty(tk.tfr_fname_alt)
+        tfr_file = fullfile(eeg_dir, tk.tfr_fname_alt);
+    end
     try
-        R = load(fullfile(eeg_dir, tk.tfr_fname), tk.tfr_vars{:});
+        if ~isfile(tfr_file)
+            error('Missing TFR file.');
+        end
+        R = load(tfr_file, tk.tfr_vars{:});
         tfr_conds = {R.(tk.tfr_vars{1}), R.(tk.tfr_vars{2}), R.(tk.tfr_vars{3})};
         if ismember(sid, erd_ids)
             for c = 1:3
@@ -275,7 +327,7 @@ for s = 1:nSubj
         continue
     end
 
-    % ET coverage diagnostic for the requested 1-3 s window (per subject).
+    % ET coverage diagnostic for the requested 0-2 s window (per subject).
     if isfield(G, 'time') && ~isempty(G.time)
         tmax_trials = nan(1, numel(G.time));
         for tr = 1:numel(G.time)
@@ -283,9 +335,9 @@ for s = 1:nSubj
             if isempty(tt_cov), continue, end
             tmax_trials(tr) = tt_cov(end);
         end
-        n_reach_3s = sum(tmax_trials >= 3, 'omitnan');
-        fprintf('ET coverage %s: %d/%d trials reach 3 s (tmax median=%.3f s, min=%.3f s)\n', ...
-            sid_str, n_reach_3s, numel(tmax_trials), median(tmax_trials, 'omitnan'), min(tmax_trials, [], 'omitnan'));
+        n_reach_2s = sum(tmax_trials >= 2, 'omitnan');
+        fprintf('ET coverage %s: %d/%d trials reach 2 s (tmax median=%.3f s, min=%.3f s)\n', ...
+            sid_str, n_reach_2s, numel(tmax_trials), median(tmax_trials, 'omitnan'), min(tmax_trials, [], 'omitnan'));
     end
 
     % Deviation time course from gaze x/y if available
@@ -313,7 +365,7 @@ for s = 1:nSubj
                         tt = linspace(tt(1), tt(end), numel(x));
                     end
                 else
-                    tt = linspace(-0.5, 3, numel(x));
+                    tt = linspace(-0.5, 2, numel(x));
                 end
                 dev = sqrt((x - 400).^2 + (y - 300).^2);
 
@@ -352,24 +404,24 @@ end
 fprintf('\n=== Plotting TFRs ===\n');
 color_map_tfr = customcolormap_preset('red-white-blue');
 plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, ...
-    color_map_tfr, fig_dir_task, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg);
+    color_map_tfr, fig_dir_task, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg, tk.group_lbl_low, tk.group_lbl_high);
 
 %% TFRs collapsed over conditions (both groups)
 fprintf('\n=== Plotting collapsed TFRs (across conditions) ===\n');
 plot_group_tfrs_collapsed(tfr_red, tfr_amp, channels, headmodel, color_map_tfr, ...
-    fig_dir_task, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg);
+    fig_dir_task, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg, tk.group_lbl_low, tk.group_lbl_high);
 
 %% Topoplots per condition (both groups; ERSD window on baselined TFR)
 fprintf('\n=== Plotting topoplots ===\n');
-plot_group_topos_ersd(tfr_red, tfr_amp, channels, headmodel, cond_labels, tk.topo_latency, fig_dir_task, fig_prefix, fig_pos, fontSize);
+plot_group_topos_ersd(tfr_red, tfr_amp, channels, headmodel, cond_labels, tk.topo_latency, fig_dir_task, fig_prefix, fig_pos, fontSize, tk.group_lbl_low, tk.group_lbl_high);
 
 %% Topoplots collapsed over conditions (both groups)
 fprintf('\n=== Plotting collapsed topoplots (across conditions) ===\n');
-plot_group_topos_ersd_collapsed(tfr_red, tfr_amp, channels, headmodel, tk.topo_latency, fig_dir_task, fig_prefix, fig_pos, fontSize);
+plot_group_topos_ersd_collapsed(tfr_red, tfr_amp, channels, headmodel, tk.topo_latency, fig_dir_task, fig_prefix, fig_pos, fontSize, tk.group_lbl_low, tk.group_lbl_high);
 
 %% Rainclouds
 fprintf('\n=== Plotting rainclouds ===\n');
-plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir_task, fig_prefix, fig_pos, fontSize);
+plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir_task, fig_prefix, fig_pos, fontSize, tk.group_lbl_low, tk.group_lbl_high);
 
 %% EEG and Gaze time courses with effect-size
 close all
@@ -379,7 +431,7 @@ eeg_tc = ersd_tc;
 
 % Gaze time-course representation for analysis/plotting.
 fprintf('\n=== Preparing gaze time courses ===\n');
-t_vec = linspace(-0.5, 3, Tf);
+t_vec = linspace(-0.5, 2, Tf);
 bl_idx = (t_vec >= -1.5) & (t_vec <= -0.5);
 
 dev_bl = mean(dev_tc(:, :, bl_idx), 3, 'omitnan');
@@ -388,22 +440,22 @@ dev_bl_3d(dev_bl_3d <= 0 | ~isfinite(dev_bl_3d)) = NaN;
 % Percent baseline: (value/baseline - 1) * 100.
 gaze_tc = (dev_tc ./ dev_bl_3d - 1) * 100;
 gaze_tc(~isfinite(gaze_tc)) = NaN;
-gaze_ylabel = 'Gaze Deviation [%]';
+gaze_ylabel = 'Gaze Deviation Change [%]';
 gaze_tag_base = 'GazeDev_pct';
 gaze_csv_varname = 'GazeDev_pct_0_2s';
 fprintf('Using baselined gaze measures (percent change) for task %s.\n', task_tag);
 
 % Plot time courses (always save both: gaze-only and combined EEG+gaze)
 close all
-fontSizeTC = 35;
+fontSizeTC = 30;
 rng(123)
 ds_factor = 10; % downsampling to ds_factor*2ms windows
 tc_viz_smooth_sec = 0.05; % slight display-only smoothing for time-course plots
 
 % Exclude subjects with incomplete gaze time courses in analysis window.
-% Criterion: for each condition, signal must be finite at t=3 s and have
-% >=99.5% finite samples in [0, 3] s.
-tc_window_idx = (t_vec >= 0) & (t_vec <= 3);
+% Criterion: for each condition, signal must be finite at t=2 s and have
+% >=99.5% finite samples in [0, 2] s.
+tc_window_idx = (t_vec >= 0) & (t_vec <= 2);
 tc_complete_min_frac = 0.995;
 tc_finite_frac = squeeze(mean(isfinite(dev_tc(:, :, tc_window_idx)), 3));
 tc_has_endpoint = squeeze(isfinite(dev_tc(:, :, end)));
@@ -414,19 +466,34 @@ gaze_tc(tc_excluded_subj, :, :) = NaN;
 eeg_tc(tc_excluded_subj, :, :) = NaN;
 is_red_tc = is_red & tc_complete_subj;
 is_amp_tc = is_amp & tc_complete_subj;
-fprintf('Time-course completeness filter: finite frac >= %.3f in [0,3]s + finite endpoint at 3s\n', tc_complete_min_frac);
+fprintf('Time-course completeness filter: finite frac >= %.3f in [0,2]s + finite endpoint at 2s\n', tc_complete_min_frac);
 fprintf('Excluded incomplete gaze time-course subjects: %d\n', sum(tc_excluded_subj & (is_red | is_amp)));
 if any(tc_excluded_subj & (is_red | is_amp))
     excl_ids = uIDs(tc_excluded_subj & (is_red | is_amp));
     fprintf('Excluded IDs: %s\n', sprintf('%d ', excl_ids));
 end
 
+cbpt_report_file = fullfile(stats_dir, sprintf('AOC_splitERSERD_GazeDev_%s_%s_CBPT_report.txt', task_tag, split_label));
+init_cbpt_report_file(cbpt_report_file, struct( ...
+    'script', 'AOC_split_AlphaAmpRed_GazeDev.m', ...
+    'task_tag', task_tag, ...
+    'split_label', split_label, ...
+    'split_info', split_info_str, ...
+    'ersd_var', tk.ersd_var, ...
+    'group_lbl_low', tk.group_lbl_low, ...
+    'group_lbl_high', tk.group_lbl_high, ...
+    'n_low_split', numel(erd_ids), ...
+    'n_high_split', numel(ers_ids), ...
+    'n_low_tc', sum(is_red_tc), ...
+    'n_high_tc', sum(is_amp_tc), ...
+    'metric', 'Gaze deviation change [% baseline]'));
+
 plot_timecourse_with_effect_CBPT(gaze_tc, is_red_tc, is_amp_tc, colors, ...
-    gaze_ylabel, sprintf('%s_%s_%s', task_tag, split_label, gaze_tag_base), fig_dir_root, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'ERSD [dB]', tc_viz_smooth_sec);
+    gaze_ylabel, sprintf('%s_%s_%s', task_tag, split_label, gaze_tag_base), fig_dir_root, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc, false, 'ERSD [dB]', tc_viz_smooth_sec, tk.group_lbl_low, tk.group_lbl_high, cbpt_report_file);
 plot_timecourse_individuals(gaze_tc, is_red_tc, is_amp_tc, colors, ...
     gaze_ylabel, 'Collapsed over conditions', ...
     sprintf('%s_%s_%s_individuals_collapsed', task_tag, split_label, gaze_tag_base), ...
-    fig_dir_task, fig_pos, fontSizeTC, fs, tc_viz_smooth_sec);
+    fig_dir_task, fig_pos, fontSizeTC, fs, tc_viz_smooth_sec, tk.group_lbl_low, tk.group_lbl_high);
 
 % Additional condition-wise time course outputs
 for c = 1:numel(cond_vals)
@@ -434,11 +501,11 @@ for c = 1:numel(cond_vals)
     eeg_tc_cond = eeg_tc(:, c, :);
     save_tag_cond = sprintf('%s_%s_%s_%s', task_tag, split_label, gaze_tag_base, sanitize_label_for_fname(cond_labels{c}));
     plot_timecourse_with_effect_CBPT(tc_cond, is_red_tc, is_amp_tc, colors, ...
-        gaze_ylabel, save_tag_cond, fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'ERSD [dB]', tc_viz_smooth_sec);
+        gaze_ylabel, save_tag_cond, fig_dir_task, fig_pos, fontSizeTC, fs, ds_factor, eeg_tc_cond, false, 'ERSD [dB]', tc_viz_smooth_sec, tk.group_lbl_low, tk.group_lbl_high, cbpt_report_file);
     plot_timecourse_individuals(tc_cond, is_red_tc, is_amp_tc, colors, ...
         gaze_ylabel, cond_labels{c}, ...
         sprintf('%s_individuals', save_tag_cond), ...
-        fig_dir_task, fig_pos, fontSizeTC, fs, tc_viz_smooth_sec);
+        fig_dir_task, fig_pos, fontSizeTC, fs, tc_viz_smooth_sec, tk.group_lbl_low, tk.group_lbl_high);
 end
 
 %% Sanity checks
@@ -478,10 +545,10 @@ for s = 1:nSubj
         GazeSummary_col(r) = dev_summary_by_load(s, c);
 
         if is_red(s)
-            Group_col(r) = "ERD";
+            Group_col(r) = string(tk.group_lbl_low);
             Included_col(r) = is_red_tc(s);
         elseif is_amp(s)
-            Group_col(r) = "ERS";
+            Group_col(r) = string(tk.group_lbl_high);
             Included_col(r) = is_amp_tc(s);
         else
             Group_col(r) = "Excluded";
@@ -500,6 +567,7 @@ stats_tbl = table( ...
 csv_out = fullfile(stats_dir, sprintf('AOC_splitERSERD_GazeDev_%s_%s_stats_input.csv', task_tag, split_label));
 writetable(stats_tbl, csv_out);
 fprintf('CSV saved to: %s\n', csv_out);
+fprintf('CBPT report saved to: %s\n', cbpt_report_file);
 
 end % task loop
 
@@ -641,11 +709,12 @@ for grp = 1:2
     set(gca, 'FontSize', fsz);
     box off
 end
+pause(0.05); drawnow;
 saveas(gcf, out_file);
 close(gcf);
 end
 
-function plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, color_map, fig_dir, fig_prefix, fig_pos, fsz, winsor_cfg)
+function plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, color_map, fig_dir, fig_prefix, fig_pos, fsz, winsor_cfg, group_lbl_low, group_lbl_high)
 if any(cellfun(@isempty, tfr_red)) || any(cellfun(@isempty, tfr_amp))
     warning('Skipping TFR plot (incomplete condition data).');
     return
@@ -654,6 +723,8 @@ end
 if nargin < 11 || isempty(winsor_cfg)
     winsor_cfg = struct('enable', false, 'prctile', [2 98]);
 end
+if nargin < 13 || isempty(group_lbl_low), group_lbl_low = 'ERD'; end
+if nargin < 14 || isempty(group_lbl_high), group_lbl_high = 'ERS'; end
 
 ga_red = cell(1, 3);
 ga_amp = cell(1, 3);
@@ -676,7 +747,7 @@ if isempty(ch_idx)
     return
 end
 freq_idx = ga_red{1}.freq >= 5 & ga_red{1}.freq <= 30;
-time_idx = ga_red{1}.time >= -0.5 & ga_red{1}.time <= 3;
+time_idx = ga_red{1}.time >= -0.5 & ga_red{1}.time <= 2;
 mx = 0;
 for c = 1:3
     Ared = mean_over_channels_tfr(ga_red{c}, ch_idx);
@@ -690,7 +761,7 @@ cfg = [];
 cfg.channel = channels;
 cfg.colorbar = 'no';
 cfg.zlim = 'maxabs';
-cfg.xlim = [-.5 3];
+cfg.xlim = [-.5 2];
 cfg.ylim = [5 30];
 cfg.layout = headmodel.layANThead;
 
@@ -718,9 +789,9 @@ for c = 1:3
     %cbar.Ticks = cb_ticks;
     cbar.Label.String = 'Power [dB]';
     cbar.Label.FontSize = fsz_tfr;
-    title(ax, sprintf('ERD - %s', cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
+    title(ax, sprintf('%s - %s', group_lbl_low, cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
 
-    % Column 2: ERS (rows 1–3)
+    % Column 2: high group (rows 1–3)
     ax = subplot(3, 2, (c-1)*2 + 2);
     cfg.figure = ax;
     ft_singleplotTFR(cfg, ga_amp{c});
@@ -734,8 +805,9 @@ for c = 1:3
     %cbar.Ticks = cb_ticks;
     cbar.Label.String = 'Power [dB]';
     cbar.Label.FontSize = fsz_tfr;
-    title(ax, sprintf('ERS - %s', cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
+    title(ax, sprintf('%s - %s', group_lbl_high, cond_labels{c}), 'FontSize', fsz_tfr, 'Interpreter', 'none');
 end
+pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, sprintf('%s_tfr_all.png', fig_prefix)));
 close(gcf);
 end
@@ -806,11 +878,13 @@ P_2d = min(max(P_2d, lo), hi);
 freq_out.powspctrm = reshape(P_2d, P_size);
 end
 
-function plot_group_topos_ersd(tfr_red, tfr_amp, channels, headmodel, cond_labels, topo_latency, fig_dir, fig_prefix, fig_pos, fsz)
+function plot_group_topos_ersd(tfr_red, tfr_amp, channels, headmodel, cond_labels, topo_latency, fig_dir, fig_prefix, fig_pos, fsz, group_lbl_low, group_lbl_high)
 if any(cellfun(@isempty, tfr_red)) || any(cellfun(@isempty, tfr_amp))
     warning('Skipping topoplots (missing baselined TFR data).');
     return
 end
+if nargin < 11 || isempty(group_lbl_low), group_lbl_low = 'ERD'; end
+if nargin < 12 || isempty(group_lbl_high), group_lbl_high = 'ERS'; end
 
 ga_red = cell(1, 3);
 ga_amp = cell(1, 3);
@@ -851,24 +925,27 @@ for c = 1:3
     ft_topoplotER(cfg, ga_red{c});
     colorbar(ax);
     set(ax, 'FontSize', fsz);
-    title(ax, sprintf('ERD - %s', cond_labels{c}), 'Interpreter', 'none');
+    title(ax, sprintf('%s - %s', group_lbl_low, cond_labels{c}), 'Interpreter', 'none');
 
     ax = subplot(2, 3, 3 + c);
     cfg.figure = ax;
     ft_topoplotER(cfg, ga_amp{c});
     colorbar(ax);
     set(ax, 'FontSize', fsz);
-    title(ax, sprintf('ERS - %s', cond_labels{c}), 'Interpreter', 'none');
+    title(ax, sprintf('%s - %s', group_lbl_high, cond_labels{c}), 'Interpreter', 'none');
 end
+pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, sprintf('%s_topo_all.png', fig_prefix)));
 close(gcf);
 end
 
-function plot_group_topos_ersd_collapsed(tfr_red, tfr_amp, channels, headmodel, topo_latency, fig_dir, fig_prefix, fig_pos, fsz)
+function plot_group_topos_ersd_collapsed(tfr_red, tfr_amp, channels, headmodel, topo_latency, fig_dir, fig_prefix, fig_pos, fsz, group_lbl_low, group_lbl_high)
 if any(cellfun(@isempty, tfr_red)) || any(cellfun(@isempty, tfr_amp))
     warning('Skipping collapsed topoplots (missing baselined TFR data).');
     return
 end
+if nargin < 10 || isempty(group_lbl_low), group_lbl_low = 'ERD'; end
+if nargin < 11 || isempty(group_lbl_high), group_lbl_high = 'ERS'; end
 
 tfr_red_all = [tfr_red{1}, tfr_red{2}, tfr_red{3}];
 tfr_amp_all = [tfr_amp{1}, tfr_amp{2}, tfr_amp{3}];
@@ -911,15 +988,16 @@ cfg.figure = ax;
 ft_topoplotER(cfg, ga_red);
 colorbar(ax);
 set(ax, 'FontSize', fsz);
-title(ax, 'ERD - collapsed over conditions', 'Interpreter', 'none');
+title(ax, sprintf('%s - collapsed over conditions', group_lbl_low), 'Interpreter', 'none');
 
 ax = subplot(1, 2, 2);
 cfg.figure = ax;
 ft_topoplotER(cfg, ga_amp);
 colorbar(ax);
 set(ax, 'FontSize', fsz);
-title(ax, 'ERS - collapsed over conditions', 'Interpreter', 'none');
+title(ax, sprintf('%s - collapsed over conditions', group_lbl_high), 'Interpreter', 'none');
 
+pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, sprintf('%s_topo_collapsedConditions.png', fig_prefix)));
 close(gcf);
 end
@@ -994,11 +1072,12 @@ for c = 1:3
     set(ax, 'FontSize', fsz);
     title(ax, sprintf('ERS - %s', cond_labels{c}), 'Interpreter', 'none');
 end
+pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, sprintf('%s_topo_all.png', fig_prefix)));
 close(gcf);
 end
 
-function plot_group_tfrs_collapsed(tfr_red, tfr_amp, channels, headmodel, color_map, fig_dir, fig_prefix, fig_pos, fsz, winsor_cfg)
+function plot_group_tfrs_collapsed(tfr_red, tfr_amp, channels, headmodel, color_map, fig_dir, fig_prefix, fig_pos, fsz, winsor_cfg, group_lbl_low, group_lbl_high)
 if any(cellfun(@isempty, tfr_red)) || any(cellfun(@isempty, tfr_amp))
     warning('Skipping collapsed TFR plot (incomplete condition data).');
     return
@@ -1007,6 +1086,8 @@ end
 if nargin < 9 || isempty(winsor_cfg)
     winsor_cfg = struct('enable', false, 'prctile', [2 98]);
 end
+if nargin < 11 || isempty(group_lbl_low), group_lbl_low = 'ERD'; end
+if nargin < 12 || isempty(group_lbl_high), group_lbl_high = 'ERS'; end
 
 % Pool all subject-level TFRs across conditions within each group.
 tfr_red_all = [tfr_red{1}, tfr_red{2}, tfr_red{3}];
@@ -1032,7 +1113,7 @@ if isempty(ch_idx)
     return
 end
 freq_idx = ga_red.freq >= 5 & ga_red.freq <= 30;
-time_idx = ga_red.time >= -0.5 & ga_red.time <= 3;
+time_idx = ga_red.time >= -0.5 & ga_red.time <= 2;
 Ared = mean_over_channels_tfr(ga_red, ch_idx);
 Aamp = mean_over_channels_tfr(ga_amp, ch_idx);
 mx = max([max(abs(Ared(freq_idx, time_idx)), [], 'all'), max(abs(Aamp(freq_idx, time_idx)), [], 'all')]);
@@ -1045,7 +1126,7 @@ cfg = [];
 cfg.channel = channels;
 cfg.colorbar = 'no';
 cfg.zlim = 'maxabs';
-cfg.xlim = [-0.5 3];
+cfg.xlim = [-0.5 2];
 cfg.ylim = [5 30];
 cfg.layout = headmodel.layANThead;
 
@@ -1060,11 +1141,11 @@ cbar = colorbar(ax);
 xlabel(ax, 'Time [s]', 'FontSize', fsz_tfr);
 ylabel(ax, 'Frequency [Hz]', 'FontSize', fsz_tfr);
 set(ax, 'FontSize', fsz_tfr);
-rectangle('Position', [0 8 3 6], 'EdgeColor', 'k', 'LineWidth', 2);
+rectangle('Position', [0 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
 cbar.FontSize = fsz_tfr - 4;
 cbar.Label.String = 'Power [dB]';
 cbar.Label.FontSize = fsz_tfr;
-title(ax, 'ERD', 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
+title(ax, group_lbl_low, 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
 
 ax = subplot(2, 1, 2);
 cfg.figure = ax;
@@ -1075,12 +1156,13 @@ cbar = colorbar(ax);
 xlabel(ax, 'Time [s]', 'FontSize', fsz_tfr);
 ylabel(ax, 'Frequency [Hz]', 'FontSize', fsz_tfr);
 set(ax, 'FontSize', fsz_tfr);
-rectangle('Position', [0 8 3 6], 'EdgeColor', 'k', 'LineWidth', 2);
+rectangle('Position', [0 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
 cbar.FontSize = fsz_tfr - 4;
 cbar.Label.String = 'Power [dB]';
 cbar.Label.FontSize = fsz_tfr;
-title(ax, 'ERS', 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
+title(ax, group_lbl_high, 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
 
+pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, sprintf('%s_tfr_collapsedConditions.png', fig_prefix)));
 end
 
@@ -1155,11 +1237,14 @@ colorbar(ax);
 set(ax, 'FontSize', fsz);
 title(ax, 'ERS - collapsed over conditions', 'Interpreter', 'none');
 
+pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, sprintf('%s_topo_collapsedConditions.png', fig_prefix)));
 close(gcf);
 end
 
-function plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_prefix, fig_pos, fsz)
+function plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir, fig_prefix, fig_pos, fsz, group_lbl_low, group_lbl_high)
+if nargin < 10 || isempty(group_lbl_low), group_lbl_low = 'ERD'; end
+if nargin < 11 || isempty(group_lbl_high), group_lbl_high = 'ERS'; end
 metric_defs = { ...
     'ERSD', 'ERSD', true; ...
     'Dev', 'Gaze deviation', false; ...
@@ -1200,7 +1285,7 @@ for m = 1:size(metric_defs, 1)
     yline(0, '--', 'Color', [0.4 0.4 0.4]);
     ylim(ylim_shared);
     set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
-    title('ERD', 'Interpreter', 'none');
+    title(group_lbl_low, 'Interpreter', 'none');
     ylabel(ylab, 'Interpreter', 'none');
     box off
 
@@ -1211,12 +1296,13 @@ for m = 1:size(metric_defs, 1)
     yline(0, '--', 'Color', [0.4 0.4 0.4]);
     ylim(ylim_shared);
     set(gca, 'XTick', 1:3, 'XTickLabel', cond_labels, 'FontSize', fsz-2);
-    title('ERS', 'Interpreter', 'none');
+    title(group_lbl_high, 'Interpreter', 'none');
     ylabel(ylab, 'Interpreter', 'none');
     box off
 
     sgtitle(varname, 'FontSize', fsz+2, 'Interpreter', 'none');
-    saveas(gcf, fullfile(fig_dir, sprintf('%s_raincloud_%s.png', fig_prefix, lower(key))));
+    pause(0.05); drawnow;
+saveas(gcf, fullfile(fig_dir, sprintf('%s_raincloud_%s.png', fig_prefix, lower(key))));
     close(gcf);
 end
 end
@@ -1265,7 +1351,7 @@ tc_a(~isfinite(tc_a)) = NaN;
 tc_b(~isfinite(tc_b)) = NaN;
 nT = size(tc_a, 2);
 dt = 1 / fs;
-t_plot = linspace(-0.5 + dt, 3, nT);
+t_plot = linspace(-0.5 + dt, 2, nT);
 win_sm = max(1, round(smooth_sec * fs));
 if win_sm > 1
     tc_a = movmean(tc_a, win_sm, 2, 'omitnan');
@@ -1295,7 +1381,7 @@ set(e1.edge(2), 'Color', 'none');
 set(e2.edge(1), 'Color', 'none');
 set(e2.edge(2), 'Color', 'none');
 xline(0, '--k');
-xlim([-0.5 3]);
+xlim([-0.5 2]);
 ylabel(ylab);
 xlabel('Time [s]');
 title(sprintf('%s vs %s (pooled over subjects)', label_a, label_b), 'Interpreter', 'none');
@@ -1306,7 +1392,7 @@ set(gca, 'FontSize', fsz-4);
 box off
 
 nexttile; hold on
-n_perm = 1000;
+n_perm = 10000;
 min_per_group = 3;
 d = nan(1, nT);
 for t = 1:nT
@@ -1362,21 +1448,24 @@ yline(0, '--');
 xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Cohen''s d');
-xlim([-0.5 3]);
+xlim([-0.5 2]);
 box off
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)
     title({'WARNING: No significant clusters; shading shows uncorrected |t| > t_{crit} (3-back vs 1-back)'}, ...
         'Color', [0.8 0 0], 'FontSize', max(8, fsz-6), 'Interpreter', 'tex');
 end
+pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_GazeDev_timecourse_%s.png', save_tag)));
 close(gcf);
 end
 
-function plot_timecourse_individuals(tc, is_red, is_amp, colors, ylab, title_tag, save_tag, fig_dir, fig_pos, fsz, fs, smooth_sec)
+function plot_timecourse_individuals(tc, is_red, is_amp, colors, ylab, title_tag, save_tag, fig_dir, fig_pos, fsz, fs, smooth_sec, group_lbl_low, group_lbl_high)
+if nargin < 13 || isempty(group_lbl_low), group_lbl_low = 'ERD'; end
+if nargin < 14 || isempty(group_lbl_high), group_lbl_high = 'ERS'; end
 dt = 1 / fs;
 nT = size(tc, 3);
-t_plot = linspace(-0.5 + dt, 3, nT);
+t_plot = linspace(-0.5 + dt, 2, nT);
 if nargin < 12 || isempty(smooth_sec)
     smooth_sec = 0;
 end
@@ -1409,9 +1498,9 @@ if ~isempty(R)
     plot(t_plot, mean(R, 1, 'omitnan'), 'Color', colors(1, :), 'LineWidth', 2.5);
 end
 xline(0, '--k');
-xlim([-0.5 3]);
+xlim([-0.5 2]);
 ylabel(ylab);
-title(sprintf('ERD (n=%d) - %s', size(R, 1), title_tag), 'Interpreter', 'none');
+title(sprintf('%s (n=%d) - %s', group_lbl_low, size(R, 1), title_tag), 'Interpreter', 'none');
 set(gca, 'FontSize', fsz - 6);
 box off
 
@@ -1421,27 +1510,31 @@ if ~isempty(A)
     plot(t_plot, mean(A, 1, 'omitnan'), 'Color', colors(3, :), 'LineWidth', 2.5);
 end
 xline(0, '--k');
-xlim([-0.5 3]);
+xlim([-0.5 2]);
 xlabel('Time [s]');
 ylabel(ylab);
-title(sprintf('ERS (n=%d) - %s', size(A, 1), title_tag), 'Interpreter', 'none');
+title(sprintf('%s (n=%d) - %s', group_lbl_high, size(A, 1), title_tag), 'Interpreter', 'none');
 set(gca, 'FontSize', fsz - 6);
 box off
 
+pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_GazeDev_timecourse_%s.png', save_tag)));
 close(gcf);
 end
 
 % Cluster-based permutation test
-function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, ds_factor, eeg_tc, addEEG_TC, eeg_ylab, smooth_sec)
+function plot_timecourse_with_effect_CBPT(tc, is_red, is_amp, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, ds_factor, eeg_tc, addEEG_TC, eeg_ylab, smooth_sec, group_lbl_low, group_lbl_high, cbpt_report_file)
 if nargin < 11 || isempty(ds_factor), ds_factor = 50; end
 if nargin < 12, eeg_tc = []; end
 if nargin < 13, addEEG_TC = ~isempty(eeg_tc); end
 if nargin < 14, eeg_ylab = 'ERSD [dB]'; end
 if nargin < 15 || isempty(smooth_sec), smooth_sec = 0.05; end
+if nargin < 16 || isempty(group_lbl_low), group_lbl_low = 'ERD'; end
+if nargin < 17 || isempty(group_lbl_high), group_lbl_high = 'ERS'; end
+if nargin < 18, cbpt_report_file = ''; end
 dt = 1 / fs;
 nT = size(tc, 3);
-t_plot = linspace(-0.5 + dt, 3, nT);
+t_plot = linspace(-0.5 + dt, 2, nT);
 tc(~isfinite(tc)) = NaN;
 Rall = squeeze(mean(tc(is_red, :, :), 2, 'omitnan'));
 Aall = squeeze(mean(tc(is_amp, :, :), 2, 'omitnan'));
@@ -1480,13 +1573,13 @@ set(e2.edge(1), 'Color', 'none');
 set(e2.edge(2), 'Color', 'none');
 xline(0, '--k');
 ylabel(ylab);
-xlim([-0.5 3]);
+xlim([-0.5 2]);
 box off
 set(gca, 'FontSize', fsz-4);
 % Legend with colored patch boxes (clearer than thin lines)
 leg_p1 = patch(NaN, NaN, colors(1,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(1,:), 'LineWidth', 1.5);
 leg_p2 = patch(NaN, NaN, colors(3,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(3,:), 'LineWidth', 1.5);
-legend([leg_p1 leg_p2], {' ERD', ' ERS'}, 'Location', 'northeast', 'FontSize', fsz*0.75, 'Box', 'off');
+legend([leg_p1 leg_p2], {[' ' group_lbl_low], [' ' group_lbl_high]}, 'Location', 'northeast', 'FontSize', fsz*0.75, 'Box', 'off');
 if contains(save_tag, 'GazeDev_pct')
     % ylim from shaded envelopes (mean ± SEM), not just the main lines
     upper = max(mR + sR, mA + sA);
@@ -1498,8 +1591,8 @@ if contains(save_tag, 'GazeDev_pct')
         ylim([y_lo - pad, y_hi + pad]);
     end
 end
-nexttile; hold on
-n_perm = 1000;
+ax_d = nexttile; hold on
+n_perm = 10000;
 min_per_group = 3;
 d = nan(1, nT);
 for t = 1:nT
@@ -1514,49 +1607,31 @@ Aall_ds = Aall(:, 1:ds_factor:end);
 nT_ds = size(Rall_ds, 2);
 t_plot_ds = t_plot(1:ds_factor:end);
 dt_ds = ds_factor * dt;
-[clusters, tvals_cl, thr, maxMassNull, maxExtentNull] = ft_cluster_permutation_1d(Rall_ds, Aall_ds, n_perm, 0.05, 'twotail', t_plot_ds);
-nExtreme = sum(abs(tvals_cl) > thr.tcrit & isfinite(tvals_cl));
-maxClMass = max([0, arrayfun(@(k) clusters(k).mass, 1:numel(clusters))]);
-maxClExtent = max([0, arrayfun(@(k) clusters(k).extent, 1:numel(clusters))]);
-fprintf('  [%s] n_red=%d n_amp=%d tcrit=%.2f (two-tailed Red vs Amp) |t|>tcrit at %d timepts; max cluster mass=%.1f; max cluster extent=%d\n', ...
-    save_tag, nR, nA, thr.tcrit, nExtreme, maxClMass, maxClExtent);
-if ~isempty(maxMassNull)
-    fprintf('    CBPT gaze: nT_ds=%d (%.0f ms bins); null mass: median=%.1f, 90th=%.1f, 95th=%.1f; null extent: median=%d, 90th=%d, 95th=%d\n', ...
-        nT_ds, ds_factor*1000/fs, median(maxMassNull), prctile(maxMassNull, 90), prctile(maxMassNull, 95), ...
-        median(maxExtentNull), prctile(maxExtentNull, 90), prctile(maxExtentNull, 95));
-else
-    fprintf('    CBPT gaze: nT_ds=%d (%.0f ms bins); FieldTrip ft_timelockstatistics (cluster mass)\n', nT_ds, ds_factor*1000/fs);
-end
-if ~isempty(clusters)
-    bin_width_ms = dt_ds * 1000;
-    for k = 1:numel(clusters)
-        t_lo = t_plot_ds(clusters(k).idx(1));
-        t_hi = t_plot_ds(clusters(k).idx(end));
-        t_start = t_lo - dt_ds/2;  % leading edge of first bin (post-stimulus)
-        t_end = t_hi + dt_ds/2;    % trailing edge of last bin
-        duration_ms = clusters(k).extent * bin_width_ms;
-        pass_p = clusters(k).p < 0.05;
-        status = 'n.s.';
-        if pass_p
-            status = 'SIGNIFICANT';
-        end
-        fprintf('    Cluster %d: window [%.3f, %.3f]s post-stim (duration=%d ms, %d bins @ %.0f ms); mass=%.1f; p=%.4f; %s\n', ...
-            k, t_start, t_end, round(duration_ms), clusters(k).extent, bin_width_ms, clusters(k).mass, clusters(k).p, status);
-    end
-    if isfinite(thr.mass)
-        fprintf('    Gap to significance: mass need +%.1f (have %.1f, need %.1f); extent need +%d (have %d, need %d)\n', ...
-            thr.mass - maxClMass, maxClMass, thr.mass, thr.extent - maxClExtent, maxClExtent, thr.extent);
-    end
-else
-    t_fin = tvals_cl(isfinite(tvals_cl));
-    if ~isempty(t_fin)
-        [t_max, idx_max] = max(abs(tvals_cl));
-        fprintf('    No clusters formed (no contiguous |t|>tcrit); largest |t|=%.2f at t=%.2fs\n', ...
-            t_max, t_plot_ds(idx_max));
-    else
-        fprintf('    No clusters; no valid t-values\n');
-    end
-end
+alpha_cbpt = 0.05;
+tail_cbpt = 'twotail';
+[clusters, tvals_cl, thr, maxMassNull, maxExtentNull] = ft_cluster_permutation_1d(Rall_ds, Aall_ds, n_perm, alpha_cbpt, tail_cbpt, t_plot_ds);
+report_cfg = struct( ...
+    'tag', save_tag, ...
+    'modality', 'gaze', ...
+    'nR', nR, ...
+    'nA', nA, ...
+    'lbl_low', group_lbl_low, ...
+    'lbl_high', group_lbl_high, ...
+    'n_perm', n_perm, ...
+    'alpha', alpha_cbpt, ...
+    'tail', tail_cbpt, ...
+    'nT_ds', nT_ds, ...
+    'bin_ms', ds_factor * 1000 / fs, ...
+    'fs', fs, ...
+    'ds_factor', ds_factor, ...
+    'clusters', clusters, ...
+    'tvals', tvals_cl, ...
+    'thr', thr, ...
+    't_plot', t_plot_ds, ...
+    'dt_ds', dt_ds, ...
+    'maxMassNull', maxMassNull, ...
+    'maxExtentNull', maxExtentNull);
+log_cbpt_report(cbpt_report_file, build_cbpt_report_lines(report_cfg));
 sig_cluster = false(1, nT_ds);
 for k = 1:numel(clusters)
     if clusters(k).p < 0.05
@@ -1567,7 +1642,7 @@ sig_uncorr = (abs(tvals_cl) > thr.tcrit) & isfinite(tvals_cl);
 sig = sig_cluster;
 if ~any(sig) && any(sig_uncorr)
     sig = sig_uncorr;
-    fprintf('  [%s] (cluster n.s.; shading uncorrected |t|>tcrit)\n', save_tag);
+    log_cbpt_report(cbpt_report_file, {sprintf('  [%s] (cluster n.s.; shading uncorrected |t|>tcrit)', save_tag)});
 end
 d_ds = d(1:ds_factor:end);
 if any(sig_cluster)
@@ -1598,7 +1673,7 @@ yline(0, '--');
 xline(0, '--k');
 xlabel('Time [s]');
 ylabel('Cohen''s d');
-xlim([-0.5 3]);
+xlim([-0.5 2]);
 box off
 set(gca, 'FontSize', fsz-4);
 if ~any(sig_cluster) && any(sig_uncorr)
@@ -1646,21 +1721,14 @@ if show_eeg
     ax_eeg = gca;
     ylabel(eeg_ylab);
     xlabel('Time [s]');
-    xlim([-0.5 3]);
+    xlim([-0.5 2]);
     box off
     set(gca, 'FontSize', fsz-4);
     leg_p1 = patch(NaN, NaN, colors(1,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(1,:), 'LineWidth', 1.5);
     leg_p2 = patch(NaN, NaN, colors(3,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(3,:), 'LineWidth', 1.5);
-    % Align y-labels to same horizontal position
-    drawnow;
-    pos_g = get(ax_gaze, 'Position');
-    pos_e = get(ax_eeg, 'Position');
-    left_min = min(pos_g(1), pos_e(1));
-    set(ax_gaze, 'Position', [left_min, pos_g(2), pos_g(3) + (pos_g(1) - left_min), pos_g(4)]);
-    set(ax_eeg,  'Position', [left_min, pos_e(2), pos_e(3) + (pos_e(1) - left_min), pos_e(4)]);
 
     % EEG effect-size strip (same logic as gaze panel above)
-    nexttile; hold on
+    ax_d_eeg = nexttile; hold on
     d_eeg = nan(1, nT);
     for t = 1:nT
         x = EegR(:, t); y = EegA(:, t);
@@ -1672,7 +1740,29 @@ if show_eeg
 
     EegR_ds = EegR(:, 1:ds_factor:end);
     EegA_ds = EegA(:, 1:ds_factor:end);
-    [clusters_eeg, tvals_cl_eeg, thr_eeg] = ft_cluster_permutation_1d(EegR_ds, EegA_ds, n_perm, 0.05, 'twotail', t_plot_ds);
+    [clusters_eeg, tvals_cl_eeg, thr_eeg] = ft_cluster_permutation_1d(EegR_ds, EegA_ds, n_perm, alpha_cbpt, tail_cbpt, t_plot_ds);
+    report_cfg_eeg = struct( ...
+        'tag', sprintf('%s_EEG', save_tag), ...
+        'modality', 'EEG', ...
+        'nR', size(EegR_ds, 1), ...
+        'nA', size(EegA_ds, 1), ...
+        'lbl_low', group_lbl_low, ...
+        'lbl_high', group_lbl_high, ...
+        'n_perm', n_perm, ...
+        'alpha', alpha_cbpt, ...
+        'tail', tail_cbpt, ...
+        'nT_ds', nT_ds, ...
+        'bin_ms', ds_factor * 1000 / fs, ...
+        'fs', fs, ...
+        'ds_factor', ds_factor, ...
+        'clusters', clusters_eeg, ...
+        'tvals', tvals_cl_eeg, ...
+        'thr', thr_eeg, ...
+        't_plot', t_plot_ds, ...
+        'dt_ds', dt_ds, ...
+        'maxMassNull', [], ...
+        'maxExtentNull', []);
+    log_cbpt_report(cbpt_report_file, build_cbpt_report_lines(report_cfg_eeg));
     sig_cluster_eeg = false(1, nT_ds);
     for k = 1:numel(clusters_eeg)
         if clusters_eeg(k).p < 0.05
@@ -1683,7 +1773,7 @@ if show_eeg
     sig_eeg = sig_cluster_eeg;
     if ~any(sig_eeg) && any(sig_uncorr_eeg)
         sig_eeg = sig_uncorr_eeg;
-        fprintf('  [%s EEG] (cluster n.s.; shading uncorrected |t|>tcrit)\n', save_tag);
+        log_cbpt_report(cbpt_report_file, {sprintf('  [%s EEG] (cluster n.s.; shading uncorrected |t|>tcrit)', save_tag)});
     end
 
     d_eeg_ds = d_eeg(1:ds_factor:end);
@@ -1718,7 +1808,7 @@ if show_eeg
     xline(0, '--k');
     xlabel('Time [s]');
     ylabel('EEG Cohen''s d');
-    xlim([-0.5 3]);
+    xlim([-0.5 2]);
     box off
     set(gca, 'FontSize', fsz-4);
     if ~any(sig_cluster_eeg) && any(sig_uncorr_eeg)
@@ -1727,7 +1817,168 @@ if show_eeg
     end
 end
 
+drawnow;
+align_stacked_tc_panels(ax_d, ax_gaze);
+if show_eeg
+    align_stacked_tc_panels(ax_d_eeg, ax_eeg);
+end
+pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_GazeDev_timecourse_%s_CBPT.png', save_tag)));
+end
+
+function align_stacked_tc_panels(ax_ref, ax_top)
+% Match ylabel horizontal position to the reference axis (Cohen's d panel).
+% TiledChartLayout owns axis positions, so only the label is moved.
+drawnow;
+align_ylabel_to_reference(ax_ref, ax_top);
+end
+
+function align_ylabel_to_reference(ax_ref, ax_targets)
+fig = ancestor(ax_ref, 'figure');
+if isempty(fig)
+    return
+end
+drawnow;
+
+ref_lbl = ax_ref.YLabel;
+ref_lbl.Units = 'normalized';
+ref_pos = ref_lbl.Position;
+ref_pix = hgconvertunits(fig, [ref_pos(1) ref_pos(2) 0 0], 'normalized', 'pixels', ax_ref);
+target_x_pix = ref_pix(1);
+
+if iscell(ax_targets)
+    ax_list = ax_targets;
+elseif isscalar(ax_targets)
+    ax_list = {ax_targets};
+else
+    ax_list = num2cell(ax_targets);
+end
+for k = 1:numel(ax_list)
+    ax_t = ax_list{k};
+    if isequal(ax_t, ax_ref)
+        continue
+    end
+    lbl = ax_t.YLabel;
+    lbl.Units = 'normalized';
+    pos = lbl.Position;
+    cur_pix = hgconvertunits(fig, [pos(1) pos(2) 0 0], 'normalized', 'pixels', ax_t);
+    new_norm = hgconvertunits(fig, [target_x_pix cur_pix(2) 0 0], 'pixels', 'normalized', ax_t);
+    lbl.Position = [new_norm(1), pos(2), pos(3)];
+end
+end
+
+function init_cbpt_report_file(report_path, meta)
+if isempty(report_path)
+    return
+end
+if isfile(report_path)
+    delete(report_path);
+end
+lines = {};
+lines{end+1} = '=== AOC Split ERS/ERD CBPT Report ===';
+lines{end+1} = sprintf('Script: %s', meta.script);
+lines{end+1} = sprintf('Generated: %s', datestr(now, 'yyyy-mm-dd HH:MM:SS'));
+lines{end+1} = sprintf('Task: %s | Split: %s', meta.task_tag, meta.split_label);
+lines{end+1} = sprintf('ERSD variable: %s', meta.ersd_var);
+lines{end+1} = meta.split_info;
+lines{end+1} = sprintf('Split groups: %s n=%d; %s n=%d', meta.group_lbl_low, meta.n_low_split, meta.group_lbl_high, meta.n_high_split);
+lines{end+1} = sprintf('Time-course analysis (after completeness filter): %s n=%d; %s n=%d', ...
+    meta.group_lbl_low, meta.n_low_tc, meta.group_lbl_high, meta.n_high_tc);
+lines{end+1} = sprintf('Outcome metric: %s', meta.metric);
+lines{end+1} = 'CBPT method: FieldTrip ft_timelockstatistics (montecarlo, cluster maxsum, indepsamplesT)';
+lines{end+1} = 'Defaults per analysis block: n_perm=10000, clusteralpha=0.05, two-tailed, latency=[0 2] s post-stimulus, ds_factor=10 (20 ms bins at 500 Hz)';
+lines{end+1} = '';
+append_lines_to_file(report_path, lines);
+end
+
+function lines = build_cbpt_report_lines(R)
+lbl_lo = sanitize_label_for_fname(R.lbl_low);
+lbl_hi = sanitize_label_for_fname(R.lbl_high);
+nExtreme = sum(abs(R.tvals) > R.thr.tcrit & isfinite(R.tvals));
+if isempty(R.clusters)
+    maxClMass = 0;
+    maxClExtent = 0;
+else
+    maxClMass = max([0, arrayfun(@(k) R.clusters(k).mass, 1:numel(R.clusters))]);
+    maxClExtent = max([0, arrayfun(@(k) R.clusters(k).extent, 1:numel(R.clusters))]);
+end
+tail_str = tail_label_for_report(R.tail);
+lines = {};
+lines{end+1} = sprintf('  [%s] n_%s=%d n_%s=%d tcrit=%.2f (%s %s vs %s) |t|>tcrit at %d timepts; max cluster mass=%.1f; max cluster extent=%d', ...
+    R.tag, lbl_lo, R.nR, lbl_hi, R.nA, R.thr.tcrit, tail_str, R.lbl_low, R.lbl_high, nExtreme, maxClMass, maxClExtent);
+lines{end+1} = sprintf('    Method: n_perm=%d, alpha=%.3f, %s, latency=[0 2] s, ds_factor=%d (%.0f ms bins at %d Hz)', ...
+    R.n_perm, R.alpha, tail_str, R.ds_factor, R.bin_ms, R.fs);
+if ~isempty(R.maxMassNull)
+    lines{end+1} = sprintf('    CBPT %s: nT_ds=%d (%.0f ms bins); null mass: median=%.1f, 90th=%.1f, 95th=%.1f; null extent: median=%d, 90th=%d, 95th=%d', ...
+        lower(R.modality), R.nT_ds, R.bin_ms, median(R.maxMassNull), prctile(R.maxMassNull, 90), prctile(R.maxMassNull, 95), ...
+        median(R.maxExtentNull), prctile(R.maxExtentNull, 90), prctile(R.maxExtentNull, 95));
+else
+    lines{end+1} = sprintf('    CBPT %s: nT_ds=%d (%.0f ms bins); FieldTrip ft_timelockstatistics (cluster mass)', ...
+        lower(R.modality), R.nT_ds, R.bin_ms);
+end
+if ~isempty(R.clusters)
+    bin_width_ms = R.dt_ds * 1000;
+    for k = 1:numel(R.clusters)
+        idx = R.clusters(k).idx;
+        t_lo = R.t_plot(idx(1));
+        t_hi = R.t_plot(idx(end));
+        t_start = t_lo - R.dt_ds / 2;
+        t_end = t_hi + R.dt_ds / 2;
+        duration_ms = R.clusters(k).extent * bin_width_ms;
+        status = 'n.s.';
+        if R.clusters(k).p < R.alpha
+            status = 'SIGNIFICANT';
+        end
+        lines{end+1} = sprintf('    Cluster %d: window [%.3f, %.3f] s post-stim (duration=%d ms, %d bins @ %.0f ms); mass=%.1f; p=%.4f; %s', ...
+            k, t_start, t_end, round(duration_ms), R.clusters(k).extent, bin_width_ms, R.clusters(k).mass, R.clusters(k).p, status);
+    end
+    if isfinite(R.thr.mass)
+        lines{end+1} = sprintf('    Gap to significance: mass need +%.1f (have %.1f, need %.1f); extent need +%d (have %d, need %d)', ...
+            R.thr.mass - maxClMass, maxClMass, R.thr.mass, R.thr.extent - maxClExtent, maxClExtent, R.thr.extent);
+    end
+else
+    t_fin = R.tvals(isfinite(R.tvals));
+    if ~isempty(t_fin)
+        [t_max, idx_max] = max(abs(R.tvals));
+        lines{end+1} = sprintf('    No clusters formed (no contiguous |t|>tcrit); largest |t|=%.2f at t=%.2f s', ...
+            t_max, R.t_plot(idx_max));
+    else
+        lines{end+1} = '    No clusters; no valid t-values';
+    end
+end
+lines{end+1} = '';
+end
+
+function tail_str = tail_label_for_report(tail)
+if strcmpi(tail, 'onetail_pos')
+    tail_str = 'one-tailed positive';
+elseif strcmpi(tail, 'onetail_neg')
+    tail_str = 'one-tailed negative';
+else
+    tail_str = 'two-tailed';
+end
+end
+
+function log_cbpt_report(report_path, lines)
+for i = 1:numel(lines)
+    fprintf('%s\n', lines{i});
+end
+append_lines_to_file(report_path, lines);
+end
+
+function append_lines_to_file(file_path, lines)
+if isempty(file_path) || isempty(lines)
+    return
+end
+fid = fopen(file_path, 'a');
+if fid < 0
+    warning('Could not open CBPT report file: %s', file_path);
+    return
+end
+cleanup = onCleanup(@() fclose(fid));
+for i = 1:numel(lines)
+    fprintf(fid, '%s\n', lines{i});
+end
 end
 
 function [clusters, tvals, thr, maxMassNull, maxExtentNull] = ft_cluster_permutation_1d(Rall, Aall, nPerm, alpha, tail, t_plot_ds)
@@ -1744,7 +1995,7 @@ function [clusters, tvals, thr, maxMassNull, maxExtentNull] = ft_cluster_permuta
 %   tail      - 'onetail_pos' (H1: group1 > group2, i.e. t > 0; use for Red > Amp)
 %               'onetail_neg' (H1: group1 < group2, i.e. t < 0)
 %               or 'twotail' (H1: group1 ~= group2)
-%   t_plot_ds - (optional) 1 x nT actual time vector. If provided, uses cfg.latency=[0 3]
+%   t_plot_ds - (optional) 1 x nT actual time vector. If provided, uses cfg.latency=[0 2]
 %               to restrict clustering to post-stimulus only (avoids baseline clusters).
 %
 % Outputs:
@@ -1818,7 +2069,7 @@ cfg.minnbchan = 0;
 cfg.neighbours = cfg_neigh;
 cfg.numrandomization = nPerm;
 if ~isempty(t_plot_ds) && numel(t_plot_ds) == nT
-    cfg.latency = [0 3];  % restrict to post-stimulus only
+    cfg.latency = [0 2];  % restrict to post-stimulus only
 else
     cfg.latency = 'all';
 end
@@ -1849,7 +2100,7 @@ stat = ft_timelockstatistics(cfg, tl1, tl2);
 % Extract t-values (stat is chan x time)
 tvals = stat.stat(1, :);
 
-% When we used cfg.latency=[0 3], stat has fewer time points; map back to full range
+% When we used cfg.latency=[0 2], stat has fewer time points; map back to full range
 post_idx = [];
 if ~isempty(t_plot_ds) && numel(t_plot_ds) == nT
     post_idx = find(t_plot_ds >= 0);

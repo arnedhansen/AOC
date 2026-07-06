@@ -8,7 +8,8 @@
 %   3_visualization/gaze/microsaccades/AOC_gaze_microsaccades_*.m
 %   3_visualization/gaze/heatmap/AOC_gaze_heatmap_*_CBPT_outline.m
 %   3_visualization/eeg/ersd/AOC_eeg_ersd_*.m
-%   splits/AOC_split_AlphaAmpRed.m
+%   splits/AOC_split_AlphaAmpRed_GazeDev.m
+%   splits/AOC_split_AlphaAmpRed_MS.m
 %
 % Output: figures/manuscript/X.png
 
@@ -125,16 +126,25 @@ fig7.panels = {
         'D', 'Sternberg Baselined Microsaccades');
     };
 
-%% Figure 8: Exploratory alpha split gaze coupling (single panel)
+%% Figure 8: Exploratory alpha split gaze coupling (2 x 2)
 fig8 = struct();
 fig8.name = 'Figure8';
-fig8.nrow = 1;
-fig8.ncol = 1;
+fig8.nrow = 2;
+fig8.ncol = 2;
 fig8.figSize = [0 0 1512 982];
 fig8.panels = {
     panelSpec(fullfile(splitDir, ...
-        'AOC_splitERSERD_timecourse_sternberg_split0_gaze_deviation_pct_CBPT.png'), ...
-        'A', 'Sternberg Gaze Deviation by Alpha Response Direction');
+        'AOC_splitERSERD_GazeDev_timecourse_nback_splitMedian_GazeDev_pct_CBPT.png'), ...
+        'A', 'N-back Gaze Deviation by Alpha Response Direction');
+    panelSpec(fullfile(splitDir, ...
+        'AOC_splitERSERD_GazeDev_timecourse_sternberg_split0_GazeDev_pct_CBPT.png'), ...
+        'B', 'Sternberg Gaze Deviation by Alpha Response Direction');
+    panelSpec(fullfile(splitDir, ...
+        'AOC_splitERSERD_MS_timecourse_nback_splitMedian_MS_pct_CBPT.png'), ...
+        'C', 'N-back Microsaccades by Alpha Response Direction');
+    panelSpec(fullfile(splitDir, ...
+        'AOC_splitERSERD_MS_timecourse_sternberg_split0_MS_pct_CBPT.png'), ...
+        'D', 'Sternberg Microsaccades by Alpha Response Direction');
     };
 
 %% Assemble all figures

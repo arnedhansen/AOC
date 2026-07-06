@@ -139,7 +139,6 @@ else
 
     %% 4 Split analyses
     run('/Users/Arne/Documents/GitHub/AOC/splits/AOC_split_AlphaAmpRed_GazeDev.m');
-    run('/Users/Arne/Documents/GitHub/AOC/splits/AOC_split_AlphaAmpRed_GazeDev_Nback.m');
     run('/Users/Arne/Documents/GitHub/AOC/splits/AOC_split_AlphaAmpRed_MS.m');
 
     %% Stats

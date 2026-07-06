@@ -917,8 +917,9 @@ drawnow;
 ref_lbl = ax_ref.YLabel;
 ref_lbl.Units = 'normalized';
 ref_pos = ref_lbl.Position;
-ref_pix = hgconvertunits(fig, [ref_pos(1) ref_pos(2) 0 0], 'normalized', 'pixels', ax_ref);
-target_x_pix = ref_pix(1);
+ax_ref.Units = 'pixels';
+ref_ax_pos_pix = ax_ref.Position;
+target_x_pix = ref_ax_pos_pix(1) + ref_pos(1) * ref_ax_pos_pix(3);
 
 if iscell(ax_targets)
     ax_list = ax_targets;
@@ -935,9 +936,10 @@ for k = 1:numel(ax_list)
     lbl = ax_t.YLabel;
     lbl.Units = 'normalized';
     pos = lbl.Position;
-    cur_pix = hgconvertunits(fig, [pos(1) pos(2) 0 0], 'normalized', 'pixels', ax_t);
-    new_norm = hgconvertunits(fig, [target_x_pix cur_pix(2) 0 0], 'pixels', 'normalized', ax_t);
-    lbl.Position = [new_norm(1), pos(2), pos(3)];
+    ax_t.Units = 'pixels';
+    ax_t_pos_pix = ax_t.Position;
+    x_norm_new = (target_x_pix - ax_t_pos_pix(1)) / max(ax_t_pos_pix(3), eps);
+    lbl.Position = [x_norm_new, pos(2), pos(3)];
 end
 end
 

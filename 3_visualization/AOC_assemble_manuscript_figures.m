@@ -94,15 +94,21 @@ fig6.name = 'Figure6';
 fig6.nrow = 3;
 fig6.ncol = 2;
 fig6.figSize = [0 0 1512 round(982 * 1.5)];
+% Row 2 (topoplots) is set to NaN so its height is derived automatically
+% from the actual (white-border-trimmed) image content at column width,
+% instead of a manually guessed fraction. This removes the dead space
+% above/below the topoplots without shrinking them, while rows 1 and 3
+% share whatever vertical space remains.
+fig6.rowHeights = [1, NaN, 1];
 fig6.panels = {
     panelSpec(fullfile(ersdDir, 'AOC_eeg_ersd_nback_timecourse.png'), ...
         'A', 'N-back ERS/ERD Time Course');
     panelSpec(fullfile(ersdDir, 'AOC_eeg_ersd_sternberg_timecourse.png'), ...
         'B', 'Sternberg ERS/ERD Time Course');
     panelSpec(fullfile(ersdDir, 'AOC_eeg_ersd_nback_topos.png'), ...
-        'C', 'N-back ERS/ERD Topographies');
+        'C', 'N-back ERS/ERD Topographies', 1.00, true);
     panelSpec(fullfile(ersdDir, 'AOC_eeg_ersd_sternberg_topos.png'), ...
-        'D', 'Sternberg ERS/ERD Topographies');
+        'D', 'Sternberg ERS/ERD Topographies', 1.00, true);
     panelSpec(fullfile(rainDir, 'AOC_stats_rainclouds_ersd_nback.png'), ...
         'E', 'N-back ERS/ERD');
     panelSpec(fullfile(rainDir, 'AOC_stats_rainclouds_ersd_sternberg.png'), ...
@@ -135,16 +141,16 @@ fig8.figSize = [0 0 1512 982];
 fig8.panels = {
     panelSpec(fullfile(splitDir, ...
         'AOC_splitERSERD_GazeDev_timecourse_nback_splitMedian_GazeDev_pct_CBPT.png'), ...
-        'A', 'N-back Gaze Deviation by Alpha Response Direction');
+        'A', 'N-back Gaze Deviation Split');
     panelSpec(fullfile(splitDir, ...
         'AOC_splitERSERD_GazeDev_timecourse_sternberg_split0_GazeDev_pct_CBPT.png'), ...
-        'B', 'Sternberg Gaze Deviation by Alpha Response Direction');
+        'B', 'Sternberg Gaze Deviation Split');
     panelSpec(fullfile(splitDir, ...
         'AOC_splitERSERD_MS_timecourse_nback_splitMedian_MS_pct_CBPT.png'), ...
-        'C', 'N-back Microsaccades by Alpha Response Direction');
+        'C', 'N-back Microsaccades Split');
     panelSpec(fullfile(splitDir, ...
         'AOC_splitERSERD_MS_timecourse_sternberg_split0_MS_pct_CBPT.png'), ...
-        'D', 'Sternberg Microsaccades by Alpha Response Direction');
+        'D', 'Sternberg Microsaccades Split');
     };
 
 %% Assemble all figures
@@ -159,8 +165,14 @@ end
 fprintf('\nDone. Manuscript composites saved to:\n  %s\n', outDir);
 
 %% Local functions
-function p = panelSpec(imagePath, letter, titleText)
+function p = panelSpec(imagePath, letter, titleText, imageScale, trimWhite)
 p = struct('file', imagePath, 'letter', letter, 'title', titleText);
+if nargin >= 4 && ~isempty(imageScale)
+    p.imageScale = imageScale;
+end
+if nargin >= 5 && ~isempty(trimWhite)
+    p.trimWhite = trimWhite;
+end
 end
 
 function assembleManuscriptFigure(spec, outPng, exportDpi)
@@ -180,29 +192,176 @@ if ~isempty(missing)
 end
 
 fig = figure('Position', spec.figSize, 'Color', 'w');
-% Tighten vertical spacing for multi-row composites (e.g. Figures 5 and 6)
-if spec.nrow >= 3
-    tileSpacing = 'tight';
+
+if isfield(spec, 'rowHeights') && numel(spec.rowHeights) == spec.nrow
+    layout = manuscriptPanelLayout(spec, spec.figSize);
+    for i = 1:numel(spec.panels)
+        p = spec.panels{i};
+        slot = layout.slots(i);
+        renderManuscriptPanel(fig, p, slot);
+    end
 else
-    tileSpacing = 'compact';
-end
-tl = tiledlayout(spec.nrow, spec.ncol, 'TileSpacing', tileSpacing, 'Padding', 'compact');
+    % Tighten vertical spacing for multi-row composites (e.g. Figure 5)
+    if spec.nrow >= 3
+        tileSpacing = 'tight';
+    else
+        tileSpacing = 'compact';
+    end
+    tl = tiledlayout(spec.nrow, spec.ncol, 'TileSpacing', tileSpacing, 'Padding', 'compact');
 
-for i = 1:numel(spec.panels)
-    p = spec.panels{i};
-    ax = nexttile(tl);
-    img = imread(p.file);
-    image(ax, img);
-    axis(ax, 'image');
-    axis(ax, 'off');
-    set(ax, 'Color', 'w');
-
-    labelStr = sprintf('\\bf{%s} | %s', p.letter, p.title);
-    title(ax, labelStr, 'Interpreter', 'tex', ...
-        'FontSize', 20, 'FontWeight', 'bold', 'HorizontalAlignment', 'center');
+    for i = 1:numel(spec.panels)
+        p = spec.panels{i};
+        ax = nexttile(tl);
+        renderPanelImage(ax, p);
+    end
 end
 
 drawnow;
 exportgraphics(fig, outPng, 'Resolution', exportDpi, 'BackgroundColor', 'white');
 close(fig);
+end
+
+function layout = manuscriptPanelLayout(spec, figSize)
+pad = struct('left', 0.04, 'right', 0.04, 'top', 0.02, 'bottom', 0.02);
+gapX = 0.04;
+gapY = 0.012;
+titleH = 0.035;
+
+usableW = 1 - pad.left - pad.right;
+usableH = 1 - pad.top - pad.bottom;
+colW = (usableW - (spec.ncol - 1) * gapX) / spec.ncol;
+
+titleTotal = spec.nrow * titleH;
+gapTotal = (spec.nrow - 1) * gapY;
+imgAreaH = usableH - titleTotal - gapTotal;
+
+rowWeights = spec.rowHeights(:)';
+autoRows = find(isnan(rowWeights));
+manualRows = find(~isnan(rowWeights));
+
+rowImgH = zeros(1, spec.nrow);
+figAspect = figSize(3) / figSize(4);
+for r = autoRows
+    panelIdx = (r - 1) * spec.ncol + 1;
+    p = spec.panels{panelIdx};
+    img = loadPanelImage(p);
+    aspect = size(img, 2) / size(img, 1);
+    imageScale = 1;
+    if isfield(p, 'imageScale') && ~isempty(p.imageScale)
+        imageScale = p.imageScale;
+    end
+    rowImgH(r) = colW * imageScale * figAspect / aspect;
+end
+
+remainingH = imgAreaH - sum(rowImgH(autoRows));
+manualWeights = rowWeights(manualRows);
+manualWeights = manualWeights / sum(manualWeights);
+rowImgH(manualRows) = manualWeights * remainingH;
+
+rowTops = zeros(1, spec.nrow);
+yCursor = 1 - pad.top;
+for r = 1:spec.nrow
+    rowTops(r) = yCursor - titleH - rowImgH(r);
+    yCursor = rowTops(r) - gapY;
+end
+
+emptySlot = struct('colLeft', 0, 'colW', 0, 'titlePos', zeros(1, 4), 'imgPos', zeros(1, 4));
+layout = struct('slots', repmat(emptySlot, 1, numel(spec.panels)));
+for i = 1:numel(spec.panels)
+    row = ceil(i / spec.ncol);
+    col = mod(i - 1, spec.ncol) + 1;
+
+    layout.slots(i).colLeft = pad.left + (col - 1) * (colW + gapX);
+    layout.slots(i).colW = colW;
+    layout.slots(i).titlePos = [layout.slots(i).colLeft, rowTops(row) + rowImgH(row), colW, titleH];
+    layout.slots(i).imgPos = [layout.slots(i).colLeft, rowTops(row), colW, rowImgH(row)];
+end
+end
+
+function renderManuscriptPanel(fig, p, slot)
+imageScale = 1;
+if isfield(p, 'imageScale') && ~isempty(p.imageScale)
+    imageScale = p.imageScale;
+end
+
+img = loadPanelImage(p);
+imgPos = slot.imgPos;
+
+if imageScale < 1
+    % Row height already matches this content's aspect ratio (set in
+    % manuscriptPanelLayout), so only the width needs horizontal
+    % centering here; no vertical centering/gap is introduced.
+    scaledW = slot.colW * imageScale;
+    imgPos = [ ...
+        slot.colLeft + (slot.colW - scaledW) / 2, ...
+        slot.imgPos(2), ...
+        scaledW, slot.imgPos(4)];
+end
+
+axTitle = axes(fig, 'Position', slot.titlePos, 'Visible', 'off', 'Color', 'w'); %#ok<LAXES>
+labelStr = sprintf('\\bf{%s} | %s', p.letter, p.title);
+title(axTitle, labelStr, 'Interpreter', 'tex', ...
+    'FontSize', 20, 'FontWeight', 'bold', 'HorizontalAlignment', 'center');
+
+ax = axes(fig, 'Position', imgPos, 'Color', 'w'); %#ok<LAXES>
+renderPanelImage(ax, p, false, img);
+end
+
+function renderPanelImage(ax, p, includeTitle, img)
+if nargin < 3
+    includeTitle = true;
+end
+if nargin < 4
+    img = loadPanelImage(p);
+end
+image(ax, img);
+axis(ax, 'image');
+axis(ax, 'off');
+set(ax, 'Color', 'w');
+
+if includeTitle
+    labelStr = sprintf('\\bf{%s} | %s', p.letter, p.title);
+    title(ax, labelStr, 'Interpreter', 'tex', ...
+        'FontSize', 20, 'FontWeight', 'bold', 'HorizontalAlignment', 'center');
+end
+end
+
+function img = loadPanelImage(p)
+img = imread(p.file);
+if isfield(p, 'trimWhite') && p.trimWhite
+    img = trimWhiteBorders(img);
+end
+end
+
+function imgOut = trimWhiteBorders(imgIn)
+imgOut = imgIn;
+if isempty(imgIn)
+    return;
+end
+
+if size(imgIn, 3) == 1
+    gray = imgIn;
+else
+    gray = rgb2gray(imgIn(:, :, 1:3));
+end
+
+% Keep non-background content, then crop with a small safety padding.
+mask = gray < 248;
+if ~any(mask(:))
+    return;
+end
+
+[rows, cols] = find(mask);
+r1 = min(rows);
+r2 = max(rows);
+c1 = min(cols);
+c2 = max(cols);
+
+pad = 6;
+r1 = max(1, r1 - pad);
+r2 = min(size(imgIn, 1), r2 + pad);
+c1 = max(1, c1 - pad);
+c2 = min(size(imgIn, 2), c2 + pad);
+
+imgOut = imgIn(r1:r2, c1:c2, :);
 end

@@ -1,17 +1,6 @@
-%% AOC Assemble Manuscript Results Figures (RR-S2)
+%% AOC Assemble Manuscript Results Figures (AOC RR-S2)
 % Combines exported panel PNGs into publication-ready composite figures
-% matching the Results section of the Stage-2 manuscript (Figures 3 to 8).
-%
-% Prerequisite outputs (run these first if files are missing):
-%   4_stats/AOC_stats_glmms_rainclouds.py
-%   3_visualization/gaze/deviation/AOC_gaze_dev_*.m
-%   3_visualization/gaze/microsaccades/AOC_gaze_microsaccades_*.m
-%   3_visualization/gaze/heatmap/AOC_gaze_heatmap_*_CBPT_outline.m
-%   3_visualization/eeg/ersd/AOC_eeg_ersd_*.m
-%   splits/AOC_split_AlphaAmpRed_GazeDev.m
-%   splits/AOC_split_AlphaAmpRed_MS.m
-%
-% Output: figures/manuscript/X.png
+% matching the Stage-2 manuscript (Figures 1 to 8)
 
 %% Setup
 startup
@@ -23,6 +12,8 @@ if ~isfolder(outDir)
     mkdir(outDir);
 end
 
+paradigmsDir = fullfile(paths.figures, 'paradigms');
+powerDir = fullfile(paths.figures, 'power_analysis');
 rainDir = fullfile(paths.figures, 'stats', 'rainclouds');
 gazeDevDir = fullfile(paths.figures, 'gaze', 'deviation');
 msDir = fullfile(paths.figures, 'gaze', 'microsaccades');
@@ -32,6 +23,37 @@ splitDir = fullfile(paths.figures, 'splits', 'SplitERSERD');
 
 fprintf('Assembling manuscript figures...\n');
 fprintf('Output directory: %s\n', outDir);
+
+%% Figure 1: Task paradigms (2 x 1)
+fig1 = struct();
+fig1.name = 'Figure1';
+fig1.nrow = 2;
+fig1.ncol = 1;
+fig1.figSize = [0 0 1512 982];
+fig1.rowHeights = [1, 1];
+fig1.panels = {
+    panelSpec(fullfile(paradigmsDir, 'AOC_paradigms_nback.png'), ...
+        'A', 'N-back Task Paradigm');
+    panelSpec(fullfile(paradigmsDir, 'AOC_paradigms_sternberg.png'), ...
+        'B', 'Sternberg Task Paradigm');
+    };
+
+%% Figure 2: Power analysis (1 x 3)
+fig2 = struct();
+fig2.name = 'Figure2';
+fig2.nrow = 1;
+fig2.ncol = 3;
+fig2.figSize = [0 0 1512 982];
+fig2GazePanel = panelSpec(fullfile(powerDir, 'AOC_power_analysis_gaze.png'), ...
+    'C', 'Alpha ~ Gaze');
+fig2GazePanel.titleInterpreter = 'none';
+fig2.panels = {
+    panelSpec(fullfile(powerDir, 'AOC_power_analysis_sternberg.png'), ...
+        'A', 'Sternberg Power Analysis');
+    panelSpec(fullfile(powerDir, 'AOC_power_analysis_nback.png'), ...
+        'B', 'N-back Power Analysis');
+    fig2GazePanel;
+    };
 
 %% Figure 3: Behavioral rainclouds (2 x 2)
 fig3 = struct();
@@ -73,6 +95,7 @@ fig5.name = 'Figure5';
 fig5.nrow = 3;
 fig5.ncol = 2;
 fig5.figSize = [0 0 1512 round(982 * 1.5)];
+fig5.rowHeights = [1, 1, NaN];
 fig5.panels = {
     panelSpec(fullfile(gazeDevDir, 'AOC_gaze_dev_timecourse_nback.png'), ...
         'A', 'N-back Gaze Deviation Time Course');
@@ -83,9 +106,9 @@ fig5.panels = {
     panelSpec(fullfile(msDir, 'AOC_gaze_microsaccades_timecourse_sternberg.png'), ...
         'D', 'Sternberg Microsaccades Time Course');
     panelSpec(fullfile(heatmapDir, 'AOC_gaze_heatmap_nback_CBPT_outline_stat_full_d.png'), ...
-        'E', 'N-back Gaze Density Heatmap');
+        'E', 'N-back Gaze Density Heatmap', 0.9);
     panelSpec(fullfile(heatmapDir, 'AOC_gaze_heatmap_sternberg_CBPT_outline_stat_full_d.png'), ...
-        'F', 'Sternberg Gaze Density Heatmap');
+        'F', 'Sternberg Gaze Density Heatmap', 0.9);
     };
 
 %% Figure 6: ERSD time courses, topographies, rainclouds (3 x 2)
@@ -100,6 +123,10 @@ fig6.figSize = [0 0 1512 round(982 * 1.5)];
 % above/below the topoplots without shrinking them, while rows 1 and 3
 % share whatever vertical space remains.
 fig6.rowHeights = [1, NaN, 1];
+% Tighter gap below time courses; extra padding below topo row titles
+fig6.rowGaps = [0.004, 0.012];
+fig6.titleImageGap = [0, 0.012, 0];
+fig6.titleShiftY = [-0.03, 0, 0];
 fig6.panels = {
     panelSpec(fullfile(ersdDir, 'AOC_eeg_ersd_nback_timecourse.png'), ...
         'A', 'N-back ERS/ERD Time Course');
@@ -154,8 +181,8 @@ fig8.panels = {
     };
 
 %% Assemble all figures
-figSpecs = {fig3, fig4, fig5, fig6, fig7, fig8};
-for iFig = 1:numel(figSpecs)
+figSpecs = {fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8};
+for iFig = 1:2%:numel(figSpecs)
     spec = figSpecs{iFig};
     outPng = fullfile(outDir, ['AOC_manuscript_' spec.name '.png']);
     assembleManuscriptFigure(spec, outPng, exportDpi);
@@ -165,7 +192,7 @@ end
 fprintf('\nDone. Manuscript composites saved to:\n  %s\n', outDir);
 
 %% Local functions
-function p = panelSpec(imagePath, letter, titleText, imageScale, trimWhite)
+function p = panelSpec(imagePath, letter, titleText, imageScale, trimWhite, whiteBackground, hideTitle, titleInterpreter)
 p = struct('file', imagePath, 'letter', letter, 'title', titleText);
 if nargin >= 4 && ~isempty(imageScale)
     p.imageScale = imageScale;
@@ -173,13 +200,22 @@ end
 if nargin >= 5 && ~isempty(trimWhite)
     p.trimWhite = trimWhite;
 end
+if nargin >= 6 && ~isempty(whiteBackground)
+    p.whiteBackground = whiteBackground;
+end
+if nargin >= 7 && ~isempty(hideTitle)
+    p.hideTitle = hideTitle;
+end
+if nargin >= 8 && ~isempty(titleInterpreter)
+    p.titleInterpreter = titleInterpreter;
+end
 end
 
 function assembleManuscriptFigure(spec, outPng, exportDpi)
 missing = {};
 for i = 1:numel(spec.panels)
     if ~isfile(spec.panels{i}.file)
-        missing{end + 1} = spec.panels{i}.file; %#ok<AGROW>
+        missing{end + 1} = spec.panels{i}.file;
     end
 end
 if ~isempty(missing)
@@ -231,9 +267,35 @@ usableW = 1 - pad.left - pad.right;
 usableH = 1 - pad.top - pad.bottom;
 colW = (usableW - (spec.ncol - 1) * gapX) / spec.ncol;
 
+if isfield(spec, 'rowGaps') && numel(spec.rowGaps) == spec.nrow - 1
+    rowGaps = spec.rowGaps(:)';
+else
+    rowGaps = repmat(gapY, 1, spec.nrow - 1);
+end
+
+if isfield(spec, 'titleImageGap') && numel(spec.titleImageGap) == spec.nrow
+    titleImageGap = spec.titleImageGap(:)';
+else
+    titleImageGap = zeros(1, spec.nrow);
+end
+
+if isfield(spec, 'titlePadTop') && numel(spec.titlePadTop) == spec.nrow
+    titlePadTop = spec.titlePadTop(:)';
+else
+    titlePadTop = zeros(1, spec.nrow);
+end
+
+if isfield(spec, 'titleShiftY') && numel(spec.titleShiftY) == spec.nrow
+    titleShiftY = spec.titleShiftY(:)';
+else
+    titleShiftY = zeros(1, spec.nrow);
+end
+
 titleTotal = spec.nrow * titleH;
-gapTotal = (spec.nrow - 1) * gapY;
-imgAreaH = usableH - titleTotal - gapTotal;
+gapTotal = sum(rowGaps);
+titleImageGapTotal = sum(titleImageGap);
+titlePadTopTotal = sum(titlePadTop);
+imgAreaH = usableH - titleTotal - gapTotal - titleImageGapTotal - titlePadTopTotal;
 
 rowWeights = spec.rowHeights(:)';
 autoRows = find(isnan(rowWeights));
@@ -261,8 +323,10 @@ rowImgH(manualRows) = manualWeights * remainingH;
 rowTops = zeros(1, spec.nrow);
 yCursor = 1 - pad.top;
 for r = 1:spec.nrow
-    rowTops(r) = yCursor - titleH - rowImgH(r);
-    yCursor = rowTops(r) - gapY;
+    rowTops(r) = yCursor - titlePadTop(r) - titleH - titleImageGap(r) - rowImgH(r);
+    if r < spec.nrow
+        yCursor = rowTops(r) - rowGaps(r);
+    end
 end
 
 emptySlot = struct('colLeft', 0, 'colW', 0, 'titlePos', zeros(1, 4), 'imgPos', zeros(1, 4));
@@ -273,8 +337,13 @@ for i = 1:numel(spec.panels)
 
     layout.slots(i).colLeft = pad.left + (col - 1) * (colW + gapX);
     layout.slots(i).colW = colW;
-    layout.slots(i).titlePos = [layout.slots(i).colLeft, rowTops(row) + rowImgH(row), colW, titleH];
+    layout.slots(i).titlePos = [layout.slots(i).colLeft, ...
+        rowTops(row) + rowImgH(row) + titleImageGap(row), colW, titleH];
+    layout.slots(i).titleShiftY = titleShiftY(row);
     layout.slots(i).imgPos = [layout.slots(i).colLeft, rowTops(row), colW, rowImgH(row)];
+    p = spec.panels{i};
+    hasScale = isfield(p, 'imageScale') && ~isempty(p.imageScale) && p.imageScale ~= 1;
+    layout.slots(i).layoutIncludesScale = ismember(row, autoRows) && hasScale;
 end
 end
 
@@ -287,23 +356,41 @@ end
 img = loadPanelImage(p);
 imgPos = slot.imgPos;
 
-if imageScale < 1
-    % Row height already matches this content's aspect ratio (set in
-    % manuscriptPanelLayout), so only the width needs horizontal
-    % centering here; no vertical centering/gap is introduced.
+if isfield(slot, 'layoutIncludesScale') && slot.layoutIncludesScale
     scaledW = slot.colW * imageScale;
     imgPos = [ ...
         slot.colLeft + (slot.colW - scaledW) / 2, ...
         slot.imgPos(2), ...
         scaledW, slot.imgPos(4)];
+elseif imageScale ~= 1
+    scaledW = slot.colW * imageScale;
+    scaledH = slot.imgPos(4) * imageScale;
+    imgPos = [ ...
+        slot.colLeft + (slot.colW - scaledW) / 2, ...
+        slot.imgPos(2) + (slot.imgPos(4) - scaledH) / 2, ...
+        scaledW, scaledH];
 end
 
-axTitle = axes(fig, 'Position', slot.titlePos, 'Visible', 'off', 'Color', 'w'); %#ok<LAXES>
-labelStr = sprintf('\\bf{%s} | %s', p.letter, p.title);
-title(axTitle, labelStr, 'Interpreter', 'tex', ...
-    'FontSize', 20, 'FontWeight', 'bold', 'HorizontalAlignment', 'center');
+labelStr = panelLabelStr(p);
+titleInterpreter = panelTitleInterpreter(p);
+titlePos = slot.titlePos;
+if isfield(slot, 'titleShiftY') && ~isempty(slot.titleShiftY)
+    titlePos(2) = titlePos(2) + slot.titleShiftY;
+end
+if ~(isfield(p, 'hideTitle') && p.hideTitle)
+    annotation(fig, 'textbox', titlePos, ...
+        'String', labelStr, ...
+        'Interpreter', titleInterpreter, ...
+        'FontSize', 20, ...
+        'FontWeight', 'bold', ...
+        'HorizontalAlignment', 'center', ...
+        'VerticalAlignment', 'middle', ...
+        'EdgeColor', 'none', ...
+        'FitBoxToText', 'off', ...
+        'Margin', 0);
+end
 
-ax = axes(fig, 'Position', imgPos, 'Color', 'w'); %#ok<LAXES>
+ax = axes(fig, 'Position', imgPos, 'Color', 'w');
 renderPanelImage(ax, p, false, img);
 end
 
@@ -319,10 +406,26 @@ axis(ax, 'image');
 axis(ax, 'off');
 set(ax, 'Color', 'w');
 
-if includeTitle
-    labelStr = sprintf('\\bf{%s} | %s', p.letter, p.title);
-    title(ax, labelStr, 'Interpreter', 'tex', ...
+if includeTitle && ~(isfield(p, 'hideTitle') && p.hideTitle)
+    labelStr = panelLabelStr(p);
+    title(ax, labelStr, 'Interpreter', panelTitleInterpreter(p), ...
         'FontSize', 20, 'FontWeight', 'bold', 'HorizontalAlignment', 'center');
+end
+end
+
+function labelStr = panelLabelStr(p)
+if isfield(p, 'titleInterpreter') && strcmpi(p.titleInterpreter, 'none')
+    labelStr = sprintf('%s | %s', p.letter, p.title);
+else
+    labelStr = sprintf('\\bf{%s} | %s', p.letter, p.title);
+end
+end
+
+function interpreter = panelTitleInterpreter(p)
+if isfield(p, 'titleInterpreter') && ~isempty(p.titleInterpreter)
+    interpreter = p.titleInterpreter;
+else
+    interpreter = 'tex';
 end
 end
 

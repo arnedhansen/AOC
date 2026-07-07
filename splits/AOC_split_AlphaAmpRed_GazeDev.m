@@ -72,7 +72,7 @@ tasks(2).fig_subdir = 'NbackGazeDev';
 tasks(2).group_lbl_low = 'More ERD';
 tasks(2).group_lbl_high = 'Less ERD';
 
-fontSize = 30;
+fontSize = 40;
 tfr_winsor_cfg = struct();
 tfr_winsor_cfg.enable = true;
 tfr_winsor_cfg.prctile = [2 98]; % subject-level clipping per TF bin
@@ -440,14 +440,14 @@ dev_bl_3d(dev_bl_3d <= 0 | ~isfinite(dev_bl_3d)) = NaN;
 % Percent baseline: (value/baseline - 1) * 100.
 gaze_tc = (dev_tc ./ dev_bl_3d - 1) * 100;
 gaze_tc(~isfinite(gaze_tc)) = NaN;
-gaze_ylabel = 'Gaze Deviation Change [%]';
+gaze_ylabel = sprintf('Gaze Deviation\nChange [%%]');
 gaze_tag_base = 'GazeDev_pct';
 gaze_csv_varname = 'GazeDev_pct_0_2s';
 fprintf('Using baselined gaze measures (percent change) for task %s.\n', task_tag);
 
 % Plot time courses (always save both: gaze-only and combined EEG+gaze)
 close all
-fontSizeTC = 30;
+fontSizeTC = 40;
 rng(123)
 ds_factor = 10; % downsampling to ds_factor*2ms windows
 tc_viz_smooth_sec = 0.05; % slight display-only smoothing for time-course plots

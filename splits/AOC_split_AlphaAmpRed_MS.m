@@ -57,7 +57,7 @@ tasks(2).fig_subdir = 'NbackMS';
 tasks(2).group_lbl_low = 'More ERD';
 tasks(2).group_lbl_high = 'Less ERD';
 
-fontSize = 30;
+fontSize = 40;
 
 for ti = 1:numel(tasks)
 tk = tasks(ti);
@@ -265,12 +265,12 @@ for c = 1:3
     keep_tc = keep_tc & keep_c;
 end
 
-ms_ylabel = 'Microsaccade Rate Change [%]';
+ms_ylabel = sprintf('Microsaccade\nRate Change [%%]');
 ms_tag_base = 'MS_pct';
 ms_csv_varname = 'MS_pct_0_2s';
 
 close all
-fontSizeTC = 30;
+fontSizeTC = 40;
 rng(123)
 fs_ms = ms_cfg.fsample;
 ds_factor = 10; % downsampling to 20 ms bins (500 Hz / 10)

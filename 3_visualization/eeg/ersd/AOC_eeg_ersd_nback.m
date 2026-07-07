@@ -124,7 +124,7 @@ ylim([-3 0.5]);
 leg_p1 = patch(NaN, NaN, colors(1, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(1, :), 'LineWidth', 1.5);
 leg_p2 = patch(NaN, NaN, colors(2, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(2, :), 'LineWidth', 1.5);
 leg_p3 = patch(NaN, NaN, colors(3, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(3, :), 'LineWidth', 1.5);
-legend([leg_p1, leg_p2, leg_p3], {'1-back', '2-back', '3-back'}, ...
+legend([leg_p1, leg_p2, leg_p3], {' 1-back', ' 2-back', ' 3-back'}, ...
     'Location', 'southeast', 'FontSize', legendFontSize, 'Box', 'off');
 drawnow; pause(0.05);
 saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_nback_timecourse.png'));

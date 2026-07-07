@@ -65,7 +65,7 @@ yLabel = 'Power [\muV^2/Hz]';
 % Create figure
 close all
 figure('Position', [0 0 1512*0.4 982], 'Color', 'w');
-conditions = {'1-back', '2-back', '3-back'};
+conditions = {' 1-back', ' 2-back', ' 3-back'};
 
 % Plot
 cfg = [];

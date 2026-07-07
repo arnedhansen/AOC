@@ -45,7 +45,7 @@ for i = 1:numel(ref.label)
     end
 end
 
-%% Grand average (keep individual subjects) and select alpha band
+%% Grand average and select alpha band
 cfg = [];
 cfg.keepindividual = 'yes';
 ga_sb_2 = ft_freqgrandaverage(cfg, tfr2_all{:});
@@ -124,7 +124,7 @@ ylim([-3 0.5]);
 leg_p2 = patch(NaN, NaN, colors(1, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(1, :), 'LineWidth', 1.5);
 leg_p4 = patch(NaN, NaN, colors(2, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(2, :), 'LineWidth', 1.5);
 leg_p6 = patch(NaN, NaN, colors(3, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(3, :), 'LineWidth', 1.5);
-legend([leg_p2, leg_p4, leg_p6], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
+legend([leg_p2, leg_p4, leg_p6], {' WM load 2', ' WM load 4', ' WM load 6'}, ...
     'Location', 'southeast', 'FontSize', legendFontSize, 'Box', 'off');
 drawnow; pause(0.05);
 saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_sternberg_timecourse.png'));

@@ -354,7 +354,7 @@ xlim([-0.5 3]);
 set(gca, 'FontSize', fsz-4);
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
 leg_p2 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
-legend([leg_p1 leg_p2], {'Decrease', 'Increase'}, 'Location', 'northeast', 'FontSize', fsz-2, 'Box', 'off');
+legend([leg_p1 leg_p2], {' Decrease', ' Increase'}, 'Location', 'northeast', 'FontSize', fsz-2, 'Box', 'off');
 box on
 
 nexttile; hold on

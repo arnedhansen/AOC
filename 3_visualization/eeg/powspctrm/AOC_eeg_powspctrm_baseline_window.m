@@ -113,7 +113,7 @@ ylabel('Power [\muV^2/Hz]');
 leg_p2 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
 leg_p4 = patch(NaN, NaN, colors(2,:), 'EdgeColor', 'none');
 leg_p6 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
-legend([leg_p2, leg_p4, leg_p6], {'WM load 2', 'WM load 4', 'WM load 6'}, ...
+legend([leg_p2, leg_p4, leg_p6], {' WM load 2', ' WM load 4', ' WM load 6'}, ...
     'FontName', 'Arial', 'FontSize', 20, 'Box', 'off');
 title('');
 
@@ -203,7 +203,7 @@ ylabel('Power [\muV^2/Hz]');
 leg_p1 = patch(NaN, NaN, colors(1,:), 'EdgeColor', 'none');
 leg_p2 = patch(NaN, NaN, colors(2,:), 'EdgeColor', 'none');
 leg_p3 = patch(NaN, NaN, colors(3,:), 'EdgeColor', 'none');
-legend([leg_p1, leg_p2, leg_p3], {'1-back', '2-back', '3-back'}, ...
+legend([leg_p1, leg_p2, leg_p3], {' 1-back', ' 2-back', ' 3-back'}, ...
     'FontName', 'Arial', 'FontSize', 20, 'Box', 'off');
 title('');
 

@@ -19,6 +19,7 @@ Tf = numel(t_plot);
 smooth_sec = 0.05;
 cond_codes = [22 24 26];
 cond_labels = {'WM load 2', 'WM load 4', 'WM load 6'};
+cond_labels_legend = strcat(' ', cond_labels);
 et_fname = 'dataET_sternberg.mat';
 blink_win = 50; % 100 ms at 500 Hz
 min_trial_coverage = 0.8;
@@ -169,7 +170,7 @@ legend_handles = gobjects(1, 3);
 for c = 1:3
     legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
 end
-legend(legend_handles, cond_labels, 'Location', 'northeast', 'FontSize', fontSize*0.666, 'Box', 'off');
+legend(legend_handles, cond_labels_legend, 'Location', 'northeast', 'FontSize', fontSize*0.666, 'Box', 'off');
 
 saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_sternberg.png'));
 
@@ -218,7 +219,7 @@ legend_handles = gobjects(1, 3);
 for c = 1:3
     legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
 end
-legend(legend_handles, cond_labels, 'Location', 'northeast', 'FontSize', fontSize*0.666, 'Box', 'off');
+legend(legend_handles, cond_labels_legend, 'Location', 'northeast', 'FontSize', fontSize*0.666, 'Box', 'off');
 
 saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_sternberg_raw.png'));
 

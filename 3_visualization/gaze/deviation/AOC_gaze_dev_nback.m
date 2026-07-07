@@ -19,6 +19,7 @@ smooth_sec = 0.05;
 
 cond_codes = [21 22 23];
 cond_labels = {'1-back', '2-back', '3-back'};
+cond_labels_legend = strcat(' ', cond_labels);
 et_fname = 'dataET_nback.mat';
 blink_win = 50; % 100 ms at 500 Hz
 min_trial_coverage = 0;
@@ -169,7 +170,7 @@ legend_handles = gobjects(1, 3);
 for c = 1:3
     legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
 end
-legend(legend_handles, cond_labels, 'Location', 'northeast', 'FontSize', fontSize*0.666, 'Box', 'off');
+legend(legend_handles, cond_labels_legend, 'Location', 'northeast', 'FontSize', fontSize*0.666, 'Box', 'off');
 saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_nback.png'));
 
 %% Plot raw gaze deviation time courses
@@ -218,7 +219,7 @@ legend_handles = gobjects(1, 3);
 for c = 1:3
     legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
 end
-legend(legend_handles, cond_labels, 'Location', 'northeast', 'FontSize', fontSize*0.666, 'Box', 'off');
+legend(legend_handles, cond_labels_legend, 'Location', 'northeast', 'FontSize', fontSize*0.666, 'Box', 'off');
 saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_nback_raw.png'));
 
 %%

@@ -386,7 +386,7 @@ pairwise_task_rows <- function(pair_df, eff_df, task_name, dv_name, comparisons)
         padj = as.numeric(row[[p_col]][1]),
         ci_low = -as.numeric(row[[ci_high_col]][1]),
         ci_high = -as.numeric(row[[ci_low_col]][1]),
-        cohens_d = if (is.finite(dz)) -dz else NA_real_
+        cohens_d = if (is.finite(dz)) dz else NA_real_
       )
     }
   }

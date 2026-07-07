@@ -36,6 +36,7 @@ tName   = 'nback';
 tFile   = 'dataET_nback';
 cCodes  = [1 2 3];
 cLabels = {'1-back', '2-back', '3-back'};
+cLabels_legend = strcat(' ', cLabels);
 nConds  = length(cCodes);
 
 %% Parameters
@@ -224,7 +225,7 @@ legend_handles = gobjects(1, nConds);
 for c = 1:nConds
     legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
 end
-legend(legend_handles, cLabels, 'Location', 'northeast', 'FontSize', fontSize * 0.666, 'Box', 'off');
+legend(legend_handles, cLabels_legend, 'Location', 'northeast', 'FontSize', fontSize * 0.666, 'Box', 'off');
 saveas(gcf, fullfile(figpath, 'AOC_gaze_microsaccades_timecourse_nback.png'));
 
 %% Plot raw microsaccade rate
@@ -253,7 +254,7 @@ legend_handles = gobjects(1, nConds);
 for c = 1:nConds
     legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
 end
-legend(legend_handles, cLabels, 'Location', 'northeast', 'FontSize', fontSize * 0.666, 'Box', 'off');
+legend(legend_handles, cLabels_legend, 'Location', 'northeast', 'FontSize', fontSize * 0.666, 'Box', 'off');
 saveas(gcf, fullfile(figpath, 'AOC_gaze_microsaccades_timecourse_nback_raw.png'));
 
 %% Raster plots per condition
@@ -326,7 +327,7 @@ legend_handles = gobjects(1, nConds);
 for c = 1:nConds
     legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
 end
-legend(legend_handles, cLabels, 'Location', 'northeast', 'FontSize', fontSize * 0.666, 'Box', 'off');
+legend(legend_handles, cLabels_legend, 'Location', 'northeast', 'FontSize', fontSize * 0.666, 'Box', 'off');
 set(gca, 'FontSize', fontSize - 4, 'XTickLabel', []);
 box off
 hold off

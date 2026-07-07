@@ -32,9 +32,9 @@ paths.raw = fullfile(paths.data, 'raw');
 paths.raw_occ = fullfile(paths.raw, 'occ');
 paths.features = fullfile(paths.data, 'features');
 paths.figures = fullfile(paths.data, 'figures');
-paths.stats = fullfile(rootDir, 'stats');
-paths.vp_table = fullfile(paths.raw_occ, 'AOC_VP_List.xlsx');
-paths.seb_path = '';
+paths.stats = fullfile(rootDir, '4_stats');
+paths.vp_table = fullfile(rootDir, '2_feature_extraction', 'behavioral', 'AOC_VP_List_anonymized.csv');
+paths.seb_path = paths.toolboxes;
 paths.headmodel_path = fullfile(paths.toolboxes, 'fieldtrip', 'template', 'headmodel', 'standard_bem.mat');
 
 if isfolder(paths.features)

@@ -49,15 +49,14 @@ Not included:
 
 ## Execution Order
 
-Primary execution order is defined by:
-
-`AOC_Master_RUN_ALL.m`
+Primary execution order follows stagewise scripts in `1_preprocessing`, `2_feature_extraction`, and `3_visualization`.
 
 Recommended workflow:
-1. Run preprocessing outputs and feature extraction in MATLAB.
-2. Build final analysis matrices.
-3. Generate manuscript figures.
-4. Run confirmatory statistical models from `4_stats`.
+1. Run preprocessing scripts in order: `1_cut`, `2_automagic`, `3_merge`, then `4_preprocessing`.
+2. Run feature extraction scripts in `2_feature_extraction`.
+3. Build final analysis matrices.
+4. Generate manuscript figures.
+5. Run confirmatory statistical models from `4_stats`.
 
 ## Statistical Models
 
@@ -94,24 +93,26 @@ Required setup actions:
 1. Put processed inputs under:
    1. `data/raw`
    2. `data/features`
-2. Ensure required merged CSV files are available in `data/features` for stats scripts.
+2. Participant metadata are read from `2_feature_extraction/behavioral/AOC_VP_List_anonymized.csv`, generated from the full source workbook after exclusion filtering.
+3. Exclusion lists are provided in `2_feature_extraction/AOC_exclusion_participants.rtf` and `2_feature_extraction/AOC_exclusion_participants_info.rtf`.
+4. Ensure required merged CSV files are available in `data/features` for stats scripts.
 
 ### 3) MATLAB Pipeline
-1. Run `AOC_Master_RUN_ALL.m` to execute preprocessing through visualization and split analyses in sequence.
+1. Run scripts stagewise: preprocessing folders first, then `2_feature_extraction`, then `3_visualization`, then `splits`.
 
 ### 4) Confirmatory Statistics
 1. Edit the CSV placeholders in:
-   1. `4_stats/AOC_stats_confirmatory_models_nback_minimal.R`
-   2. `4_stats/AOC_stats_confirmatory_models_sternberg_minimal.R`
+   1. `4_stats/AOC_stats_confirmatory_models_nback.R`
+   2. `4_stats/AOC_stats_confirmatory_models_sternberg.R`
 2. Run each script with `Rscript`.
 
 ### 5) Raincloud Figure Stage
-1. Run `python 4_stats/AOC_stats_glmms_rainclouds.py`.
+1. Run `python 4_stats/AOC_stats_rainclouds.py`.
 2. Output figures are written to `data/figures/stats/rainclouds`.
 
 ### 6) Notes
 1. Scripts rely on vendored helpers from `functions`.
-2. External packages not redistributed must be installed separately as listed in `DEPENDENCY_MANIFEST.md`.
+2. External packages not redistributed must be installed separately as documented in this README.
 
 ## Software Requirements
 
@@ -121,7 +122,49 @@ Required setup actions:
 4. Python environment for selected analysis and figure scripts, where applicable.
 5. R environment for confirmatory model scripts.
 
-Exact versions should be documented in the repository level dependency manifest in this OSF package.
+Dependency requirements are listed below in this README.
+
+
+## Dependency Requirements
+
+### MATLAB Runtime Dependencies
+1. MATLAB release with support for table I O, mixed modeling, and plotting used by the scripts.
+2. Statistics and Machine Learning Toolbox.
+3. Signal Processing Toolbox.
+4. FieldTrip toolbox. Redistribution is not included in this package.
+5. EEGLAB toolbox for preprocessing conversion steps. Redistribution is not included in this package.
+
+### Bundled MATLAB Helpers
+1. Project helpers are vendored in `functions`.
+2. Third party plotting helpers are bundled in `toolboxes`:
+   1. `shadedErrorBar.m`
+   2. `cbrewer.m`
+   3. `layANThead.mat`
+
+### Python Dependencies
+1. Python 3.10 or newer recommended.
+2. Required packages:
+   1. `numpy`
+   2. `pandas`
+   3. `matplotlib`
+   4. `seaborn`
+   5. `scipy`
+   6. `statsmodels`
+3. Vendored Python helpers in `functions`:
+   1. `stats_helpers.py`
+   2. `rainclouds_plotting_helpers.py`
+
+### R Dependencies
+1. R 4.2 or newer recommended.
+2. Required packages:
+   1. `lme4`
+   2. `lmerTest`
+   3. `car`
+
+### External Installation Notes
+1. Install FieldTrip from [https://www.fieldtriptoolbox.org/download/](https://www.fieldtriptoolbox.org/download/).
+2. Install EEGLAB from [https://sccn.ucsd.edu/eeglab/download.php](https://sccn.ucsd.edu/eeglab/download.php).
+3. Place external toolboxes under `toolboxes` or add them to the MATLAB path before running.
 
 ## Reproducibility Notes
 

@@ -28,7 +28,7 @@ end
 if ~isfolder(stats_dir)
     mkdir(stats_dir);
 end
-fprintf('\n=== AOC Split ERS/ERD — Gaze Deviation (Sternberg + N-back) ===\n');
+fprintf('\n[SPLIT ERS ERD GAZEDEV] Gaze deviation Sternberg and N back\n');
 fprintf('Main figure directory: %s\n', fig_dir_root);
 
 % Keep canonical figure size requested.
@@ -91,10 +91,10 @@ if ~isfolder(fig_dir_task)
 end
 fprintf('Supplementary figure directory: %s\n', fig_dir_task);
 
-fprintf('\n\n========== TASK: %s ==========\n', upper(task_tag));
+fprintf('\n\n[SPLIT ERS ERD GAZEDEV] Task: %s\n', upper(task_tag));
 
 %% Load subject-level merged data and define ERSD split
-fprintf('\n=== Loading merged data (%s) ===\n', task_tag);
+fprintf('\n[SPLIT ERS ERD GAZEDEV] Loading merged data (%s)\n', task_tag);
 merged_file = fullfile(feat_dir, tk.merged_file);
 if ~isfile(merged_file)
     warning('Skipping task %s: missing file %s', task_tag, merged_file);
@@ -158,7 +158,7 @@ erd_ids = uIDs(split_valid & (ersd_mean < ersd_split_threshold));
 ers_ids = uIDs(split_valid & (ersd_mean >= ersd_split_threshold));
 invalid_ids = uIDs(~split_valid);
 
-fprintf('\n=== Split Summary [%s | %s] (%s) ===\n', task_tag, split_label, split_summary_suffix);
+fprintf('\n[SPLIT ERS ERD GAZEDEV] Split summary [%s | %s] (%s)\n', task_tag, split_label, split_summary_suffix);
 fprintf('Subjects total: %d\n', nSubj);
 fprintf('%s\n', split_info_str);
 if strcmpi(task_tag, 'sternberg')
@@ -179,7 +179,7 @@ if numel(erd_ids) < 2 || numel(ers_ids) < 2
 end
 
 %% ERSD split inclusion figure
-fprintf('\n=== Plotting ERSD split inclusion figure ===\n');
+fprintf('\n[SPLIT ERS ERD GAZEDEV] Plotting ERSD split inclusion figure\n');
 figure('Position', fig_pos, 'Color', 'w');
 hold on
 yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 2);
@@ -242,7 +242,7 @@ missing_tfr = {};
 missing_gaze = {};
 
 %% Aggregate per-subject data
-fprintf('\n=== Aggregating per-subject data (%d subjects) ===\n', nSubj);
+fprintf('\n[SPLIT ERS ERD GAZEDEV] Aggregating per subject data (%d subjects)\n', nSubj);
 for s = 1:nSubj
     clc; fprintf('[SPLIT ERS/ERD GAZEDEV - %s] Aggregating data for Subject %d / %d \n', upper(task_tag), s, nSubj);
     sid = uIDs(s);
@@ -262,7 +262,7 @@ for s = 1:nSubj
         end
     end
 
-    % EEG TFR sources (baselined; no FOOOF)
+    % EEG TFR sources (baselined; no specParam)
     eeg_dir = fullfile(pathAOC, subj_folder, 'eeg');
     tfr_file = fullfile(eeg_dir, tk.tfr_fname);
     if ~isfile(tfr_file) && isfield(tk, 'tfr_fname_alt') && ~isempty(tk.tfr_fname_alt)
@@ -401,36 +401,36 @@ if isempty(channels)
 end
 
 %% TFRs per condition (both groups, 3x2)
-fprintf('\n=== Plotting TFRs ===\n');
+fprintf('\n[SPLIT ERS ERD GAZEDEV] Plotting TFRs\n');
 color_map_tfr = customcolormap_preset('red-white-blue');
 plot_group_tfrs_all(tfr_red, tfr_amp, channels, cond_labels, cond_vals, headmodel, ...
     color_map_tfr, fig_dir_task, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg, tk.group_lbl_low, tk.group_lbl_high);
 
 %% TFRs collapsed over conditions (both groups)
-fprintf('\n=== Plotting collapsed TFRs (across conditions) ===\n');
+fprintf('\n[SPLIT ERS ERD GAZEDEV] Plotting collapsed TFRs across conditions\n');
 plot_group_tfrs_collapsed(tfr_red, tfr_amp, channels, headmodel, color_map_tfr, ...
     fig_dir_task, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg, tk.group_lbl_low, tk.group_lbl_high);
 
 %% Topoplots per condition (both groups; ERSD window on baselined TFR)
-fprintf('\n=== Plotting topoplots ===\n');
+fprintf('\n[SPLIT ERS ERD GAZEDEV] Plotting topoplots\n');
 plot_group_topos_ersd(tfr_red, tfr_amp, channels, headmodel, cond_labels, tk.topo_latency, fig_dir_task, fig_prefix, fig_pos, fontSize, tk.group_lbl_low, tk.group_lbl_high);
 
 %% Topoplots collapsed over conditions (both groups)
-fprintf('\n=== Plotting collapsed topoplots (across conditions) ===\n');
+fprintf('\n[SPLIT ERS ERD GAZEDEV] Plotting collapsed topoplots across conditions\n');
 plot_group_topos_ersd_collapsed(tfr_red, tfr_amp, channels, headmodel, tk.topo_latency, fig_dir_task, fig_prefix, fig_pos, fontSize, tk.group_lbl_low, tk.group_lbl_high);
 
 %% Rainclouds
-fprintf('\n=== Plotting rainclouds ===\n');
+fprintf('\n[SPLIT ERS ERD GAZEDEV] Plotting rainclouds\n');
 plot_metric_rainclouds(metrics, is_red, is_amp, cond_labels, colors, fig_dir_task, fig_prefix, fig_pos, fontSize, tk.group_lbl_low, tk.group_lbl_high);
 
 %% EEG and Gaze time courses with effect-size
 close all
 Tf = size(dev_tc, 3);
-fprintf('\n=== Preparing ERSD time courses ===\n');
+fprintf('\n[SPLIT ERS ERD GAZEDEV] Preparing ERSD time courses\n');
 eeg_tc = ersd_tc;
 
 % Gaze time-course representation for analysis/plotting.
-fprintf('\n=== Preparing gaze time courses ===\n');
+fprintf('\n[SPLIT ERS ERD GAZEDEV] Preparing gaze time courses\n');
 t_vec = linspace(-0.5, 2, Tf);
 bl_idx = (t_vec >= -1.5) & (t_vec <= -0.5);
 
@@ -509,7 +509,7 @@ for c = 1:numel(cond_vals)
 end
 
 %% Sanity checks
-fprintf('\n=== Data Diagnostics [%s] ===\n', task_tag);
+fprintf('\n[SPLIT ERS ERD GAZEDEV] Data diagnostics [%s]\n', task_tag);
 fprintf('Missing ERSD timecourse (%s): %d\n', tk.ersd_tc_fname, numel(unique(missing_ersd)));
 fprintf('Missing TFR files: %d\n', numel(unique(missing_tfr)));
 fprintf('Missing gaze files/fields: %d\n', numel(unique(missing_gaze)));
@@ -517,7 +517,7 @@ fprintf('Main figures saved to: %s\n', fig_dir_root);
 fprintf('Supplementary figures saved to: %s\n', fig_dir_task);
 
 %% Export CSV for Python statistics script
-fprintf('\n=== Exporting CSV for Python stats ===\n');
+fprintf('\n[SPLIT ERS ERD GAZEDEV] Exporting CSV for Python stats\n');
 t_win_lo = 0;
 t_win_hi = 2;
 task_idx_gaze = (t_vec >= t_win_lo) & (t_vec <= t_win_hi);
@@ -571,7 +571,7 @@ fprintf('CBPT report saved to: %s\n', cbpt_report_file);
 
 end % task loop
 
-%% ========================= Local Functions =========================
+%% Local functions
 function conds = parse_trialinfo_conds(trialinfo)
 conds = [];
 if isempty(trialinfo)
@@ -642,7 +642,7 @@ end
 elecs = ismember(ga_red{1}.label, channels);
 freqs = ga_red{1}.freq;
 
-% Compute spectra and determine shared ylim (FOOOFed data in dB)
+% Compute spectra and determine shared ylim (specParamed data in dB)
 % Restrict to 5-30 Hz for ylim (matches xlim)
 freq_idx_plot = freqs >= 5 & freqs <= 30;
 all_m = [];
@@ -1869,7 +1869,7 @@ if isfile(report_path)
     delete(report_path);
 end
 lines = {};
-lines{end+1} = '=== AOC Split ERS/ERD CBPT Report ===';
+lines{end+1} = '[SPLIT ERS ERD GAZEDEV] CBPT report';
 lines{end+1} = sprintf('Script: %s', meta.script);
 lines{end+1} = sprintf('Generated: %s', datestr(now, 'yyyy-mm-dd HH:MM:SS'));
 lines{end+1} = sprintf('Task: %s | Split: %s', meta.task_tag, meta.split_label);

@@ -82,7 +82,7 @@ winsor_pct = 10;
 win_sm = max(1, round(smooth_sec * fsample));
 
 %% Process N-back
-fprintf('\n=== Processing %s ===\n', tName);
+fprintf('\n[GAZE MS NBACK] Processing %s\n', tName);
 
 % Preallocate: subjects x timepoints x conditions
 subjRates = nan(nSubj, n_samp, nConds);
@@ -372,7 +372,7 @@ linkaxes([ax1, ax2], 'x');
 
 saveas(gcf, fullfile(figpath, 'AOC_gaze_microsaccades_combined_nback.png'));
 
-fprintf('\n=== Figures saved to %s ===\n', figpath);
+fprintf('\n[GAZE MS NBACK] Figures saved to %s\n', figpath);
 
 %%
 function [m, se] = summarize_subject_tc(X, idx_viable, outlier_k_iqr, ...

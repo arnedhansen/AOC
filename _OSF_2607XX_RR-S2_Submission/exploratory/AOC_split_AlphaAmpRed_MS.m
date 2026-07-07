@@ -23,7 +23,7 @@ end
 if ~isfolder(stats_dir)
     mkdir(stats_dir);
 end
-fprintf('\n=== AOC Split ERS/ERD — Microsaccades (Sternberg + N-back) ===\n');
+fprintf('\n[SPLIT ERS ERD MS] Microsaccades Sternberg and N back\n');
 fprintf('Main figure directory: %s\n', fig_dir_root);
 
 % Keep canonical figure size requested.
@@ -73,10 +73,10 @@ if ~isfolder(fig_dir_task)
 end
 fprintf('Supplementary figure directory: %s\n', fig_dir_task);
 
-fprintf('\n\n========== TASK: %s ==========\n', upper(task_tag));
+fprintf('\n\n[SPLIT ERS ERD MS] Task: %s\n', upper(task_tag));
 
 %% Load subject-level merged data and define ERSD split
-fprintf('\n=== Loading merged data (%s) ===\n', task_tag);
+fprintf('\n[SPLIT ERS ERD MS] Loading merged data (%s)\n', task_tag);
 merged_file = fullfile(feat_dir, tk.merged_file);
 if ~isfile(merged_file)
     warning('Skipping task %s: missing file %s', task_tag, merged_file);
@@ -140,7 +140,7 @@ erd_ids = uIDs(split_valid & (ersd_mean < ersd_split_threshold));
 ers_ids = uIDs(split_valid & (ersd_mean >= ersd_split_threshold));
 invalid_ids = uIDs(~split_valid);
 
-fprintf('\n=== Split Summary [%s | %s] (%s) ===\n', task_tag, split_label, split_summary_suffix);
+fprintf('\n[SPLIT ERS ERD MS] Split summary [%s | %s] (%s)\n', task_tag, split_label, split_summary_suffix);
 fprintf('Subjects total: %d\n', nSubj);
 fprintf('%s\n', split_info_str);
 if strcmpi(task_tag, 'sternberg')
@@ -161,7 +161,7 @@ if numel(erd_ids) < 2 || numel(ers_ids) < 2
 end
 
 %% ERSD split inclusion figure
-fprintf('\n=== Plotting ERSD split inclusion figure ===\n');
+fprintf('\n[SPLIT ERS ERD MS] Plotting ERSD split inclusion figure\n');
 figure('Position', fig_pos, 'Color', 'w');
 hold on
 yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 2);
@@ -207,7 +207,7 @@ ms_tc_pct = nan(nSubj, 3, ms_cfg.n_samp);
 missing_et = {};
 
 %% Aggregate per-subject data
-fprintf('\n=== Aggregating per-subject data (%d subjects) ===\n', nSubj);
+fprintf('\n[SPLIT ERS ERD MS] Aggregating per subject data (%d subjects)\n', nSubj);
 for s = 1:nSubj
     clc; fprintf('[SPLIT ERS/ERD MS - %s] Aggregating data for Subject %d / %d \n', upper(task_tag), s, nSubj);
     sid = uIDs(s);
@@ -247,12 +247,12 @@ is_red = ismember(uIDs, erd_ids);
 is_amp = ismember(uIDs, ers_ids);
 
 %% Rainclouds (MS only)
-fprintf('\n=== Plotting MS rainclouds ===\n');
+fprintf('\n[SPLIT ERS ERD MS] Plotting MS rainclouds\n');
 plot_ms_rainclouds(metrics.MS, is_red, is_amp, cond_labels, colors, fig_dir_task, fig_prefix, fig_pos, fontSize, tk.group_lbl_low, tk.group_lbl_high);
 
 %% MS time courses with effect-size
 close all
-fprintf('\n=== Preparing microsaccade time courses ===\n');
+fprintf('\n[SPLIT ERS ERD MS] Preparing microsaccade time courses\n');
 t_vec = ms_cfg.t_vec;
 idx_viable = (t_vec >= 0) & (t_vec <= 2);
 
@@ -329,13 +329,13 @@ for c = 1:numel(cond_vals)
 end
 
 %% Sanity checks
-fprintf('\n=== Data Diagnostics [%s] ===\n', task_tag);
+fprintf('\n[SPLIT ERS ERD MS] Data diagnostics [%s]\n', task_tag);
 fprintf('Missing ET files for MS time courses: %d\n', numel(unique(missing_et)));
 fprintf('Main figures saved to: %s\n', fig_dir_root);
 fprintf('Supplementary figures saved to: %s\n', fig_dir_task);
 
 %% Export CSV for Python statistics script
-fprintf('\n=== Exporting CSV for Python stats ===\n');
+fprintf('\n[SPLIT ERS ERD MS] Exporting CSV for Python stats\n');
 t_win_lo = 0;
 t_win_hi = 2;
 task_idx_ms = (t_vec >= t_win_lo) & (t_vec <= t_win_hi);
@@ -390,7 +390,7 @@ fprintf('CBPT report saved to: %s\n', cbpt_report_file);
 end % task loop
 
 
-%% ========================= Local Functions =========================
+%% Local functions
 function subj_folder = resolve_subject_folder(subjects, sid)
 subj_folder = '';
 for i = 1:numel(subjects)
@@ -943,7 +943,7 @@ if isfile(report_path)
     delete(report_path);
 end
 lines = {};
-lines{end+1} = '=== AOC Split ERS/ERD CBPT Report ===';
+lines{end+1} = '[SPLIT ERS ERD MS] CBPT report';
 lines{end+1} = sprintf('Script: %s', meta.script);
 lines{end+1} = sprintf('Generated: %s', datestr(now, 'yyyy-mm-dd HH:MM:SS'));
 lines{end+1} = sprintf('Task: %s | Split: %s', meta.task_tag, meta.split_label);

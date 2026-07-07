@@ -3,9 +3,8 @@
 %   (a) behavioral
 %   (b) gaze
 %   (c) EEG (`AOC_eeg_matrix_sternberg.mat`)
-% Includes key-uniqueness checks before merge to prevent row inflation.
 %
-% Key outputs:
+% Outputs:
 %   merged_data_sternberg.mat 
 %   merged_data_sternberg.csv
 %
@@ -32,9 +31,9 @@ featPath = paths.features;
 %% Load data
 % Demographics
 demog = readtable(paths.vp_table);
-demog = demog(:, {'ID', 'Gender', 'Alter', 'H_ndigkeit', 'OcularDominance'});
-demog = renamevars(demog, {'Alter', 'H_ndigkeit'}, {'Age', 'Handedness'});
-demog = table2struct(demog(1:120, :));
+demog = demog(:, {'ID', 'Sex', 'Age', 'Handedness', 'OcularDominance'});
+demog = renamevars(demog, {'Sex'}, {'Gender'});
+demog = table2struct(demog);
 
 % Behavioral
 load(fullfile(featPath, 'AOC_behavioral_matrix_sternberg.mat'));  % behav_data_sternberg
@@ -60,6 +59,24 @@ behav_table = struct2table(behav_data_sternberg);
 gaze_table  = struct2table(gaze_data_sternberg);
 eeg_table   = struct2table(eeg_data_sternberg);
 eeg_table   = join_ersd_table(eeg_table, featPath, 'AOC_eeg_matrix_sternberg_ERSD.mat', 'eeg_data_sternberg_ERSD');
+% Keep manuscript-only gaze and EEG variables
+removeCols = @(T, cols) T(:, setdiff(T.Properties.VariableNames, intersect(T.Properties.VariableNames, cols), 'stable'));
+removePatterns = {'GazeStdX','GazeStdY','ScanPathLength','BCEA','PupilSize','Lateralization','AlphaPower'};
+
+gazeDrop = {};
+for i = 1:numel(removePatterns)
+    pat = removePatterns{i};
+    gazeDrop = [gazeDrop, gaze_table.Properties.VariableNames(contains(gaze_table.Properties.VariableNames, pat))];
+end
+gaze_table = removeCols(gaze_table, unique(gazeDrop));
+
+eegDrop = {};
+for i = 1:numel(removePatterns)
+    pat = removePatterns{i};
+    eegDrop = [eegDrop, eeg_table.Properties.VariableNames(contains(eeg_table.Properties.VariableNames, pat))];
+end
+eeg_table = removeCols(eeg_table, unique(eegDrop));
+
 
 assert_unique_keys(eeg_table, {'ID', 'Condition'}, 'eeg_data_sternberg');
 

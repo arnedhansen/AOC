@@ -5,8 +5,7 @@
 % Extracted features:
 %   Power Spectrum windows (raw + baselined) via mtmconvol (2 Hz foi grid)
 %   IAF (condition-wise): mtmfft+DPSS on retention window, trial-averaged (N-back [0 2] s), findpeaks [8 14] Hz
-%   Alpha power in (IAF-4, IAF+2) Hz (early/late/full; raw + dB); NaN if no valid IAF
-%   Lateralization index (late baselined)
+%   IAF (condition-wise)
 %   ERSD_early / ERSD_late / ERSD_full (fixed [8 14] Hz on baselined TFR, occipital ROI)
 
 %% POWSPCTRM (Baseline + Early/Late/Full) (subject-level)
@@ -105,7 +104,7 @@ for subj = 1:length(subjects)
     end
 end
 
-%% ALPHA POWER, IAF and LATERALIZATION INDEX
+%% IAF and ERSD
 % Setup
 startup
 [subjects, paths, ~ , ~] = setup('AOC');
@@ -125,26 +124,6 @@ for i = 1:length(pow2_raw_full.label)
 end
 channels = occ_channels;
 
-% Left and right channels
-left_channels = {};
-right_channels = {};
-for i = 1:length(channels)
-    try
-        ch = channels{i};
-        % Find the first numeric part in the channel name
-        numStr = regexp(ch, '\d+', 'match');
-        % Convert the first numerical token to a number
-        numVal = str2double(numStr{1});
-        if mod(numVal, 2) == 1
-            left_channels{end+1} = ch;
-        else
-            right_channels{end+1} = ch;
-        end
-    catch ME
-        disp(['Midline channel: ', ch])
-    end
-end
-
 % Load data and calculate power, IAF and lateralization index
 close all
 alphaRange = [8 14];
@@ -152,10 +131,8 @@ powerIAF1 = [];
 powerIAF2 = [];
 powerIAF3 = [];
 IAF_results = struct();
-eeg_data_nback = struct('ID', {}, 'Condition', {}, 'IAF', {}, 'Lateralization', {}, ...
-    'ERSD_early', {}, 'ERSD_late', {}, 'ERSD_full', {}, ...
-    'AlphaPower_raw_early', {}, 'AlphaPower_raw_late', {}, 'AlphaPower_raw_full', {}, ...
-    'AlphaPower_bl_early', {}, 'AlphaPower_bl_late', {}, 'AlphaPower_bl_full', {});
+eeg_data_nback = struct('ID', {}, 'Condition', {}, 'IAF', {}, ...
+    'ERSD_early', {}, 'ERSD_late', {}, 'ERSD_full', {});
 
 for subj = 1:length(subjects)
     try
@@ -184,46 +161,12 @@ for subj = 1:length(subjects)
         [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars( ...
             {tfr_cache.tfr1_bl, tfr_cache.tfr2_bl, tfr_cache.tfr3_bl}, tfr_cache.tfr1_bl.label);
 
-        % Compute lateralization index on LATE BASELINED spectra (dB)
-        powloads = {pow1_bl_late, pow2_bl_late, pow3_bl_late};
-        for i = 1:3
-            curr_load = powloads{i};
-            left_idx = find(ismember(curr_load.label, left_channels));
-            right_idx = find(ismember(curr_load.label, right_channels));
-            alpha_idx = find(curr_load.freq >= alphaRange(1) & curr_load.freq <= alphaRange(2));
-            left_alpha_power = mean(mean(curr_load.powspctrm(left_idx, alpha_idx), 2));
-            right_alpha_power = mean(mean(curr_load.powspctrm(right_idx, alpha_idx), 2));
-            LatIdx(i) = (right_alpha_power - left_alpha_power) / (right_alpha_power + left_alpha_power);
-        end
-        LatIdx1 = LatIdx(1);
-        LatIdx2 = LatIdx(2);
-        LatIdx3 = LatIdx(3);
-
-        % Alpha power in subject IAF band (IAF-4, IAF+2); NaN when IAF undefined
-        IAF_band1 = iaf_alpha_band(IAF1, alphaRange);
-        IAF_band2 = iaf_alpha_band(IAF2, alphaRange);
-        IAF_band3 = iaf_alpha_band(IAF3, alphaRange);
-
-        AlphaPower_raw_early = [robust_roi_pow(pow1_raw_early, channelIdx, IAF_band1); robust_roi_pow(pow2_raw_early, channelIdx, IAF_band2); robust_roi_pow(pow3_raw_early, channelIdx, IAF_band3)];
-        AlphaPower_raw_late  = [robust_roi_pow(pow1_raw_late,  channelIdx, IAF_band1); robust_roi_pow(pow2_raw_late,  channelIdx, IAF_band2); robust_roi_pow(pow3_raw_late,  channelIdx, IAF_band3)];
-        AlphaPower_raw_full  = [robust_roi_pow(pow1_raw_full,  channelIdx, IAF_band1); robust_roi_pow(pow2_raw_full,  channelIdx, IAF_band2); robust_roi_pow(pow3_raw_full,  channelIdx, IAF_band3)];
-        AlphaPower_bl_early  = [robust_roi_pow(pow1_bl_early, channelIdx, IAF_band1); robust_roi_pow(pow2_bl_early, channelIdx, IAF_band2); robust_roi_pow(pow3_bl_early, channelIdx, IAF_band3)];
-        AlphaPower_bl_late   = [robust_roi_pow(pow1_bl_late,  channelIdx, IAF_band1); robust_roi_pow(pow2_bl_late,  channelIdx, IAF_band2); robust_roi_pow(pow3_bl_late,  channelIdx, IAF_band3)];
-        AlphaPower_bl_full   = [robust_roi_pow(pow1_bl_full,  channelIdx, IAF_band1); robust_roi_pow(pow2_bl_full,  channelIdx, IAF_band2); robust_roi_pow(pow3_bl_full,  channelIdx, IAF_band3)];
-
         subID = str2double(subjects{subj});
         subj_data_eeg = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell([1; 2; 3]), ...
             'IAF', num2cell([IAF1; IAF2; IAF3]), ...
-            'Lateralization', num2cell([LatIdx1; LatIdx2; LatIdx3]), ...
             'ERSD_early', num2cell(ERSD_early), ...
             'ERSD_late', num2cell(ERSD_late), ...
-            'ERSD_full', num2cell(ERSD_full), ...
-            'AlphaPower_raw_early', num2cell(AlphaPower_raw_early), ...
-            'AlphaPower_raw_late', num2cell(AlphaPower_raw_late), ...
-            'AlphaPower_raw_full', num2cell(AlphaPower_raw_full), ...
-            'AlphaPower_bl_early', num2cell(AlphaPower_bl_early), ...
-            'AlphaPower_bl_late', num2cell(AlphaPower_bl_late), ...
-            'AlphaPower_bl_full', num2cell(AlphaPower_bl_full));
+            'ERSD_full', num2cell(ERSD_full));
         % Save
         savepath = fullfile(paths.features, subjects{subj}, 'eeg');
         if ~isfolder(savepath)
@@ -231,14 +174,10 @@ for subj = 1:length(subjects)
         end
         cd(savepath)
         save eeg_matrix_nback_subj subj_data_eeg
-        save alpha_power_nback powerIAF1 powerIAF2 powerIAF3
         save IAF_nback IAF1 IAF2 IAF3
-        save lateralization_nback LatIdx1 LatIdx2 LatIdx3
         eeg_data_nback = [eeg_data_nback; subj_data_eeg];
         clc
-        fprintf(['Subject %s IAF: 1-back: %f Hz (Power: %f), 2-back: %f Hz (Power: %f), ' ...
-            '3-back: %f Hz (Power: %f) | Lateralization: %f %f %f \n'], subjects{subj}, IAF1, ...
-            powerIAF1, IAF2, powerIAF2, IAF3, powerIAF3, LatIdx1, LatIdx2, LatIdx3);
+        fprintf('Subject %s IAF: 1-back %f Hz, 2-back %f Hz, 3-back %f Hz\n', subjects{subj}, IAF1, IAF2, IAF3);
     catch ME
         fprintf('Continuing to next subject...\n');
     end
@@ -306,42 +245,6 @@ if any(bandIdx)
 end
 if locs(ind) == 1 || locs(ind) == numel(alphaFreqs)
     powerIAF = NaN;
-end
-end
-
-function band = iaf_alpha_band(IAF, alphaRange)
-if isnan(IAF)
-    band = [NaN NaN];
-else
-    band = [IAF - 4, IAF + 2];
-end
-end
-
-function v = robust_roi_pow(S, channelIdx, band)
-fmask = S.freq > band(1) & S.freq < band(2);
-if ~any(fmask)
-    v = NaN;
-    return
-end
-x = S.powspctrm(channelIdx, fmask);
-x = x(:);
-x = x(isfinite(x));
-% Hard plausibility guard to suppress catastrophic numeric explosions.
-x = x(abs(x) <= 1e4);
-if numel(x) >= 8
-    q1 = prctile(x, 25);
-    q3 = prctile(x, 75);
-    iqr_v = q3 - q1;
-    if isfinite(iqr_v) && iqr_v > 0
-        lo = q1 - 3 * iqr_v;
-        hi = q3 + 3 * iqr_v;
-        x = x(x >= lo & x <= hi);
-    end
-end
-if isempty(x)
-    v = NaN;
-else
-    v = mean(x, 'omitnan');
 end
 end
 

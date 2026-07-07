@@ -7,7 +7,7 @@
 #   Rscript AOC_stats_glmm_nback.R
 #   Rscript AOC_stats_glmm_sternberg.R
 #   Rscript AOC_stats_glmm_export.R
-#   python AOC_stats_glmms_rainclouds.py
+#   python AOC_stats_rainclouds.py
 #
 # Key outputs:
 #   Raincloud figures in figures/stats/rainclouds/

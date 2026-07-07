@@ -271,8 +271,10 @@ for subj = 1:length(subjects)
             valid = ~isnan(data.trialinfo(order,2)) & data.trialinfo(order,2) > 0;
             order = order(valid);
 
-            % reorder the FieldTrip data *manually* (ft_selectdata won't reorder)
-            data = reorder_trials_ft(data, order);
+            % reorder trials using FieldTrip trial selection
+            cfg = [];
+            cfg.trials = order;
+            data = ft_selectdata(cfg, data);
 
             % always refresh trialinfo from the reordered data
             trialinfo = data.trialinfo;

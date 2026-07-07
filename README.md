@@ -1,8 +1,8 @@
-### README for AOC Study (Sternberg & N-back)
+### README for AOC Study (Sternberg and N back)
 
-Sternberg and N-back tasks. Combined EEG and Eye-Tracking (ET) analysis of neural signatures of oculomotor control in the alpha band. Published in Psychophysiology as a Registered Report. [https://doi.org/10.22541/au.172466871.17083913/v1](https://doi.org/10.22541/au.172466871.17083913/v1)
+Sternberg and N back tasks. Combined EEG and Eye Tracking ET analysis of neural signatures of oculomotor control in the alpha band. Published in Psychophysiology as a Registered Report. [https://doi.org/10.22541/au.172466871.17083913/v1](https://doi.org/10.22541/au.172466871.17083913/v1) Raw EEG data are provided via OpenNeuro. [https://openneuro.org/](https://openneuro.org/) Study materials and analysis code are distributed via OSF. [https://osf.io/xfujb/](https://osf.io/xfujb/)
 
-The titles below correspond to the folder names. Apart from the Python and R scripts in ’4_stats’, all files are MATLAB scripts.
+The titles below correspond to the folder names. Apart from the Python and R scripts in `4_stats`, all files are MATLAB scripts.
 
 ## paradigms
 
@@ -39,33 +39,76 @@ The EEG files that were preprocessed by Automagic are subsequently merged with t
 
 ## 2_feature_extraction
 
-`behavioral/` → accuracy, RT; `eeg/` → alpha power at IAF over occipital channels, IAF, lateralization; `gaze/` → gaze deviation, microsaccade rate, fixations, saccades, scan path length, pupil. `AOC_master_matrix_nback.m` and `AOC_master_matrix_sternberg.m` merge these into `merged_data_*_nback.mat/.csv` and `merged_data_*_sternberg.mat/.csv`. `AOC_demographics.m` attaches age, gender, handedness, ocular dominance from the VP table. **Run order:** behavioral → eeg → gaze → demographics → master_matrix. The CSVs are the input for the Python raincloud/ANOVA scripts.
+`behavioral/` produces accuracy and RT features. `eeg/` produces EEG features used in the manuscript analyses. `gaze/` produces gaze deviation, microsaccade, fixation, saccade, scan path length, and pupil features. `AOC_master_matrix_nback.m` and `AOC_master_matrix_sternberg.m` merge outputs into `merged_data_*_nback.mat/.csv` and `merged_data_*_sternberg.mat/.csv`. `AOC_demographics.m` adds age, gender, handedness, and ocular dominance from the VP table.
 
 ## 3_visualization
 
-**Behavioral:** Accuracy and RT by condition (`behavioral/`). **EEG:** Power spectra (`powspctrm/`), TFRs—raw, FOOOF, baseline-relative (`tfr/`), ERPs (`erp/`), topoplots incl. baseline and raster (`topos/`), lateralization (`lateralization/`). **Gaze:** Deviation over time (`deviation/`), heatmaps and split heatmaps (`heatmap/`), microsaccades (`microsaccades/`), scan path length (`scanPathLength/`). **Interactions:** Alpha×velocity crosscorr, pupil×condition, TFR×scan path. All read from `data/features/`; figures to `figures/`. Run after feature extraction.
+Behavioral plots are in `behavioral/`. EEG visualization scripts used in the run all pipeline include `tfr/` and `topos/`. Gaze visualization scripts include `heatmap/`, `deviation/`, and `microsaccades/`. All visualization scripts read from `data/features/` and write figures to `figures/`.
 
 ## 4_stats
 
-### Omnibus (MATLAB, FieldTrip)
-
-`AOC_omnibus_prep.m` loads single-subject TFR (FOOOF), applies baseline [-1.5 -0.5] s, builds high–low load contrasts (N-back: 3−1; Sternberg: 6−2) and grand averages, saves `omnibus_data.mat`. `AOC_omnibus.m` loads that, extracts posterior alpha spectra, runs cluster-based permutation (F-stat for load, t for omnibus), and produces ROI raincloud/box plots with paired t-tests.
-
 ### Rainclouds (Python)
 
-`AOC_stats_glmms_rainclouds.py` produces raincloud plots, repeated-measures ANOVA, and mixed models for all variables; input: `merged_data_*_nback.csv` and `merged_data_*_sternberg.csv`. Python helpers (`stats_helpers`, `rainclouds_plotting_helpers`, `mixedlm_helpers`, `export_model_table`) come from [github.com/arnedhansen/functions](https://github.com/arnedhansen/functions). Adapt `base_dir` and input paths in the script to your setup.
+`AOC_stats_rainclouds.py` produces raincloud plots, repeated measures ANOVA, and mixed models for all variables; input: `merged_data_*_nback.csv` and `merged_data_*_sternberg.csv`. Python helpers (`stats_helpers`, `rainclouds_plotting_helpers`, `mixedlm_helpers`, `export_model_table`) come from [github.com/arnedhansen/functions](https://github.com/arnedhansen/functions). Adapt `base_dir` and input paths in the script to your setup.
 
 ## Additional Files
 
-### AOC_MASTER_ANALYSIS.m
+### AOC_Master_RUN_ALL.m
 
-Runs the full MATLAB pipeline (merge → 4_preprocessing → _controls → feature extraction → visualization → omnibus_prep → omnibus) with try/catch and a log. Set `basePath` to your repo root. It does *not* run: 1_cut, 2_automagic, or the Python stats.
+Runs the main MATLAB analysis pipeline with absolute `run(...)` calls for both Windows and macOS Linux style paths. Update these paths before execution.
 
-### _controls
+## Execution Order
 
-Optional checks: ET calibration/validation, baseline effects, trial exclusions, missing data, paradigm durations, recording order. Run after 4_preprocessing; see `AOC_MASTER_ANALYSIS.m` for placement.
+Primary execution order follows stagewise scripts in `1_preprocessing`, `2_feature_extraction`, and `3_visualization`.
+
+Recommended workflow:
+1. Run preprocessing scripts in order: `1_cut`, `2_automagic`, `3_merge`, then `4_preprocessing`.
+2. Run feature extraction scripts in `2_feature_extraction`.
+3. Build final analysis matrices.
+4. Generate manuscript figures.
+5. Run confirmatory statistical models from `4_stats`.
+
+## Setup for New Machines
+
+All scripts are designed to run from a user editable project root.
+
+Required setup actions:
+1. Clone or download this repository.
+2. Set local root paths in the setup script.
+3. Verify availability of required MATLAB toolboxes and external packages.
+4. Ensure all helper code is referenced from `functions`.
+5. Ensure third party software is available via `toolboxes` or documented system installation.
+
+## Run Instructions
+
+### 1) Initial Setup
+1. Open MATLAB in the repository root.
+2. Run:
+   1. `startup`
+   2. `setup('AOC')`
+3. Set environment variable `AOC_OSF_ROOT` if the project root should be forced explicitly.
+
+### 2) Data Layout
+1. Put processed inputs under:
+   1. `data/raw`
+   2. `data/features`
+2. Participant metadata are read from `2_feature_extraction/behavioral/AOC_VP_List_anonymized.csv`, generated from the full source workbook after exclusion filtering.
+3. Exclusion lists are provided in `2_feature_extraction/AOC_exclusion_participants.rtf` and `2_feature_extraction/AOC_exclusion_participants_info.rtf`.
+4. Ensure required merged CSV files are available in `data/features` for stats scripts.
+
+### 3) MATLAB Pipeline
+1. Run scripts stagewise: preprocessing folders first, then `2_feature_extraction`, then `3_visualization`, then `splits`.
+
+### 4) Confirmatory Statistics
+1. Edit the CSV placeholders in:
+   1. `4_stats/AOC_stats_confirmatory_models_nback.R`
+   2. `4_stats/AOC_stats_confirmatory_models_sternberg.R`
+2. Run each script with `Rscript`.
+
+### 5) Raincloud Figures
+1. Run `python 4_stats/AOC_stats_rainclouds.py`.
+2. Output figures are written to `data/figures/stats/rainclouds`.
 
 ### Dependencies
 
-`startup` and `setup('AOC')` (paths, subject list; `setup` is project-specific). For plots: `cbrewer` (colormaps), `layANThead` (ANT Neuro cap layout), `shadedErrorBar` (power spectra). Many scripts hardcode data roots (e.g. `/Volumes/...` or `W:\...`); change these to your `data/` location.
-
+`startup` and `setup('AOC')` handle path setup and subject configuration. Many scripts use absolute data roots such as `/Volumes/...`, `W:\...`, or user specific local paths. Update these to your local `data/` location before running.

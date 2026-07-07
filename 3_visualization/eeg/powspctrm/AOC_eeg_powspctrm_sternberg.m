@@ -3,7 +3,7 @@
 % across WM load 2/4/6, and plots absolute power (not dB baselined).
 %
 % For baselined Hanning/mtmconvol spectra (dB), use AOC_eeg_powspctrm_sternberg_bl.m.
-% For FOOOF + baselined late-window spectra, use AOC_eeg_powspctrm_sternberg_fooof_bl.m.
+% For specParam + baselined late-window spectra, use AOC_eeg_powspctrm_sternberg_specParam_bl.m.
 
 %% Setup
 startup

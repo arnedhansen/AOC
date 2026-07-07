@@ -1,6 +1,6 @@
-%% AOC EEG FOOOF Feature Extraction - N-Back
-% Computes subject-level FOOOF alpha features and IAF_specParam for nback.
-% Saves `AOC_eeg_matrix_nback_FOOOF` (MAT + CSV) and per-subject `IAF_specParam_nback.mat`.
+%% AOC EEG specParam Feature Extraction - N-back
+% Computes subject-level specParam alpha features and IAF_specParam for nback.
+% Saves `AOC_eeg_matrix_nback_specParam` (MAT + CSV) and per-subject `IAF_specParam_nback.mat`.
 startup
 [subjects, paths, ~, ~] = setup('AOC');
 path = paths.features;
@@ -13,7 +13,7 @@ end
 
 iaf_csv = fullfile(featPath, 'AOC_eeg_matrix_nback.csv');
 if ~isfile(iaf_csv)
-    error('Missing non-FOOOF EEG CSV for IAF lookup: %s', iaf_csv);
+    error('Missing non-specParam EEG CSV for IAF lookup: %s', iaf_csv);
 end
 iaf_table = readtable(iaf_csv);
 
@@ -27,7 +27,7 @@ eeg_data_nback_FOOOF = struct('ID', {}, 'Condition', {}, ...
 for subj = 1:length(subjects)
     try
         clc
-        fprintf('[EEG FOOOF - NBACK] Subject %d / %d\n', subj, length(subjects))
+        fprintf('[EEG SPECPARAM - NBACK] Subject %d / %d\n', subj, length(subjects))
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath)
         load dataEEG_TFR_nback
@@ -65,7 +65,7 @@ for subj = 1:length(subjects)
                 continue
             end
             clc
-            fprintf('[EEG FOOOF - NBACK] Subject %d / %d, condition %s\n', subj, length(subjects), condNames{c})
+            fprintf('[EEG SPECPARAM - NBACK] Subject %d / %d, condition %s\n', subj, length(subjects), condNames{c})
 
             cfg_sel0 = [];
             cfg_sel0.latency = [toi_start(1) (toi_start(1) + winLen)];

@@ -1,6 +1,6 @@
-%% AOC EEG FOOOF Feature Extraction - Sternberg
-% Computes subject-level FOOOF alpha features and IAF_specParam for sternberg.
-% Saves `AOC_eeg_matrix_sternberg_FOOOF` (MAT + CSV) and per-subject `IAF_specParam_sternberg.mat`.
+%% AOC EEG specParam Feature Extraction - Sternberg
+% Computes subject-level specParam alpha features and IAF_specParam for sternberg.
+% Saves `AOC_eeg_matrix_sternberg_specParam` (MAT + CSV) and per-subject `IAF_specParam_sternberg.mat`.
 startup
 [subjects, paths, ~, ~] = setup('AOC');
 path = paths.features;
@@ -13,7 +13,7 @@ end
 
 iaf_csv = fullfile(featPath, 'AOC_eeg_matrix_sternberg.csv');
 if ~isfile(iaf_csv)
-    error('Missing non-FOOOF EEG CSV for IAF lookup: %s', iaf_csv);
+    error('Missing non-specParam EEG CSV for IAF lookup: %s', iaf_csv);
 end
 iaf_table = readtable(iaf_csv);
 
@@ -27,7 +27,7 @@ eeg_data_sternberg_FOOOF = struct('ID', {}, 'Condition', {}, ...
 for subj = 1:length(subjects)
     try
         clc
-        fprintf('[EEG FOOOF - STERNBERG] Subject %d / %d\n', subj, length(subjects))
+        fprintf('[EEG SPECPARAM - STERNBERG] Subject %d / %d\n', subj, length(subjects))
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath)
         load dataEEG_TFR_sternberg
@@ -65,7 +65,7 @@ for subj = 1:length(subjects)
                 continue
             end
             clc
-            fprintf('[EEG FOOOF - STERNBERG] Subject %d / %d, condition %s\n', subj, length(subjects), condNames{c})
+            fprintf('[EEG SPECPARAM - STERNBERG] Subject %d / %d, condition %s\n', subj, length(subjects), condNames{c})
 
             cfg_sel0 = [];
             cfg_sel0.latency = [toi_start(1) (toi_start(1) + winLen)];

@@ -4,8 +4,6 @@
 % Key outputs:
 %   Console: N, mean age, SD age, % female, % right-handed
 
-clear
-
 startup
 [~, paths, ~, ~] = setup('AOC', 0);
 featPath = paths.features;

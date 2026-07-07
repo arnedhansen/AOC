@@ -1,6 +1,6 @@
-%% AOC Power Spectrum — Baseline Window (FOOOFed + baselined)
+%% AOC Power Spectrum — Baseline Window (specParam + baselined)
 % Builds power spectra from the baseline interval [-1.5 -0.5] s only
-% using time-resolved FOOOF+BL TFR files, for both Sternberg and N-back.
+% using time-resolved specParam+BL TFR files, for both Sternberg and N-back.
 
 %% Setup
 startup
@@ -11,11 +11,11 @@ freq_range = [3 30];
 
 fig_dir_pow = fullfile(paths.figures, 'eeg', 'powspctrm');
 
-% Skip when TFR feature extraction was run with RUN_FOOOF=false (no FOOOF fields in MAT).
+% Skip when TFR feature extraction was run with RUN_FOOOF=false (no specParam fields in MAT).
 chk = fullfile(path, subjects{1}, 'eeg', 'tfr_stern.mat');
 Schk = load(chk, 'tfr2_fooof');
 if ~isfield(Schk, 'tfr2_fooof')
-    warning('AOC_eeg_powspctrm_baseline_window_fooof: tfr2_fooof not in %s (FOOOF disabled?). Skipping script.', chk);
+    warning('AOC_eeg_powspctrm_baseline_window_specParam: tfr2_fooof not in %s (specParam disabled?). Skipping script.', chk);
     return
 end
 
@@ -38,7 +38,7 @@ channels = occ_channels;
 clc
 disp('LOADING STERNBERG BASELINE-WINDOW POWERSPECTRA...')
 for subj = 1:length(subjects)
-    clc; fprintf('[VIZ POWSPCTRM BL - STERNBERG] Loading baseline-window FOOOF power for Subject %d / %d \n', subj, length(subjects))
+    clc; fprintf('[VIZ POWSPCTRM BL - STERNBERG] Loading baseline-window specParam power for Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath);
     stern_file = fullfile(datapath, 'tfr_stern.mat');
@@ -114,7 +114,7 @@ saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_fooof_baselineWindow.
 clc
 disp('LOADING N-BACK BASELINE-WINDOW POWERSPECTRA...')
 for subj = 1:length(subjects)
-    clc; fprintf('[VIZ POWSPCTRM BL - NBACK] Loading baseline-window FOOOF power for Subject %d / %d \n', subj, length(subjects))
+    clc; fprintf('[VIZ POWSPCTRM BL - NBACK] Loading baseline-window specParam power for Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath);
     nback_file = fullfile(datapath, 'tfr_nback.mat');

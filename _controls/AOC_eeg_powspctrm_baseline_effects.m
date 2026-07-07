@@ -2,32 +2,32 @@
 % Control script: compares grand-average power spectra during the baseline
 % period [-1.5 -0.5]s vs the retention period [0 2]s for both tasks.
 %
-% Loads per-subject TFR data (raw and FOOOF'd), averages over occipital
+% Loads per-subject TFR data (raw and specParam), averages over occipital
 % channels and time within each window, then grand-averages across subjects.
 %
-% Figure layout (two figures per task — raw and FOOOF):
+% Figure layout (two figures per task: raw and specParam):
 %   Left panel:   Raw baseline [-1.5 -0.5]s power spectra per condition
 %   Middle panel: Raw retention [0 2]s power spectra per condition
 %   Right panel:  Baselined retention [0 2]s power spectra per condition
 %
 % Data sources (per subject):
-%   Raw + FOOOF TFR  → tfr_nback.mat   (tfr1/2/3, tfr1/2/3_fooof)
+%   Raw + specParam TFR  → tfr_nback.mat   (tfr1/2/3, tfr1/2/3_fooof)
 %                     → tfr_stern.mat   (tfr2/4/6, tfr2/4/6_fooof)
 %   Baselined TFR    → tfr_nback.mat   (tfr1/2/3_bl, tfr1/2/3_fooof_bl)
 %                     → tfr_stern.mat   (tfr2/4/6_bl, tfr2/4/6_fooof_bl)
 %
 % Key outputs:
 %   AOC_eeg_powspctrm_baseline_effects_nback_raw.png
-%   AOC_eeg_powspctrm_baseline_effects_nback_fooof.png
+%   AOC_eeg_powspctrm_baseline_effects_nback_specParam.png
 %   AOC_eeg_powspctrm_baseline_effects_sternberg_raw.png
-%   AOC_eeg_powspctrm_baseline_effects_sternberg_fooof.png
+%   AOC_eeg_powspctrm_baseline_effects_sternberg_specParam.png
 
 %% Setup
 startup
 [subjects, paths, colors, ~] = setup('AOC');
 path = paths.features;
 
-% TEMP: set true to build FOOOF panels (requires FOOOF fields in tfr_*.mat).
+% TEMP: set true to build specParam panels (requires tfr*_fooof fields in tfr_*.mat).
 RUN_FOOOF = false;
 
 %% Define occipital channels (from first subject)
@@ -77,7 +77,7 @@ for t = 1:numel(tasks)
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath);
 
-        % Load all TFR variables (raw + FOOOF + baselined)
+        % Load all TFR variables (raw + specParam + baselined)
         S = load(task.tfr_file);
 
         % First subject: initialise arrays
@@ -97,10 +97,10 @@ for t = 1:numel(tasks)
                 refFF  = S.(task.fooof_vars{1});
                 freqsFF  = refFF.freq;
                 nFreqFF  = numel(freqsFF);
-                % FOOOF: baseline period + retention period (absolute)
+                % specParam: baseline period + retention period (absolute)
                 bl_ff    = nan(nSubj, nConds, nFreqFF);
                 ret_ff   = nan(nSubj, nConds, nFreqFF);
-                % FOOOF: retention period (baselined, absolute)
+                % specParam: retention period (baselined, absolute)
                 retbl_ff = nan(nSubj, nConds, nFreqFF);
             else
                 freqsFF  = [];
@@ -128,14 +128,14 @@ for t = 1:numel(tasks)
                 ff    = S.(task.fooof_vars{c});
                 ffBL  = S.(task.fooof_bl_vars{c});
 
-                % --- FOOOF: same (may have different freq grid) ---
+                % --- specParam: same (may have different freq grid) ---
                 chIdxFF = find(ismember(ff.label, channels));
                 tBL_f   = ff.time >= blWin(1)  & ff.time <= blWin(2);
                 tRet_f  = ff.time >= task.retWin(1) & ff.time <= task.retWin(2);
                 bl_ff(subj, c, :)  = mean(mean(ff.powspctrm(chIdxFF, :, tBL_f),  3, 'omitnan'), 1, 'omitnan');
                 ret_ff(subj, c, :) = mean(mean(ff.powspctrm(chIdxFF, :, tRet_f), 3, 'omitnan'), 1, 'omitnan');
 
-                % --- FOOOF baselined: retention only ---
+                % --- specParam baselined: retention only ---
                 chIdxFFBL = find(ismember(ffBL.label, channels));
                 tRetBL_f  = ffBL.time >= task.retWin(1) & ffBL.time <= task.retWin(2);
                 retbl_ff(subj, c, :) = mean(mean(ffBL.powspctrm(chIdxFFBL, :, tRetBL_f), 3, 'omitnan'), 1, 'omitnan');
@@ -245,11 +245,11 @@ for t = 1:numel(tasks)
 
     if RUN_FOOOF
     % ================================================================
-    %  FIGURE 2 — FOOOF Power Spectra (3 subplots)
+    %  FIGURE 2 — specParam Power Spectra (3 subplots)
     % ================================================================
     figure('Position', [0, 0, 1512, 982], 'Color', 'w');
 
-    % ---- Left: FOOOF Baseline [-1.5 -0.5]s ----
+    % ---- Left: specParam Baseline [-1.5 -0.5]s ----
     subplot(1, 3, 1); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
@@ -263,12 +263,12 @@ for t = 1:numel(tasks)
     set(gca, 'FontSize', 15);
     xlim([3 30]);
     xlabel('Frequency [Hz]');
-    ylabel('Power [FOOOF log]');
+    ylabel('Power [specParam log]');
     title('Baseline [-1.5 -0.5]s', 'FontSize', 20);
     legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
     box on; hold off;
 
-    % ---- Middle: FOOOF Retention [0 2]s ----
+    % ---- Middle: specParam Retention [0 2]s ----
     subplot(1, 3, 2); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
@@ -282,12 +282,12 @@ for t = 1:numel(tasks)
     set(gca, 'FontSize', 15);
     xlim([3 30]);
     xlabel('Frequency [Hz]');
-    ylabel('Power [FOOOF log]');
+    ylabel('Power [specParam log]');
     title(sprintf('Retention [%.1f %.1f]s', task.retWin(1), task.retWin(2)), 'FontSize', 20);
     legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
     box on; hold off;
 
-    % ---- Right: FOOOF baselined retention ----
+    % ---- Right: specParam baselined retention ----
     subplot(1, 3, 3); hold on;
     hLines = gobjects(nConds, 1);
     for c = 1:nConds
@@ -301,15 +301,15 @@ for t = 1:numel(tasks)
     set(gca, 'FontSize', 15);
     xlim([3 30]);
     xlabel('Frequency [Hz]');
-    ylabel('Power [FOOOF log, baselined]');
+    ylabel('Power [specParam log, baselined]');
     title(sprintf('Retention [%.1f %.1f]s (baselined)', task.retWin(1), task.retWin(2)), 'FontSize', 20);
     legend(hLines, task.cond_labels, 'Location', 'northeast', 'FontSize', 12);
     box on; hold off;
 
-    sgtitle(sprintf('%s — FOOOF Power Spectra (N = %d)', ...
+    sgtitle(sprintf('%s — specParam Power Spectra (N = %d)', ...
         task.title, nValid), 'FontSize', 22, 'FontWeight', 'bold');
 
-    fname = sprintf('AOC_eeg_powspctrm_baseline_effects_%s_fooof.png', task.name);
+    fname = sprintf('AOC_eeg_powspctrm_baseline_effects_%s_specParam.png', task.name);
     saveas(gcf, fullfile(savePath, fname));
     fprintf('Saved: %s\n', fullfile(savePath, fname));
     end

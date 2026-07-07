@@ -7,9 +7,6 @@
 
 %% Setup
 startup
-clear
-clc
-close all
 [~, paths, ~, ~] = setup('AOC', 0);
 path = paths.raw_occ;
 dirs = dir(path);

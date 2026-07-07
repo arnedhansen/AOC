@@ -34,8 +34,6 @@ if ispc
     % EEG
     run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_sternberg.m');
     run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_nback.m');
-    run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_sternberg_FOOOF.m');
-    run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_nback_FOOOF.m');
     run('C:\Users\Administrator\Documents\GitHub\AOC\_controls\AOC_eeg_powspctrm_baseline_effects.m');
 
     % Master Matrices (CSVs)
@@ -43,20 +41,15 @@ if ispc
     run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\AOC_master_matrix_nback.m');
 
     %% 3 Visualization
-    % Powspctrm (raw, baselined dB, FOOOF+baseline per task; baseline-window summary last)
+    % Powspctrm (raw, baselined dB; baseline-window summary last)
     run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_nback.m');
     run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_nback_bl.m');
-    run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_nback_fooof_bl.m');
     run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_sternberg.m');
     run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_sternberg_bl.m');
-    run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_sternberg_fooof_bl.m');
-    run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_baseline_window_fooof.m');
 
     % TFR
     run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_nback.m');
     run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_sternberg.m');
-    run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_nback_fooof_abs.m');
-    run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\tfr\AOC_tfr_sternberg_fooof_abs.m');
 
     % Topos
     run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\topos\AOC_eeg_topos_nback.m');
@@ -99,8 +92,6 @@ else
     % EEG
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/eeg/AOC_eeg_fex_sternberg.m');
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/eeg/AOC_eeg_fex_nback.m');
-    run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/eeg/AOC_eeg_fex_sternberg_FOOOF.m');
-    run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/eeg/AOC_eeg_fex_nback_FOOOF.m');
     run('/Users/Arne/Documents/GitHub/AOC/_controls/AOC_eeg_powspctrm_baseline_effects.m');
 
     % Master Matrices (CSVs)
@@ -108,20 +99,15 @@ else
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/AOC_master_matrix_nback.m');
 
     %% 3 Visualization
-    % Powspctrm (raw, baselined dB, FOOOF+baseline per task; baseline-window summary last)
+    % Powspctrm (raw, baselined dB; baseline-window summary last)
     run('/Users/Arne/Documents/GitHub/AOC/3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_nback.m');
     run('/Users/Arne/Documents/GitHub/AOC/3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_nback_bl.m');
-    run('/Users/Arne/Documents/GitHub/AOC/3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_nback_fooof_bl.m');
     run('/Users/Arne/Documents/GitHub/AOC/3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_sternberg.m');
     run('/Users/Arne/Documents/GitHub/AOC/3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_sternberg_bl.m');
-    run('/Users/Arne/Documents/GitHub/AOC/3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_sternberg_fooof_bl.m');
-    run('/Users/Arne/Documents/GitHub/AOC/3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_baseline_window_fooof.m');
 
     % TFR
     run('/Users/Arne/Documents/GitHub/AOC/3_visualization/eeg/tfr/AOC_tfr_nback.m');
     run('/Users/Arne/Documents/GitHub/AOC/3_visualization/eeg/tfr/AOC_tfr_sternberg.m');
-    run('/Users/Arne/Documents/GitHub/AOC/3_visualization/eeg/tfr/AOC_tfr_nback_fooof_abs.m');
-    run('/Users/Arne/Documents/GitHub/AOC/3_visualization/eeg/tfr/AOC_tfr_sternberg_fooof_abs.m');
 
     % Topos
     run('/Users/Arne/Documents/GitHub/AOC/3_visualization/eeg/topos/AOC_eeg_topos_nback.m');

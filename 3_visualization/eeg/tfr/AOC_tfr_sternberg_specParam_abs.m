@@ -1,8 +1,8 @@
-%% AOC TFR — N-Back (FOOOF, Absolute)
-% Loads FOOOFed tfr_nback (tfr*_fooof) per subject, grand-averages, plots occipital TFRs. Saves figures.
+%% AOC TFR — Sternberg (specParam, Absolute)
+% Loads specParam tfr_stern (tfr*_fooof) per subject, grand-averages, plots occipital TFRs. Saves figures.
 %
 % Key outputs:
-%   TFR figures (FOOOF, absolute power, per condition)
+%   TFR figures (specParam, absolute power, per condition)
 
 %% Setup
 startup
@@ -15,24 +15,24 @@ end
 
 %% Compute grand average time and frequency data GATFR
 for subj = 1:length(subjects)
-    clc; fprintf('[VIZ TFR FOOOF - NBACK] Loading FOOOF TFR data for Subject %d / %d \n', subj, length(subjects))
+    clc; fprintf('[VIZ TFR SPECPARAM - STERNBERG] Loading specParam TFR data for Subject %d / %d \n', subj, length(subjects))
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
-    load tfr_nback
-    tfr1_all{subj} = tfr1_fooof;
+    load tfr_stern
     tfr2_all{subj} = tfr2_fooof;
-    tfr3_all{subj} = tfr3_fooof;
+    tfr4_all{subj} = tfr4_fooof;
+    tfr6_all{subj} = tfr6_fooof;
 end
 
 % Compute grand average
-gatfr1 = ft_freqgrandaverage_nanrobust([],tfr1_all{:});
 gatfr2 = ft_freqgrandaverage_nanrobust([],tfr2_all{:});
-gatfr3 = ft_freqgrandaverage_nanrobust([],tfr3_all{:});
+gatfr4 = ft_freqgrandaverage_nanrobust([],tfr4_all{:});
+gatfr6 = ft_freqgrandaverage_nanrobust([],tfr6_all{:});
 
 %% Define channels
 occ_channels = {};
-for i = 1:length(tfr1.label)
-    label = tfr1_fooof.label{i};
+for i = 1:length(tfr2_fooof.label)
+    label = tfr2_fooof.label{i};
     if contains(label, {'O'}) || contains(label, {'I'})
         occ_channels{end+1} = label;
     end
@@ -58,39 +58,23 @@ cfg.baseline      = [-1.5 -0.5];   % example baseline window
 cfg.baselinetype  = 'absolute';   % options: 'absolute', 'relative', 'relchange', 'db'
 
 % Find maximum deviation across conditions
-[~, channel_idx] = ismember(channels, gatfr1.label);
-freq_idx = gatfr1.freq >= 5 & gatfr1.freq <= 30;
-time_idx = gatfr1.time >= -0.5 & gatfr1.time <= 2;
-bl_idx   = gatfr1.time >= -1.5 & gatfr1.time <= -0.5;
-avg1 = squeeze(mean(gatfr1.powspctrm(channel_idx, :, :), 1));
+[~, channel_idx] = ismember(channels, gatfr2.label);
+freq_idx = gatfr2.freq >= 5 & gatfr2.freq <= 30;
+time_idx = gatfr2.time >= -0.5 & gatfr2.time <= 2;
+bl_idx   = gatfr2.time >= -1.5 & gatfr2.time <= -0.5;
 avg2 = squeeze(mean(gatfr2.powspctrm(channel_idx, :, :), 1));
-avg3 = squeeze(mean(gatfr3.powspctrm(channel_idx, :, :), 1));
-avg1_bl = avg1 - mean(avg1(:, bl_idx), 2);
+avg4 = squeeze(mean(gatfr4.powspctrm(channel_idx, :, :), 1));
+avg6 = squeeze(mean(gatfr6.powspctrm(channel_idx, :, :), 1));
 avg2_bl = avg2 - mean(avg2(:, bl_idx), 2);
-avg3_bl = avg3 - mean(avg3(:, bl_idx), 2);
+avg4_bl = avg4 - mean(avg4(:, bl_idx), 2);
+avg6_bl = avg6 - mean(avg6(:, bl_idx), 2);
 max_spctrm = max([ ...
-    max(abs(avg1_bl(freq_idx, time_idx)), [], 'all'), ...
     max(abs(avg2_bl(freq_idx, time_idx)), [], 'all'), ...
-    max(abs(avg3_bl(freq_idx, time_idx)), [], 'all')]);
+    max(abs(avg4_bl(freq_idx, time_idx)), [], 'all'), ...
+    max(abs(avg6_bl(freq_idx, time_idx)), [], 'all')]);
 clim = [-max_spctrm, max_spctrm];
 
-% 1-back
-figure('Position', [0, 0, 1512, 982], 'Color', 'w');
-set(gcf, 'PaperPositionMode', 'auto');
-ft_singleplotTFR(cfg, gatfr1);
-colormap(color_map);
-set(gca, 'CLim', clim);
-cb = colorbar;
-ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
-xlabel('Time [s]');
-ylabel('Frequency [Hz]');
-rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
-set(gca, 'FontSize', fontSize);
-title('1-back');
-drawnow;
-exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_1back_fooof_bl_abs.png'), 'Resolution', 600);
-
-% 2-back
+% WM load 2
 figure('Position', [0, 0, 1512, 982], 'Color', 'w');
 set(gcf, 'PaperPositionMode', 'auto');
 ft_singleplotTFR(cfg, gatfr2);
@@ -100,34 +84,50 @@ cb = colorbar;
 ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
-title('2-back');
+title('WM load 2');
 drawnow;
-exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_2back_fooof_bl_abs.png'), 'Resolution', 600);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_sternberg_2_fooof_bl_abs.png'), 'Resolution', 600);
 
-% 3-back
+% WM load 4
 figure('Position', [0, 0, 1512, 982], 'Color', 'w');
 set(gcf, 'PaperPositionMode', 'auto');
-ft_singleplotTFR(cfg, gatfr3);
+ft_singleplotTFR(cfg, gatfr4);
 colormap(color_map);
 set(gca, 'CLim', clim);
 cb = colorbar;
 ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
 set(gca, 'FontSize', fontSize);
-title('3-back');
+title('WM load 4');
 drawnow;
-exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_3back_fooof_bl_abs.png'), 'Resolution', 600);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_sternberg_4_fooof_bl_abs.png'), 'Resolution', 600);
+
+% WM load 6
+figure('Position', [0, 0, 1512, 982], 'Color', 'w');
+set(gcf, 'PaperPositionMode', 'auto');
+ft_singleplotTFR(cfg, gatfr6);
+colormap(color_map);
+set(gca, 'CLim', clim);
+cb = colorbar;
+ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
+xlabel('Time [s]');
+ylabel('Frequency [Hz]');
+rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+set(gca, 'FontSize', fontSize);
+title('WM load 6');
+drawnow;
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_sternberg_6_fooof_bl_abs.png'), 'Resolution', 600);
 
 %% Plot the grand averages for the difference between condition 3 and condition 1
 close all
 
 % Plot the difference
-diff = gatfr3;
-diff.powspctrm = gatfr3.powspctrm - gatfr1.powspctrm;
+diff = gatfr6;
+diff.powspctrm = gatfr6.powspctrm - gatfr2.powspctrm;
 
 % Define configuration 
 cfg = [];
@@ -153,13 +153,13 @@ ft_singleplotTFR(cfg, diff);
 colormap(color_map);
 set(gca, 'CLim', clim); 
 cb = colorbar;
-ylabel(cb, 'Absolute Power Change [\muV^2/Hz]', 'FontSize', fontSize);
+ylabel(cb, 'Power [dB]', 'FontSize', fontSize);
 xlabel('Time [s]');
 ylabel('Frequency [Hz]');
-rectangle('Position', [0, 8, 2, 6], 'EdgeColor', 'k', 'LineWidth', 5);
-title('Difference (3-back - 1-back)', 'FontName', 'Arial', 'FontSize', 30);
+rectangle('Position', [1, 8, 1, 6], 'EdgeColor', 'k', 'LineWidth', 5);
+title('Difference (WM load 6 - WM load 2)', 'FontName', 'Arial', 'FontSize', 30);
 set(gca, 'FontSize', fontSize);
 
 % Save
 drawnow;
-exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_nback_diff_fooof_bl_abs.png'), 'Resolution', 600);
+exportgraphics(gcf, fullfile(figpath, 'AOC_tfr_sternberg_diff_fooof_bl_abs.png'), 'Resolution', 600);

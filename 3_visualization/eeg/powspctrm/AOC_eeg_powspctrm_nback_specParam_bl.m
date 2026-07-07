@@ -1,8 +1,8 @@
-%% AOC Power Spectrum — N-back (FOOOF + baseline, full window [0 2]s)
+%% AOC Power Spectrum — N-back (specParam + baseline, full window [0 2]s)
 % Loads pow*_fooof_bl_full from power_nback_fooof_TFR.mat (AOC_eeg_fex_nback_TFR.m),
 % grand-averages across 1/2/3-back, plots spectra, and saves figures.
 %
-% For non-FOOOF Hanning spectra use AOC_eeg_powspctrm_nback.m (raw) or
+% For non-specParam Hanning spectra use AOC_eeg_powspctrm_nback.m (raw) or
 % AOC_eeg_powspctrm_nback_bl.m (dB baselined), both from power_nback_windows.mat.
 
 %% Setup
@@ -18,7 +18,7 @@ datapath = fullfile(path, subjects{1}, 'eeg');
 cd(datapath);
 nback_power_file = fullfile(datapath, 'power_nback_fooof_TFR.mat');
 if ~isfile(nback_power_file)
-    error('No n-back FOOOF power file for subject 1 (expected power_nback_fooof_TFR.mat).');
+    error('No n-back specParam power file for subject 1 (expected power_nback_fooof_TFR.mat).');
 end
 D0 = load(nback_power_file, 'pow1_fooof_bl_full');
 pow1_fooof_bl_full = D0.pow1_fooof_bl_full;
@@ -33,12 +33,12 @@ channels = occ_channels;
 
 %% Load data
 clc
-disp('LOADING FOOOF+BL FULL DATA...')
+disp('LOADING SPECPARAM+BL FULL DATA...')
 for subj = 1:length(subjects)
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
     clc
-    disp('LOADING FOOOF+BL FULL DATA...')
+    disp('LOADING SPECPARAM+BL FULL DATA...')
     disp(subj)
     nback_power_file = fullfile(datapath, 'power_nback_fooof_TFR.mat');
     if ~isfile(nback_power_file)

@@ -3,7 +3,7 @@
 % across 1/2/3-back, and plots absolute power spectra (not dB baselined).
 %
 % For baselined Hanning/mtmconvol spectra (dB), use AOC_eeg_powspctrm_nback_bl.m.
-% For FOOOF + baselined spectra, use AOC_eeg_powspctrm_nback_fooof_bl.m.
+% For specParam + baselined spectra, use AOC_eeg_powspctrm_nback_specParam_bl.m.
 
 %% Setup
 startup

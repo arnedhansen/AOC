@@ -1,12 +1,12 @@
 %% AOC EEG Feature Extraction — Sternberg (Trial-Level)
-% Computes trial-wise NON-FOOOF EEG features for Sternberg.
-% Saves `eeg_matrix_sternberg_trials`; trial-level FOOOF is handled in
-% AOC_eeg_fex_sternberg_FOOOF_trials.m.
+% Computes trial-wise non-specParam EEG features for Sternberg.
+% Saves `eeg_matrix_sternberg_trials`; trial-level specParam is handled in
+% AOC_eeg_fex_sternberg_specParam_trials.m.
 %
 % Extracted features:
 %   Power Spectrum (Early, Late (= Registered Retention))  [trial-by-trial]
 %   IAF (subject-level), Power at IAF (trial-wise), and Lateralization Index (trial-wise)
-%   TFR (Raw, FOOOF and Baselined)
+%   TFR (Raw, specParam and baselined)
 
 %% POWSPCTRM (Early, Late (= Registered Retention), Baseline Period) - TRIAL-BY-TRIAL
 % Setup

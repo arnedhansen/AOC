@@ -4,7 +4,7 @@
 %
 % Data source: power_stern_windows.mat from AOC_eeg_fex_sternberg.m (ft_freqbaseline, db).
 % For raw µV^2/Hz late-window spectra, use AOC_eeg_powspctrm_sternberg.m (pow*_raw_late).
-% For FOOOF + baselined late-window spectra, use AOC_eeg_powspctrm_sternberg_fooof_bl.m
+% For specParam + baselined late-window spectra, use AOC_eeg_powspctrm_sternberg_specParam_bl.m
 % (power_stern_fooof_TFR.mat).
 
 %% Setup

@@ -1,0 +1,447 @@
+%% AOC Gaze Heatmap — Sternberg
+% Loads dataET_sternberg, computes gaze heatmaps for baseline and stimulus windows per condition (load 2/4/6). Saves figures.
+%
+% Key outputs:
+%   Gaze heatmap figures (baseline, stimulus, per condition)
+%   Cluster permutation: effect-size style maps (t/sqrt(n)) and separate t-value heatmaps (*_tmap_*.png)
+
+%% Setup
+startup
+[subjects, paths, ~, ~] = setup('AOC');
+path = paths.features;
+figDir = fullfile(paths.figures, 'gaze', 'heatmap');
+if ~isfolder(figDir), mkdir(figDir); end
+
+%% Load data
+for subj = 1:length(subjects)
+    clc; fprintf('[GAZE HEATMAP - STERNBERG] Building gaze heatmaps for Subject %d / %d \n', subj, length(subjects))
+    datapath = fullfile(path, subjects{subj}, 'gaze');
+    load([datapath, filesep 'dataET_sternberg'])
+
+    %% Segment data in split latencies and conditions, filter and compute heatmaps
+    % Find condition indexes for each trial
+    ind2 = find(dataETlong.trialinfo(:, 1) == 22);
+    ind4 = find(dataETlong.trialinfo(:, 1) == 24);
+    ind6 = find(dataETlong.trialinfo(:, 1) == 26);
+
+    % Common config
+    cfg = [];
+    cfg.avgovertime  = 'no';
+    cfg.keeptrials   = 'yes';
+    num_bins = 1000;
+    smoothing_factor = 10;
+
+    % BASELINE
+    cfg.latency = [-1.5 -0.5];
+    cfg.trials = ind2;
+    dataBase2 = ft_selectdata(cfg,dataETlong);
+    dataBase2 = horzcat(dataBase2.trial{:});
+    dataBase2Allsubs{subj} = computeGazeHeatmap(dataBase2, num_bins, smoothing_factor);
+    cfg.trials = ind4;
+    dataBase4 = ft_selectdata(cfg,dataETlong);
+    dataBase4 = horzcat(dataBase4.trial{:});
+    dataBase4Allsubs{subj} = computeGazeHeatmap(dataBase4, num_bins, smoothing_factor);
+    cfg.trials = ind6;
+    dataBase6 = ft_selectdata(cfg,dataETlong);
+    dataBase6 = horzcat(dataBase6.trial{:});
+    dataBase6Allsubs{subj} = computeGazeHeatmap(dataBase6, num_bins, smoothing_factor);
+
+    % LATE
+    cfg.latency = [1 2];
+    cfg.trials = ind2;
+    dataLate2 = ft_selectdata(cfg,dataETlong);
+    dataLate2 = horzcat(dataLate2.trial{:});
+    dataLate2Allsubs{subj} = computeGazeHeatmap(dataLate2, num_bins, smoothing_factor);
+    cfg.trials = ind4;
+    dataLate4 = ft_selectdata(cfg,dataETlong);
+    dataLate4 = horzcat(dataLate4.trial{:});
+    dataLate4Allsubs{subj} = computeGazeHeatmap(dataLate4, num_bins, smoothing_factor);
+    cfg.trials = ind6;
+    dataLate6 = ft_selectdata(cfg,dataETlong);
+    dataLate6 = horzcat(dataLate6.trial{:});
+    dataLate6Allsubs{subj} = computeGazeHeatmap(dataLate6, num_bins, smoothing_factor);
+
+end
+
+%% Baseline data
+disp('BASELININIG...')
+for subj = 1:length(subjects)
+    clc; fprintf('[GAZE HEATMAP - STERNBERG] Baselining heatmaps for Subject %d / %d \n', subj, length(subjects))
+    % LATE
+    dataLate2Allsubs_bl{subj}               = dataLate2Allsubs{subj};
+    dataLate4Allsubs_bl{subj}               = dataLate4Allsubs{subj};
+    dataLate6Allsubs_bl{subj}               = dataLate6Allsubs{subj};
+    dataLate2Allsubs_bl{subj}.powspctrm     = dataLate2Allsubs{subj}.powspctrm - dataBase2Allsubs{subj}.powspctrm;
+    dataLate4Allsubs_bl{subj}.powspctrm     = dataLate4Allsubs{subj}.powspctrm - dataBase4Allsubs{subj}.powspctrm;
+    dataLate6Allsubs_bl{subj}.powspctrm     = dataLate6Allsubs{subj}.powspctrm - dataBase6Allsubs{subj}.powspctrm;
+end
+
+%% Average across subjects
+disp('AVERAGING...')
+datBaseGA2    = ft_freqgrandaverage([],dataBase2Allsubs{:});
+datBaseGA4    = ft_freqgrandaverage([],dataBase4Allsubs{:});
+datBaseGA6    = ft_freqgrandaverage([],dataBase6Allsubs{:});
+
+datLateGA2    = ft_freqgrandaverage([],dataLate2Allsubs{:});
+datLateGA4    = ft_freqgrandaverage([],dataLate4Allsubs{:});
+datLateGA6    = ft_freqgrandaverage([],dataLate6Allsubs{:});
+
+datLateGA2_bl    = ft_freqgrandaverage([],dataLate2Allsubs_bl{:});
+datLateGA4_bl    = ft_freqgrandaverage([],dataLate4Allsubs_bl{:});
+datLateGA6_bl    = ft_freqgrandaverage([],dataLate6Allsubs_bl{:});
+
+%% Plot GRAND AVERAGE HEATMAPS RAW
+close all;
+overallFontSize = 40;
+
+% Common configuration
+centerX = 800 / 2;
+centerY = 600 / 2;
+colMapRaw = customcolormap_preset('white-red');
+maxval = max([max(datLateGA2.powspctrm(:)), max(datLateGA4.powspctrm(:)) , max(datLateGA6.powspctrm(:))]);
+robustMax = prctile([datLateGA2.powspctrm(:); datLateGA4.powspctrm(:); datLateGA6.powspctrm(:)], 99.9995); 
+
+% Plot RAW heatmap WM2
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
+cfg = [];
+cfg.figure = 'gcf';
+cfg.zlim = [0 robustMax];
+ft_singleplotTFR(cfg, datLateGA2);
+xlim([0 800]);
+ylim([0 600]);
+yticks([0 150 300 450 600])
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colormap(colMapRaw);
+cb = colorbar;
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 2 Gaze Heatmap', 'FontSize', 30)
+
+% Save
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_raw_WM2.png'));
+
+% Plot RAW heatmap WM4
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
+cfg = [];
+cfg.figure = 'gcf';
+ft_singleplotTFR(cfg, datLateGA4);
+xlim([0 800]);
+ylim([0 600]);
+yticks([0 150 300 450 600])
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colormap(colMapRaw);
+cb = colorbar;
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 4 Gaze Heatmap', 'FontSize', 30)
+
+% Save
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_raw_WM4.png'));
+
+% Plot RAW heatmap WM6
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
+cfg = [];
+cfg.figure = 'gcf';
+ft_singleplotTFR(cfg, datLateGA6);
+xlim([0 800]);
+ylim([0 600]);
+yticks([0 150 300 450 600])
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colormap(colMapRaw);
+cb = colorbar;
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 6 Gaze Heatmap', 'FontSize', 30)
+
+% Save
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_raw_WM6.png'));
+
+% Plot RAW heatmap DIFF (WM6-WM2)
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
+cfg = [];
+cfg.figure = 'gcf';
+diff = datLateGA6;
+diff.powspctrm = datLateGA6.powspctrm - datLateGA2.powspctrm;
+robustLim = prctile(abs(diff.powspctrm(:)), 99.5);
+cfg.zlim = [-robustLim robustLim];
+ft_singleplotTFR(cfg, diff);
+xlim([0 800]);
+ylim([0 600]);
+yticks([0 150 300 450 600])
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colMap = customcolormap_preset('red-white-blue');
+colormap(colMap);
+cb = colorbar;
+ylabel(cb, 'Gaze Density [a.u.]', 'FontSize', overallFontSize);
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 20, 'LineWidth', 2.5, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('')
+
+% Save
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_raw_diff.png'));
+
+%% Set up stats
+cfg                    = [];
+cfg.spmversion         = 'spm12';
+cfg.method             = 'montecarlo';
+cfg.statistic          = 'ft_statfun_depsamplesT';
+cfg.correctm           = 'cluster';
+cfg.clusteralpha       = 0.05;
+cfg.clusterstatistic   = 'maxsum';
+cfg.tail               = 0;
+cfg.clustertail        = 0;
+cfg.alpha              = 0.025;
+cfg.numrandomization   = 1000;
+cfg.neighbours         = [];
+
+clear design
+subj = numel(subjects);
+design = zeros(2,2*subj);
+for i = 1:subj
+    design(1,i) = i;
+end
+for i = 1:subj
+    design(1,subj+i) = i;
+end
+design(2,1:subj)        = 1;
+design(2,subj+1:2*subj) = 2;
+
+cfg.design   = design;
+cfg.uvar     = 1;
+cfg.ivar     = 2;
+
+%% Compute significant differences
+clc; disp('COMPUTING STATS...')
+
+clc; disp('dataLate2Allsubs...')
+[stat2late] = ft_freqstatistics(cfg, dataLate2Allsubs{:},dataBase2Allsubs{:});
+stat2late_tmap = stat2late;
+stat2late_tmap.stat(stat2late_tmap.mask==0) = 0;
+cohensd=((stat2late.stat)./sqrt(numel(subjects)));
+stat2late.stat=cohensd;
+stat2late.stat(stat2late.mask==0)=0;
+
+clc; disp('dataLate4Allsubs...')
+[stat4late] = ft_freqstatistics(cfg, dataLate4Allsubs{:}, dataBase4Allsubs{:});
+stat4late_tmap = stat4late;
+stat4late_tmap.stat(stat4late_tmap.mask==0) = 0;
+cohensd=((stat4late.stat)./sqrt(numel(subjects)));
+stat4late.stat=cohensd;
+stat4late.stat(stat4late.mask==0)=0;
+
+clc; disp('dataLate6Allsubs...')
+[stat6late] = ft_freqstatistics(cfg, dataLate6Allsubs{:},dataBase6Allsubs{:});
+stat6late_tmap = stat6late;
+stat6late_tmap.stat(stat6late_tmap.mask==0) = 0;
+cohensd=((stat6late.stat)./sqrt(numel(subjects)));
+stat6late.stat=cohensd;
+stat6late.stat(stat6late.mask==0)=0;
+
+clc; disp('dataLate6Allsubs...')
+[statDIFF] = ft_freqstatistics(cfg, dataLate6Allsubs{:},dataLate2Allsubs{:});
+statDIFF_tmap = statDIFF;
+statDIFF_tmap.stat(statDIFF_tmap.mask==0) = 0;
+cohensd=((statDIFF.stat)./sqrt(numel(subjects)));
+statDIFF.stat=cohensd;
+statDIFF.stat(statDIFF.mask==0)=0;
+
+clc; disp('STATS DONE...')
+
+%% Plot stats OVERVIEW
+close all
+
+% Common config
+cfg               = [];
+cfg.parameter     = 'stat';
+cfg.maskparameter = 'mask';
+cfg.maskstyle     = 'outline';
+cfg.zlim          = 'maxabs';
+cfg.zlim          = [-.5 .5];
+colMap            = customcolormap_preset('red-white-blue');
+cfg.colormap      = colMap;
+cfg.figure        = 'gcf';
+overallFontSize   = 15;
+centerX           = 800 / 2;
+centerY           = 600 / 2;
+
+% Open fig
+figure;
+set(gcf, 'Position', [0 0 800 1200], 'Color', 'W')
+
+% Late WM load 2
+subplot(3,1,1);
+ft_singleplotTFR(cfg,stat2late);
+xlim([0 800]);
+ylim([0 600]);
+yticks([0 150 300 450 600])
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colormap(colMap);
+colB = colorbar;
+colB.LineWidth = 1;
+colB.Ticks = [-.5 0 .5];
+title(colB,'Effect size \itd')
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 2 Gaze Heatmap', 'FontSize', overallFontSize*1.25)
+
+% Late WM load 4
+subplot(3,1,2);
+ft_singleplotTFR(cfg,stat4late);
+xlim([0 800]);
+ylim([0 600]);
+yticks([0 150 300 450 600])
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colormap(colMap);
+colB = colorbar;
+colB.LineWidth = 1;
+colB.Ticks = [-.5 0 .5];
+title(colB,'Effect size \itd')
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 4 Gaze Heatmap', 'FontSize', overallFontSize*1.25)
+
+% Late WM load 6
+subplot(3,1,3);
+ft_singleplotTFR(cfg,stat6late);
+xlim([0 800]);
+ylim([0 600]);
+yticks([0 150 300 450 600])
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+colormap(colMap);
+colB = colorbar;
+colB.LineWidth = 1;
+colB.Ticks = [-.5 0 .5];
+title(colB,'Effect size \itd')
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 6 Gaze Heatmap', 'FontSize', overallFontSize*1.25)
+
+% Save
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_stats_OVERVIEW_onlylate.png'))
+
+%% DIFF STATS Heatmap
+close all
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
+ft_singleplotTFR(cfg,statDIFF);
+overallFontSize = 40;
+xlim([0 800]);
+ylim([0 600]);
+xlabel('Screen Width [px]');
+ylabel('Screen Height [px]');
+yticks([0 150 300 450 600])
+colormap(colMap);
+colB = colorbar;
+colB.LineWidth = 1;
+colB.Ticks = [-.5 -.25 0 .25 .5];
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title(colB,'Effect size \itd', 'FontSize', overallFontSize*0.8)
+title('Statistical Difference Heatmap', 'FontSize', overallFontSize*1.25)
+
+% Save
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_stats_DIFF_late6vs2.png'))
+
+%% Plot t-value heatmaps (depsamplesT statistic before d scaling)
+tmAbs = max(abs([stat2late_tmap.stat(:); stat4late_tmap.stat(:); stat6late_tmap.stat(:); statDIFF_tmap.stat(:)]), [], 'omitnan');
+if ~isfinite(tmAbs) || tmAbs == 0
+    tmAbs = 1;
+end
+cfgT = [];
+cfgT.parameter     = 'stat';
+cfgT.maskparameter = 'mask';
+cfgT.maskstyle     = 'outline';
+cfgT.zlim          = [-tmAbs tmAbs];
+cfgT.colormap      = colMap;
+cfgT.figure        = 'gcf';
+
+close all
+overallFontSize = 15;
+figure;
+set(gcf, 'Position', [0 0 800 1200], 'Color', 'W')
+subplot(3,1,1);
+ft_singleplotTFR(cfgT, stat2late_tmap);
+xlim([0 800]); ylim([0 600]); yticks([0 150 300 450 600])
+xlabel('Screen Width [px]'); ylabel('Screen Height [px]');
+colormap(colMap);
+colBt = colorbar;
+colBt.LineWidth = 1;
+title(colBt, 't value')
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 2 (t: late vs baseline)', 'FontSize', overallFontSize*1.25)
+subplot(3,1,2);
+ft_singleplotTFR(cfgT, stat4late_tmap);
+xlim([0 800]); ylim([0 600]); yticks([0 150 300 450 600])
+xlabel('Screen Width [px]'); ylabel('Screen Height [px]');
+colormap(colMap);
+colBt = colorbar;
+colBt.LineWidth = 1;
+title(colBt, 't value')
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 4 (t: late vs baseline)', 'FontSize', overallFontSize*1.25)
+subplot(3,1,3);
+ft_singleplotTFR(cfgT, stat6late_tmap);
+xlim([0 800]); ylim([0 600]); yticks([0 150 300 450 600])
+xlabel('Screen Width [px]'); ylabel('Screen Height [px]');
+colormap(colMap);
+colBt = colorbar;
+colBt.LineWidth = 1;
+title(colBt, 't value')
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title('WM load 6 (t: late vs baseline)', 'FontSize', overallFontSize*1.25)
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_tmap_OVERVIEW.png'))
+
+close all
+figure;
+set(gcf, 'Position', [0, 0, 1512, 982], 'Color', 'W');
+ft_singleplotTFR(cfgT, statDIFF_tmap);
+overallFontSize = 40;
+xlim([0 800]); ylim([0 600]); yticks([0 150 300 450 600])
+xlabel('Screen Width [px]'); ylabel('Screen Height [px]');
+colormap(colMap);
+colBt = colorbar;
+colBt.LineWidth = 1;
+hold on
+plot(centerX, centerY, '+', 'MarkerSize', 15, 'LineWidth', 2, 'Color', 'k');
+set(gca, 'FontSize', overallFontSize);
+title(colBt, 't value', 'FontSize', overallFontSize*0.8)
+title('t map: WM6 vs WM2 (late window)', 'FontSize', overallFontSize*1.2)
+saveas(gcf, fullfile(figDir, 'AOC_gaze_heatmap_sternberg_tmap_DIFF_late6vs2.png'))
+
+%% Plot stats INDIVIDUAL figures
+% plotGazeHeatmap(stat2early, 'WM load 2 EARLY [0 1] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_early2');
+% plotGazeHeatmap(stat2late, 'WM load 2 LATE [1 2] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_late2');
+% plotGazeHeatmap(stat4early, 'WM load 4 EARLY [0 1] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_early4');
+% plotGazeHeatmap(stat4late, 'WM load 4 LATE [1 2] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_late4');
+% plotGazeHeatmap(stat6early, 'WM load 6 EARLY [0 1] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_early6');
+% plotGazeHeatmap(stat6late, 'WM load 6 LATE [1 2] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_late6');
+% plotGazeHeatmap(statCOMBearly, 'COMB EARLY [0 1] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_early_COMB');
+% plotGazeHeatmap(statCOMBlate, 'COMB LATE [1 2] Gaze Heatmap', 'AOC_gaze_heatmap_sternberg_stats_late_COMB');

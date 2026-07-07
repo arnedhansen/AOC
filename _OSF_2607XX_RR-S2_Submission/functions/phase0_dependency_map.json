@@ -1,0 +1,752 @@
+{
+  "scripts": [
+    {
+      "script": "1_preprocessing/4_preprocessing/AOC_preprocessing_sternberg.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "_merged.mat",
+        "dataEEG_sternberg.mat"
+      ],
+      "declared_outputs": [
+        "save"
+      ],
+      "helper_functions": [
+        "askRunMode",
+        "eeglab2fieldtrip",
+        "epoch",
+        "exclude_subjects",
+        "fieldnames",
+        "fixCheck",
+        "pop_epoch",
+        "reorder_trials_ft"
+      ]
+    },
+    {
+      "script": "1_preprocessing/4_preprocessing/AOC_preprocessing_nback.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "_merged.mat",
+        "dataEEG_nback.mat"
+      ],
+      "declared_outputs": [
+        "save"
+      ],
+      "helper_functions": [
+        "askRunMode",
+        "eeglab2fieldtrip",
+        "epoch",
+        "exclude_subjects",
+        "fieldnames",
+        "fixCheck",
+        "pop_epoch",
+        "pop_select",
+        "reorder_trials_ft"
+      ]
+    },
+    {
+      "script": "2_feature_extraction/AOC_demographics.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_merged_data_nback.mat"
+      ],
+      "declared_outputs": [],
+      "helper_functions": []
+    },
+    {
+      "script": "2_feature_extraction/behavioral/AOC_behavioral_fex_sternberg.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_behavioral_matrix_sternberg.mat",
+        "AOC_behavioral_matrix_sternberg_trials.mat",
+        "_task.mat"
+      ],
+      "declared_outputs": [
+        "save"
+      ],
+      "helper_functions": [
+        "char",
+        "exclude_subjects"
+      ]
+    },
+    {
+      "script": "2_feature_extraction/behavioral/AOC_behavioral_fex_nback.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_behavioral_matrix_nback.mat",
+        "AOC_behavioral_matrix_nback_trials.mat",
+        "_*_task.mat"
+      ],
+      "declared_outputs": [
+        "save"
+      ],
+      "helper_functions": [
+        "char",
+        "exclude_subjects"
+      ]
+    },
+    {
+      "script": "2_feature_extraction/gaze/AOC_gaze_fex_sternberg.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_gaze_matrix_sternberg.mat",
+        "AOC_gaze_sternberg.mat"
+      ],
+      "declared_outputs": [
+        "save"
+      ],
+      "helper_functions": [
+        "detect_microsaccades",
+        "remove_blinks",
+        "size"
+      ]
+    },
+    {
+      "script": "2_feature_extraction/gaze/AOC_gaze_fex_nback.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_gaze_matrix_nback.mat",
+        "AOC_gaze_nback.mat"
+      ],
+      "declared_outputs": [
+        "save"
+      ],
+      "helper_functions": [
+        "detect_microsaccades",
+        "remove_blinks",
+        "size"
+      ]
+    },
+    {
+      "script": "2_feature_extraction/eeg/AOC_eeg_fex_sternberg.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_eeg_matrix_sternberg.csv",
+        "AOC_eeg_matrix_sternberg.mat",
+        "ersd_sternberg_timecourse.mat",
+        "power_stern_windows.mat",
+        "tfr_stern.mat"
+      ],
+      "declared_outputs": [
+        "save",
+        "writetable"
+      ],
+      "helper_functions": [
+        "remove_time_dimension",
+        "select_data",
+        "size",
+        "spec"
+      ]
+    },
+    {
+      "script": "2_feature_extraction/eeg/AOC_eeg_fex_nback.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_eeg_matrix_nback.csv",
+        "AOC_eeg_matrix_nback.mat",
+        "ersd_nback_timecourse.mat",
+        "power_nback_windows.mat",
+        "tfr_nback.mat"
+      ],
+      "declared_outputs": [
+        "save",
+        "writetable"
+      ],
+      "helper_functions": [
+        "remove_time_dimension",
+        "select_data",
+        "size",
+        "spec",
+        "windows"
+      ]
+    },
+    {
+      "script": "2_feature_extraction/eeg/AOC_eeg_fex_sternberg_FOOOF.m",
+      "required_inputs": [
+        "readtable"
+      ],
+      "declared_file_references": [
+        "AOC_eeg_matrix_sternberg.csv",
+        "AOC_eeg_matrix_sternberg_FOOOF.csv",
+        "AOC_eeg_matrix_sternberg_FOOOF.mat",
+        "IAF_specParam_sternberg.mat",
+        "power_sternberg_fooof_TFR.mat"
+      ],
+      "declared_outputs": [
+        "save",
+        "writetable"
+      ],
+      "helper_functions": [
+        "remove_time_dimension",
+        "select_data",
+        "size"
+      ]
+    },
+    {
+      "script": "2_feature_extraction/eeg/AOC_eeg_fex_nback_FOOOF.m",
+      "required_inputs": [
+        "readtable"
+      ],
+      "declared_file_references": [
+        "AOC_eeg_matrix_nback.csv",
+        "AOC_eeg_matrix_nback_FOOOF.csv",
+        "AOC_eeg_matrix_nback_FOOOF.mat",
+        "IAF_specParam_nback.mat",
+        "power_nback_fooof_TFR.mat"
+      ],
+      "declared_outputs": [
+        "save",
+        "writetable"
+      ],
+      "helper_functions": [
+        "remove_time_dimension",
+        "select_data",
+        "size"
+      ]
+    },
+    {
+      "script": "_controls/AOC_eeg_powspctrm_baseline_effects.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_eeg_powspctrm_baseline_effects_%s_fooof.png",
+        "AOC_eeg_powspctrm_baseline_effects_%s_raw.png",
+        "tfr_nback.mat",
+        "tfr_stern.mat"
+      ],
+      "declared_outputs": [
+        "saveas"
+      ],
+      "helper_functions": [
+        "shadedErrorBar"
+      ]
+    },
+    {
+      "script": "2_feature_extraction/AOC_master_matrix_sternberg.m",
+      "required_inputs": [
+        "load",
+        "readtable"
+      ],
+      "declared_file_references": [
+        "AOC_behavioral_matrix_sternberg.mat",
+        "AOC_eeg_matrix_sternberg.mat",
+        "AOC_eeg_matrix_sternberg_ERSD.mat",
+        "AOC_gaze_matrix_sternberg.mat",
+        "AOC_merged_data_sternberg.csv",
+        "AOC_merged_data_sternberg.mat"
+      ],
+      "declared_outputs": [
+        "save",
+        "writetable"
+      ],
+      "helper_functions": []
+    },
+    {
+      "script": "2_feature_extraction/AOC_master_matrix_nback.m",
+      "required_inputs": [
+        "load",
+        "readtable"
+      ],
+      "declared_file_references": [
+        "AOC_behavioral_matrix_nback.mat",
+        "AOC_eeg_matrix_nback.mat",
+        "AOC_eeg_matrix_nback_ERSD.mat",
+        "AOC_gaze_matrix_nback.mat",
+        "AOC_merged_data_nback.csv",
+        "AOC_merged_data_nback.mat"
+      ],
+      "declared_outputs": [
+        "save",
+        "writetable"
+      ],
+      "helper_functions": []
+    },
+    {
+      "script": "3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_nback.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_powspctrm_nback_raw_full.png",
+        "alpha_power_nback.mat",
+        "power_nback_windows.mat"
+      ],
+      "declared_outputs": [
+        "exportgraphics"
+      ],
+      "helper_functions": [
+        "shadedErrorBar",
+        "size"
+      ]
+    },
+    {
+      "script": "3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_nback_bl.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_powspctrm_nback_bl_full.png",
+        "power_nback_windows.mat"
+      ],
+      "declared_outputs": [
+        "exportgraphics"
+      ],
+      "helper_functions": [
+        "shadedErrorBar"
+      ]
+    },
+    {
+      "script": "3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_nback_fooof_bl.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_powspctrm_nback_fooof_bl_full.png",
+        "power_nback_fooof_TFR.mat"
+      ],
+      "declared_outputs": [
+        "saveas"
+      ],
+      "helper_functions": [
+        "ft_freqgrandaverage_nanrobust",
+        "shadedErrorBar"
+      ]
+    },
+    {
+      "script": "3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_sternberg.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_powspctrm_sternberg_raw_late.png",
+        "power_stern_windows.mat"
+      ],
+      "declared_outputs": [
+        "exportgraphics"
+      ],
+      "helper_functions": [
+        "shadedErrorBar"
+      ]
+    },
+    {
+      "script": "3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_sternberg_bl.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_powspctrm_sternberg_bl_late.png",
+        "power_stern_windows.mat"
+      ],
+      "declared_outputs": [
+        "exportgraphics"
+      ],
+      "helper_functions": [
+        "shadedErrorBar"
+      ]
+    },
+    {
+      "script": "3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_sternberg_fooof_bl.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_powspctrm_sternberg_fooof_bl_late.png",
+        "power_stern_fooof_TFR.mat"
+      ],
+      "declared_outputs": [
+        "saveas"
+      ],
+      "helper_functions": [
+        "ft_freqgrandaverage_nanrobust",
+        "shadedErrorBar"
+      ]
+    },
+    {
+      "script": "3_visualization/eeg/powspctrm/AOC_eeg_powspctrm_baseline_window_fooof.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_powspctrm_nback_fooof_baselineWindow.png",
+        "AOC_powspctrm_sternberg_fooof_baselineWindow.png",
+        "tfr_nback.mat",
+        "tfr_stern.mat"
+      ],
+      "declared_outputs": [
+        "saveas"
+      ],
+      "helper_functions": [
+        "ft_freqgrandaverage_nanrobust",
+        "rmfield",
+        "shadedErrorBar"
+      ]
+    },
+    {
+      "script": "3_visualization/eeg/tfr/AOC_tfr_nback.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_tfr_1back.png",
+        "AOC_tfr_2back.png",
+        "AOC_tfr_3back.png",
+        "AOC_tfr_nback_diff.png",
+        "tfr_nback.mat"
+      ],
+      "declared_outputs": [
+        "exportgraphics"
+      ],
+      "helper_functions": []
+    },
+    {
+      "script": "3_visualization/eeg/tfr/AOC_tfr_sternberg.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_tfr_sternberg_2.png",
+        "AOC_tfr_sternberg_4.png",
+        "AOC_tfr_sternberg_6.png",
+        "AOC_tfr_sternberg_diff.png",
+        "tfr_stern.mat"
+      ],
+      "declared_outputs": [
+        "exportgraphics"
+      ],
+      "helper_functions": []
+    },
+    {
+      "script": "3_visualization/eeg/tfr/AOC_tfr_nback_fooof_abs.m",
+      "required_inputs": [],
+      "declared_file_references": [
+        "AOC_tfr_1back_fooof_bl_abs.png",
+        "AOC_tfr_2back_fooof_bl_abs.png",
+        "AOC_tfr_3back_fooof_bl_abs.png",
+        "AOC_tfr_nback_diff_fooof_bl_abs.png"
+      ],
+      "declared_outputs": [
+        "exportgraphics"
+      ],
+      "helper_functions": [
+        "ft_freqgrandaverage_nanrobust"
+      ]
+    },
+    {
+      "script": "3_visualization/eeg/tfr/AOC_tfr_sternberg_fooof_abs.m",
+      "required_inputs": [],
+      "declared_file_references": [
+        "AOC_tfr_sternberg_2_fooof_bl_abs.png",
+        "AOC_tfr_sternberg_4_fooof_bl_abs.png",
+        "AOC_tfr_sternberg_6_fooof_bl_abs.png",
+        "AOC_tfr_sternberg_diff_fooof_bl_abs.png"
+      ],
+      "declared_outputs": [
+        "exportgraphics"
+      ],
+      "helper_functions": [
+        "ft_freqgrandaverage_nanrobust"
+      ]
+    },
+    {
+      "script": "3_visualization/eeg/topos/AOC_eeg_topos_nback.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_eeg_topos_nback_diff.png",
+        "AOC_eeg_topos_nback_load1.png",
+        "AOC_eeg_topos_nback_load2.png",
+        "AOC_eeg_topos_nback_load3.png",
+        "power_nback_windows.mat"
+      ],
+      "declared_outputs": [
+        "saveas"
+      ],
+      "helper_functions": [
+        "cbrewer",
+        "customcolormap"
+      ]
+    },
+    {
+      "script": "3_visualization/eeg/topos/AOC_eeg_topos_sternberg.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_eeg_topos_sternberg_diff.png",
+        "AOC_eeg_topos_sternberg_load2.png",
+        "AOC_eeg_topos_sternberg_load4.png",
+        "AOC_eeg_topos_sternberg_load6.png",
+        "power_stern_windows.mat"
+      ],
+      "declared_outputs": [
+        "saveas"
+      ],
+      "helper_functions": [
+        "cbrewer",
+        "customcolormap"
+      ]
+    },
+    {
+      "script": "3_visualization/gaze/heatmap/AOC_gaze_heatmap_sternberg.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_gaze_heatmap_sternberg_raw_WM2.png",
+        "AOC_gaze_heatmap_sternberg_raw_WM4.png",
+        "AOC_gaze_heatmap_sternberg_raw_WM6.png",
+        "AOC_gaze_heatmap_sternberg_raw_diff.png",
+        "AOC_gaze_heatmap_sternberg_stats_DIFF_late6vs2.png",
+        "AOC_gaze_heatmap_sternberg_stats_OVERVIEW_onlylate.png",
+        "AOC_gaze_heatmap_sternberg_tmap_DIFF_late6vs2.png",
+        "AOC_gaze_heatmap_sternberg_tmap_OVERVIEW.png"
+      ],
+      "declared_outputs": [
+        "saveas"
+      ],
+      "helper_functions": [
+        "computeGazeHeatmap",
+        "customcolormap_preset",
+        "plotGazeHeatmap"
+      ]
+    },
+    {
+      "script": "3_visualization/gaze/heatmap/AOC_gaze_heatmap_sternberg_split.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_gaze_heatmap_sternberg_stats_OVERVIEW.png"
+      ],
+      "declared_outputs": [
+        "saveas"
+      ],
+      "helper_functions": [
+        "computeGazeHeatmap",
+        "customcolormap_preset",
+        "plotGazeHeatmap"
+      ]
+    },
+    {
+      "script": "3_visualization/gaze/heatmap/AOC_gaze_heatmap_nback.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_gaze_heatmap_nback_raw_1.png",
+        "AOC_gaze_heatmap_nback_raw_2.png",
+        "AOC_gaze_heatmap_nback_raw_3.png",
+        "AOC_gaze_heatmap_nback_raw_diff.png",
+        "AOC_gaze_heatmap_nback_stats_DIFF_stim3vs1.png",
+        "AOC_gaze_heatmap_nback_stats_OVERVIEW_onlystim.png",
+        "AOC_gaze_heatmap_nback_tmap_DIFF_stim3vs1.png",
+        "AOC_gaze_heatmap_nback_tmap_OVERVIEW.png"
+      ],
+      "declared_outputs": [
+        "saveas"
+      ],
+      "helper_functions": [
+        "computeGazeHeatmap",
+        "customcolormap_preset",
+        "plotGazeHeatmap"
+      ]
+    },
+    {
+      "script": "3_visualization/gaze/heatmap/AOC_gaze_heatmap_nback_split.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_gaze_heatmap_nback_BASELINE.png",
+        "AOC_gaze_heatmap_nback_EARLY.png",
+        "AOC_gaze_heatmap_nback_LATE.png",
+        "AOC_gaze_heatmap_nback_stats_OVERVIEW.png"
+      ],
+      "declared_outputs": [
+        "saveas"
+      ],
+      "helper_functions": [
+        "computeGazeHeatmap",
+        "customcolormap_preset",
+        "plotGazeHeatmap"
+      ]
+    },
+    {
+      "script": "3_visualization/gaze/deviation/AOC_gaze_dev_sternberg.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_gaze_dev_timecourse_sternberg.png",
+        "AOC_gaze_dev_timecourse_sternberg_raw.png",
+        "AOC_merged_data_sternberg.mat",
+        "AOC_tmp_%s.mat",
+        "dataET_sternberg.mat"
+      ],
+      "declared_outputs": [
+        "saveas"
+      ],
+      "helper_functions": [
+        "char",
+        "remove_blinks",
+        "shadedErrorBar",
+        "size"
+      ]
+    },
+    {
+      "script": "3_visualization/gaze/deviation/AOC_gaze_dev_nback.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_gaze_dev_timecourse_nback.png",
+        "AOC_gaze_dev_timecourse_nback_raw.png",
+        "AOC_merged_data_nback.mat",
+        "AOC_tmp_%s.mat",
+        "dataET_nback.mat"
+      ],
+      "declared_outputs": [
+        "saveas"
+      ],
+      "helper_functions": [
+        "char",
+        "remove_blinks",
+        "shadedErrorBar",
+        "size"
+      ]
+    },
+    {
+      "script": "3_visualization/gaze/microsaccades/AOC_gaze_microsaccades_sternberg.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_gaze_microsaccades_combined_sternberg.png",
+        "AOC_gaze_microsaccades_raster_sternberg.png",
+        "AOC_gaze_microsaccades_timecourse_sternberg.png",
+        "AOC_gaze_microsaccades_timecourse_sternberg_raw.png"
+      ],
+      "declared_outputs": [
+        "saveas"
+      ],
+      "helper_functions": [
+        "detect_microsaccades",
+        "exclude_subjects",
+        "remove_blinks",
+        "shadedErrorBar",
+        "size"
+      ]
+    },
+    {
+      "script": "3_visualization/gaze/microsaccades/AOC_gaze_microsaccades_nback.m",
+      "required_inputs": [
+        "load"
+      ],
+      "declared_file_references": [
+        "AOC_gaze_microsaccades_combined_nback.png",
+        "AOC_gaze_microsaccades_raster_nback.png",
+        "AOC_gaze_microsaccades_timecourse_nback.png",
+        "AOC_gaze_microsaccades_timecourse_nback_raw.png"
+      ],
+      "declared_outputs": [
+        "saveas"
+      ],
+      "helper_functions": [
+        "detect_microsaccades",
+        "exclude_subjects",
+        "remove_blinks",
+        "shadedErrorBar",
+        "size"
+      ]
+    },
+    {
+      "script": "splits/AOC_split_AlphaAmpRed_GazeDev.m",
+      "required_inputs": [
+        "fopen",
+        "load"
+      ],
+      "declared_file_references": [
+        "%s_inclusion.png",
+        "%s_raincloud_%s.png",
+        "%s_tfr_all.png",
+        "%s_tfr_collapsedConditions.png",
+        "%s_topo_all.png",
+        "%s_topo_collapsedConditions.png",
+        "AOC_merged_data_nback.mat",
+        "AOC_merged_data_sternberg.mat",
+        "AOC_splitERSERD_GazeDev_%s_%s_CBPT_report.txt",
+        "AOC_splitERSERD_GazeDev_%s_%s_stats_input.csv",
+        "AOC_splitERSERD_GazeDev_timecourse_%s.png",
+        "AOC_splitERSERD_GazeDev_timecourse_%s_CBPT.png",
+        "ersd_nback_timecourse.mat",
+        "ersd_sternberg_timecourse.mat",
+        "gaze_series_nback_trials.mat",
+        "gaze_series_sternberg_trials.mat",
+        "tfr_nback.mat",
+        "tfr_nback_long.mat",
+        "tfr_stern.mat"
+      ],
+      "declared_outputs": [
+        "saveas",
+        "writetable"
+      ],
+      "helper_functions": [
+        "customcolormap_preset",
+        "ndims",
+        "reshape",
+        "shadedErrorBar",
+        "size",
+        "var"
+      ]
+    },
+    {
+      "script": "splits/AOC_split_AlphaAmpRed_MS.m",
+      "required_inputs": [
+        "fopen",
+        "load"
+      ],
+      "declared_file_references": [
+        "%s_inclusion.png",
+        "%s_raincloud_ms.png",
+        "AOC_merged_data_nback.mat",
+        "AOC_merged_data_sternberg.mat",
+        "AOC_splitERSERD_MS_%s_%s_CBPT_report.txt",
+        "AOC_splitERSERD_MS_%s_%s_stats_input.csv",
+        "AOC_splitERSERD_MS_timecourse_%s.png",
+        "AOC_splitERSERD_MS_timecourse_%s_CBPT.png"
+      ],
+      "declared_outputs": [
+        "saveas",
+        "writetable"
+      ],
+      "helper_functions": [
+        "detect_microsaccades",
+        "ndims",
+        "remove_blinks",
+        "reshape",
+        "shadedErrorBar",
+        "size",
+        "var"
+      ]
+    }
+  ]
+}

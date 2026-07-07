@@ -1,9 +1,6 @@
-%% AOC Power Spectrum — Sternberg (specParam + baseline, late window [1 2]s)
-% Loads pow*_fooof_bl_late from power_stern_fooof_TFR.mat (AOC_eeg_fex_sternberg_TFR.m),
-% grand-averages across WM load 2/4/6, plots spectra, and saves figures.
-%
-% For non-specParam Hanning spectra use AOC_eeg_powspctrm_sternberg.m (raw) or
-% AOC_eeg_powspctrm_sternberg_bl.m (dB baselined), both from power_stern_windows.mat.
+%% AOC Power Spectrum Sternberg specParam Baselined
+% Plot grand average specParam baselined power spectra across Sternberg load conditions in the late window.
+% Output: `AOC_powspctrm_sternberg_fooof_bl_late.png`.
 
 %% Setup
 startup
@@ -37,7 +34,7 @@ for subj = 1:length(subjects)
     cd(datapath)
     clc
     disp('LOADING SPECPARAM+BL LATE DATA...')
-    disp(subj)
+    fprintf('[VIZ POWSPCTRM STERNBERG SPECPARAM] Loading spectra for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj});
     stern_power_file = fullfile(datapath, 'power_stern_fooof_TFR.mat');
     D = load(stern_power_file, 'pow2_fooof_bl_late', 'pow4_fooof_bl_late', 'pow6_fooof_bl_late');
     powl2{subj} = D.pow2_fooof_bl_late;

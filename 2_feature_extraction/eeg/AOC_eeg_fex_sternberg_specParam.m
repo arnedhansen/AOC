@@ -1,6 +1,6 @@
-%% AOC EEG specParam Feature Extraction - Sternberg
-% Computes subject-level specParam alpha features and IAF_specParam for sternberg.
-% Saves `AOC_eeg_matrix_sternberg_specParam` (MAT + CSV) and per-subject `IAF_specParam_sternberg.mat`.
+%% AOC EEG Feature Extraction Sternberg specParam
+% Compute subject level specParam alpha power and individual alpha frequency for Sternberg.
+% Output: `AOC_eeg_matrix_sternberg_FOOOF.mat`, `AOC_eeg_matrix_sternberg_FOOOF.csv`, and `IAF_specParam_sternberg.mat`.
 startup
 [subjects, paths, ~, ~] = setup('AOC');
 path = paths.features;
@@ -27,7 +27,7 @@ eeg_data_sternberg_FOOOF = struct('ID', {}, 'Condition', {}, ...
 for subj = 1:length(subjects)
     try
         clc
-        fprintf('[EEG SPECPARAM - STERNBERG] Subject %d / %d\n', subj, length(subjects))
+        fprintf('[EEG SPECPARAM STERNBERG] Processing subject data for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj})
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath)
         load dataEEG_TFR_sternberg
@@ -65,7 +65,7 @@ for subj = 1:length(subjects)
                 continue
             end
             clc
-            fprintf('[EEG SPECPARAM - STERNBERG] Subject %d / %d, condition %s\n', subj, length(subjects), condNames{c})
+            fprintf('[EEG SPECPARAM STERNBERG] Processing condition %s for Subject %d/%d (%s)\n', condNames{c}, subj, length(subjects), subjects{subj})
 
             cfg_sel0 = [];
             cfg_sel0.latency = [toi_start(1) (toi_start(1) + winLen)];
@@ -237,7 +237,7 @@ for subj = 1:length(subjects)
             'pow2_fooof_bl_late', 'pow4_fooof_bl_late', 'pow6_fooof_bl_late')
         eeg_data_sternberg_FOOOF = [eeg_data_sternberg_FOOOF; subj_data_fooof];
     catch ME
-        fprintf('STERNBERG FOOOF failed for subject %s: %s\n', subjects{subj}, ME.message);
+        fprintf('[EEG SPECPARAM STERNBERG] Processing failed for Subject %d/%d (%s): %s\n', subj, length(subjects), subjects{subj}, ME.message);
     end
 end
 

@@ -211,7 +211,7 @@ for subj = 1:length(subjects)
         AlphaPower_bl_late   = [robust_roi_pow(pow1_bl_late,  channelIdx, IAF_band1); robust_roi_pow(pow2_bl_late,  channelIdx, IAF_band2); robust_roi_pow(pow3_bl_late,  channelIdx, IAF_band3)];
         AlphaPower_bl_full   = [robust_roi_pow(pow1_bl_full,  channelIdx, IAF_band1); robust_roi_pow(pow2_bl_full,  channelIdx, IAF_band2); robust_roi_pow(pow3_bl_full,  channelIdx, IAF_band3)];
 
-        subID = str2num(subjects{subj});
+        subID = str2double(subjects{subj});
         subj_data_eeg = struct('ID', num2cell([subID; subID; subID]), 'Condition', num2cell([1; 2; 3]), ...
             'IAF', num2cell([IAF1; IAF2; IAF3]), ...
             'Lateralization', num2cell([LatIdx1; LatIdx2; LatIdx3]), ...
@@ -226,7 +226,9 @@ for subj = 1:length(subjects)
             'AlphaPower_bl_full', num2cell(AlphaPower_bl_full));
         % Save
         savepath = fullfile(paths.features, subjects{subj}, 'eeg');
-        mkdir(savepath)
+        if ~isfolder(savepath)
+            mkdir(savepath)
+        end
         cd(savepath)
         save eeg_matrix_nback_subj subj_data_eeg
         save alpha_power_nback powerIAF1 powerIAF2 powerIAF3

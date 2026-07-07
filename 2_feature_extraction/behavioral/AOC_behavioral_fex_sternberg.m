@@ -1,9 +1,6 @@
-%% AOC Behavioral Feature Extraction — Sternberg
-% Reads *_AOC_Sternberg_block*_task.mat, extracts accuracy and RT per condition and per trial. Saves behavioral_matrix_sternberg.mat and behavioral_matrix_sternberg_trials.mat.
-%
-% Extracted features:
-%   Accuracy
-%   Reaction Time
+%% AOC Behavioral Feature Extraction Sternberg
+% Extract condition level and trial level behavioral metrics for Sternberg.
+% Output: `AOC_behavioral_matrix_sternberg.mat` and `AOC_behavioral_matrix_sternberg_trials.mat`.
 
 %% Setup
 startup
@@ -18,7 +15,7 @@ behav_data_sternberg_trials = struct('Trial', {}, 'ID', {}, 'Condition', {}, 'Ac
 
 %% Read data
 for subj = 1:length(subjects)
-    clc; fprintf('[BEHAV FEX - STERNBERG] Behavioral feature extraction for Subject %d / %d \n', subj, length(subjects))
+    clc; fprintf('[BEHAV FEX STERNBERG] Extracting behavioral features for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj})
     try
         datapath = fullfile(path, subjects{subj});
         cd(datapath)
@@ -51,14 +48,14 @@ for subj = 1:length(subjects)
                 match = [match; saves.data.match'];
                 trial_counter = trial_counter + num_trials;
             catch ME
-                fprintf('[WARNING] Subject %s (iteration %d/%d): Error loading Block %d.\n', ...
-                    subjects{subj}, subj, length(subjects), block);
+                fprintf('[BEHAV FEX STERNBERG] Block %d load failed for Subject %d/%d (%s)\n', ...
+                    block, subj, length(subjects), subjects{subj});
                 num_trials = 50;
                 trial_counter = trial_counter + num_trials;
             end
         end
         if isempty(subject_id)
-            subject_id = [subject_id; repmat({str2num(subjects{subj})}, num_trials, 1)];
+            subject_id = [subject_id; repmat({str2double(subjects{subj})}, num_trials, 1)];
             trial_num = nan(50, 1);
             condition = nan(50, 1);
             accuracy = nan(50, 1);
@@ -93,20 +90,22 @@ for subj = 1:length(subjects)
 
         %% Save
         savepath = fullfile(paths.features, subjects{subj}, 'behavioral');
-        mkdir(savepath)
+        if ~isfolder(savepath)
+            mkdir(savepath)
+        end
         cd(savepath)
         save behavioral_matrix_sternberg_subj_trials subj_data_behav_trials
         save behavioral_matrix_sternberg_subj subj_data_behav
         save acc_sternberg l2acc l4acc l6acc
         save rt_sternberg l2rt l4rt l6rt
         clc
-        disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' done.'])
+        fprintf('[BEHAV FEX STERNBERG] Completed extraction for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj});
 
         % Append to the final structure array
         behav_data_sternberg_trials = [behav_data_sternberg_trials; subj_data_behav_trials];
         behav_data_sternberg = [behav_data_sternberg; subj_data_behav];
     catch ME
-        fprintf('Continuing to next subject...\n');
+        fprintf('[BEHAV FEX STERNBERG] Continuing after failure for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj});
     end
 end
 save(fullfile(paths.features, 'AOC_behavioral_matrix_sternberg_trials.mat'), 'behav_data_sternberg_trials')

@@ -1,9 +1,6 @@
-%% AOC Power Spectrum — Sternberg (raw, late retention [1 2]s)
-% Loads pow*_raw_late from power_stern_windows.mat (AOC_eeg_fex_sternberg.m), grand-averages
-% across WM load 2/4/6, and plots absolute power (not dB baselined).
-%
-% For baselined Hanning/mtmconvol spectra (dB), use AOC_eeg_powspctrm_sternberg_bl.m.
-% For specParam + baselined late-window spectra, use AOC_eeg_powspctrm_sternberg_specParam_bl.m.
+%% AOC Power Spectrum Sternberg Raw
+% Plot grand average raw power spectra across Sternberg load conditions in the late retention window.
+% Output: `AOC_powspctrm_sternberg_raw_late.png`.
 
 %% Setup
 startup
@@ -35,7 +32,7 @@ disp('LOADING RAW LATE-WINDOW SPECTRA...')
 
 % Load raw late-window spectra (same MAT as baselined script, pow*_raw_late fields)
 for subj = 1:length(subjects)
-    clc; fprintf('[VIZ POWSPCTRM - STERNBERG RAW LATE] Loading power spectra for Subject %d / %d \n', subj, length(subjects))
+    clc; fprintf('[VIZ POWSPCTRM STERNBERG RAW] Loading spectra for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj})
     datapath = fullfile(path, subjects{subj}, 'eeg');
     D = load(fullfile(datapath, 'power_stern_windows.mat'), ...
         'pow2_raw_late', 'pow4_raw_late', 'pow6_raw_late');

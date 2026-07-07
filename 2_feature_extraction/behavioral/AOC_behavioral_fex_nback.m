@@ -1,9 +1,6 @@
-%% AOC Behavioral Feature Extraction — N-Back
-% Reads *_AOC_Nback_block*_task.mat, extracts accuracy and RT per condition and per trial. Saves behavioral_matrix_nback.mat and behavioral_matrix_nback_trials.mat.
-%
-% Extracted features:
-%   Accuracy
-%   Reaction Time
+%% AOC Behavioral Feature Extraction N Back
+% Extract condition level and trial level behavioral metrics for N back.
+% Output: `AOC_behavioral_matrix_nback.mat` and `AOC_behavioral_matrix_nback_trials.mat`.
 
 %% Setup
 startup
@@ -18,7 +15,7 @@ behav_data_nback_trials = struct('Trial', {}, 'ID', {}, 'Condition', {}, 'Accura
 
 %% Read data
 for subj = 1:length(subjects)
-    clc; fprintf('[BEHAV FEX - NBACK] Behavioral feature extraction for Subject %d / %d \n', subj, length(subjects))
+    clc; fprintf('[BEHAV FEX NBACK] Extracting behavioral features for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj})
     datapath = fullfile(path, subjects{subj});
     cd(datapath)
 
@@ -55,13 +52,13 @@ for subj = 1:length(subjects)
             match = [match; saves.data.match'];
         catch ME
             ME.message
-            disp(['ERROR loading Block ' num2str(block) '!'])
+            fprintf('[BEHAV FEX NBACK] Block load failed for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj});
             num_trials = 75;
         end
         trial_counter = trial_counter + num_trials;
     end
     if isempty(subject_id)
-        subject_id = [subject_id; repmat({str2num(subjects{subj})}, num_trials, 1)];
+        subject_id = [subject_id; repmat({str2double(subjects{subj})}, num_trials, 1)];
         trial_num = nan(75, 1);
         condition = nan(75, 1);
         accuracy = nan(75, 1);
@@ -95,14 +92,16 @@ for subj = 1:length(subjects)
 
     %% Save
     savepath = fullfile(paths.features, subjects{subj}, 'behavioral');
-    mkdir(savepath)
+    if ~isfolder(savepath)
+        mkdir(savepath)
+    end
     cd(savepath)
     save behavioral_matrix_nback_subj_trials subj_data_behav_trials
     save behavioral_matrix_nback_subj subj_data_behav
     save acc_nback l1acc l2acc l3acc
     save rt_nback l1rt l2rt l3rt
     clc
-    disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' done.'])
+    fprintf('[BEHAV FEX NBACK] Completed extraction for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj});
 
     % Append to the final structure array
     behav_data_nback_trials = [behav_data_nback_trials; subj_data_behav_trials];

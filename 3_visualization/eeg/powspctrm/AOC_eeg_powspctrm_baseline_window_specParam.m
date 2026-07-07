@@ -1,6 +1,6 @@
-%% AOC Power Spectrum — Baseline Window (specParam + baselined)
-% Builds power spectra from the baseline interval [-1.5 -0.5] s only
-% using time-resolved specParam+BL TFR files, for both Sternberg and N-back.
+%% AOC Power Spectrum Baseline Window specParam
+% Build baseline window power spectra from specParam baselined TFR data for Sternberg and N back.
+% Output: Baseline window spectrum figures for both tasks.
 
 %% Setup
 startup
@@ -38,7 +38,7 @@ channels = occ_channels;
 clc
 disp('LOADING STERNBERG BASELINE-WINDOW POWERSPECTRA...')
 for subj = 1:length(subjects)
-    clc; fprintf('[VIZ POWSPCTRM BL - STERNBERG] Loading baseline-window specParam power for Subject %d / %d \n', subj, length(subjects))
+    clc; fprintf('[VIZ POWSPCTRM BL STERNBERG] Loading baseline window spectra for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj})
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath);
     stern_file = fullfile(datapath, 'tfr_stern.mat');
@@ -114,7 +114,7 @@ saveas(gcf, fullfile(fig_dir_pow, 'AOC_powspctrm_sternberg_fooof_baselineWindow.
 clc
 disp('LOADING N-BACK BASELINE-WINDOW POWERSPECTRA...')
 for subj = 1:length(subjects)
-    clc; fprintf('[VIZ POWSPCTRM BL - NBACK] Loading baseline-window specParam power for Subject %d / %d \n', subj, length(subjects))
+    clc; fprintf('[VIZ POWSPCTRM BL NBACK] Loading baseline window spectra for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj})
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath);
     nback_file = fullfile(datapath, 'tfr_nback.mat');

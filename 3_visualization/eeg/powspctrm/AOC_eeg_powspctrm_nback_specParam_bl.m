@@ -1,9 +1,6 @@
-%% AOC Power Spectrum — N-back (specParam + baseline, full window [0 2]s)
-% Loads pow*_fooof_bl_full from power_nback_fooof_TFR.mat (AOC_eeg_fex_nback_TFR.m),
-% grand-averages across 1/2/3-back, plots spectra, and saves figures.
-%
-% For non-specParam Hanning spectra use AOC_eeg_powspctrm_nback.m (raw) or
-% AOC_eeg_powspctrm_nback_bl.m (dB baselined), both from power_nback_windows.mat.
+%% AOC Power Spectrum N Back specParam Baselined
+% Plot grand average specParam baselined power spectra across N back conditions in the full window.
+% Output: `AOC_powspctrm_nback_fooof_bl_full.png`.
 
 %% Setup
 startup
@@ -39,7 +36,7 @@ for subj = 1:length(subjects)
     cd(datapath)
     clc
     disp('LOADING SPECPARAM+BL FULL DATA...')
-    disp(subj)
+    fprintf('[VIZ POWSPCTRM NBACK SPECPARAM] Loading spectra for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj});
     nback_power_file = fullfile(datapath, 'power_nback_fooof_TFR.mat');
     if ~isfile(nback_power_file)
         powl1{subj} = [];

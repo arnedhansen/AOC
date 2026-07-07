@@ -1,12 +1,6 @@
-%% AOC EEG Feature Extraction — Sternberg (Trial-Level)
-% Computes trial-wise non-specParam EEG features for Sternberg.
-% Saves `eeg_matrix_sternberg_trials`; trial-level specParam is handled in
-% AOC_eeg_fex_sternberg_specParam_trials.m.
-%
-% Extracted features:
-%   Power Spectrum (Early, Late (= Registered Retention))  [trial-by-trial]
-%   IAF (subject-level), Power at IAF (trial-wise), and Lateralization Index (trial-wise)
-%   TFR (Raw, specParam and baselined)
+%% AOC EEG Feature Extraction Sternberg Trial Level
+% Compute trial level EEG power features, subject level IAF, and trial level lateralization for Sternberg.
+% Output: Subject trial matrices and `AOC_eeg_matrix_sternberg_trials.mat`.
 
 %% POWSPCTRM (Early, Late (= Registered Retention), Baseline Period) - TRIAL-BY-TRIAL
 % Setup
@@ -16,7 +10,7 @@ path = paths.features;
 
 for subj = 1:length(subjects)
     clc
-    disp(['Processing POWSPCTRM (TRIALS) for Subject AOC ', num2str(subjects{subj})])
+    fprintf('[EEG TRIAL FEX STERNBERG] Processing power spectra for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj});
 
     try
         % Load data
@@ -34,9 +28,7 @@ for subj = 1:length(subjects)
         globalTrialID4 = globalTrialID(ind4);
         globalTrialID6 = globalTrialID(ind6);
 
-        % ----------------------
-        % Common time-frequency transform
-        % ----------------------
+        % Common time frequency transform
         cfg = [];
         cfg.method     = 'mtmconvol';
         cfg.output     = 'pow';
@@ -52,17 +44,13 @@ for subj = 1:length(subjects)
         % Save raw trial-by-trial TFR data
         save tfr_stern_trials tfr_all
 
-        % ----------------------
-        % BASELINE (dB)
-        % ----------------------
+        % Baseline in dB
         cfgb = [];
         cfgb.baseline     = [-1.5 -0.5];
         cfgb.baselinetype = 'db';
         tfr_all_bl = ft_freqbaseline(cfgb, tfr_all);
 
-        % ----------------------
-        % EARLY (0-1 s)
-        % ----------------------
+        % Early window 0 to 1 s
         cfgsel = [];
         cfgsel.latency = [0 1];
         early_raw = ft_selectdata(cfgsel, tfr_all);
@@ -89,9 +77,7 @@ for subj = 1:length(subjects)
         save power_stern_early_trials powload2_early powload4_early powload6_early ...
             powload2_early_bl powload4_early_bl powload6_early_bl
 
-        % ----------------------
-        % LATE (1-2 s)
-        % ----------------------
+        % Late window 1 to 2 s
         cfgsel = [];
         cfgsel.latency = [1 2];
         late_raw = ft_selectdata(cfgsel, tfr_all);
@@ -117,9 +103,7 @@ for subj = 1:length(subjects)
         save power_stern_late_trials powload2_late powload4_late powload6_late ...
             powload2_late_bl powload4_late_bl powload6_late_bl
 
-        % ----------------------
-        % FULL (0-2 s)
-        % ----------------------
+        % Full window 0 to 2 s
         cfgsel = [];
         cfgsel.latency = [0 2];
         full_raw = ft_selectdata(cfgsel, tfr_all);
@@ -202,7 +186,7 @@ eeg_data_sternberg_trials = struct('Trial', {}, 'ID', {}, 'Condition', {}, ...
 
 for subj = 1:length(subjects)
     clc
-    disp(['Processing Alpha Power (trial-wise), IAF (subject), Lateralization (trial-wise) for Subject AOC ', num2str(subjects{subj})])
+    fprintf('[EEG TRIAL FEX STERNBERG] Processing alpha and lateralization for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj});
 
     try
         datapath = fullfile(path, subjects{subj}, 'eeg');
@@ -221,9 +205,7 @@ for subj = 1:length(subjects)
         globalTrialID4 = powload4_full.trialinfo(:,2);
         globalTrialID6 = powload6_full.trialinfo(:,2);
 
-        % ----------------------
-        % Subject-level IAF (from full retention, trial-averaged ROI)
-        % ----------------------
+        % Subject level IAF from full retention and trial averaged ROI
         % Build subject-level ROI-averaged spectra (average across trials, then across ROI channels)
         % We average trials first to stabilise the IAF estimate.
         % Ensure dims: rpt x chan x freq
@@ -262,9 +244,7 @@ for subj = 1:length(subjects)
             IAF_band = alphaRange;  % fallback 8-14 Hz if no clear IAF
         end
 
-        % ----------------------
-        % Trial-wise Alpha Power (EARLY/LATE, RAW/BASELINED) at IAF band
-        % ----------------------
+        % Trial wise alpha power for early, late, and full windows
         % EARLY RAW
         AlphaPowerEarly2   = bandpower_trials(powload2_early,  channelIdx, powload2_early.freq,  IAF_band);
         AlphaPowerEarly4   = bandpower_trials(powload4_early,  channelIdx, powload4_early.freq,  IAF_band);
@@ -290,16 +270,12 @@ for subj = 1:length(subjects)
         AlphaPowerFullBL4  = bandpower_trials(powload4_full_bl, channelIdx,  powload4_full_bl.freq, IAF_band);
         AlphaPowerFullBL6  = bandpower_trials(powload6_full_bl, channelIdx,  powload6_full_bl.freq, IAF_band);
 
-        % ----------------------
-        % Trial-wise Lateralization Index (with LATE BL)
-        % ----------------------
+        % Trial wise lateralization index with baselined late window
         [LI2_trials, ~] = lateralization_trials(powload2_late_bl, left_channels, right_channels, powload2_late_bl.freq, IAF_band, ridgeFrac, epsP);
         [LI4_trials, ~] = lateralization_trials(powload4_late_bl, left_channels, right_channels, powload4_late_bl.freq, IAF_band, ridgeFrac, epsP);
         [LI6_trials, ~] = lateralization_trials(powload6_late_bl, left_channels, right_channels, powload6_late_bl.freq, IAF_band, ridgeFrac, epsP);
 
-        % ----------------------
-        % Build subject trial-wise structure array
-        % ----------------------
+        % Build subject trial wise structure array
         subID = str2double(subjects{subj});
         n2 = size(powload2_late.powspctrm,1);
         n4 = size(powload4_late.powspctrm,1);
@@ -352,7 +328,9 @@ for subj = 1:length(subjects)
 
         % Save (per subject + append to grand table)
         savepath = fullfile(paths.features, subjects{subj}, 'eeg');
-        mkdir(savepath)
+        if ~isfolder(savepath)
+            mkdir(savepath)
+        end
         cd(savepath)
         save eeg_matrix_sternberg_subj_trials subj_data_eeg_trials
         save IAF_sternberg_subject IAF_subj
@@ -362,7 +340,7 @@ for subj = 1:length(subjects)
 
         % Console output
         clc
-        fprintf(['Subject %s done...'], subjects{subj});
+        fprintf('[EEG TRIAL FEX STERNBERG] Completed trial feature extraction for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj});
 
     catch ME
         error(['ERROR calculating trial-wise alpha power / LI for Subject ' num2str(subjects{subj}) '!'])

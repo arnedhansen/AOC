@@ -172,7 +172,7 @@ for subj = 1:length(subjects)
         end
 
         %% Append data for this trial
-        subject_id = [subject_id; str2num(subjects{subj})];
+        subject_id = [subject_id; str2double(subjects{subj})];
         trial_num = [trial_num; dataETlong.trialinfo(trl, 2)];
         condition = [condition; dataETlong.trialinfo(trl, 1)-20];
         gazeDev = [gazeDev; mean_euclidean_distance];
@@ -191,33 +191,6 @@ for subj = 1:length(subjects)
         blatEarlyBL = [blatEarlyBL; blat_bl(1)]; blatLateBL = [blatLateBL; blat_bl(2)]; blatFullBL = [blatFullBL; blat_bl(3)];
 
     end
-
-    %% Check data by visualizing raw gaze data
-    % close all
-    % % Preallocate arrays for averaged gaze data
-    % num_samples = 1000;
-    % mean_gaze_x = nan(num_samples, 1);
-    % mean_gaze_y = nan(num_samples, 1);
-    % 
-    % % Stack trials into matrices for averaging
-    % gaze_x_matrix = cell2mat(cellfun(@(x) x(:), gaze_x(subj, :), 'UniformOutput', false)');
-    % gaze_y_matrix = cell2mat(cellfun(@(y) y(:), gaze_y(subj, :), 'UniformOutput', false)');
-    % 
-    % % Calculate the mean over trials for each sample
-    % mean_gaze_x = nanmean(gaze_x_matrix, 2);
-    % mean_gaze_y = nanmean(gaze_y_matrix, 2);
-    % 
-    % % Plot the averaged gaze data
-    % figure;
-    % set(gcf, "Position", [200, 200, 1000, 600]);
-    % plot(mean_gaze_x, mean_gaze_y, 'o');
-    % hold on;
-    % plot(400, 300, 'rx', 'MarkerSize', 10, 'LineWidth', 2); % Centre point
-    % title('Averaged Gaze Data Distribution Across Samples');
-    % xlabel('X Coordinates');
-    % ylabel('Y Coordinates');
-    % xlim([0 800]);
-    % ylim([0 600]);
 
     %% Create a trial-by-trial structure array for this subject
     subj_data_gaze_trial = struct('ID', num2cell(subject_id), ...
@@ -358,7 +331,7 @@ for subj = 1:length(subjects)
 
     %% Save
     savepath = fullfile(paths.features, subjects{subj}, 'gaze');
-    if ~exist(savepath, 'dir')
+    if ~isfolder(savepath)
         mkdir(savepath)
     end
     cd(savepath)

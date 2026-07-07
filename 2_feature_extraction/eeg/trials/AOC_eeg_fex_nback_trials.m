@@ -348,7 +348,9 @@ for subj = 1:length(subjects)
 
         % Save (per subject + append to grand table)
         savepath = fullfile(paths.features, subjects{subj}, 'eeg');
-        mkdir(savepath)
+        if ~isfolder(savepath)
+            mkdir(savepath)
+        end
         cd(savepath)
         save eeg_matrix_nback_subj_trials subj_data_eeg_trials
         save IAF_nback_subject IAF_subj

@@ -1,9 +1,6 @@
-%% AOC Power Spectrum — N-Back (raw, full retention [0 2]s)
-% Loads `pow*_raw_full` from power_nback_windows.mat (AOC_eeg_fex_nback.m), grand-averages
-% across 1/2/3-back, and plots absolute power spectra (not dB baselined).
-%
-% For baselined Hanning/mtmconvol spectra (dB), use AOC_eeg_powspctrm_nback_bl.m.
-% For specParam + baselined spectra, use AOC_eeg_powspctrm_nback_specParam_bl.m.
+%% AOC Power Spectrum N Back Raw
+% Plot grand average raw power spectra across N back conditions in the full retention window.
+% Output: `AOC_powspctrm_nback_raw_full.png`.
 
 %% Setup
 startup
@@ -42,7 +39,7 @@ channels = occ_channels;
 % Load powspctrm data (raw full-window spectra; same MAT as baselined script, different fields)
 clc
 for subj = 1:length(subjects)
-    clc; fprintf('[VIZ POWSPCTRM - NBACK RAW] Loading power spectra for Subject %d / %d \n', subj, length(subjects))
+    clc; fprintf('[VIZ POWSPCTRM NBACK RAW] Loading spectra for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj})
     datapath = fullfile(path, subjects{subj}, 'eeg');
     D = load(fullfile(datapath, 'power_nback_windows.mat'), ...
         'pow1_raw_full', 'pow2_raw_full', 'pow3_raw_full');

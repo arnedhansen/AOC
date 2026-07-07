@@ -1,9 +1,6 @@
-%% AOC EEG Power Spectrum — Baseline Effects
-% Control script: compares grand-average power spectra during the baseline
-% period [-1.5 -0.5]s vs the retention period [0 2]s for both tasks.
-%
-% Loads per-subject TFR data (raw and specParam), averages over occipital
-% channels and time within each window, then grand-averages across subjects.
+%% AOC EEG Power Spectrum Baseline Effects Control
+% Compare baseline and retention power spectra in raw and optional specParam data for both tasks.
+% Output: Baseline effects control figures saved in the controls figure folder.
 %
 % Figure layout (two figures per task: raw and specParam):
 %   Left panel:   Raw baseline [-1.5 -0.5]s power spectra per condition
@@ -73,7 +70,7 @@ for t = 1:numel(tasks)
     %  Collect per-subject spectra
     % ================================================================
     for subj = 1:nSubj
-        clc; fprintf('[CTRL BASELINE FX - %s] Loading TFR spectra for Subject %d / %d \n', upper(task.name), subj, nSubj);
+        clc; fprintf('[CTRL BASELINE FX %s] Loading TFR spectra for Subject %d/%d (%s)\n', upper(task.name), subj, nSubj, subjects{subj});
         datapath = fullfile(path, subjects{subj}, 'eeg');
         cd(datapath);
 

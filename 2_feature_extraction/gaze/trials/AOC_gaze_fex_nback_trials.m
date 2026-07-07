@@ -572,7 +572,9 @@ for subj = 1:length(subjects)
 
     %% Save data
     savepath = fullfile(paths.features, subjects{subj}, 'gaze');
-    mkdir(savepath)
+    if ~isfolder(savepath)
+        mkdir(savepath)
+    end
     cd(savepath)
     save gaze_matrix_nback_trials subj_data_gaze_trials
 
@@ -584,7 +586,7 @@ for subj = 1:length(subjects)
 
     % Also save per-trial gaze series and trialinfo (for convenience)
     trialinfo = dataETlong.trialinfo';
-    save([savepath 'gaze_series_nback_trials.mat'], 'gaze_x', 'gaze_y', 'trialinfo', 'ScanPathSeriesT', 'ScanPathSeries', 'ScanPathSeriesBins', 'MSSeries');
+    save(fullfile(savepath, 'gaze_series_nback_trials.mat'), 'gaze_x', 'gaze_y', 'trialinfo', 'ScanPathSeriesT', 'ScanPathSeries', 'ScanPathSeriesBins', 'MSSeries');
 end
 
 % Grand save across subjects

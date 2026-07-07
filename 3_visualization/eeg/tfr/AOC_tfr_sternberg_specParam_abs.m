@@ -1,8 +1,6 @@
-%% AOC TFR — Sternberg (specParam, Absolute)
-% Loads specParam tfr_stern (tfr*_fooof) per subject, grand-averages, plots occipital TFRs. Saves figures.
-%
-% Key outputs:
-%   TFR figures (specParam, absolute power, per condition)
+%% AOC TFR Sternberg specParam Absolute
+% Plot grand average occipital specParam TFR maps and condition differences for Sternberg.
+% Output: Condition specific and difference TFR figure files.
 
 %% Setup
 startup
@@ -15,7 +13,7 @@ end
 
 %% Compute grand average time and frequency data GATFR
 for subj = 1:length(subjects)
-    clc; fprintf('[VIZ TFR SPECPARAM - STERNBERG] Loading specParam TFR data for Subject %d / %d \n', subj, length(subjects))
+    clc; fprintf('[VIZ TFR SPECPARAM STERNBERG] Loading TFR data for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj})
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
     load tfr_stern

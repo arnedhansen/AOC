@@ -1,8 +1,6 @@
-%% AOC Demographics — Participant Summary
-% Loads merged_data_nback, computes and prints N, mean/SD age, % female, % right-handed. No files saved.
-%
-% Key outputs:
-%   Console: N, mean age, SD age, % female, % right-handed
+%% AOC Demographics
+% Compute participant summary statistics from merged N back demographics.
+% Output: Console summary of N, age mean and SD, female percent, and right handed percent.
 
 startup
 [~, paths, ~, ~] = setup('AOC', 0);
@@ -29,7 +27,7 @@ perc_female = (n_female / numel(genders)) * 100;
 n_right = sum(strcmp(handedness, 'R'));
 perc_right = (n_right / numel(handedness)) * 100;
 
-% Display
+% Display summary
 clc
 fprintf('N: %.f participants \n', numel(ages));
 fprintf('Mean age: %.2f years\n', mean_age);

@@ -1,8 +1,6 @@
-%% AOC TFR — N-back (specParam, Absolute)
-% Loads specParam tfr_nback (tfr*_fooof) per subject, grand-averages, plots occipital TFRs. Saves figures.
-%
-% Key outputs:
-%   TFR figures (specParam, absolute power, per condition)
+%% AOC TFR N Back specParam Absolute
+% Plot grand average occipital specParam TFR maps and condition differences for N back.
+% Output: Condition specific and difference TFR figure files.
 
 %% Setup
 startup
@@ -15,7 +13,7 @@ end
 
 %% Compute grand average time and frequency data GATFR
 for subj = 1:length(subjects)
-    clc; fprintf('[VIZ TFR SPECPARAM - NBACK] Loading specParam TFR data for Subject %d / %d \n', subj, length(subjects))
+    clc; fprintf('[VIZ TFR SPECPARAM NBACK] Loading TFR data for Subject %d/%d (%s)\n', subj, length(subjects), subjects{subj})
     datapath = fullfile(path, subjects{subj}, 'eeg');
     cd(datapath)
     load tfr_nback

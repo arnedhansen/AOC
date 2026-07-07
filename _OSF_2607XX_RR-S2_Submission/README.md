@@ -1,51 +1,61 @@
-# AOC: Alpha Oculomotor Control
+### README for AOC Study (Sternberg and N back)
 
-This repository contains the analysis code prepared for OSF release for the study:
+Sternberg and N back tasks. Combined EEG and Eye Tracking ET analysis of neural signatures of oculomotor control in the alpha band. Published in Psychophysiology as a Registered Report. [https://doi.org/10.22541/au.172466871.17083913/v1](https://doi.org/10.22541/au.172466871.17083913/v1) Raw EEG data are provided via OpenNeuro. [https://openneuro.org/](https://openneuro.org/) Study materials and analysis code are distributed via OSF. [https://osf.io/xfujb/](https://osf.io/xfujb/)
 
-Modulations of Posterior Alpha Power During Working Memory Co Vary With Task Dependent Eye Movement Patterns.
+The titles below correspond to the folder names. Apart from the Python and R scripts in `4_stats`, all files are MATLAB scripts.
 
-The project analyzes combined EEG and eye tracking data from Sternberg and N back paradigms to quantify behavioral performance, oculomotor measures, and posterior alpha activity during working memory.
+## paradigms
 
-## Study Context
+The experimental paradigms ‚AOC_NBack.m’ and ‚AOC_Sternberg.m‘ are executed using ‚master.m‘. The dependencies can be found in the paradigms folder as well.
 
-The manuscript is a Stage 2 Registered Report in psychophysiology.  
-Raw EEG data are provided via OpenNeuro.  
-Study materials and analysis code are distributed via OSF.
+## 1_preprocessing
 
-OSF project: https://osf.io/xfujb/  
-OpenNeuro: https://openneuro.org/
+### 1_cut
 
-## Repository Scope
+Raw EEG and ET files are cut by `AOC_Cutting.m` using `AOC_DataCuttingFunction.m`.
 
-This OSF package contains the scripts required to reproduce the published analysis workflow from processed inputs onward.
+### 2_automagic
 
-Included:
-1. MATLAB scripts for preprocessing outputs, feature extraction, visualization, and derived data assembly.
-2. Statistical scripts for confirmatory model execution.
-3. Local helper code under `functions`.
-4. Required third party software references and local toolbox structure under `toolboxes`.
+The cut EEG and ET files are preprocessed using Automagic (Pedroni et al., 2019). In the first step in Automagic, the bad channels are detected using the EEGLAB plugin clean_rawdata (Mullen et al., 2015). An electrode is defined as bad when recorded data from that electrode is correlated at less than .85 to an estimate based on neighboring electrodes. Furthermore, an electrode is defined as bad if it had more line noise relative to its signal than all other electrodes (4 standard deviations). Finally, if an electrode had a longer flat line than 5 s, it is considered bad. These bad channels will be removed from the original EEG data. The data will be filtered using a 0.1 Hz high pass filter (-6 dB cut off: 0.05 Hz) using the EEGLAB function pop_eegfiltnew (Widmann & Schröger, 2012). Line noise will be removed using a ZapLine method with a passband edge of 50 Hz (De Cheveigné, 2020), removing 7 power line components.
 
-Not included:
-1. Raw recording files.
-2. Environment specific private paths.
-3. Legacy or exploratory code not required for manuscript reproduction.
+An independent component analysis (ICA) for ocular artifact correction will be applied with both the optimized ICA training (OPTICAT) function (Dimigen, 2020) and the pre-trained classifier ICLabel (Pion-Tonachini et al., 2019). OPTICAT enhances ocular artifact removal from EEG data, particularly saccadic spike activity. Initially, EEG data is high-pass filtered at 2 Hz, thereby preserving high-frequency components (> 40 Hz) that characterize saccadic spikes (Keren et al., 2010). Then, the contribution of saccadic spike activity in the EEG input to ICA is overweighted. This is achieved by extracting 30 ms long EEG segments around saccade onsets (−20 to +10 ms) identified via eye tracking, and appending these segments repeatedly to the EEG, resulting in EEG data double the length of the original data. An ICA is then trained on these overweighted data, and the resulting ICA labels are saved. Now, ICLabel is used on the original data by identifying artifact components and rating the probability of these artifacts being muscle, heart or eye activity, line noise or channel noise. All independent components receiving a probability rating by ICLabel of > 0.8 to be one of these non-brain artifacts are merged with the labels provided by OPTICAT. These components will be removed from the data and the remaining components will be back-projected on the original data. This is followed by interpolation of bad electrodes using the spherical interpolation method.
 
-## Directory Structure
+Afterwards, the quality of the data is automatically and objectively assessed in Automagic, thus increasing research reproducibility by having objective measures for data quality. The data of each individual block will be classified regarding data quality using the following exclusion criteria:
 
-1. `1_preprocessing`  
-   Final preprocessing scripts used after data cutting, Automagic processing, and merge steps.
-2. `2_feature_extraction`  
-   Behavioral, EEG, and gaze feature extraction plus matrix assembly.
-3. `3_visualization`  
-   Figure generation scripts for EEG and gaze outputs.
-4. `4_stats`  
-   Statistical model scripts for manuscript results.
-5. `_controls`  
-   Quality control and sensitivity scripts retained when required for interpretation.
-6. `functions`  
-   Project local helper functions used by MATLAB, Python, and R scripts.
-7. `toolboxes`  
-   Third party dependencies when redistribution is permitted, with install notes for external dependencies when redistribution is restricted.
+(1) The proportion of high-amplitude data points in the signal (> 30 μV) is larger than 0.2
+(2) More than 20% of the time points show variance larger than 15 μV across electrodes
+(3) 40% of the electrodes show high variance (15 μV)
+(4) The proportion of bad electrodes is higher than 0.4
+
+Any data file of a block exceeding any one of these criteria will be rated as bad and excluded from further analyses.
+
+### 3_merge
+
+The EEG files that were preprocessed by Automagic are subsequently merged with their respective ET files using `AOC_mergeData.m`.
+
+### 4_preprocessing
+
+`AOC_preprocessing_nback.m` and `AOC_preprocessing_sternberg.m` segment the merged EEG+ET data into epochs around stimulus onset, convert to FieldTrip format, and write separate EEG and ET files per condition. N-back: loads 1/2/3; Sternberg: loads 2/4/6. Epoch windows: N-back [-1.5 2.5] s, Sternberg [-2 3.5] s. Run after merge; outputs go to `data/features/<subject>/eeg` and `.../gaze`.
+
+## 2_feature_extraction
+
+`behavioral/` produces accuracy and RT features. `eeg/` produces EEG features used in the manuscript analyses. `gaze/` produces gaze deviation, microsaccade, fixation, saccade, scan path length, and pupil features. `AOC_master_matrix_nback.m` and `AOC_master_matrix_sternberg.m` merge outputs into `merged_data_*_nback.mat/.csv` and `merged_data_*_sternberg.mat/.csv`. `AOC_demographics.m` adds age, gender, handedness, and ocular dominance from the VP table.
+
+## 3_visualization
+
+Behavioral plots are in `behavioral/`. EEG visualization scripts used in the run all pipeline include `tfr/` and `topos/`. Gaze visualization scripts include `heatmap/`, `deviation/`, and `microsaccades/`. All visualization scripts read from `data/features/` and write figures to `figures/`.
+
+## 4_stats
+
+### Rainclouds (Python)
+
+`AOC_stats_rainclouds.py` produces raincloud plots, repeated measures ANOVA, and mixed models for all variables; input: `merged_data_*_nback.csv` and `merged_data_*_sternberg.csv`. Python helpers (`stats_helpers`, `rainclouds_plotting_helpers`, `mixedlm_helpers`, `export_model_table`) come from [github.com/arnedhansen/functions](https://github.com/arnedhansen/functions). Adapt `base_dir` and input paths in the script to your setup.
+
+## Additional Files
+
+### AOC_Master_RUN_ALL.m
+
+Runs the main MATLAB analysis pipeline with absolute `run(...)` calls for both Windows and macOS Linux style paths. Update these paths before execution.
 
 ## Execution Order
 
@@ -57,17 +67,6 @@ Recommended workflow:
 3. Build final analysis matrices.
 4. Generate manuscript figures.
 5. Run confirmatory statistical models from `4_stats`.
-
-## Statistical Models
-
-A minimal R script is provided in `4_stats` for confirmatory manuscript models.
-
-Design principle:
-1. Read the final CSV input file.
-2. Fit predefined confirmatory models only.
-3. Save model results in a transparent table format.
-
-No exploratory analyses, plotting, or auxiliary processing are included in this minimal model runner.
 
 ## Setup for New Machines
 
@@ -106,80 +105,10 @@ Required setup actions:
    2. `4_stats/AOC_stats_confirmatory_models_sternberg.R`
 2. Run each script with `Rscript`.
 
-### 5) Raincloud Figure Stage
+### 5) Raincloud Figures
 1. Run `python 4_stats/AOC_stats_rainclouds.py`.
 2. Output figures are written to `data/figures/stats/rainclouds`.
 
-### 6) Notes
-1. Scripts rely on vendored helpers from `functions`.
-2. External packages not redistributed must be installed separately as documented in this README.
+### Dependencies
 
-## Software Requirements
-
-1. MATLAB with required signal processing and statistics functionality.
-2. FieldTrip.
-3. EEGLAB.
-4. Python environment for selected analysis and figure scripts, where applicable.
-5. R environment for confirmatory model scripts.
-
-Dependency requirements are listed below in this README.
-
-
-## Dependency Requirements
-
-### MATLAB Runtime Dependencies
-1. MATLAB release with support for table I O, mixed modeling, and plotting used by the scripts.
-2. Statistics and Machine Learning Toolbox.
-3. Signal Processing Toolbox.
-4. FieldTrip toolbox. Redistribution is not included in this package.
-5. EEGLAB toolbox for preprocessing conversion steps. Redistribution is not included in this package.
-
-### Bundled MATLAB Helpers
-1. Project helpers are vendored in `functions`.
-2. Third party plotting helpers are bundled in `toolboxes`:
-   1. `shadedErrorBar.m`
-   2. `cbrewer.m`
-   3. `layANThead.mat`
-
-### Python Dependencies
-1. Python 3.10 or newer recommended.
-2. Required packages:
-   1. `numpy`
-   2. `pandas`
-   3. `matplotlib`
-   4. `seaborn`
-   5. `scipy`
-   6. `statsmodels`
-3. Vendored Python helpers in `functions`:
-   1. `stats_helpers.py`
-   2. `rainclouds_plotting_helpers.py`
-
-### R Dependencies
-1. R 4.2 or newer recommended.
-2. Required packages:
-   1. `lme4`
-   2. `lmerTest`
-   3. `car`
-
-### External Installation Notes
-1. Install FieldTrip from [https://www.fieldtriptoolbox.org/download/](https://www.fieldtriptoolbox.org/download/).
-2. Install EEGLAB from [https://sccn.ucsd.edu/eeglab/download.php](https://sccn.ucsd.edu/eeglab/download.php).
-3. Place external toolboxes under `toolboxes` or add them to the MATLAB path before running.
-
-## Reproducibility Notes
-
-1. Scripts avoid machine specific hardcoded paths in the OSF release.
-2. Output folders are created when absent.
-3. Console messages use standardized task tags and subject progress reporting.
-4. Script headers provide concise purpose and output declarations.
-
-## Outputs
-
-Main outputs include:
-1. Processed feature tables for N back and Sternberg paradigms.
-2. Publication figures for EEG and gaze analyses.
-3. Confirmatory model summaries for manuscript reporting.
-
-## Contact
-
-Correspondence: arne.hansen@psychologie.uzh.ch
+`startup` and `setup('AOC')` handle path setup and subject configuration. Many scripts use absolute data roots such as `/Volumes/...`, `W:\...`, or user specific local paths. Update these to your local `data/` location before running.

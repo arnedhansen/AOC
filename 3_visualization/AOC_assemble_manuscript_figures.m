@@ -1,6 +1,6 @@
 %% AOC Assemble Manuscript Results Figures (AOC RR-S2)
 % Combines exported panel PNGs into publication-ready composite figures
-% matching the Stage-2 manuscript (Figures 1 to 8)
+% matching the Stage-2 manuscript (Figures 1 to 9)
 
 %% Setup
 startup
@@ -159,13 +159,26 @@ fig7.panels = {
         'D', 'Sternberg Baselined Microsaccades');
     };
 
-%% Figure 8: Exploratory alpha split gaze coupling (2 x 2)
+%% Figure 8: Baseline window power spectrum rainclouds (1 x 2)
 fig8 = struct();
 fig8.name = 'Figure8';
-fig8.nrow = 2;
+fig8.nrow = 1;
 fig8.ncol = 2;
 fig8.figSize = [0 0 1512 982];
 fig8.panels = {
+    panelSpec(fullfile(rainDir, 'AOC_stats_rainclouds_pow_baselineWindow_nback.png'), ...
+        'A', 'N-back Baseline Window Power Spectrum');
+    panelSpec(fullfile(rainDir, 'AOC_stats_rainclouds_pow_baselineWindow_sternberg.png'), ...
+        'B', 'Sternberg Baseline Window Power Spectrum');
+    };
+
+%% Figure 9: Exploratory alpha split gaze coupling (2 x 2)
+fig9 = struct();
+fig9.name = 'Figure9';
+fig9.nrow = 2;
+fig9.ncol = 2;
+fig9.figSize = [0 0 1512 982];
+fig9.panels = {
     panelSpec(fullfile(splitDir, ...
         'AOC_splitERSERD_GazeDev_timecourse_nback_splitMedian_GazeDev_pct_CBPT.png'), ...
         'A', 'N-back Gaze Deviation Split');
@@ -181,8 +194,8 @@ fig8.panels = {
     };
 
 %% Assemble all figures
-figSpecs = {fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8};
-for iFig = 1:2%:numel(figSpecs)
+figSpecs = {fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, fig9};
+for iFig = 8%:numel(figSpecs)
     spec = figSpecs{iFig};
     outPng = fullfile(outDir, ['AOC_manuscript_' spec.name '.png']);
     assembleManuscriptFigure(spec, outPng, exportDpi);

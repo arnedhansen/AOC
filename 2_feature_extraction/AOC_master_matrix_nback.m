@@ -15,7 +15,7 @@
 %     AlphaPower_bl_early / _late / _full   (dB baseline [-1.5 -0.5]s)
 %     ERSD_early / ERSD_late / ERSD_full — fixed [8 14] Hz dB on baselined tfr*_bl, O/I occ channels, windows [0 1] / [1 2] / [0 2]s
 %     IAF
-%     IAF_baselineWindow / AlphaPower_baselineWindow — baselineWindow FFT [-1.5 -0.5] s, sum-normalized spectrum, IAF band
+%     AlphaPower_baselineWindow — baselineWindow FFT [-1.5 -0.5] s, raw IAF-band power [μV²/Hz]
 %
 %   Gaze — baselined (BL window [-1.5 -0.5]s; % change for all gaze metrics):
 %     GazeDeviationFullBL / EarlyBL / LateBL
@@ -129,10 +129,17 @@ if height(Tb) == 0
     return
 end
 assert_unique_keys(Tb, {'ID', 'Condition'}, blVarName);
-for cn = {'IAF_baselineWindow', 'AlphaPower_baselineWindow'}
+% Keep AlphaPower_baselineWindow only; drop IAF_baselineWindow from merge.
+if ismember('IAF_baselineWindow', Tb.Properties.VariableNames)
+    Tb.IAF_baselineWindow = [];
+end
+for cn = {'AlphaPower_baselineWindow'}
     if ismember(cn{1}, T.Properties.VariableNames)
         T.(cn{1}) = [];
     end
+end
+if ismember('IAF_baselineWindow', T.Properties.VariableNames)
+    T.IAF_baselineWindow = [];
 end
 T = outerjoin(T, Tb, 'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
 end

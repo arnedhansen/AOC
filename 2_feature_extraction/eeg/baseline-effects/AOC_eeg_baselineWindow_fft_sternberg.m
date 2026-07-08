@@ -1,11 +1,9 @@
 %% AOC EEG Baseline Window FFT Feature Extraction — Sternberg
 % Baseline-window multitaper FFT [-1.5 -0.5] s per WM load.
 % Occipital ROI: channel labels containing O or I.
-% Each subject×condition ROI spectrum is sum-normalized over foilim so that
-% absolute scale is removed and AlphaPower_baselineWindow is a relative
-% measure comparable across subjects.
-% IAF is peaked in [8 14] Hz; alpha power is the mean of the normalized
-% spectrum in (IAF-4, IAF+2).
+% Raw (absolute) ROI-mean spectrum; no spectrum-wise normalization.
+% IAF is peaked in [8 14] Hz; AlphaPower_baselineWindow is mean raw power
+% in (IAF-4, IAF+2) [μV²/Hz], matching confirmatory raw alpha extraction.
 %
 % Key outputs:
 %   AOC_eeg_matrix_sternberg_baselineWindow.mat / .csv
@@ -60,8 +58,8 @@ for subj = 1:length(subjects)
 
         save(fullfile(datapath, 'eeg_matrix_sternberg_baselineWindow_subj.mat'), 'subj_data');
         eeg_data_sternberg_baselineWindow = [eeg_data_sternberg_baselineWindow; subj_data];
-
-        fprintf('  IAF_blWin WM2/4/6: %.2f / %.2f / %.2f | Alpha_blWin: %.4f / %.4f / %.4f\n', ...
+        clc
+        fprintf('  IAF: %.2f / %.2f / %.2f | Alpha: %.4f / %.4f / %.4f\n', ...
             IAF_b(1), IAF_b(2), IAF_b(3), Pow_b(1), Pow_b(2), Pow_b(3));
     catch ME
         fprintf('Continuing to next subject (%s): %s\n', subjects{subj}, ME.message);
@@ -103,17 +101,14 @@ try
     cfgf.keeptrials = 'no';
     fr = ft_freqanalysis(cfgf, dw);
 
-    % ROI-mean spectrum, then sum-normalize so total power over foilim = 1.
-    % This removes absolute scale differences between subjects.
+    % ROI-mean raw spectrum (μV²/Hz); IAF peak and band power on absolute scale.
     ps = mean(fr.powspctrm, 1);
     ps = ps(:);
-    denom = sum(ps(isfinite(ps)));
-    if ~(isfinite(denom) && denom > 0)
+    if ~any(isfinite(ps))
         return
     end
-    ps_norm = ps ./ denom;
 
-    [IAF, alphaPow] = iaf_peak_rules(fr.freq(:), ps_norm, alphaRange);
+    [IAF, alphaPow] = iaf_peak_rules(fr.freq(:), ps, alphaRange);
 catch
     IAF = NaN;
     alphaPow = NaN;

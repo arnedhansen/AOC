@@ -1,7 +1,5 @@
 # %% AOC Stats Rainclouds — Combined (Sternberg + N-Back)
 # Loads merged CSVs, maps window-specific columns, applies IQR filtering, and saves raincloud figures.
-# Significance brackets on all rainclouds: R pairwise CSV when available (confirmatory DVs),
-# otherwise figure-only MixedLM contrasts in Python.
 #
 # Run order:
 #   Rscript AOC_stats_glmm_nback.R
@@ -339,7 +337,10 @@ def plot_raincloud(
         if not np.isfinite(ymax_cap):
             ymax_cap = ymax_data_local
 
-    range_y = max(ymax_cap - ymin, 1.0)
+    # Use the actual data y-range (do not floor at 1.0). A floor of 1.0
+    # places brackets far above axes for narrow scales (e.g. baselineWindow
+    # alpha in [0, 0.25]) and with savefig bbox='tight' that collapses the plot.
+    range_y = max(float(ymax_cap - ymin), np.finfo(float).eps)
     step = 0.10 * range_y
     y_positions = []
     start = ymax_cap + 0.075 * range_y
@@ -354,8 +355,9 @@ def plot_raincloud(
     ymid = 0.5 * (ymin_cur + ymax_cur)
     ax.set_ylabel("")
     ax.yaxis.get_label().set_visible(False)
+    ylabel_x = YLABEL_GRID_X
     ax.text(
-        YLABEL_GRID_X,
+        ylabel_x,
         ymid,
         ylab,
         transform=ax.get_yaxis_transform(which="grid"),
@@ -392,7 +394,8 @@ def plot_raincloud(
         ax.set_ylim(ymin, ymax_cap + 0.15 * (ymax_cap - ymin))
 
     fig.tight_layout()
-    fig.subplots_adjust(left=0.17)
+    left_pad = LEFT_PAD
+    fig.subplots_adjust(left=left_pad)
     out_path = os.path.join(output_dir, f"AOC_stats_rainclouds_{sname}_{task['name']}.png")
     fig.savefig(
         out_path,
@@ -433,6 +436,7 @@ mpl.rcParams.update({
 })
 
 YLABEL_GRID_X = -0.15
+LEFT_PAD = 0.17
 
 sns.set_style("white")
 
@@ -451,7 +455,7 @@ variables = [
     "GazeDeviation", "MSRate",
     "GazeDeviationBL", "MSRateBL",
     "AlphaPower", "AlphaPower_bl", "AlphaPower_baselineWindow",
-    "IAF", "IAF_baselineWindow", "ERSD",
+    "IAF", "ERSD",
 ]
 y_labels = [
     "Accuracy [%]", "Reaction Time [s]",
@@ -459,9 +463,8 @@ y_labels = [
     "Gaze Deviation Change [%]", "Microsaccade Rate Change [%]",
     "Alpha Power [\u03BCV²/Hz]",
     "Alpha Power [dB]",
-    "Baseline Window Alpha Power [rel.]",
+    "Alpha Power [\u03BCV²/Hz]",
     "IAF [Hz]",
-    "Baseline Window IAF [Hz]",
     "Power Change [dB]",
 ]
 save_names = [
@@ -469,7 +472,7 @@ save_names = [
     "gazedev", "ms",
     "gazedev_bl", "ms_bl",
     "pow_raw", "pow_bl", "pow_baselineWindow",
-    "iaf", "iaf_baselineWindow", "ersd",
+    "iaf", "ersd",
 ]
 
 yticks_map = {
@@ -481,9 +484,8 @@ yticks_map = {
     "GazeDeviationBL": np.arange(-50, 350, 50),
     "MSRateBL": np.arange(-100, 125, 25),
     "AlphaPower_bl": np.arange(-4, 4.1, 1),
-    "AlphaPower_baselineWindow": np.arange(0, 0.26, 0.05),
+    "AlphaPower_baselineWindow": np.arange(0, 12, 1),
     "IAF": np.arange(8, 15, 1),
-    "IAF_baselineWindow": np.arange(8, 15, 1),
     "ERSD": np.arange(-3, 4, 1),
 }
 ylims_map = {
@@ -495,9 +497,8 @@ ylims_map = {
     "GazeDeviationBL": (-50, 300),
     "MSRateBL": (-110, 110),
     "AlphaPower_bl": (-4, 4),
-    "AlphaPower_baselineWindow": (0, 0.25),
+    "AlphaPower_baselineWindow": (0, 11),
     "IAF": (8, 14),
-    "IAF_baselineWindow": (8, 14),
     "ERSD": (-3.75, 3.75),
 }
 

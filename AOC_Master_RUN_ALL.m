@@ -106,7 +106,7 @@ else
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/AOC_master_matrix_sternberg.m');
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/AOC_master_matrix_nback.m');
 
-    % Trial level ERSD and gaze merged matrices
+    %% Trial level ERSD and gaze merged matrices
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/eeg/trials/AOC_eeg_fex_sternberg_trials.m');
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/eeg/trials/AOC_eeg_fex_nback_trials.m');
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/gaze/trials/AOC_gaze_fex_sternberg_trials.m');

@@ -174,14 +174,15 @@ random_intercept_stats <- function(model) {
   )
 }
 
-export_fixed_effects <- function(res, task, stats_dir) {
-  model <- res$model
+export_fixed_effects <- function(res, task, stats_dir, model = NULL, model_label = NULL) {
+  if (is.null(model)) model <- res$model
+  if (is.null(model_label)) model_label <- res$model_label
   fx <- broom.mixed::tidy(model, effects = "fixed", conf.int = TRUE)
 
   out <- data.frame(
     Task = task,
     DV = res$dv,
-    ModelLabel = res$model_label,
+    ModelLabel = model_label,
     Term = fx$term,
     beta = fx$estimate,
     SE = fx$std.error,
@@ -198,7 +199,7 @@ export_fixed_effects <- function(res, task, stats_dir) {
     out <- rbind(
       out,
       data.frame(
-        Task = task, DV = res$dv, ModelLabel = res$model_label,
+        Task = task, DV = res$dv, ModelLabel = model_label,
         Term = "Group Var",
         beta = re_stats$beta,
         SE = re_stats$SE,
@@ -238,9 +239,45 @@ export_interaction_model <- function(res, task, gaze_sname, stats_dir, explorato
   prefix_lrt <- if (exploratory) "AOC_ersd_exploratory_lrtTbl" else "AOC_ersd_lrtTbl"
   prefix_con <- if (exploratory) "AOC_ersd_exploratory_contrasts" else "AOC_ersd_contrasts"
 
+  # Selected model (manuscript default: full if interaction kept, else additive).
   fixed_path <- file.path(stats_dir, sprintf("%s_%s_%s.csv", prefix_fixed, gaze_sname, task))
   write.csv(export_fixed_effects(res, task, stats_dir), fixed_path, row.names = FALSE)
   message("Saved ERSD fixed effects → ", basename(fixed_path))
+
+  # Always also export the full interaction model and the additive (reduced) model.
+  label_full <- if (!is.null(res$model_label_full)) {
+    res$model_label_full
+  } else {
+    res$model_label
+  }
+  label_red <- if (!is.null(res$model_label_reduced)) {
+    res$model_label_reduced
+  } else {
+    res$model_label
+  }
+
+  model_full <- if (!is.null(res$model_full)) res$model_full else res$model
+  model_red <- if (!is.null(res$model_reduced)) res$model_reduced else res$model
+
+  fixed_full_path <- file.path(
+    stats_dir, sprintf("%s_%s_%s_full.csv", prefix_fixed, gaze_sname, task)
+  )
+  write.csv(
+    export_fixed_effects(res, task, stats_dir, model = model_full, model_label = label_full),
+    fixed_full_path,
+    row.names = FALSE
+  )
+  message("Saved ERSD fixed effects (full) → ", basename(fixed_full_path))
+
+  fixed_red_path <- file.path(
+    stats_dir, sprintf("%s_%s_%s_reduced.csv", prefix_fixed, gaze_sname, task)
+  )
+  write.csv(
+    export_fixed_effects(res, task, stats_dir, model = model_red, model_label = label_red),
+    fixed_red_path,
+    row.names = FALSE
+  )
+  message("Saved ERSD fixed effects (reduced) → ", basename(fixed_red_path))
 
   lrt <- res$lrt_interaction
   eff <- lr_effect_sizes(lrt$LR_Chi2, lrt$df, res$n_obs)
@@ -255,19 +292,31 @@ export_interaction_model <- function(res, task, gaze_sname, stats_dir, explorato
     Task = task,
     DV = res$dv,
     GazePredictor = res$gaze_var,
+    InteractionKept = isTRUE(res$interaction_kept),
     stringsAsFactors = FALSE
   )
   lrt_path <- file.path(stats_dir, sprintf("%s_%s_%s.csv", prefix_lrt, gaze_sname, task))
   write.csv(lrt_tbl, lrt_path, row.names = FALSE)
   message("Saved interaction LRT (drop1) → ", basename(lrt_path))
 
-  pw_df <- pairwise_to_export_df(
-    res$pairwise, task, res$dv, res$model_label, res$n_obs
-  )
-  pw_df$GazePredictor <- res$gaze_var
-  con_path <- file.path(stats_dir, sprintf("%s_%s_%s.csv", prefix_con, gaze_sname, task))
-  write.csv(pw_df, con_path, row.names = FALSE)
-  message("Saved ERSD contrasts → ", basename(con_path))
+  write_contrasts <- function(pw, model_label, suffix = NULL) {
+    pw_df <- pairwise_to_export_df(pw, task, res$dv, model_label, res$n_obs)
+    pw_df$GazePredictor <- res$gaze_var
+    fname <- if (is.null(suffix)) {
+      sprintf("%s_%s_%s.csv", prefix_con, gaze_sname, task)
+    } else {
+      sprintf("%s_%s_%s_%s.csv", prefix_con, gaze_sname, task, suffix)
+    }
+    con_path <- file.path(stats_dir, fname)
+    write.csv(pw_df, con_path, row.names = FALSE)
+    message("Saved ERSD contrasts", if (!is.null(suffix)) paste0(" (", suffix, ")") else "", " → ", basename(con_path))
+  }
+
+  write_contrasts(res$pairwise, res$model_label)
+  pw_full <- if (!is.null(res$pairwise_full)) res$pairwise_full else res$pairwise
+  pw_red <- if (!is.null(res$pairwise_reduced)) res$pairwise_reduced else res$pairwise
+  write_contrasts(pw_full, label_full, "full")
+  write_contrasts(pw_red, label_red, "reduced")
 }
 
 export_glmm_results <- function(results, stats_dir = AOC_STATS_DIR) {

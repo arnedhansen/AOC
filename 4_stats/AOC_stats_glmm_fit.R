@@ -129,21 +129,25 @@ fit_eeg_gaze_interaction <- function(dat, gaze_var, model_label_full, explorator
 
   drop1_tbl <- tryCatch(as.data.frame(drop1(full)), error = function(e) NULL)
 
-  anova_type <- if (interaction_kept) 3L else 2L
-  anova_tbl <- car::Anova(final, type = anova_type)
-  confint_tbl <- tryCatch(
-    confint(final, method = "Wald", parm = "beta_"),
-    error = function(e) confint(final, method = "profile", parm = "beta_")
-  )
-
   at_list <- setNames(list(0), gaze_c)
-  pairwise <- emmeans_load_pairs(final, sub, at = at_list)
+  model_label_reduced <- sprintf("%s ~ %s + Load + (1|Subject)", EEG_DV, gaze_var)
 
-  model_label <- if (interaction_kept) {
-    model_label_full
-  } else {
-    sprintf("%s ~ %s + Load + (1|Subject)", EEG_DV, gaze_var)
+  # Always summarize both models so tables can report full and additive fits.
+  summarize_fit <- function(model, anova_type) {
+    anova_tbl <- car::Anova(model, type = anova_type)
+    confint_tbl <- tryCatch(
+      confint(model, method = "Wald", parm = "beta_"),
+      error = function(e) confint(model, method = "profile", parm = "beta_")
+    )
+    pairwise <- emmeans_load_pairs(model, sub, at = at_list)
+    list(anova = anova_tbl, anova_type = anova_type, confint = confint_tbl, pairwise = pairwise)
   }
+
+  sum_full <- summarize_fit(full, 3L)
+  sum_red <- summarize_fit(red, 2L)
+  sum_final <- if (interaction_kept) sum_full else sum_red
+
+  model_label <- if (interaction_kept) model_label_full else model_label_reduced
 
   lrt_interaction <- data.frame(
     Term = "Interaction",
@@ -160,16 +164,28 @@ fit_eeg_gaze_interaction <- function(dat, gaze_var, model_label_full, explorator
     exploratory = exploratory,
     model_label = model_label,
     model_label_full = model_label_full,
+    model_label_reduced = model_label_reduced,
     model_full = full,
+    model_reduced = red,
     model = final,
     drop1 = drop1_tbl,
     lrt_interaction = lrt_interaction,
     interaction_kept = interaction_kept,
     family = attr(final, "family_used"),
-    anova = anova_tbl,
-    anova_type = anova_type,
-    confint = confint_tbl,
-    pairwise = pairwise,
+    family_full = attr(full, "family_used"),
+    family_reduced = attr(red, "family_used"),
+    anova = sum_final$anova,
+    anova_type = sum_final$anova_type,
+    anova_full = sum_full$anova,
+    anova_type_full = sum_full$anova_type,
+    anova_reduced = sum_red$anova,
+    anova_type_reduced = sum_red$anova_type,
+    confint = sum_final$confint,
+    confint_full = sum_full$confint,
+    confint_reduced = sum_red$confint,
+    pairwise = sum_final$pairwise,
+    pairwise_full = sum_full$pairwise,
+    pairwise_reduced = sum_red$pairwise,
     n_obs = nrow(sub),
     data = sub
   )

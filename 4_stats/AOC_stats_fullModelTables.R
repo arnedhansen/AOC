@@ -191,8 +191,15 @@ clean_term <- function(term, load_ref = NULL) {
   gsub(" \\(centered\\)", "", out, fixed = FALSE)
 }
 
+# Ordered-factor Load expands to polynomial contrasts (Load.L / Load.Q).
+# Load effects are reported via emmeans pairwise contrasts, not these terms.
+is_load_poly_term <- function(term) {
+  grepl("Load\\.(L|Q)", as.character(term))
+}
+
 clean_fixed <- function(df, load_ref = NULL) {
   out <- df
+  out <- out[!is_load_poly_term(out$Term), , drop = FALSE]
   out$Term <- clean_term(out$Term, load_ref = load_ref)
   out$`β` <- fmt_num(out$beta)
   out$SE <- fmt_num(out$SE)
@@ -800,11 +807,39 @@ model_specs <- list(
     pair = "AOC_ersd_contrasts_gazedeviation_nback.csv"
   ),
   list(
+    id = "nback_ersd_by_gazedeviation_full",
+    title = "N-back ERS/ERD by GazeDeviation [full interaction]",
+    fixed = "AOC_ersd_fixed_gazedeviation_nback_full.csv",
+    lrt = "AOC_ersd_lrtTbl_gazedeviation_nback.csv",
+    pair = "AOC_ersd_contrasts_gazedeviation_nback_full.csv"
+  ),
+  list(
+    id = "nback_ersd_by_gazedeviation_reduced",
+    title = "N-back ERS/ERD by GazeDeviation [additive]",
+    fixed = "AOC_ersd_fixed_gazedeviation_nback_reduced.csv",
+    lrt = "AOC_ersd_lrtTbl_gazedeviation_nback.csv",
+    pair = "AOC_ersd_contrasts_gazedeviation_nback_reduced.csv"
+  ),
+  list(
     id = "sternberg_ersd_by_gazedeviation",
     title = "Sternberg ERS/ERD by GazeDeviation",
     fixed = "AOC_ersd_fixed_gazedeviation_sternberg.csv",
     lrt = "AOC_ersd_lrtTbl_gazedeviation_sternberg.csv",
     pair = "AOC_ersd_contrasts_gazedeviation_sternberg.csv"
+  ),
+  list(
+    id = "sternberg_ersd_by_gazedeviation_full",
+    title = "Sternberg ERS/ERD by GazeDeviation [full interaction]",
+    fixed = "AOC_ersd_fixed_gazedeviation_sternberg_full.csv",
+    lrt = "AOC_ersd_lrtTbl_gazedeviation_sternberg.csv",
+    pair = "AOC_ersd_contrasts_gazedeviation_sternberg_full.csv"
+  ),
+  list(
+    id = "sternberg_ersd_by_gazedeviation_reduced",
+    title = "Sternberg ERS/ERD by GazeDeviation [additive]",
+    fixed = "AOC_ersd_fixed_gazedeviation_sternberg_reduced.csv",
+    lrt = "AOC_ersd_lrtTbl_gazedeviation_sternberg.csv",
+    pair = "AOC_ersd_contrasts_gazedeviation_sternberg_reduced.csv"
   ),
   list(
     id = "nback_ersd_by_msrate",
@@ -814,11 +849,39 @@ model_specs <- list(
     pair = "AOC_ersd_contrasts_msrate_nback.csv"
   ),
   list(
+    id = "nback_ersd_by_msrate_full",
+    title = "N-back ERS/ERD by MSRate [full interaction]",
+    fixed = "AOC_ersd_fixed_msrate_nback_full.csv",
+    lrt = "AOC_ersd_lrtTbl_msrate_nback.csv",
+    pair = "AOC_ersd_contrasts_msrate_nback_full.csv"
+  ),
+  list(
+    id = "nback_ersd_by_msrate_reduced",
+    title = "N-back ERS/ERD by MSRate [additive]",
+    fixed = "AOC_ersd_fixed_msrate_nback_reduced.csv",
+    lrt = "AOC_ersd_lrtTbl_msrate_nback.csv",
+    pair = "AOC_ersd_contrasts_msrate_nback_reduced.csv"
+  ),
+  list(
     id = "sternberg_ersd_by_msrate",
     title = "Sternberg ERS/ERD by MSRate",
     fixed = "AOC_ersd_fixed_msrate_sternberg.csv",
     lrt = "AOC_ersd_lrtTbl_msrate_sternberg.csv",
     pair = "AOC_ersd_contrasts_msrate_sternberg.csv"
+  ),
+  list(
+    id = "sternberg_ersd_by_msrate_full",
+    title = "Sternberg ERS/ERD by MSRate [full interaction]",
+    fixed = "AOC_ersd_fixed_msrate_sternberg_full.csv",
+    lrt = "AOC_ersd_lrtTbl_msrate_sternberg.csv",
+    pair = "AOC_ersd_contrasts_msrate_sternberg_full.csv"
+  ),
+  list(
+    id = "sternberg_ersd_by_msrate_reduced",
+    title = "Sternberg ERS/ERD by MSRate [additive]",
+    fixed = "AOC_ersd_fixed_msrate_sternberg_reduced.csv",
+    lrt = "AOC_ersd_lrtTbl_msrate_sternberg.csv",
+    pair = "AOC_ersd_contrasts_msrate_sternberg_reduced.csv"
   ),
   list(
     id = "nback_ersd_by_gazedev_bl",
@@ -828,11 +891,39 @@ model_specs <- list(
     pair = "AOC_ersd_exploratory_contrasts_gazedev_bl_nback.csv"
   ),
   list(
+    id = "nback_ersd_by_gazedev_bl_full",
+    title = "N-back ERS/ERD by GazeDeviationBL [full interaction] (exploratory)",
+    fixed = "AOC_ersd_exploratory_fixed_gazedev_bl_nback_full.csv",
+    lrt = "AOC_ersd_exploratory_lrtTbl_gazedev_bl_nback.csv",
+    pair = "AOC_ersd_exploratory_contrasts_gazedev_bl_nback_full.csv"
+  ),
+  list(
+    id = "nback_ersd_by_gazedev_bl_reduced",
+    title = "N-back ERS/ERD by GazeDeviationBL [additive] (exploratory)",
+    fixed = "AOC_ersd_exploratory_fixed_gazedev_bl_nback_reduced.csv",
+    lrt = "AOC_ersd_exploratory_lrtTbl_gazedev_bl_nback.csv",
+    pair = "AOC_ersd_exploratory_contrasts_gazedev_bl_nback_reduced.csv"
+  ),
+  list(
     id = "sternberg_ersd_by_gazedev_bl",
     title = "Sternberg ERS/ERD by GazeDeviationBL (exploratory)",
     fixed = "AOC_ersd_exploratory_fixed_gazedev_bl_sternberg.csv",
     lrt = "AOC_ersd_exploratory_lrtTbl_gazedev_bl_sternberg.csv",
     pair = "AOC_ersd_exploratory_contrasts_gazedev_bl_sternberg.csv"
+  ),
+  list(
+    id = "sternberg_ersd_by_gazedev_bl_full",
+    title = "Sternberg ERS/ERD by GazeDeviationBL [full interaction] (exploratory)",
+    fixed = "AOC_ersd_exploratory_fixed_gazedev_bl_sternberg_full.csv",
+    lrt = "AOC_ersd_exploratory_lrtTbl_gazedev_bl_sternberg.csv",
+    pair = "AOC_ersd_exploratory_contrasts_gazedev_bl_sternberg_full.csv"
+  ),
+  list(
+    id = "sternberg_ersd_by_gazedev_bl_reduced",
+    title = "Sternberg ERS/ERD by GazeDeviationBL [additive] (exploratory)",
+    fixed = "AOC_ersd_exploratory_fixed_gazedev_bl_sternberg_reduced.csv",
+    lrt = "AOC_ersd_exploratory_lrtTbl_gazedev_bl_sternberg.csv",
+    pair = "AOC_ersd_exploratory_contrasts_gazedev_bl_sternberg_reduced.csv"
   ),
   list(
     id = "nback_ersd_by_ms_bl",
@@ -842,11 +933,39 @@ model_specs <- list(
     pair = "AOC_ersd_exploratory_contrasts_ms_bl_nback.csv"
   ),
   list(
+    id = "nback_ersd_by_ms_bl_full",
+    title = "N-back ERS/ERD by MSRateBL [full interaction] (exploratory)",
+    fixed = "AOC_ersd_exploratory_fixed_ms_bl_nback_full.csv",
+    lrt = "AOC_ersd_exploratory_lrtTbl_ms_bl_nback.csv",
+    pair = "AOC_ersd_exploratory_contrasts_ms_bl_nback_full.csv"
+  ),
+  list(
+    id = "nback_ersd_by_ms_bl_reduced",
+    title = "N-back ERS/ERD by MSRateBL [additive] (exploratory)",
+    fixed = "AOC_ersd_exploratory_fixed_ms_bl_nback_reduced.csv",
+    lrt = "AOC_ersd_exploratory_lrtTbl_ms_bl_nback.csv",
+    pair = "AOC_ersd_exploratory_contrasts_ms_bl_nback_reduced.csv"
+  ),
+  list(
     id = "sternberg_ersd_by_ms_bl",
     title = "Sternberg ERS/ERD by MSRateBL (exploratory)",
     fixed = "AOC_ersd_exploratory_fixed_ms_bl_sternberg.csv",
     lrt = "AOC_ersd_exploratory_lrtTbl_ms_bl_sternberg.csv",
     pair = "AOC_ersd_exploratory_contrasts_ms_bl_sternberg.csv"
+  ),
+  list(
+    id = "sternberg_ersd_by_ms_bl_full",
+    title = "Sternberg ERS/ERD by MSRateBL [full interaction] (exploratory)",
+    fixed = "AOC_ersd_exploratory_fixed_ms_bl_sternberg_full.csv",
+    lrt = "AOC_ersd_exploratory_lrtTbl_ms_bl_sternberg.csv",
+    pair = "AOC_ersd_exploratory_contrasts_ms_bl_sternberg_full.csv"
+  ),
+  list(
+    id = "sternberg_ersd_by_ms_bl_reduced",
+    title = "Sternberg ERS/ERD by MSRateBL [additive] (exploratory)",
+    fixed = "AOC_ersd_exploratory_fixed_ms_bl_sternberg_reduced.csv",
+    lrt = "AOC_ersd_exploratory_lrtTbl_ms_bl_sternberg.csv",
+    pair = "AOC_ersd_exploratory_contrasts_ms_bl_sternberg_reduced.csv"
   ),
   list(
     id = "nback_alpha_by_gazedeviation",
@@ -976,9 +1095,16 @@ for (spec in model_specs) {
 # test whether ERS/ERD coupling with an oculomotor predictor differs across WM
 # load. One document per predictor (Gaze Deviation, Microsaccade Rate).
 
-read_covariation_csv <- function(kind, predictor_key, task, exploratory = FALSE) {
+read_covariation_csv <- function(kind, predictor_key, task, exploratory = FALSE, variant = NULL) {
   prefix <- if (isTRUE(exploratory)) "AOC_ersd_exploratory" else "AOC_ersd"
-  fname <- sprintf("%s_%s_%s_%s.csv", prefix, kind, predictor_key, task)
+  if (is.null(variant) || !nzchar(variant)) {
+    fname <- sprintf("%s_%s_%s_%s.csv", prefix, kind, predictor_key, task)
+  } else if (kind == "lrtTbl") {
+    # LRT is shared across full / reduced / selected variants.
+    fname <- sprintf("%s_%s_%s_%s.csv", prefix, kind, predictor_key, task)
+  } else {
+    fname <- sprintf("%s_%s_%s_%s_%s.csv", prefix, kind, predictor_key, task, variant)
+  }
   safe_read_csv(file.path(stats_dir, fname))
 }
 
@@ -1075,21 +1201,20 @@ make_grouped_two_task_ft <- function(first_header, stat_header, row_labels,
   add_task_header_rules(ft, title_row = 1, j_nback = j_nback, j_stern = j_stern)
 }
 
-build_covariation_results_doc <- function(spec, out_path) {
+build_covariation_results_doc <- function(spec, out_path, variant = NULL) {
   exploratory <- isTRUE(spec$exploratory)
+  # Gaze / MS main effect only. Load is reported via emmeans pairwise contrasts below.
   terms <- list(
-    list(term = spec$fixed_term, label = spec$label),
-    list(term = "Load.L", label = "Load (linear trend)"),
-    list(term = "Load.Q", label = "Load (quadratic trend)")
+    list(term = spec$fixed_term, label = spec$label)
   )
   term_labels <- vapply(terms, function(t) t$label, character(1))
 
-  fixed_nb <- read_covariation_csv("fixed", spec$key, "nback", exploratory = exploratory)
-  fixed_st <- read_covariation_csv("fixed", spec$key, "sternberg", exploratory = exploratory)
+  fixed_nb <- read_covariation_csv("fixed", spec$key, "nback", exploratory = exploratory, variant = variant)
+  fixed_st <- read_covariation_csv("fixed", spec$key, "sternberg", exploratory = exploratory, variant = variant)
   lrt_nb <- read_covariation_csv("lrtTbl", spec$key, "nback", exploratory = exploratory)
   lrt_st <- read_covariation_csv("lrtTbl", spec$key, "sternberg", exploratory = exploratory)
-  contr_nb <- read_covariation_csv("contrasts", spec$key, "nback", exploratory = exploratory)
-  contr_st <- read_covariation_csv("contrasts", spec$key, "sternberg", exploratory = exploratory)
+  contr_nb <- read_covariation_csv("contrasts", spec$key, "nback", exploratory = exploratory, variant = variant)
+  contr_st <- read_covariation_csv("contrasts", spec$key, "sternberg", exploratory = exploratory, variant = variant)
 
   fixed_nb_mat <- build_covariation_fixed_matrix(fixed_nb, terms)
   fixed_st_mat <- build_covariation_fixed_matrix(fixed_st, terms)
@@ -1098,9 +1223,15 @@ build_covariation_results_doc <- function(spec, out_path) {
   pw_nb_mat <- build_covariation_pairwise_matrix(contr_nb, NBACK_TASK_CONFIG$comparisons)
   pw_st_mat <- build_covariation_pairwise_matrix(contr_st, STERNBERG_TASK_CONFIG$comparisons)
 
+  id_suffix <- if (is.null(variant) || !nzchar(variant)) {
+    ""
+  } else {
+    paste0("_", variant)
+  }
+
   write.csv(
     cbind(term = term_labels, nback = fixed_nb_mat, sternberg = fixed_st_mat),
-    file.path(combined_dir, paste0(spec$id, "_fixed.csv")),
+    file.path(combined_dir, paste0(spec$id, id_suffix, "_fixed.csv")),
     row.names = FALSE
   )
   write.csv(
@@ -1109,7 +1240,7 @@ build_covariation_results_doc <- function(spec, out_path) {
       nback = lrt_nb_mat,
       sternberg = lrt_st_mat
     ),
-    file.path(combined_dir, paste0(spec$id, "_interaction_lrt.csv")),
+    file.path(combined_dir, paste0(spec$id, id_suffix, "_interaction_lrt.csv")),
     row.names = FALSE
   )
   write.csv(
@@ -1118,7 +1249,7 @@ build_covariation_results_doc <- function(spec, out_path) {
       nback = pw_nb_mat,
       sternberg = pw_st_mat
     ),
-    file.path(combined_dir, paste0(spec$id, "_pairwise.csv")),
+    file.path(combined_dir, paste0(spec$id, id_suffix, "_pairwise.csv")),
     row.names = FALSE
   )
 
@@ -1137,13 +1268,43 @@ build_covariation_results_doc <- function(spec, out_path) {
   model_labels <- unique(model_labels[!is.na(model_labels) & nzchar(model_labels)])
   model_text <- if (length(model_labels) == 1L) {
     prettify_model_label(model_labels[1], dv_label = "ERS/ERD")
+  } else if (identical(variant, "reduced")) {
+    paste0("ERS/ERD ~ ", model_predictor, " + Load + (1|Subject)")
   } else {
     paste0("ERS/ERD ~ ", model_predictor, " * Load + (1|Subject)")
   }
   full_model_text <- paste0("ERS/ERD ~ ", model_predictor, " * Load + (1|Subject)")
-  doc_title <- paste0("ERS/ERD Co-Variation with ", spec$label)
+  reduced_model_text <- paste0("ERS/ERD ~ ", model_predictor, " + Load + (1|Subject)")
+
+  variant_tag <- if (identical(variant, "full")) {
+    " [full interaction model]"
+  } else if (identical(variant, "reduced")) {
+    " [additive model]"
+  } else {
+    ""
+  }
+  doc_title <- paste0("ERS/ERD Co-Variation with ", spec$label, variant_tag)
   if (exploratory) {
     doc_title <- paste0(doc_title, " (exploratory)")
+  }
+
+  note_body <- if (identical(variant, "full")) {
+    paste0(
+      "Fixed effects and pairwise load contrasts are reported from the full interaction model (",
+      full_model_text, "). "
+    )
+  } else if (identical(variant, "reduced")) {
+    paste0(
+      "Fixed effects and pairwise load contrasts are reported from the additive model (",
+      reduced_model_text, "). "
+    )
+  } else {
+    paste0(
+      "When the interaction was not significant (p \u2265 .05), the interaction term was removed; ",
+      "fixed effects and pairwise load contrasts are then reported from the selected model (",
+      model_text, "). ",
+      "Separate tables also report the full interaction model and the additive model. "
+    )
   }
 
   doc <- read_docx()
@@ -1210,9 +1371,7 @@ build_covariation_results_doc <- function(spec, out_path) {
           "The preregistered full model was ", full_model_text, ". ",
           "A likelihood-ratio test compared this model to the additive model (",
           model_predictor, " + Load). ",
-          "When the interaction was not significant (p \u2265 .05), the interaction term was removed; ",
-          "fixed effects and pairwise load contrasts are then reported from the additive model (",
-          model_text, "). ",
+          note_body,
           "\u03b2 in the pairwise section reflects the higher-load minus lower-load contrast. ",
           "padj = FDR-adjusted p-value. ",
           "Full model estimates are reported in the supplementary tables."
@@ -1287,10 +1446,14 @@ for (spec in combined_specs) {
 }
 
 for (spec in covariation_specs) {
-  build_covariation_results_doc(
-    spec = spec,
-    out_path = file.path(combined_dir, paste0(spec$id, "_results_table.docx"))
-  )
+  for (variant in list(NULL, "full", "reduced")) {
+    id_suffix <- if (is.null(variant)) "" else paste0("_", variant)
+    build_covariation_results_doc(
+      spec = spec,
+      out_path = file.path(combined_dir, paste0(spec$id, id_suffix, "_results_table.docx")),
+      variant = variant
+    )
+  }
 }
 
 message("Full model CSVs and DOCX tables generated in: ", out_dir)

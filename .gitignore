@@ -1,27 +1,14 @@
-*.DS_Store
+# macOS
+.DS_Store
+**/.DS_Store
+
+# MATLAB
 *.asv
-.DS_Store
-*.Rhistory
-.idea/
-*.iml
-.DS_Store
-_BACKUP/.DS_Store
-.DS_Store
+
+# R
 .Rhistory
 .RData
-.Rhistory
-.DS_Store
-1_preprocessing/.DS_Store
-1_preprocessing/.DS_Store
-.DS_Store
-_BACKUP/.DS_Store
-.DS_Store
-.DS_Store
-.DS_Store
-.DS_Store
-.DS_Store
-1_preprocessing/.DS_Store
-2_feature_extraction/.DS_Store
-_BACKUP/.DS_Store
-2_feature_extraction/.DS_Store
-1_preprocessing/.DS_Store
+
+# IDE
+.idea/
+*.iml

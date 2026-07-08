@@ -450,8 +450,8 @@ variables = [
     "Accuracy", "ReactionTime",
     "GazeDeviation", "MSRate",
     "GazeDeviationBL", "MSRateBL",
-    "AlphaPower", "AlphaPower_bl",
-    "IAF", "ERSD",
+    "AlphaPower", "AlphaPower_bl", "AlphaPower_baselineWindow",
+    "IAF", "IAF_baselineWindow", "ERSD",
 ]
 y_labels = [
     "Accuracy [%]", "Reaction Time [s]",
@@ -459,15 +459,17 @@ y_labels = [
     "Gaze Deviation Change [%]", "Microsaccade Rate Change [%]",
     "Alpha Power [\u03BCV²/Hz]",
     "Alpha Power [dB]",
+    "Baseline Window Alpha Power [rel.]",
     "IAF [Hz]",
+    "Baseline Window IAF [Hz]",
     "Power Change [dB]",
 ]
 save_names = [
     "acc", "rt",
     "gazedev", "ms",
     "gazedev_bl", "ms_bl",
-    "pow_raw", "pow_bl",
-    "iaf", "ersd",
+    "pow_raw", "pow_bl", "pow_baselineWindow",
+    "iaf", "iaf_baselineWindow", "ersd",
 ]
 
 yticks_map = {
@@ -479,7 +481,9 @@ yticks_map = {
     "GazeDeviationBL": np.arange(-50, 350, 50),
     "MSRateBL": np.arange(-100, 125, 25),
     "AlphaPower_bl": np.arange(-4, 4.1, 1),
+    "AlphaPower_baselineWindow": np.arange(0, 0.26, 0.05),
     "IAF": np.arange(8, 15, 1),
+    "IAF_baselineWindow": np.arange(8, 15, 1),
     "ERSD": np.arange(-3, 4, 1),
 }
 ylims_map = {
@@ -491,7 +495,9 @@ ylims_map = {
     "GazeDeviationBL": (-50, 300),
     "MSRateBL": (-110, 110),
     "AlphaPower_bl": (-4, 4),
+    "AlphaPower_baselineWindow": (0, 0.25),
     "IAF": (8, 14),
+    "IAF_baselineWindow": (8, 14),
     "ERSD": (-3.75, 3.75),
 }
 

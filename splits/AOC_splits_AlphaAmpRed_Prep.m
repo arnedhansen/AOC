@@ -12,9 +12,6 @@
 % Note: 2_feature_extraction/eeg/trials/AOC_eeg_fex_*_trials.m uses
 % ft_freqbaseline with keeptrials (single-trial baseline) and is NOT used here.
 
-%% Toggle
-SAVE_SINGLE_SUBJECT_FIGS = false;  % true: save per-subject ERSD group time courses
-
 %% Setup
 startup
 [subjects, paths, colors] = setup('AOC');
@@ -23,6 +20,8 @@ stats_dir = paths.splits_stats;
 fig_dir = fullfile(paths.figures, 'splits', 'SplitERSERD', 'Prep');
 if ~isfolder(stats_dir), mkdir(stats_dir); end
 if ~isfolder(fig_dir), mkdir(fig_dir); end
+
+SAVE_SINGLE_SUBJECT_FIGS = false;  % true: save per-subject ERSD group time courses
 
 fig_pos = [0 0 1512 982];
 fontSize = 40;
@@ -73,8 +72,10 @@ for ti = 1:numel(tasks)
     task_tag = tk.tag;
     fprintf('\n\n========== TASK: %s ==========\n', upper(task_tag));
 
-    fig_dir_task = fullfile(fig_dir, task_tag);
-    if ~isfolder(fig_dir_task), mkdir(fig_dir_task); end
+    fig_dir_subj = fullfile(fig_dir, 'single_subjects', task_tag);
+    if SAVE_SINGLE_SUBJECT_FIGS && ~isfolder(fig_dir_subj)
+        mkdir(fig_dir_subj);
+    end
 
     task_out = struct();
     task_out.tag = task_tag;
@@ -222,7 +223,7 @@ for ti = 1:numel(tasks)
                 plot_ersd_group_timecourse(time_plot, tc_low, [], tc_high, [], ...
                     colors, tk.group_lbl_low, tk.group_lbl_high, fontSize, fig_pos, ...
                     sprintf('%s | subj %s (n_low=%d, n_high=%d)', task_tag, sid_str, sum(idx_low), sum(idx_high)), ...
-                    fullfile(fig_dir_task, sprintf('AOC_splitERSERD_prep_%s_subj%s_timecourse.png', task_tag, sid_str)));
+                    fullfile(fig_dir_subj, sprintf('AOC_splitERSERD_prep_%s_subj%s_timecourse.png', task_tag, sid_str)));
             end
 
             % Per-subject lightweight save (indices + scalars; no large TFR)

@@ -15,6 +15,7 @@
 %     AlphaPower_bl_early / _late / _full   (dB baseline [-1.5 -0.5]s)
 %     ERSD_early / ERSD_late / ERSD_full — fixed [8 14] Hz dB on baselined tfr*_bl, O/I occ channels, windows [0 1] / [1 2] / [0 2]s
 %     IAF
+%     IAF_baselineWindow / AlphaPower_baselineWindow — baselineWindow FFT [-1.5 -0.5] s, sum-normalized spectrum, IAF band
 %
 %   Gaze — baselined (BL window [-1.5 -0.5]s; % change for all gaze metrics):
 %     GazeDeviationFullBL / EarlyBL / LateBL
@@ -60,6 +61,8 @@ behav_table = struct2table(behav_data_nback);
 gaze_table  = struct2table(gaze_data_nback);
 eeg_table   = struct2table(eeg_data_nback);
 eeg_table   = join_ersd_table(eeg_table, featPath, 'AOC_eeg_matrix_nback_ERSD.mat', 'eeg_data_nback_ERSD');
+eeg_table   = join_baselineWindow_table(eeg_table, featPath, ...
+    'AOC_eeg_matrix_nback_baselineWindow.mat', 'eeg_data_nback_baselineWindow');
 
 assert_unique_keys(eeg_table, {'ID', 'Condition'}, 'eeg_data_nback');
 
@@ -109,4 +112,27 @@ for cn = {'ERSD_early', 'ERSD_late', 'ERSD_full'}
     end
 end
 T = outerjoin(T, Te, 'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
+end
+
+function T = join_baselineWindow_table(T, featPath, blMatName, blVarName)
+blMatPath = fullfile(featPath, blMatName);
+if ~isfile(blMatPath)
+    return
+end
+S = load(blMatPath, blVarName);
+bl_data = S.(blVarName);
+if isempty(bl_data)
+    return
+end
+Tb = struct2table(bl_data);
+if height(Tb) == 0
+    return
+end
+assert_unique_keys(Tb, {'ID', 'Condition'}, blVarName);
+for cn = {'IAF_baselineWindow', 'AlphaPower_baselineWindow'}
+    if ismember(cn{1}, T.Properties.VariableNames)
+        T.(cn{1}) = [];
+    end
+end
+T = outerjoin(T, Tb, 'Keys', {'ID', 'Condition'}, 'MergeKeys', true, 'Type', 'left');
 end

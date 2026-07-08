@@ -34,13 +34,14 @@ if ispc
     % EEG
     run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_sternberg.m');
     run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\AOC_eeg_fex_nback.m');
-    run('C:\Users\Administrator\Documents\GitHub\AOC\_controls\AOC_eeg_powspctrm_baseline_effects.m');
+    run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\baseline-effects\AOC_eeg_baselineWindow_fft_sternberg.m');
+    run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\baseline-effects\AOC_eeg_baselineWindow_fft_nback.m');
 
     % Master Matrices (CSVs)
     run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\AOC_master_matrix_sternberg.m');
     run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\AOC_master_matrix_nback.m');
 
-    % Trial level ERSD and gaze merged matrices
+    %% Trial-level ERSD and gaze merged matrices
     run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\trials\AOC_eeg_fex_sternberg_trials.m');
     run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\trials\AOC_eeg_fex_nback_trials.m');
     run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\gaze\trials\AOC_gaze_fex_sternberg_trials.m');
@@ -74,6 +75,7 @@ if ispc
     run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\gaze\microsaccades\AOC_gaze_microsaccades_nback.m');
 
     %% 4 Split analyses
+    run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_splits_AlphaAmpRed_Prep.m');
     run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed_GazeDev.m');
     run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed_MS.m');
 
@@ -100,13 +102,14 @@ else
     % EEG
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/eeg/AOC_eeg_fex_sternberg.m');
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/eeg/AOC_eeg_fex_nback.m');
-    run('/Users/Arne/Documents/GitHub/AOC/_controls/AOC_eeg_powspctrm_baseline_effects.m');
+    run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/eeg/baseline-effects/AOC_eeg_baselineWindow_fft_sternberg.m');
+    run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/eeg/baseline-effects/AOC_eeg_baselineWindow_fft_nback.m');
 
     % Master Matrices (CSVs)
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/AOC_master_matrix_sternberg.m');
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/AOC_master_matrix_nback.m');
 
-    %% Trial level ERSD and gaze merged matrices
+    %% Trial-level ERSD and gaze merged matrices
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/eeg/trials/AOC_eeg_fex_sternberg_trials.m');
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/eeg/trials/AOC_eeg_fex_nback_trials.m');
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/gaze/trials/AOC_gaze_fex_sternberg_trials.m');
@@ -140,6 +143,7 @@ else
     run('/Users/Arne/Documents/GitHub/AOC/3_visualization/gaze/microsaccades/AOC_gaze_microsaccades_nback.m');
 
     %% 4 Split analyses
+    run('/Users/Arne/Documents/GitHub/AOC/splits/AOC_splits_AlphaAmpRed_Prep.m');
     run('/Users/Arne/Documents/GitHub/AOC/splits/AOC_split_AlphaAmpRed_GazeDev.m');
     run('/Users/Arne/Documents/GitHub/AOC/splits/AOC_split_AlphaAmpRed_MS.m');
 

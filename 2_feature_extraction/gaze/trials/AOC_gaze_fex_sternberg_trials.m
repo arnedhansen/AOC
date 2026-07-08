@@ -35,7 +35,6 @@ fsample = 500; % Hz
 screenW = 800; screenH = 600;
 centreX = 400; centreY = 300;
 blink_win = 50; % samples (+/-) for removal in your helper
-min_valid_samples = 100; % per window after cleaning
 bounds_x = [0 screenW];
 bounds_y = [0 screenH];
 
@@ -117,10 +116,11 @@ for subj = 1:length(subjects)
         raw_dat = raw_dat(1:3,:);
         raw_dat(2,:) = screenH - raw_dat(2,:);
 
-        % Filter out-of-bounds
-        inb = raw_dat(1,:) >= bounds_x(1) & raw_dat(1,:) <= bounds_x(2) & ...
-            raw_dat(2,:) >= bounds_y(1) & raw_dat(2,:) <= bounds_y(2);
-        raw_dat(:,~inb) = NaN;
+        % Filter out-of-bounds using the same strategy as condition-level gaze scripts
+        valid_data_indices = raw_dat(1, :) >= bounds_x(1) & raw_dat(1, :) <= bounds_x(2) & ...
+            raw_dat(2, :) >= bounds_y(1) & raw_dat(2, :) <= bounds_y(2);
+        raw_dat = raw_dat(:, valid_data_indices);
+        t = t(valid_data_indices);
 
         % Remove blinks
         raw_dat = remove_blinks(raw_dat, blink_win);
@@ -139,50 +139,28 @@ for subj = 1:length(subjects)
         dat_full  = raw_dat(:, idx_full);
         dat_series= raw_dat(:, idx_series);
 
-        % Minimum valid-sample threshold per window (post-cleaning)
-        ok_base  = sum(all(isfinite(dat_base(1:2,:)),1))  >= min_valid_samples;
-        ok_early = sum(all(isfinite(dat_early(1:2,:)),1)) >= min_valid_samples;
-        ok_late  = sum(all(isfinite(dat_late(1:2,:)),1))  >= min_valid_samples;
-        ok_full  = sum(all(isfinite(dat_full(1:2,:)),1))  >= min_valid_samples;
-
         %% Baseline metrics (per trial)
         % Gaze deviation baseline (mean Euclidean distance from centre)
-        if ok_base
-            dx_b = dat_base(1,:) - centreX;
-            dy_b = dat_base(2,:) - centreY;
-            gaze_dev_base = nanmean( sqrt(dx_b.^2 + dy_b.^2) );
-        else
-            gaze_dev_base = NaN;
-        end
+        dx_b = dat_base(1,:) - centreX;
+        dy_b = dat_base(2,:) - centreY;
+        gaze_dev_base = mean(sqrt(dx_b.^2 + dy_b.^2), 'omitnan');
 
         % Scan path length baseline (sum of step lengths within window)
-        if ok_base
-            xb = dat_base(1,:); yb = dat_base(2,:);
-            dxb = diff(xb); dyb = diff(yb);
-            spl_base = nansum( sqrt(dxb.^2 + dyb.^2) );
-        else
-            spl_base = NaN;
-        end
+        xb = dat_base(1,:); yb = dat_base(2,:);
+        dxb = diff(xb); dyb = diff(yb);
+        spl_base = sum(sqrt(dxb.^2 + dyb.^2), 'omitnan');
 
         % Pupil size baseline (mean, raw_dat units)
-        if ok_base
-            pupil_base = nanmean(dat_base(3,:));
-        else
-            pupil_base = NaN;
-        end
+        pupil_base = mean(dat_base(3,:), 'omitnan');
 
         % MS rate baseline (events/s) within baseline window
-        if ok_base
-            vel_base = [dat_base(1,:); dat_base(2,:)];
-            T_base = sum(isfinite(vel_base(1,:)) & isfinite(vel_base(2,:))) / fsample;
-            if T_base > 0
-                [~, msb] = detect_microsaccades(fsample, vel_base, size(vel_base,2));
-                ms_count_b = numel(msb.Onset); % assume your struct has onsets
-                ms_rate_base = ms_count_b / T_base;
-                if ~isfinite(ms_rate_base) || ms_rate_base <= 0
-                    ms_rate_base = NaN;
-                end
-            else
+        vel_base = [dat_base(1,:); dat_base(2,:)];
+        T_base = sum(isfinite(vel_base(1,:)) & isfinite(vel_base(2,:))) / fsample;
+        if T_base > 0
+            [~, msb] = detect_microsaccades(fsample, vel_base, size(vel_base,2));
+            ms_count_b = numel(msb.Onset);
+            ms_rate_base = ms_count_b / T_base;
+            if ~isfinite(ms_rate_base) || ms_rate_base <= 0
                 ms_rate_base = NaN;
             end
         else
@@ -190,44 +168,36 @@ for subj = 1:length(subjects)
         end
 
         % BCEA 95% baseline and lateralization baseline
-        if ok_base
-            valid_bb = isfinite(dat_base(1,:)) & isfinite(dat_base(2,:));
-            xbb = double(dat_base(1,valid_bb)); ybb = double(dat_base(2,valid_bb));
-            if numel(xbb) >= 10
-                sxbb = std(xbb); sybb = std(ybb);
-                rhobb = corr(xbb(:), ybb(:));
-                k95 = -log(1 - 0.95);
-                bcea_base = 2 * k95 * pi * sxbb * sybb * sqrt(1 - rhobb^2);
-                blat_base = (mean(xbb) - centreX) / centreX;
-            else
-                bcea_base = NaN; blat_base = NaN;
-            end
+        valid_bb = isfinite(dat_base(1,:)) & isfinite(dat_base(2,:));
+        xbb = double(dat_base(1,valid_bb)); ybb = double(dat_base(2,valid_bb));
+        if numel(xbb) >= 10
+            sxbb = std(xbb); sybb = std(ybb);
+            rhobb = corr(xbb(:), ybb(:));
+            k95 = -log(1 - 0.95);
+            bcea_base = 2 * k95 * pi * sxbb * sybb * sqrt(1 - rhobb^2);
+            blat_base = (mean(xbb) - centreX) / centreX;
         else
             bcea_base = NaN; blat_base = NaN;
         end
 
         %% Early window
-        if ok_early
-            xe = dat_early(1,:); ye = dat_early(2,:);
-            dxe = xe - centreX; dye = ye - centreY;
-            gd_early= nanmean( sqrt(dxe.^2 + dye.^2) );
+        xe = dat_early(1,:); ye = dat_early(2,:);
+        dxe = xe - centreX; dye = ye - centreY;
+        gd_early = mean(sqrt(dxe.^2 + dye.^2), 'omitnan');
 
-            dxe_s = diff(xe); dye_s = diff(ye);
-            spl_early= nansum( sqrt(dxe_s.^2 + dye_s.^2) );
+        dxe_s = diff(xe); dye_s = diff(ye);
+        spl_early = sum(sqrt(dxe_s.^2 + dye_s.^2), 'omitnan');
 
-            pup_early= nanmean(dat_early(3,:));
+        pup_early = mean(dat_early(3,:), 'omitnan');
 
-            vel_early= [xe; ye];
-            T_early= sum(isfinite(xe) & isfinite(ye)) / fsample;
-            if T_early> 0
-                [~, msei] = detect_microsaccades(fsample, vel_early, size(vel_early,2));
-                ms_early= numel(msei.Onset) / T_early;  % events/s
-                if ~isfinite(ms_early); ms_early= NaN; end
-            else
-                ms_early= NaN;
-            end
+        vel_early= [xe; ye];
+        T_early= sum(isfinite(xe) & isfinite(ye)) / fsample;
+        if T_early > 0
+            [~, msei] = detect_microsaccades(fsample, vel_early, size(vel_early,2));
+            ms_early = numel(msei.Onset) / T_early;
+            if ~isfinite(ms_early), ms_early = NaN; end
         else
-            gd_early= NaN; spl_early= NaN; pup_early= NaN; ms_early= NaN;
+            ms_early = NaN;
         end
 
         % Baseline-correct early (% change for GD/SPL/MS/pupil)
@@ -256,15 +226,15 @@ for subj = 1:length(subjects)
         end
 
         % BCEA early
-        if ok_early
-            valid_be = isfinite(xe) & isfinite(ye);
-            xbe = double(xe(valid_be)); ybe = double(ye(valid_be));
-            if numel(xbe) >= 10
-                k95 = -log(1 - 0.95);
-                bcea_e = 2*k95*pi*std(xbe)*std(ybe)*sqrt(1-corr(xbe(:),ybe(:))^2);
-                blat_e = (mean(xbe) - centreX) / centreX;
-            else; bcea_e = NaN; blat_e = NaN; end
-        else; bcea_e = NaN; blat_e = NaN; end
+        valid_be = isfinite(xe) & isfinite(ye);
+        xbe = double(xe(valid_be)); ybe = double(ye(valid_be));
+        if numel(xbe) >= 10
+            k95 = -log(1 - 0.95);
+            bcea_e = 2*k95*pi*std(xbe)*std(ybe)*sqrt(1-corr(xbe(:),ybe(:))^2);
+            blat_e = (mean(xbe) - centreX) / centreX;
+        else
+            bcea_e = NaN; blat_e = NaN;
+        end
         if isfinite(bcea_e) && isfinite(bcea_base) && bcea_base > 0
             bcea_e_bl = 100 * (bcea_e - bcea_base) / bcea_base;
         else; bcea_e_bl = NaN; end
@@ -273,27 +243,23 @@ for subj = 1:length(subjects)
         else; blat_e_bl = NaN; end
 
         %% Late window
-        if ok_late
-            xl = dat_late(1,:); yl = dat_late(2,:);
-            dxl = xl - centreX; dyl = yl - centreY;
-            gd_late = nanmean( sqrt(dxl.^2 + dyl.^2) );
+        xl = dat_late(1,:); yl = dat_late(2,:);
+        dxl = xl - centreX; dyl = yl - centreY;
+        gd_late = mean(sqrt(dxl.^2 + dyl.^2), 'omitnan');
 
-            dxl_s = diff(xl); dyl_s = diff(yl);
-            spl_late = nansum( sqrt(dxl_s.^2 + dyl_s.^2) );
+        dxl_s = diff(xl); dyl_s = diff(yl);
+        spl_late = sum(sqrt(dxl_s.^2 + dyl_s.^2), 'omitnan');
 
-            pup_late = nanmean(dat_late(3,:));
+        pup_late = mean(dat_late(3,:), 'omitnan');
 
-            vel_late = [xl; yl];
-            T_late = sum(isfinite(xl) & isfinite(yl)) / fsample;
-            if T_late> 0
-                [~, msl] = detect_microsaccades(fsample, vel_late, size(vel_late,2));
-                ms_late = numel(msl.Onset) / T_late;  % events/s
-                if ~isfinite(ms_late); ms_late = NaN; end
-            else
-                ms_late = NaN;
-            end
+        vel_late = [xl; yl];
+        T_late = sum(isfinite(xl) & isfinite(yl)) / fsample;
+        if T_late > 0
+            [~, msl] = detect_microsaccades(fsample, vel_late, size(vel_late,2));
+            ms_late = numel(msl.Onset) / T_late;
+            if ~isfinite(ms_late), ms_late = NaN; end
         else
-            gd_late = NaN; spl_late = NaN; pup_late = NaN; ms_late = NaN;
+            ms_late = NaN;
         end
 
         % Baseline-correct late (% change for GD/SPL/MS/pupil)
@@ -322,15 +288,15 @@ for subj = 1:length(subjects)
         end
 
         % BCEA late
-        if ok_late
-            valid_bl = isfinite(xl) & isfinite(yl);
-            xbl = double(xl(valid_bl)); ybl = double(yl(valid_bl));
-            if numel(xbl) >= 10
-                k95 = -log(1 - 0.95);
-                bcea_l = 2*k95*pi*std(xbl)*std(ybl)*sqrt(1-corr(xbl(:),ybl(:))^2);
-                blat_l = (mean(xbl) - centreX) / centreX;
-            else; bcea_l = NaN; blat_l = NaN; end
-        else; bcea_l = NaN; blat_l = NaN; end
+        valid_bl = isfinite(xl) & isfinite(yl);
+        xbl = double(xl(valid_bl)); ybl = double(yl(valid_bl));
+        if numel(xbl) >= 10
+            k95 = -log(1 - 0.95);
+            bcea_l = 2*k95*pi*std(xbl)*std(ybl)*sqrt(1-corr(xbl(:),ybl(:))^2);
+            blat_l = (mean(xbl) - centreX) / centreX;
+        else
+            bcea_l = NaN; blat_l = NaN;
+        end
         if isfinite(bcea_l) && isfinite(bcea_base) && bcea_base > 0
             bcea_l_bl = 100 * (bcea_l - bcea_base) / bcea_base;
         else; bcea_l_bl = NaN; end
@@ -339,27 +305,23 @@ for subj = 1:length(subjects)
         else; blat_l_bl = NaN; end
 
         %% Full window
-        if ok_full
-            xf = dat_full(1,:); yf = dat_full(2,:);
-            dxf = xf - centreX; dyf = yf - centreY;
-            gd_full = nanmean( sqrt(dxf.^2 + dyf.^2) );
+        xf = dat_full(1,:); yf = dat_full(2,:);
+        dxf = xf - centreX; dyf = yf - centreY;
+        gd_full = mean(sqrt(dxf.^2 + dyf.^2), 'omitnan');
 
-            dxf_s = diff(xf); dyf_s = diff(yf);
-            spl_full = nansum( sqrt(dxf_s.^2 + dyf_s.^2) );
+        dxf_s = diff(xf); dyf_s = diff(yf);
+        spl_full = sum(sqrt(dxf_s.^2 + dyf_s.^2), 'omitnan');
 
-            pup_full = nanmean(dat_full(3,:));
+        pup_full = mean(dat_full(3,:), 'omitnan');
 
-            vel_full = [xf; yf];
-            T_full = sum(isfinite(xf) & isfinite(yf)) / fsample;
-            if T_full> 0
-                [~, msf] = detect_microsaccades(fsample, vel_full, size(vel_full,2));
-                ms_full = numel(msf.Onset) / T_full;  % events/s
-                if ~isfinite(ms_full); ms_full = NaN; end
-            else
-                ms_full = NaN;
-            end
+        vel_full = [xf; yf];
+        T_full = sum(isfinite(xf) & isfinite(yf)) / fsample;
+        if T_full > 0
+            [~, msf] = detect_microsaccades(fsample, vel_full, size(vel_full,2));
+            ms_full = numel(msf.Onset) / T_full;
+            if ~isfinite(ms_full), ms_full = NaN; end
         else
-            gd_full = NaN; spl_full = NaN; pup_full = NaN; ms_full = NaN;
+            ms_full = NaN;
         end
 
         % Baseline-correct full (% change for GD/SPL/MS/pupil)
@@ -388,15 +350,15 @@ for subj = 1:length(subjects)
         end
 
         % BCEA full
-        if ok_full
-            valid_bf = isfinite(xf) & isfinite(yf);
-            xbf = double(xf(valid_bf)); ybf = double(yf(valid_bf));
-            if numel(xbf) >= 10
-                k95 = -log(1 - 0.95);
-                bcea_f = 2*k95*pi*std(xbf)*std(ybf)*sqrt(1-corr(xbf(:),ybf(:))^2);
-                blat_f = (mean(xbf) - centreX) / centreX;
-            else; bcea_f = NaN; blat_f = NaN; end
-        else; bcea_f = NaN; blat_f = NaN; end
+        valid_bf = isfinite(xf) & isfinite(yf);
+        xbf = double(xf(valid_bf)); ybf = double(yf(valid_bf));
+        if numel(xbf) >= 10
+            k95 = -log(1 - 0.95);
+            bcea_f = 2*k95*pi*std(xbf)*std(ybf)*sqrt(1-corr(xbf(:),ybf(:))^2);
+            blat_f = (mean(xbf) - centreX) / centreX;
+        else
+            bcea_f = NaN; blat_f = NaN;
+        end
         if isfinite(bcea_f) && isfinite(bcea_base) && bcea_base > 0
             bcea_f_bl = 100 * (bcea_f - bcea_base) / bcea_base;
         else; bcea_f_bl = NaN; end

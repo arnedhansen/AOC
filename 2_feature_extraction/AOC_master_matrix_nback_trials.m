@@ -1,93 +1,53 @@
-%% AOC Master Matrix — N-Back (Trial-Level)
-% Loads behavioral, EEG, gaze trial matrices and demographics, inner-joins
-% on ID/Trial/Condition. Appends subject-level FOOOF columns from
-% `AOC_eeg_matrix_nback_FOOOF.mat` (repeated per trial by ID/Condition).
-% Produces merged_data_nback_trials.mat.
-%
-% Key outputs:
-%   merged_data_nback_trials.mat (table: trial-wise behav, EEG, gaze, demographics, FOOOF alpha)
-
-%% Setup
-clear
-clc
-close all
+%% AOC Master Matrix N Back Trial Level
+% Merge behavioral, gaze, and EEG trial matrices on ID Trial Condition.
+% EEG contract is ERSD only for trial level outputs.
 startup
 [~, paths, ~, ~] = setup('AOC', 0);
 featPath = paths.features;
 
-%% Load data
-% Demographics from methlab_vp
-demog_data_nback = readtable(paths.vp_table);
-demog_data_nback = demog_data_nback(:, {'ID', 'Gender', 'Alter', 'H_ndigkeit', 'OcularDominance'});
-demog_data_nback = table2struct(demog_data_nback(1:120, :));
+demog = readtable(paths.vp_table);
+demog = demog(:, {'ID', 'Gender', 'Alter', 'H_ndigkeit', 'OcularDominance'});
+demog = table2struct(demog(1:120, :));
 
-% Behavioral
-load(fullfile(featPath, 'AOC_behavioral_matrix_nback_trials.mat'));
+load(fullfile(featPath, 'AOC_behavioral_matrix_nback_trials.mat'));   % behav_data_nback_trials
+load(fullfile(featPath, 'AOC_gaze_matrix_nback_trials.mat'));         % gaze_data_nback_trials
+load(fullfile(featPath, 'AOC_eeg_matrix_nback_trials.mat'));          % eeg_data_nback_trials
 
-% Gaze
-load(fullfile(featPath, 'AOC_gaze_matrix_nback_trials.mat'));
-
-% EEG
-load(fullfile(featPath, 'AOC_eeg_matrix_nback_trials.mat'));
-
-%% Merge structures
-%  based on global trial IDs
-
-% Add demographic infos to behavioral structure
-demoIDs = [demog_data_nback.ID];
+demoIDs = [demog.ID];
 for i = 1:numel(behav_data_nback_trials)
     idx = find(demoIDs == behav_data_nback_trials(i).ID, 1);
-    behav_data_nback_trials(i).Gender           = demog_data_nback(idx).Gender;
-    behav_data_nback_trials(i).Alter            = demog_data_nback(idx).Alter;
-    behav_data_nback_trials(i).H_ndigkeit       = demog_data_nback(idx).H_ndigkeit;
-    behav_data_nback_trials(i).OcularDominance  = demog_data_nback(idx).OcularDominance;
+    behav_data_nback_trials(i).Gender = demog(idx).Gender;
+    behav_data_nback_trials(i).Alter = demog(idx).Alter;
+    behav_data_nback_trials(i).H_ndigkeit = demog(idx).H_ndigkeit;
+    behav_data_nback_trials(i).OcularDominance = demog(idx).OcularDominance;
 end
 
-% convert structs to tables
 T_behav = struct2table(behav_data_nback_trials);
 T_gaze = struct2table(gaze_data_nback_trials);
-T_eeg  = struct2table(eeg_data_nback_trials);
+T_eeg = struct2table(eeg_data_nback_trials);
 
-% inner-join on key variables ID, Trial and Condition
-mergeEEGxBehav = innerjoin(T_eeg, T_behav, 'Keys', {'ID','Trial','Condition'});
-merged_data_nback_trials = innerjoin(mergeEEGxBehav, T_gaze, 'Keys', {'ID','Trial','Condition'});
+assert_unique_keys(T_behav, {'ID', 'Trial', 'Condition'}, 'behav_data_nback_trials');
+assert_unique_keys(T_gaze, {'ID', 'Trial', 'Condition'}, 'gaze_data_nback_trials');
+assert_unique_keys(T_eeg, {'ID', 'Trial', 'Condition'}, 'eeg_data_nback_trials');
 
-%% Rename variables
-merged_data_nback_trials.Properties.VariableNames{'Alter'} = 'Age';
-merged_data_nback_trials.Properties.VariableNames{'H_ndigkeit'} = 'Handedness';
+assert_condition_set(T_behav, [1 2 3], 'behav_data_nback_trials');
+assert_condition_set(T_gaze, [1 2 3], 'gaze_data_nback_trials');
+assert_condition_set(T_eeg, [1 2 3], 'eeg_data_nback_trials');
 
-%% Add FOOOF alpha power (subject-level, repeated per trial)
-% Uses split FOOOF EEG matrix from TFR pipeline.
-nTrials = height(merged_data_nback_trials);
-AlphaPower_FOOOF          = nan(nTrials, 1);
-AlphaPower_FOOOF_bl       = nan(nTrials, 1);
-AlphaPower_FOOOF_bl_early = nan(nTrials, 1);
-AlphaPower_FOOOF_bl_late  = nan(nTrials, 1);
-load(fullfile(featPath, 'AOC_eeg_matrix_nback_FOOOF.mat')); % eeg_data_nback_FOOOF
-T_fooof = struct2table(eeg_data_nback_FOOOF);
-assert_unique_keys(T_fooof, {'ID', 'Condition'}, 'eeg_data_nback_FOOOF');
+T = innerjoin(T_behav, T_eeg, 'Keys', {'ID', 'Trial', 'Condition'});
+T = innerjoin(T, T_gaze, 'Keys', {'ID', 'Trial', 'Condition'});
 
-for i = 1:height(T_fooof)
-    rowIdx = merged_data_nback_trials.ID == T_fooof.ID(i) & ...
-        merged_data_nback_trials.Condition == T_fooof.Condition(i);
-    if ~any(rowIdx), continue; end
-    AlphaPower_FOOOF(rowIdx) = T_fooof.AlphaPower_FOOOF(i);
-    AlphaPower_FOOOF_bl(rowIdx) = T_fooof.AlphaPower_FOOOF_bl(i);
-    AlphaPower_FOOOF_bl_early(rowIdx) = T_fooof.AlphaPower_FOOOF_bl_early(i);
-    AlphaPower_FOOOF_bl_late(rowIdx) = T_fooof.AlphaPower_FOOOF_bl_late(i);
-end
+assert_has_vars(T, {'ERSD_early', 'ERSD_late', 'ERSD_full'});
 
-merged_data_nback_trials.AlphaPower_FOOOF          = AlphaPower_FOOOF;
-merged_data_nback_trials.AlphaPower_FOOOF_bl       = AlphaPower_FOOOF_bl;
-merged_data_nback_trials.AlphaPower_FOOOF_bl_early = AlphaPower_FOOOF_bl_early;
-merged_data_nback_trials.AlphaPower_FOOOF_bl_late  = AlphaPower_FOOOF_bl_late;
+T.Properties.VariableNames{'Alter'} = 'Age';
+T.Properties.VariableNames{'H_ndigkeit'} = 'Handedness';
 
-%% Re-arrange table
-newOrder = [ ...
-    {'ID', 'Trial', 'Condition'}, ...
-    {'Gender', 'Age', 'Handedness', 'OcularDominance'}, ...
-    {'Accuracy', 'ReactionTime', 'Stimuli', 'Match'}, ...
-    {'GazeDeviationEarly', 'GazeDeviationEarlyBL', ...
+orderedVars = { ...
+    'ID', 'Trial', 'Condition', ...
+    'Gender', 'Age', 'Handedness', 'OcularDominance', ...
+    'Accuracy', 'ReactionTime', 'Stimuli', 'Match', ...
+    'ERSD_early', 'ERSD_late', 'ERSD_full', ...
+    'GazeDeviationEarly', 'GazeDeviationEarlyBL', ...
     'GazeDeviationLate', 'GazeDeviationLateBL', ...
     'GazeDeviationFull', 'GazeDeviationFullBL', ...
     'ScanPathLengthEarly', 'ScanPathLengthEarlyBL', ...
@@ -104,25 +64,31 @@ newOrder = [ ...
     'BCEAFull', 'BCEAFullBL', ...
     'BCEALatEarly', 'BCEALatEarlyBL', ...
     'BCEALatLate', 'BCEALatLateBL', ...
-    'BCEALatFull', 'BCEALatFullBL'}, ...
-    {'AlphaPowerEarly', 'AlphaPowerEarlyBL', ...
-    'AlphaPowerLate', 'AlphaPowerLateBL', ...
-    'AlphaPowerFull', 'AlphaPowerFullBL', ...
-    'IAF', 'Lateralization'}, ...
-    {'AlphaPower_FOOOF', 'AlphaPower_FOOOF_bl', ...
-    'AlphaPower_FOOOF_bl_early', 'AlphaPower_FOOOF_bl_late'}];
+    'BCEALatFull', 'BCEALatFullBL'};
 
-merged_data_nback_trials = merged_data_nback_trials(:, newOrder);
+orderedVars = orderedVars(ismember(orderedVars, T.Properties.VariableNames));
+merged_data_nback_trials = T(:, orderedVars);
 
-%% Save as .mat
 save(fullfile(featPath, 'AOC_merged_data_nback_trials.mat'), 'merged_data_nback_trials');
-
-%% Save as .csv
 writetable(merged_data_nback_trials, fullfile(featPath, 'AOC_merged_data_nback_trials.csv'));
 
 function assert_unique_keys(T, keyVars, tableName)
 [~, ia] = unique(T(:, keyVars), 'rows', 'stable');
 if numel(ia) ~= height(T)
     error('Duplicate key rows detected in %s for keys: %s', tableName, strjoin(keyVars, ', '));
+end
+end
+
+function assert_has_vars(T, varsRequired)
+missingVars = varsRequired(~ismember(varsRequired, T.Properties.VariableNames));
+if ~isempty(missingVars)
+    error('Missing required variable(s): %s', strjoin(missingVars, ', '));
+end
+end
+
+function assert_condition_set(T, allowedSet, tableName)
+vals = unique(T.Condition(:))';
+if ~all(ismember(vals, allowedSet))
+    error('Unexpected condition value(s) in %s: %s', tableName, mat2str(vals));
 end
 end

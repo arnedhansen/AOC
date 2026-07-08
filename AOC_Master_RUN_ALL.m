@@ -40,6 +40,14 @@ if ispc
     run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\AOC_master_matrix_sternberg.m');
     run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\AOC_master_matrix_nback.m');
 
+    % Trial level ERSD and gaze merged matrices
+    run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\trials\AOC_eeg_fex_sternberg_trials.m');
+    run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\eeg\trials\AOC_eeg_fex_nback_trials.m');
+    run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\gaze\trials\AOC_gaze_fex_sternberg_trials.m');
+    run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\gaze\trials\AOC_gaze_fex_nback_trials.m');
+    run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\AOC_master_matrix_sternberg_trials.m');
+    run('C:\Users\Administrator\Documents\GitHub\AOC\2_feature_extraction\AOC_master_matrix_nback_trials.m');
+
     %% 3 Visualization
     % Powspctrm (raw, baselined dB; baseline-window summary last)
     run('C:\Users\Administrator\Documents\GitHub\AOC\3_visualization\eeg\powspctrm\AOC_eeg_powspctrm_nback.m');
@@ -97,6 +105,14 @@ else
     % Master Matrices (CSVs)
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/AOC_master_matrix_sternberg.m');
     run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/AOC_master_matrix_nback.m');
+
+    % Trial level ERSD and gaze merged matrices
+    run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/eeg/trials/AOC_eeg_fex_sternberg_trials.m');
+    run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/eeg/trials/AOC_eeg_fex_nback_trials.m');
+    run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/gaze/trials/AOC_gaze_fex_sternberg_trials.m');
+    run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/gaze/trials/AOC_gaze_fex_nback_trials.m');
+    run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/AOC_master_matrix_sternberg_trials.m');
+    run('/Users/Arne/Documents/GitHub/AOC/2_feature_extraction/AOC_master_matrix_nback_trials.m');
 
     %% 3 Visualization
     % Powspctrm (raw, baselined dB; baseline-window summary last)

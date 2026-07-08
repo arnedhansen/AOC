@@ -1,4 +1,5 @@
 # Trial-level GLMM fitting (lme4). Separate from condition-level AOC_stats_glmm_fit.R.
+# Random structure: (1|Subject) + (1|Trial) when Trial is present (crossed session order).
 
 suppressPackageStartupMessages({
   library(lme4)
@@ -19,6 +20,23 @@ fit_script_dir_trials <- {
 source(file.path(fit_script_dir_trials, "AOC_stats_glmm_preprocess_trials.R"))
 
 EEG_DV_TRIALS <- "ERSD"
+TRIAL_RE_LABEL <- "(1|Subject) + (1|Trial)"
+
+has_trial_re_trials <- function(data) {
+  "Trial" %in% names(data) && length(unique(stats::na.omit(data$Trial))) > 1
+}
+
+re_terms_trials <- function(data) {
+  if (has_trial_re_trials(data)) {
+    "(1 | Subject) + (1 | Trial)"
+  } else {
+    "(1 | Subject)"
+  }
+}
+
+re_label_trials <- function(data) {
+  if (has_trial_re_trials(data)) TRIAL_RE_LABEL else "(1|Subject)"
+}
 
 fit_lmer_gaussian_trials <- function(formula, data) {
   mod <- tryCatch(
@@ -27,14 +45,25 @@ fit_lmer_gaussian_trials <- function(formula, data) {
       control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
     ),
     error = function(e) {
-      lmer(formula, data = data, REML = FALSE)
+      ftxt <- paste(deparse(formula), collapse = " ")
+      if (grepl("\\(1 \\| Trial\\)", ftxt)) {
+        f_fallback <- stats::as.formula(gsub("\\s*\\+\\s*\\(1 \\| Trial\\)", "", ftxt))
+        warning("Falling back to (1|Subject) only for: ", ftxt, " | reason: ", conditionMessage(e))
+        lmer(
+          f_fallback, data = data, REML = FALSE,
+          control = lmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
+        )
+      } else {
+        stop(e)
+      }
     }
   )
 
   fam <- "gaussian"
   res <- residuals(mod)
   res <- res[is.finite(res)]
-  if (length(res) >= 20) {
+  # Shapiro is unreliable for large N; skip gamma switch when n > 5000.
+  if (length(res) >= 20 && length(res) <= 5000) {
     sw <- tryCatch(shapiro.test(res), error = function(e) NULL)
     sk <- if (stats::sd(res) > 0) {
       mean(((res - mean(res)) / stats::sd(res))^3)
@@ -44,7 +73,7 @@ fit_lmer_gaussian_trials <- function(formula, data) {
     if (!is.null(sw) && sw$p.value < 0.05 && is.finite(sk) && abs(sk) > 1) {
       mod_gamma <- tryCatch(
         glmer(
-          formula, data = data, family = Gamma(link = "log"), REML = FALSE,
+          formula, data = data, family = Gamma(link = "log"),
           control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
         ),
         error = function(e) NULL
@@ -68,14 +97,20 @@ emmeans_load_pairs_trials <- function(model, data, at = NULL) {
   as.data.frame(pairs(emm, adjust = "fdr"))
 }
 
-fit_dv_load_trials <- function(dat, dv, model_label) {
-  sub <- dat[!is.na(dat[[dv]]), c("Subject", "Load", dv), drop = FALSE]
+fit_dv_load_trials <- function(dat, dv, model_label = NULL) {
+  cols <- c("Subject", "Load", dv)
+  if ("Trial" %in% names(dat)) cols <- c(cols, "Trial")
+  sub <- dat[!is.na(dat[[dv]]), cols, drop = FALSE]
   if (nrow(sub) < 10 || length(unique(sub$Subject)) < 2) {
     warning(sprintf("Skipping %s ~ Load: insufficient data.", dv))
     return(NULL)
   }
 
-  form <- as.formula(sprintf("%s ~ Load + (1 | Subject)", dv))
+  re <- re_terms_trials(sub)
+  if (is.null(model_label)) {
+    model_label <- sprintf("%s ~ Load + %s", dv, re_label_trials(sub))
+  }
+  form <- as.formula(sprintf("%s ~ Load + %s", dv, re))
   model <- fit_lmer_gaussian_trials(form, sub)
   anova_tbl <- car::Anova(model, type = 2)
   confint_tbl <- tryCatch(
@@ -99,8 +134,9 @@ fit_dv_load_trials <- function(dat, dv, model_label) {
   )
 }
 
-fit_eeg_gaze_interaction_trials <- function(dat, gaze_var, model_label_full, exploratory = FALSE) {
+fit_eeg_gaze_interaction_trials <- function(dat, gaze_var, model_label_full = NULL, exploratory = FALSE) {
   cols <- c("Subject", "Load", EEG_DV_TRIALS, gaze_var)
+  if ("Trial" %in% names(dat)) cols <- c(cols, "Trial")
   sub <- dat[complete.cases(dat[, cols]), cols, drop = FALSE]
   if (nrow(sub) < 10 || length(unique(sub$Subject)) < 2) {
     warning(sprintf("Skipping %s ~ %s * Load: insufficient data.", EEG_DV_TRIALS, gaze_var))
@@ -111,8 +147,14 @@ fit_eeg_gaze_interaction_trials <- function(dat, gaze_var, model_label_full, exp
   sub[[gaze_c]] <- sub[[gaze_var]] - mean(sub[[gaze_var]], na.rm = TRUE)
   sub$Load <- factor(sub$Load, levels = levels(dat$Load), ordered = TRUE)
 
-  form_full <- as.formula(sprintf("%s ~ %s * Load + (1 | Subject)", EEG_DV_TRIALS, gaze_c))
-  form_red <- as.formula(sprintf("%s ~ %s + Load + (1 | Subject)", EEG_DV_TRIALS, gaze_c))
+  re <- re_terms_trials(sub)
+  re_lab <- re_label_trials(sub)
+  if (is.null(model_label_full)) {
+    model_label_full <- sprintf("%s ~ %s * Load + %s", EEG_DV_TRIALS, gaze_var, re_lab)
+  }
+
+  form_full <- as.formula(sprintf("%s ~ %s * Load + %s", EEG_DV_TRIALS, gaze_c, re))
+  form_red <- as.formula(sprintf("%s ~ %s + Load + %s", EEG_DV_TRIALS, gaze_c, re))
 
   full <- fit_lmer_gaussian_trials(form_full, sub)
   red <- fit_lmer_gaussian_trials(form_red, sub)
@@ -126,21 +168,25 @@ fit_eeg_gaze_interaction_trials <- function(dat, gaze_var, model_label_full, exp
 
   drop1_tbl <- tryCatch(as.data.frame(drop1(full)), error = function(e) NULL)
 
-  anova_type <- if (interaction_kept) 3L else 2L
-  anova_tbl <- car::Anova(final, type = anova_type)
-  confint_tbl <- tryCatch(
-    confint(final, method = "Wald", parm = "beta_"),
-    error = function(e) confint(final, method = "profile", parm = "beta_")
-  )
-
   at_list <- setNames(list(0), gaze_c)
-  pairwise <- emmeans_load_pairs_trials(final, sub, at = at_list)
+  model_label_reduced <- sprintf("%s ~ %s + Load + %s", EEG_DV_TRIALS, gaze_var, re_lab)
 
-  model_label <- if (interaction_kept) {
-    model_label_full
-  } else {
-    sprintf("%s ~ %s + Load + (1|Subject)", EEG_DV_TRIALS, gaze_var)
+  # Always summarize both models so tables can report full and additive fits.
+  summarize_fit <- function(model, anova_type) {
+    anova_tbl <- car::Anova(model, type = anova_type)
+    confint_tbl <- tryCatch(
+      confint(model, method = "Wald", parm = "beta_"),
+      error = function(e) confint(model, method = "profile", parm = "beta_")
+    )
+    pairwise <- emmeans_load_pairs_trials(model, sub, at = at_list)
+    list(anova = anova_tbl, anova_type = anova_type, confint = confint_tbl, pairwise = pairwise)
   }
+
+  sum_full <- summarize_fit(full, 3L)
+  sum_red <- summarize_fit(red, 2L)
+  sum_final <- if (interaction_kept) sum_full else sum_red
+
+  model_label <- if (interaction_kept) model_label_full else model_label_reduced
 
   lrt_interaction <- data.frame(
     Term = "Interaction",
@@ -157,16 +203,28 @@ fit_eeg_gaze_interaction_trials <- function(dat, gaze_var, model_label_full, exp
     exploratory = exploratory,
     model_label = model_label,
     model_label_full = model_label_full,
+    model_label_reduced = model_label_reduced,
     model_full = full,
+    model_reduced = red,
     model = final,
     drop1 = drop1_tbl,
     lrt_interaction = lrt_interaction,
     interaction_kept = interaction_kept,
     family = attr(final, "family_used"),
-    anova = anova_tbl,
-    anova_type = anova_type,
-    confint = confint_tbl,
-    pairwise = pairwise,
+    family_full = attr(full, "family_used"),
+    family_reduced = attr(red, "family_used"),
+    anova = sum_final$anova,
+    anova_type = sum_final$anova_type,
+    anova_full = sum_full$anova,
+    anova_type_full = sum_full$anova_type,
+    anova_reduced = sum_red$anova,
+    anova_type_reduced = sum_red$anova_type,
+    confint = sum_final$confint,
+    confint_full = sum_full$confint,
+    confint_reduced = sum_red$confint,
+    pairwise = sum_final$pairwise,
+    pairwise_full = sum_full$pairwise,
+    pairwise_reduced = sum_red$pairwise,
     n_obs = nrow(sub),
     data = sub
   )
@@ -176,43 +234,37 @@ run_paper_glmm_trials <- function(task_config) {
   task <- task_config$name
   dat <- load_task_data_trials(task_config)
 
-  message("Task (trials): ", task, " | N rows: ", nrow(dat))
+  message(
+    "Task (trials): ", task, " | N rows: ", nrow(dat),
+    " | RE: ", re_label_trials(dat),
+    " | IQR: ", IQR_K_TRIALS, "× within Subject×Load"
+  )
 
   load_models <- list(
-    Accuracy = fit_dv_load_trials(dat, "Accuracy", "Accuracy ~ Load + (1|Subject)"),
-    ReactionTime = fit_dv_load_trials(dat, "ReactionTime", "ReactionTime ~ Load + (1|Subject)"),
-    GazeDeviation = fit_dv_load_trials(dat, "GazeDeviation", "GazeDeviation ~ Load + (1|Subject)"),
-    MSRate = fit_dv_load_trials(dat, "MSRate", "MSRate ~ Load + (1|Subject)"),
-    GazeDeviationBL = fit_dv_load_trials(
-      dat, "GazeDeviationBL", "GazeDeviationBL ~ Load + (1|Subject)"
-    ),
-    MSRateBL = fit_dv_load_trials(dat, "MSRateBL", "MSRateBL ~ Load + (1|Subject)"),
-    ERSD = fit_dv_load_trials(dat, EEG_DV_TRIALS, sprintf("%s ~ Load + (1|Subject)", EEG_DV_TRIALS))
+    Accuracy = fit_dv_load_trials(dat, "Accuracy"),
+    ReactionTime = fit_dv_load_trials(dat, "ReactionTime"),
+    GazeDeviation = fit_dv_load_trials(dat, "GazeDeviation"),
+    MSRate = fit_dv_load_trials(dat, "MSRate"),
+    GazeDeviationBL = fit_dv_load_trials(dat, "GazeDeviationBL"),
+    MSRateBL = fit_dv_load_trials(dat, "MSRateBL"),
+    ERSD = fit_dv_load_trials(dat, EEG_DV_TRIALS)
   )
 
   interaction_confirmatory <- list(
     GazeDeviation = fit_eeg_gaze_interaction_trials(
-      dat, "GazeDeviation",
-      sprintf("%s ~ GazeDeviation * Load + (1|Subject)", EEG_DV_TRIALS),
-      exploratory = FALSE
+      dat, "GazeDeviation", exploratory = FALSE
     ),
     MSRate = fit_eeg_gaze_interaction_trials(
-      dat, "MSRate",
-      sprintf("%s ~ MSRate * Load + (1|Subject)", EEG_DV_TRIALS),
-      exploratory = FALSE
+      dat, "MSRate", exploratory = FALSE
     )
   )
 
   interaction_exploratory <- list(
     GazeDeviationBL = fit_eeg_gaze_interaction_trials(
-      dat, "GazeDeviationBL",
-      sprintf("%s ~ GazeDeviationBL * Load + (1|Subject)", EEG_DV_TRIALS),
-      exploratory = TRUE
+      dat, "GazeDeviationBL", exploratory = TRUE
     ),
     MSRateBL = fit_eeg_gaze_interaction_trials(
-      dat, "MSRateBL",
-      sprintf("%s ~ MSRateBL * Load + (1|Subject)", EEG_DV_TRIALS),
-      exploratory = TRUE
+      dat, "MSRateBL", exploratory = TRUE
     )
   )
 
@@ -223,15 +275,17 @@ run_paper_glmm_trials <- function(task_config) {
     interaction_confirmatory = interaction_confirmatory,
     interaction_exploratory = interaction_exploratory,
     fitted_at = Sys.time(),
-    level = "trials"
+    level = "trials",
+    random_effects = re_label_trials(dat),
+    iqr_k = IQR_K_TRIALS
   )
 
   for (nm in names(load_models)) {
     res <- load_models[[nm]]
     if (!is.null(res)) {
       message(sprintf(
-        "  %s ~ Load: family=%s, Anova type II",
-        res$dv, res$family
+        "  %s ~ Load: family=%s, Anova type II | %s",
+        res$dv, res$family, res$model_label
       ))
     }
   }
@@ -241,7 +295,7 @@ run_paper_glmm_trials <- function(task_config) {
       res <- block[[nm]]
       if (!is.null(res)) {
         message(sprintf(
-          "  %s ~ %s * Load: interaction_kept=%s, Anova type %d, drop1 p=%.4f",
+          "  %s ~ %s * Load: interaction_kept=%s, Anova type %d, LRT p=%.4f",
           res$dv, res$gaze_var, res$interaction_kept, res$anova_type,
           res$lrt_interaction$p[1]
         ))

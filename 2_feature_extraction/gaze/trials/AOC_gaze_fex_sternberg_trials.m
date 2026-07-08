@@ -563,7 +563,7 @@ for subj = 1:length(subjects)
     save gaze_matrix_sternberg_trials subj_data_gaze_trials
 
     clc
-    disp(['Subject ' num2str(subj) '/' num2str(length(subjects)) ' done.'])
+    disp(['GAZE FEX STERNBERG Subject ' num2str(subj) '/' num2str(length(subjects)) ' done.'])
 
     % Append to the final structure array
     gaze_data_sternberg_trials = [gaze_data_sternberg_trials; subj_data_gaze_trials];

@@ -190,8 +190,8 @@ n_tc = sum(keep_tc);
 fprintf('Included subjects for TC: %d / %d\n', n_tc, nSubj);
 
 % Extract paired matrices (subjects x time)
-Rall = reshape(ms_tc(keep_tc, 1, :), n_tc, ms_cfg.n_samp);
-Aall = reshape(ms_tc(keep_tc, 2, :), n_tc, ms_cfg.n_samp);
+low_group_timecourses = reshape(ms_tc(keep_tc, 1, :), n_tc, ms_cfg.n_samp);
+high_group_timecourses = reshape(ms_tc(keep_tc, 2, :), n_tc, ms_cfg.n_samp);
 
 cbpt_report_file = fullfile(stats_dir, sprintf('AOC_splitERSERD_MS_%s_%s_CBPT_report.txt', task_tag, split_label));
 init_cbpt_report_file(cbpt_report_file, struct( ...
@@ -210,11 +210,14 @@ init_cbpt_report_file(cbpt_report_file, struct( ...
 
 tc_base = sprintf('AOC_splitERSERD_timecourse_%s_MS', task_tag);
 report_tag = sprintf('%s_%s_%s', task_tag, split_label, ms_tag_base);
-plot_paired_timecourse_CBPT(Rall, Aall, colors, ms_ylabel, ...
+plot_paired_timecourse_CBPT(low_group_timecourses, high_group_timecourses, colors, ms_ylabel, ...
     tc_base, report_tag, ...
     fig_dir_root, fig_pos, fontSizeTC, fs_ms, ds_factor, t_vec, tc_viz_smooth_sec, ...
     tk.group_lbl_low, tk.group_lbl_high, cbpt_report_file);
-plot_paired_timecourse_individuals(Rall, Aall, colors, ms_ylabel, 'Collapsed over conditions', ...
+plot_difference_timecourse_CBPT(low_group_timecourses, high_group_timecourses, ...
+    sprintf('%s_HighMinusLow', tc_base), ...
+    fig_dir_root, fig_pos, fontSizeTC, fs_ms, ds_factor, t_vec, tc_viz_smooth_sec);
+plot_paired_timecourse_individuals(low_group_timecourses, high_group_timecourses, colors, ms_ylabel, 'Collapsed over conditions', ...
     sprintf('%s_individuals', tc_base), ...
     fig_dir_root, fig_pos, fontSizeTC, fs_ms, t_vec, tc_viz_smooth_sec, ...
     tk.group_lbl_low, tk.group_lbl_high);
@@ -222,8 +225,8 @@ plot_paired_timecourse_individuals(Rall, Aall, colors, ms_ylabel, 'Collapsed ove
 %% CSV export (subject x group)
 fprintf('\n=== Exporting CSV for Python stats ===\n');
 t_win = (t_vec >= 0) & (t_vec <= 2);
-ms_sum_low = mean(Rall(:, t_win), 2, 'omitnan');
-ms_sum_high = mean(Aall(:, t_win), 2, 'omitnan');
+ms_sum_low = mean(low_group_timecourses(:, t_win), 2, 'omitnan');
+ms_sum_high = mean(high_group_timecourses(:, t_win), 2, 'omitnan');
 ids_tc = uIDs(keep_tc);
 
 ID_col = [];
@@ -488,64 +491,63 @@ scatter(x_box + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, .
     'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
 end
 
-function plot_paired_timecourse_individuals(Rall, Aall, colors, ylab, title_tag, out_name, fig_dir, fig_pos, fsz, fs, t_vec, smooth_sec, lblLow, lblHigh)
-nT = size(Rall, 2);
+function plot_paired_timecourse_individuals(low_group_timecourses, high_group_timecourses, colors, ylab, title_tag, out_name, fig_dir, fig_pos, fsz, fs, t_vec, smooth_sec, lblLow, lblHigh)
 t_plot = t_vec(:)';
 win_sm = max(1, round(smooth_sec * fs));
-R = Rall; A = Aall;
-R(~isfinite(R)) = NaN; A(~isfinite(A)) = NaN;
+low_curves = low_group_timecourses; high_curves = high_group_timecourses;
+low_curves(~isfinite(low_curves)) = NaN; high_curves(~isfinite(high_curves)) = NaN;
 if win_sm > 1
-    R = movmean(R, win_sm, 2, 'omitnan');
-    A = movmean(A, win_sm, 2, 'omitnan');
+    low_curves = movmean(low_curves, win_sm, 2, 'omitnan');
+    high_curves = movmean(high_curves, win_sm, 2, 'omitnan');
 end
 colR_light = colors(1, :) * 0.35 + 0.65;
 colA_light = colors(3, :) * 0.35 + 0.65;
 figure('Position', fig_pos, 'Color', 'w');
 tiledlayout(2, 1, 'TileSpacing', 'compact');
 nexttile; hold on
-plot(t_plot, R', 'Color', colR_light, 'LineWidth', 0.8);
-plot(t_plot, mean(R, 1, 'omitnan'), 'Color', colors(1, :), 'LineWidth', 2.5);
+plot(t_plot, low_curves', 'Color', colR_light, 'LineWidth', 0.8);
+plot(t_plot, mean(low_curves, 1, 'omitnan'), 'Color', colors(1, :), 'LineWidth', 2.5);
 xline(0, '--k'); xlim([-0.5 2]); ylabel(ylab);
-title(sprintf('%s (n=%d) - %s', lblLow, size(R, 1), title_tag), 'Interpreter', 'none');
+title(sprintf('%s (n=%d) - %s', lblLow, size(low_curves, 1), title_tag), 'Interpreter', 'none');
 set(gca, 'FontSize', fsz - 6); box off
 nexttile; hold on
-plot(t_plot, A', 'Color', colA_light, 'LineWidth', 0.8);
-plot(t_plot, mean(A, 1, 'omitnan'), 'Color', colors(3, :), 'LineWidth', 2.5);
+plot(t_plot, high_curves', 'Color', colA_light, 'LineWidth', 0.8);
+plot(t_plot, mean(high_curves, 1, 'omitnan'), 'Color', colors(3, :), 'LineWidth', 2.5);
 xline(0, '--k'); xlim([-0.5 2]); xlabel('Time [s]'); ylabel(ylab);
-title(sprintf('%s (n=%d) - %s', lblHigh, size(A, 1), title_tag), 'Interpreter', 'none');
+title(sprintf('%s (n=%d) - %s', lblHigh, size(high_curves, 1), title_tag), 'Interpreter', 'none');
 set(gca, 'FontSize', fsz - 6); box off
 pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
 close(gcf);
 end
 
-function plot_paired_timecourse_CBPT(Rall, Aall, colors, ylab, out_name, report_tag, fig_dir, fig_pos, fsz, fs, ds_factor, t_vec, smooth_sec, lblLow, lblHigh, cbpt_report_file)
-nT = size(Rall, 2);
+function plot_paired_timecourse_CBPT(low_group_timecourses, high_group_timecourses, colors, ylab, out_name, report_tag, fig_dir, fig_pos, fsz, fs, ds_factor, t_vec, smooth_sec, lblLow, lblHigh, cbpt_report_file)
+nT = size(low_group_timecourses, 2);
 t_plot = t_vec(:)';
 dt = mean(diff(t_plot), 'omitnan');
 win_sm = max(1, round(smooth_sec * fs));
 if win_sm > 1
-    Rall = movmean(Rall, win_sm, 2, 'omitnan');
-    Aall = movmean(Aall, win_sm, 2, 'omitnan');
+    low_group_timecourses = movmean(low_group_timecourses, win_sm, 2, 'omitnan');
+    high_group_timecourses = movmean(high_group_timecourses, win_sm, 2, 'omitnan');
 end
-nR = size(Rall, 1);
+num_subjects = size(low_group_timecourses, 1);
 figure('Position', fig_pos, 'Color', 'w');
 tl = tiledlayout(3, 1, 'TileSpacing', 'compact');
 set_tc_cbpt_layout_margins(tl);
 nexttile([2 1]); hold on
-mR = mean(Rall, 1, 'omitnan'); mA = mean(Aall, 1, 'omitnan');
-sR = std(Rall, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(Rall), 1)), 1);
-sA = std(Aall, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(Aall), 1)), 1);
-e1 = shadedErrorBar(t_plot, mR, sR, 'lineProps', {'-'}, 'transparent', true);
-e2 = shadedErrorBar(t_plot, mA, sA, 'lineProps', {'-'}, 'transparent', true);
-set(e1.mainLine, 'Color', colors(1,:), 'LineWidth', 2.5);
-set(e2.mainLine, 'Color', colors(3,:), 'LineWidth', 2.5);
-set(e1.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.20);
-set(e2.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.20);
-set(e1.edge(1), 'Color', 'none'); set(e1.edge(2), 'Color', 'none');
-set(e2.edge(1), 'Color', 'none'); set(e2.edge(2), 'Color', 'none');
+low_group_mean = mean(low_group_timecourses, 1, 'omitnan'); high_group_mean = mean(high_group_timecourses, 1, 'omitnan');
+low_group_sem = std(low_group_timecourses, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(low_group_timecourses), 1)), 1);
+high_group_sem = std(high_group_timecourses, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(high_group_timecourses), 1)), 1);
+low_group_plot = shadedErrorBar(t_plot, low_group_mean, low_group_sem, 'lineProps', {'-'}, 'transparent', true);
+high_group_plot = shadedErrorBar(t_plot, high_group_mean, high_group_sem, 'lineProps', {'-'}, 'transparent', true);
+set(low_group_plot.mainLine, 'Color', colors(1,:), 'LineWidth', 2.5);
+set(high_group_plot.mainLine, 'Color', colors(3,:), 'LineWidth', 2.5);
+set(low_group_plot.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.20);
+set(high_group_plot.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.20);
+set(low_group_plot.edge(1), 'Color', 'none'); set(low_group_plot.edge(2), 'Color', 'none');
+set(high_group_plot.edge(1), 'Color', 'none'); set(high_group_plot.edge(2), 'Color', 'none');
 xline(0, '--k'); ylabel(ylab); xlim([-0.5 2]);
-ylim(ylim_from_mean_sem(mR, sR, mA, sA));
+ylim(ylim_from_mean_sem(low_group_mean, low_group_sem, high_group_mean, high_group_sem));
 box off; set(gca, 'FontSize', fsz-4);
 leg_p1 = patch(NaN, NaN, colors(1,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(1,:), 'LineWidth', 1.5);
 leg_p2 = patch(NaN, NaN, colors(3,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(3,:), 'LineWidth', 1.5);
@@ -553,21 +555,21 @@ legend([leg_p1 leg_p2], {[' ' lblLow], [' ' lblHigh]}, 'Location', 'best', 'Font
 
 nexttile; hold on
 n_perm = 10000; alpha_cbpt = 0.05; tail_cbpt = 'twotail';
-d = nan(1, nT);
+cohens_d_curve = nan(1, nT);
 for t = 1:nT
-    x = Rall(:, t); y = Aall(:, t);
-    ok = isfinite(x) & isfinite(y);
-    x = x(ok); y = y(ok);
-    if numel(x) < 3, continue, end
-    dd = y - x;
-    d(t) = mean(dd) / max(std(dd), eps);
+    low_values = low_group_timecourses(:, t); high_values = high_group_timecourses(:, t);
+    paired_ok = isfinite(low_values) & isfinite(high_values);
+    low_values = low_values(paired_ok); high_values = high_values(paired_ok);
+    if numel(low_values) < 3, continue, end
+    paired_difference = high_values - low_values;
+    cohens_d_curve(t) = mean(paired_difference) / max(std(paired_difference), eps);
 end
-Rall_ds = Rall(:, 1:ds_factor:end);
-Aall_ds = Aall(:, 1:ds_factor:end);
+low_group_downsampled = low_group_timecourses(:, 1:ds_factor:end);
+high_group_downsampled = high_group_timecourses(:, 1:ds_factor:end);
 t_plot_ds = t_plot(1:ds_factor:end);
 dt_ds = ds_factor * dt;
-[clusters, tvals_cl, thr] = ft_cluster_permutation_1d_paired(Rall_ds, Aall_ds, n_perm, alpha_cbpt, tail_cbpt, t_plot_ds);
-report_cfg = struct('tag', report_tag, 'modality', 'MS', 'nR', nR, 'nA', nR, ...
+[clusters, tvals_cl, thr] = ft_cluster_permutation_1d_paired(low_group_downsampled, high_group_downsampled, n_perm, alpha_cbpt, tail_cbpt, t_plot_ds);
+report_cfg = struct('tag', report_tag, 'modality', 'MS', 'nR', num_subjects, 'nA', num_subjects, ...
     'lbl_low', lblLow, 'lbl_high', lblHigh, 'n_perm', n_perm, 'alpha', alpha_cbpt, ...
     'tail', tail_cbpt, 'nT_ds', numel(t_plot_ds), 'bin_ms', ds_factor * 1000 / fs, ...
     'fs', fs, 'ds_factor', ds_factor, 'clusters', clusters, 'tvals', tvals_cl, ...
@@ -585,9 +587,9 @@ run_end = [diff(sig) == -1, false];
 if sig(1), run_start(1) = true; end
 if sig(end), run_end(end) = true; end
 starts = find(run_start); ends = find(run_end);
-d_fin = d(isfinite(d));
-mx = max(abs(d_fin), [], 'omitnan');
-if isempty(d_fin) || ~isfinite(mx) || mx == 0
+valid_d_values = cohens_d_curve(isfinite(cohens_d_curve));
+mx = max(abs(valid_d_values), [], 'omitnan');
+if isempty(valid_d_values) || ~isfinite(mx) || mx == 0
     ylims = [-0.6 0.6];
 else
     ylims = [-max(mx + 0.1, 0.6), max(mx + 0.1, 0.6)];
@@ -599,10 +601,92 @@ for k = 1:numel(starts)
     patch([t1 t2 t2 t1], [ylims(1) ylims(1) ylims(2) ylims(2)], [0.5 0.5 0.5], 'FaceAlpha', patch_alpha, 'EdgeColor', 'none');
 end
 ylim(ylims);
-plot(t_plot, d, 'k-', 'LineWidth', 3.5);
+plot(t_plot, cohens_d_curve, 'k-', 'LineWidth', 3.5);
 yline(0, '--'); xline(0, '--k');
 xlabel('Time [s]'); ylabel('Cohen''s d');
 xlim([-0.5 2]); box off; set(gca, 'FontSize', fsz-4);
+pause(0.05); drawnow;
+saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
+close(gcf);
+end
+
+function plot_difference_timecourse_CBPT(low_group_timecourses, high_group_timecourses, out_name, fig_dir, fig_pos, fsz, fs, ds_factor, t_vec, smooth_sec)
+nT = size(low_group_timecourses, 2);
+t_plot = t_vec(:)';
+dt = mean(diff(t_plot), 'omitnan');
+win_sm = max(1, round(smooth_sec * fs));
+if win_sm > 1
+    low_group_timecourses = movmean(low_group_timecourses, win_sm, 2, 'omitnan');
+    high_group_timecourses = movmean(high_group_timecourses, win_sm, 2, 'omitnan');
+end
+difference_timecourses = high_group_timecourses - low_group_timecourses; % high minus low
+
+figure('Position', fig_pos, 'Color', 'w');
+tl = tiledlayout(3, 1, 'TileSpacing', 'compact');
+set_tc_cbpt_layout_margins(tl);
+nexttile([2 1]); hold on
+difference_mean = mean(difference_timecourses, 1, 'omitnan');
+difference_sem = std(difference_timecourses, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(difference_timecourses), 1)), 1);
+difference_ci = 1.96 * difference_sem;
+difference_plot = shadedErrorBar(t_plot, difference_mean, difference_ci, 'lineProps', {'-'}, 'transparent', true);
+set(difference_plot.mainLine, 'Color', [0.1 0.1 0.1], 'LineWidth', 2.8);
+set(difference_plot.patch, 'FaceColor', [0.4 0.4 0.4], 'FaceAlpha', 0.20);
+set(difference_plot.edge(1), 'Color', 'none'); set(difference_plot.edge(2), 'Color', 'none');
+yline(0, '--');
+xline(0, '--k');
+xlim([-0.5 2]);
+ylim(ylim_from_single_mean_err(difference_mean, difference_ci));
+ylabel('High - Low Change [%]');
+box off; set(gca, 'FontSize', fsz-4);
+
+nexttile; hold on
+n_perm = 10000; alpha_cbpt = 0.05; tail_cbpt = 'twotail';
+cohens_d_curve = nan(1, nT);
+for t = 1:nT
+    low_values = low_group_timecourses(:, t); high_values = high_group_timecourses(:, t);
+    paired_ok = isfinite(low_values) & isfinite(high_values);
+    low_values = low_values(paired_ok); high_values = high_values(paired_ok);
+    if numel(low_values) < 3, continue, end
+    paired_difference = high_values - low_values;
+    cohens_d_curve(t) = mean(paired_difference) / max(std(paired_difference), eps);
+end
+low_group_downsampled = low_group_timecourses(:, 1:ds_factor:end);
+high_group_downsampled = high_group_timecourses(:, 1:ds_factor:end);
+t_plot_ds = t_plot(1:ds_factor:end);
+dt_ds = ds_factor * dt;
+[clusters, ~, ~] = ft_cluster_permutation_1d_paired(low_group_downsampled, high_group_downsampled, n_perm, alpha_cbpt, tail_cbpt, t_plot_ds);
+sig = false(1, numel(t_plot_ds));
+for k = 1:numel(clusters)
+    if clusters(k).p < 0.05
+        sig(clusters(k).idx) = true;
+    end
+end
+run_start = [false, diff(sig) == 1];
+run_end = [diff(sig) == -1, false];
+if ~isempty(sig) && sig(1), run_start(1) = true; end
+if ~isempty(sig) && sig(end), run_end(end) = true; end
+starts = find(run_start); ends = find(run_end);
+valid_d_values = cohens_d_curve(isfinite(cohens_d_curve));
+mx = max(abs(valid_d_values), [], 'omitnan');
+if isempty(valid_d_values) || ~isfinite(mx) || mx == 0
+    ylims = [-0.6 0.6];
+else
+    ylims = [-max(mx + 0.1, 0.6), max(mx + 0.1, 0.6)];
+end
+patch_alpha = 0.4 * ~any(sig) + 0.25 * any(sig);
+for k = 1:numel(starts)
+    t1 = max(0, t_plot_ds(starts(k)) - dt_ds/2);
+    t2 = t_plot_ds(ends(k)) + dt_ds/2;
+    patch([t1 t2 t2 t1], [ylims(1) ylims(1) ylims(2) ylims(2)], [0.5 0.5 0.5], 'FaceAlpha', patch_alpha, 'EdgeColor', 'none');
+end
+ylim(ylims);
+plot(t_plot, cohens_d_curve, 'k-', 'LineWidth', 3.5);
+yline(0, '--');
+xline(0, '--k');
+xlabel('Time [s]');
+ylabel('Cohen''s d');
+xlim([-0.5 2]);
+box off; set(gca, 'FontSize', fsz-4);
 pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
 close(gcf);
@@ -613,6 +697,18 @@ drawnow;
 op = tl.OuterPosition;
 left = 0.12;
 tl.OuterPosition = [left, op(2), 0.96 - left, op(4)];
+end
+
+function yl = ylim_from_single_mean_err(m, e)
+lo = m - e;
+hi = m + e;
+if isempty(lo) || all(~isfinite(lo))
+    yl = [-1, 1];
+    return
+end
+span = max(max(hi, [], 'omitnan') - min(lo, [], 'omitnan'), eps);
+pad = 0.10 * span;
+yl = [min(lo, [], 'omitnan') - pad, max(hi, [], 'omitnan') + pad];
 end
 
 function yl = ylim_from_mean_sem(m1, s1, m2, s2)
@@ -697,27 +793,27 @@ cleanup = onCleanup(@() fclose(fid));
 for i = 1:numel(lines), fprintf(fid, '%s\n', lines{i}); end
 end
 
-function [clusters, tvals, thr] = ft_cluster_permutation_1d_paired(Rall, Aall, nPerm, alpha, tail, t_plot_ds)
-% Paired cluster permutation (depsamplesT). Rall/Aall: nSubj x nTime.
+function [clusters, tvals, thr] = ft_cluster_permutation_1d_paired(low_group_timecourses, high_group_timecourses, nPerm, alpha, tail, t_plot_ds)
+% Paired cluster permutation (depsamplesT). Inputs are nSubj x nTime.
 if nargin < 5, tail = 'twotail'; end
 if nargin < 6, t_plot_ds = []; end
-nS = size(Rall, 1);
-nT = size(Rall, 2);
-if size(Aall, 1) ~= nS || size(Aall, 2) ~= nT
-    error('Rall and Aall must match for paired design.');
+nS = size(low_group_timecourses, 1);
+nT = size(low_group_timecourses, 2);
+if size(high_group_timecourses, 1) ~= nS || size(high_group_timecourses, 2) ~= nT
+    error('Low and high matrices must match for paired design.');
 end
 df = nS - 1;
 
 for t = 1:nT
-    r = Rall(:, t); a = Aall(:, t);
-    ok = isfinite(r) & isfinite(a);
-    if ~any(ok)
-        r(:) = 0; a(:) = 0;
+    low_values = low_group_timecourses(:, t); high_values = high_group_timecourses(:, t);
+    paired_ok = isfinite(low_values) & isfinite(high_values);
+    if ~any(paired_ok)
+        low_values(:) = 0; high_values(:) = 0;
     else
-        mr = mean(r(ok)); ma = mean(a(ok));
-        r(~ok) = mr; a(~ok) = ma;
+        low_mean = mean(low_values(paired_ok)); high_mean = mean(high_values(paired_ok));
+        low_values(~paired_ok) = low_mean; high_values(~paired_ok) = high_mean;
     end
-    Rall(:, t) = r; Aall(:, t) = a;
+    low_group_timecourses(:, t) = low_values; high_group_timecourses(:, t) = high_values;
 end
 
 chan_label = 'metric';
@@ -729,8 +825,8 @@ end
 
 tl1 = struct('label', {{chan_label}}, 'time', time_vec, 'dimord', 'rpt_chan_time');
 tl2 = tl1;
-tl1.trial = reshape(Rall, [nS, 1, nT]);
-tl2.trial = reshape(Aall, [nS, 1, nT]);
+tl1.trial = reshape(low_group_timecourses, [nS, 1, nT]);
+tl2.trial = reshape(high_group_timecourses, [nS, 1, nT]);
 
 cfg_neigh = struct('label', chan_label, 'neighblabel', {{}});
 cfg = struct();

@@ -20,6 +20,8 @@ msDir = fullfile(paths.figures, 'gaze', 'microsaccades');
 heatmapDir = fullfile(paths.figures, 'gaze', 'heatmap');
 ersdDir = fullfile(paths.figures, 'eeg', 'ersd');
 splitDir = fullfile(paths.figures, 'splits', 'SplitERSERD');
+splitTimecoursePng = @(task, metric) fullfile(splitDir, ...
+    sprintf('AOC_splitERSERD_%s_%s_timecourse.png', task, metric));
 
 fprintf('Assembling manuscript figures...\n');
 fprintf('Output directory: %s\n', outDir);
@@ -184,20 +186,22 @@ fig9.name = 'Figure9';
 fig9.nrow = 2;
 fig9.ncol = 2;
 fig9.figSize = [0 0 1512 982];
+fig9.rowHeights = [1, 1];
+fig9.colGap = 0.0005;
 fig9.panels = {
-    panelSpec(fullfile(splitDir, 'AOC_splitERSERD_timecourse_nback_GazeDev.png'), ...
+    panelSpec(splitTimecoursePng('nback', 'GazeDev'), ...
         'A', 'N-back Gaze Deviation Split');
-    panelSpec(fullfile(splitDir, 'AOC_splitERSERD_timecourse_sternberg_GazeDev.png'), ...
+    panelSpec(splitTimecoursePng('sternberg', 'GazeDev'), ...
         'B', 'Sternberg Gaze Deviation Split');
-    panelSpec(fullfile(splitDir, 'AOC_splitERSERD_timecourse_nback_MS.png'), ...
+    panelSpec(splitTimecoursePng('nback', 'MS'), ...
         'C', 'N-back Microsaccades Split');
-    panelSpec(fullfile(splitDir, 'AOC_splitERSERD_timecourse_sternberg_MS.png'), ...
+    panelSpec(splitTimecoursePng('sternberg', 'MS'), ...
         'D', 'Sternberg Microsaccades Split');
     };
 
 %% Assemble all figures
 figSpecs = {fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, fig9};
-for iFig = 1:numel(figSpecs)
+for iFig = 9%1:numel(figSpecs)
     spec = figSpecs{iFig};
     outPng = fullfile(outDir, ['AOC_manuscript_' spec.name '.png']);
     assembleManuscriptFigure(spec, outPng, exportDpi);

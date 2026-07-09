@@ -35,7 +35,6 @@ tasks(1).split_label = 'splitMedian_trial';
 tasks(1).et_fname = 'dataET_sternberg';
 tasks(1).gaze_trials_file = 'AOC_gaze_matrix_sternberg_trials.mat';
 tasks(1).gaze_trials_var = 'gaze_data_sternberg_trials';
-tasks(1).fig_subdir = 'SternbergMS';
 tasks(1).group_lbl_low = 'ERD';
 tasks(1).group_lbl_high = 'ERS';
 tasks(1).ersd_var = 'ERSD_late';
@@ -45,7 +44,6 @@ tasks(2).split_label = 'splitMedian_trial';
 tasks(2).et_fname = 'dataET_nback';
 tasks(2).gaze_trials_file = 'AOC_gaze_matrix_nback_trials.mat';
 tasks(2).gaze_trials_var = 'gaze_data_nback_trials';
-tasks(2).fig_subdir = 'NbackMS';
 tasks(2).group_lbl_low = 'More ERD';
 tasks(2).group_lbl_high = 'Less ERD';
 tasks(2).ersd_var = 'ERSD_full';
@@ -54,9 +52,7 @@ for ti = 1:numel(tasks)
 tk = tasks(ti);
 task_tag = tk.tag;
 split_label = tk.split_label;
-fig_prefix = sprintf('AOC_splitERSERD_MS_%s_%s', task_tag, split_label);
-fig_dir_task = fullfile(fig_dir_root, tk.fig_subdir);
-if ~isfolder(fig_dir_task), mkdir(fig_dir_task); end
+fig_prefix = sprintf('AOC_splitERSERD_%s_MS', task_tag);
 
 fprintf('\n\n========== TASK: %s ==========\n', upper(task_tag));
 if ~isfield(split_alpha_amp_red, task_tag)
@@ -106,7 +102,7 @@ legend([h_low, h_high], ...
 set(gca, 'FontSize', fontSize);
 box off
 pause(0.05); drawnow;
-saveas(gcf, fullfile(fig_dir_task, sprintf('%s_inclusion.png', fig_prefix)));
+saveas(gcf, fullfile(fig_dir_root, sprintf('%s_inclusion.png', fig_prefix)));
 close(gcf);
 
 %% Load trial-level gaze matrix for raincloud scalar
@@ -142,7 +138,7 @@ for s = 1:nSubj
 
     et_file = fullfile(feat_dir, subj_folder, 'gaze', [tk.et_fname, '.mat']);
     if ~isfile(et_file)
-        missing_et{end+1} = sid_str; %#ok<AGROW>
+        missing_et{end+1} = sid_str;
         continue
     end
     try
@@ -150,7 +146,7 @@ for s = 1:nSubj
         ms_tc(s, 1, :) = tc_low;
         ms_tc(s, 2, :) = tc_high;
     catch ME
-        missing_et{end+1} = sid_str; %#ok<AGROW>
+        missing_et{end+1} = sid_str;
         fprintf('  Warning: MS TC failed for %s (%s)\n', sid_str, ME.message);
     end
 end
@@ -159,7 +155,7 @@ end
 fprintf('\n=== Plotting MS rainclouds ===\n');
 plot_paired_raincloud(metrics_MS(:, 1), metrics_MS(:, 2), colors, ...
     tk.group_lbl_low, tk.group_lbl_high, 'Microsaccade rate', ...
-    fig_dir_task, sprintf('%s_raincloud_ms.png', fig_prefix), fig_pos, fontSize);
+    fig_dir_root, sprintf('%s_raincloud_ms.png', fig_prefix), fig_pos, fontSize);
 
 %% Time courses (paired within subject)
 close all
@@ -171,12 +167,11 @@ ms_tag_base = 'MS_pct';
 fontSizeTC = 40;
 rng(123)
 fs_ms = ms_cfg.fsample;
-ds_factor = 25;
-tc_viz_smooth_sec = 0.05;
+bin_ms = 25;  % match preprocess smooth_sec (25 ms)
 
-% Completeness: both groups finite in analysis window
+% QC: both groups finite in analysis window
 tc_window_idx = idx_viable;
-tc_complete_min_frac = 0.90;
+tc_complete_min_frac = 0.80;
 keep_tc = true(nSubj, 1);
 for g = 1:2
     Xg = reshape(ms_tc(:, g, :), nSubj, ms_cfg.n_samp);
@@ -206,20 +201,21 @@ init_cbpt_report_file(cbpt_report_file, struct( ...
     'n_high_split', nSubj, ...
     'n_low_tc', n_tc, ...
     'n_high_tc', n_tc, ...
+    'bin_ms', bin_ms, ...
     'metric', 'Microsaccade rate change [% baseline] (paired within subject)'));
 
 tc_base = sprintf('AOC_splitERSERD_timecourse_%s_MS', task_tag);
 report_tag = sprintf('%s_%s_%s', task_tag, split_label, ms_tag_base);
 plot_paired_timecourse_CBPT(low_group_timecourses, high_group_timecourses, colors, ms_ylabel, ...
     tc_base, report_tag, ...
-    fig_dir_root, fig_pos, fontSizeTC, fs_ms, ds_factor, t_vec, tc_viz_smooth_sec, ...
+    fig_dir_root, fig_pos, fontSizeTC, fs_ms, bin_ms, t_vec, ...
     tk.group_lbl_low, tk.group_lbl_high, cbpt_report_file);
 plot_difference_timecourse_CBPT(low_group_timecourses, high_group_timecourses, ...
     sprintf('%s_HighMinusLow', tc_base), ...
-    fig_dir_root, fig_pos, fontSizeTC, fs_ms, ds_factor, t_vec, tc_viz_smooth_sec);
+    fig_dir_root, fig_pos, fontSizeTC, fs_ms, bin_ms, t_vec);
 plot_paired_timecourse_individuals(low_group_timecourses, high_group_timecourses, colors, ms_ylabel, 'Collapsed over conditions', ...
     sprintf('%s_individuals', tc_base), ...
-    fig_dir_root, fig_pos, fontSizeTC, fs_ms, t_vec, tc_viz_smooth_sec, ...
+    fig_dir_root, fig_pos, fontSizeTC, t_vec, ...
     tk.group_lbl_low, tk.group_lbl_high);
 
 %% CSV export (subject x group)
@@ -238,27 +234,27 @@ MSSummary_col = [];
 for s = 1:nSubj
     sid = uIDs(s);
     for g = 1:2
-        ID_col(end+1, 1) = sid; %#ok<AGROW>
+        ID_col(end+1, 1) = sid;
         if g == 1
-            Group_col(end+1, 1) = string(tk.group_lbl_low); %#ok<AGROW>
-            ERSD_col(end+1, 1) = ersd_mean_low(s); %#ok<AGROW>
-            MS_col(end+1, 1) = metrics_MS(s, 1); %#ok<AGROW>
+            Group_col(end+1, 1) = string(tk.group_lbl_low);
+            ERSD_col(end+1, 1) = ersd_mean_low(s);
+            MS_col(end+1, 1) = metrics_MS(s, 1);
         else
-            Group_col(end+1, 1) = string(tk.group_lbl_high); %#ok<AGROW>
-            ERSD_col(end+1, 1) = ersd_mean_high(s); %#ok<AGROW>
-            MS_col(end+1, 1) = metrics_MS(s, 2); %#ok<AGROW>
+            Group_col(end+1, 1) = string(tk.group_lbl_high);
+            ERSD_col(end+1, 1) = ersd_mean_high(s);
+            MS_col(end+1, 1) = metrics_MS(s, 2);
         end
         incl = keep_tc(s);
-        Included_col(end+1, 1) = incl; %#ok<AGROW>
+        Included_col(end+1, 1) = incl;
         if incl
             ix = find(ids_tc == sid, 1);
             if g == 1
-                MSSummary_col(end+1, 1) = ms_sum_low(ix); %#ok<AGROW>
+                MSSummary_col(end+1, 1) = ms_sum_low(ix);
             else
-                MSSummary_col(end+1, 1) = ms_sum_high(ix); %#ok<AGROW>
+                MSSummary_col(end+1, 1) = ms_sum_high(ix);
             end
         else
-            MSSummary_col(end+1, 1) = NaN; %#ok<AGROW>
+            MSSummary_col(end+1, 1) = NaN;
         end
     end
 end
@@ -307,9 +303,9 @@ ms_cfg.bl_win = [-1.5 -0.5];
 ms_cfg.bl_idx_comp = ms_cfg.t_comp_vec >= ms_cfg.bl_win(1) & ms_cfg.t_comp_vec <= ms_cfg.bl_win(2);
 ms_cfg.min_trials_per_group = 3;
 ms_cfg.outlier_k_iqr = 1.5;
-ms_cfg.max_interp_gap_sec = 0.35;
-ms_cfg.min_subject_coverage = 0.70;
-ms_cfg.smooth_sec = 0.05;
+ms_cfg.max_interp_gap_sec = 0.50;
+ms_cfg.min_subject_coverage = 0.60;
+ms_cfg.smooth_sec = 0.025;
 ms_cfg.win_sm = max(1, round(ms_cfg.smooth_sec * ms_cfg.fsample));
 end
 
@@ -366,10 +362,10 @@ for trl = 1:numel(et.trial)
         spikeVec(end+1:n_comp) = 0;
     end
     if is_low
-        spikes_low(end+1, :) = spikeVec; %#ok<AGROW>
+        spikes_low(end+1, :) = spikeVec;
     end
     if is_high
-        spikes_high(end+1, :) = spikeVec; %#ok<AGROW>
+        spikes_high(end+1, :) = spikeVec;
     end
 end
 
@@ -491,15 +487,10 @@ scatter(x_box + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, .
     'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
 end
 
-function plot_paired_timecourse_individuals(low_group_timecourses, high_group_timecourses, colors, ylab, title_tag, out_name, fig_dir, fig_pos, fsz, fs, t_vec, smooth_sec, lblLow, lblHigh)
+function plot_paired_timecourse_individuals(low_group_timecourses, high_group_timecourses, colors, ylab, title_tag, out_name, fig_dir, fig_pos, fsz, t_vec, lblLow, lblHigh)
 t_plot = t_vec(:)';
-win_sm = max(1, round(smooth_sec * fs));
 low_curves = low_group_timecourses; high_curves = high_group_timecourses;
 low_curves(~isfinite(low_curves)) = NaN; high_curves(~isfinite(high_curves)) = NaN;
-if win_sm > 1
-    low_curves = movmean(low_curves, win_sm, 2, 'omitnan');
-    high_curves = movmean(high_curves, win_sm, 2, 'omitnan');
-end
 colR_light = colors(1, :) * 0.35 + 0.65;
 colA_light = colors(3, :) * 0.35 + 0.65;
 figure('Position', fig_pos, 'Color', 'w');
@@ -521,16 +512,12 @@ saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
 close(gcf);
 end
 
-function plot_paired_timecourse_CBPT(low_group_timecourses, high_group_timecourses, colors, ylab, out_name, report_tag, fig_dir, fig_pos, fsz, fs, ds_factor, t_vec, smooth_sec, lblLow, lblHigh, cbpt_report_file)
-nT = size(low_group_timecourses, 2);
+function plot_paired_timecourse_CBPT(low_group_timecourses, high_group_timecourses, colors, ylab, out_name, report_tag, fig_dir, fig_pos, fsz, fs, bin_ms, t_vec, lblLow, lblHigh, cbpt_report_file)
 t_plot = t_vec(:)';
-dt = mean(diff(t_plot), 'omitnan');
-win_sm = max(1, round(smooth_sec * fs));
-if win_sm > 1
-    low_group_timecourses = movmean(low_group_timecourses, win_sm, 2, 'omitnan');
-    high_group_timecourses = movmean(high_group_timecourses, win_sm, 2, 'omitnan');
-end
-num_subjects = size(low_group_timecourses, 1);
+num_subjects_in = size(low_group_timecourses, 1);
+[low_cb, high_cb, t_cb, n_pairs, dt_cb, drop_info] = prepare_paired_cbpt_bins(low_group_timecourses, high_group_timecourses, t_plot, bin_ms, fs);
+cohens_d_cb = paired_cohens_dz_curve(low_cb, high_cb);
+
 figure('Position', fig_pos, 'Color', 'w');
 tl = tiledlayout(3, 1, 'TileSpacing', 'compact');
 set_tc_cbpt_layout_margins(tl);
@@ -555,71 +542,30 @@ legend([leg_p1 leg_p2], {[' ' lblLow], [' ' lblHigh]}, 'Location', 'best', 'Font
 
 nexttile; hold on
 n_perm = 10000; alpha_cbpt = 0.05; tail_cbpt = 'twotail';
-cohens_d_curve = nan(1, nT);
-for t = 1:nT
-    low_values = low_group_timecourses(:, t); high_values = high_group_timecourses(:, t);
-    paired_ok = isfinite(low_values) & isfinite(high_values);
-    low_values = low_values(paired_ok); high_values = high_values(paired_ok);
-    if numel(low_values) < 3, continue, end
-    paired_difference = high_values - low_values;
-    cohens_d_curve(t) = mean(paired_difference) / max(std(paired_difference), eps);
-end
-low_group_downsampled = low_group_timecourses(:, 1:ds_factor:end);
-high_group_downsampled = high_group_timecourses(:, 1:ds_factor:end);
-t_plot_ds = t_plot(1:ds_factor:end);
-dt_ds = ds_factor * dt;
-[clusters, tvals_cl, thr] = ft_cluster_permutation_1d_paired(low_group_downsampled, high_group_downsampled, n_perm, alpha_cbpt, tail_cbpt, t_plot_ds);
-report_cfg = struct('tag', report_tag, 'modality', 'MS', 'nR', num_subjects, 'nA', num_subjects, ...
+[clusters, tvals_cl, thr] = ft_cluster_permutation_1d_paired(low_cb, high_cb, n_perm, alpha_cbpt, tail_cbpt, t_cb);
+report_cfg = struct('tag', report_tag, 'modality', 'MS', 'nR', n_pairs, 'nA', n_pairs, 'n_input', num_subjects_in, ...
     'lbl_low', lblLow, 'lbl_high', lblHigh, 'n_perm', n_perm, 'alpha', alpha_cbpt, ...
-    'tail', tail_cbpt, 'nT_ds', numel(t_plot_ds), 'bin_ms', ds_factor * 1000 / fs, ...
-    'fs', fs, 'ds_factor', ds_factor, 'clusters', clusters, 'tvals', tvals_cl, ...
-    'thr', thr, 't_plot', t_plot_ds, 'dt_ds', dt_ds, 'maxMassNull', [], 'maxExtentNull', []);
+    'tail', tail_cbpt, 'nT_cb', numel(t_cb), 'bin_ms', bin_ms, 'fs', fs, ...
+    'clusters', clusters, 'tvals', tvals_cl, 'thr', thr, 't_plot', t_cb, 'dt_cb', dt_cb, ...
+    'drop_info', drop_info);
 log_cbpt_report(cbpt_report_file, build_cbpt_report_lines(report_cfg));
-
-sig = false(1, numel(t_plot_ds));
-for k = 1:numel(clusters)
-    if clusters(k).p < 0.05
-        sig(clusters(k).idx) = true;
-    end
-end
-run_start = [false, diff(sig) == 1];
-run_end = [diff(sig) == -1, false];
-if sig(1), run_start(1) = true; end
-if sig(end), run_end(end) = true; end
-starts = find(run_start); ends = find(run_end);
-valid_d_values = cohens_d_curve(isfinite(cohens_d_curve));
-mx = max(abs(valid_d_values), [], 'omitnan');
-if isempty(valid_d_values) || ~isfinite(mx) || mx == 0
-    ylims = [-0.6 0.6];
-else
-    ylims = [-max(mx + 0.1, 0.6), max(mx + 0.1, 0.6)];
-end
-patch_alpha = 0.4 * ~any(sig) + 0.25 * any(sig);
-for k = 1:numel(starts)
-    t1 = max(0, t_plot_ds(starts(k)) - dt_ds/2);
-    t2 = t_plot_ds(ends(k)) + dt_ds/2;
-    patch([t1 t2 t2 t1], [ylims(1) ylims(1) ylims(2) ylims(2)], [0.5 0.5 0.5], 'FaceAlpha', patch_alpha, 'EdgeColor', 'none');
-end
+ylims = ylim_from_effect_curve(cohens_d_cb);
+shade_sig_clusters(gca, clusters, t_cb, dt_cb, ylims, alpha_cbpt);
 ylim(ylims);
-plot(t_plot, cohens_d_curve, 'k-', 'LineWidth', 3.5);
+plot(t_cb, cohens_d_cb, 'k-', 'LineWidth', 3.5);
 yline(0, '--'); xline(0, '--k');
-xlabel('Time [s]'); ylabel('Cohen''s d');
+xlabel('Time [s]'); ylabel('Cohen''s d_z');
 xlim([-0.5 2]); box off; set(gca, 'FontSize', fsz-4);
 pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
 close(gcf);
+
+plot_cbpt_t_debug(t_cb, tvals_cl, thr, clusters, out_name, fig_dir, fig_pos, fsz, alpha_cbpt);
 end
 
-function plot_difference_timecourse_CBPT(low_group_timecourses, high_group_timecourses, out_name, fig_dir, fig_pos, fsz, fs, ds_factor, t_vec, smooth_sec)
-nT = size(low_group_timecourses, 2);
+function plot_difference_timecourse_CBPT(low_group_timecourses, high_group_timecourses, out_name, fig_dir, fig_pos, fsz, fs, bin_ms, t_vec)
 t_plot = t_vec(:)';
-dt = mean(diff(t_plot), 'omitnan');
-win_sm = max(1, round(smooth_sec * fs));
-if win_sm > 1
-    low_group_timecourses = movmean(low_group_timecourses, win_sm, 2, 'omitnan');
-    high_group_timecourses = movmean(high_group_timecourses, win_sm, 2, 'omitnan');
-end
-difference_timecourses = high_group_timecourses - low_group_timecourses; % high minus low
+difference_timecourses = high_group_timecourses - low_group_timecourses;
 
 figure('Position', fig_pos, 'Color', 'w');
 tl = tiledlayout(3, 1, 'TileSpacing', 'compact');
@@ -641,23 +587,145 @@ box off; set(gca, 'FontSize', fsz-4);
 
 nexttile; hold on
 n_perm = 10000; alpha_cbpt = 0.05; tail_cbpt = 'twotail';
-cohens_d_curve = nan(1, nT);
-for t = 1:nT
-    low_values = low_group_timecourses(:, t); high_values = high_group_timecourses(:, t);
-    paired_ok = isfinite(low_values) & isfinite(high_values);
-    low_values = low_values(paired_ok); high_values = high_values(paired_ok);
-    if numel(low_values) < 3, continue, end
-    paired_difference = high_values - low_values;
-    cohens_d_curve(t) = mean(paired_difference) / max(std(paired_difference), eps);
+[low_cb, high_cb, t_cb, ~, dt_cb] = prepare_paired_cbpt_bins(low_group_timecourses, high_group_timecourses, t_plot, bin_ms, fs);
+cohens_d_cb = paired_cohens_dz_curve(low_cb, high_cb);
+[clusters, ~, ~] = ft_cluster_permutation_1d_paired(low_cb, high_cb, n_perm, alpha_cbpt, tail_cbpt, t_cb);
+ylims = ylim_from_effect_curve(cohens_d_cb);
+shade_sig_clusters(gca, clusters, t_cb, dt_cb, ylims, alpha_cbpt);
+ylim(ylims);
+plot(t_cb, cohens_d_cb, 'k-', 'LineWidth', 3.5);
+yline(0, '--');
+xline(0, '--k');
+xlabel('Time [s]');
+ylabel('Cohen''s d_z');
+xlim([-0.5 2]);
+box off; set(gca, 'FontSize', fsz-4);
+pause(0.05); drawnow;
+saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
+close(gcf);
 end
-low_group_downsampled = low_group_timecourses(:, 1:ds_factor:end);
-high_group_downsampled = high_group_timecourses(:, 1:ds_factor:end);
-t_plot_ds = t_plot(1:ds_factor:end);
-dt_ds = ds_factor * dt;
-[clusters, ~, ~] = ft_cluster_permutation_1d_paired(low_group_downsampled, high_group_downsampled, n_perm, alpha_cbpt, tail_cbpt, t_plot_ds);
-sig = false(1, numel(t_plot_ds));
+
+function plot_cbpt_t_debug(t_plot_cb, tvals, thr, clusters, out_name, fig_dir, fig_pos, fsz, alpha_cbpt)
+figure('Position', fig_pos, 'Color', 'w');
+hold on
+dt_cb = mean(diff(t_plot_cb), 'omitnan');
+if ~isfinite(dt_cb) || dt_cb <= 0
+    dt_cb = 0.02;
+end
+mx = max(abs(tvals(isfinite(tvals))), [], 'omitnan');
+if isempty(mx) || ~isfinite(mx) || mx == 0
+    ylims = [-3 3];
+else
+    ylims = [-max(mx + 0.5, thr.tcrit + 0.5), max(mx + 0.5, thr.tcrit + 0.5)];
+end
+shade_sig_clusters(gca, clusters, t_plot_cb, dt_cb, ylims, alpha_cbpt);
+ylim(ylims);
+plot(t_plot_cb, tvals, 'k-', 'LineWidth', 3);
+yline(thr.tcrit, '--r', 'LineWidth', 1.5);
+yline(-thr.tcrit, '--r', 'LineWidth', 1.5);
+yline(0, '--', 'Color', [0.5 0.5 0.5]);
+xline(0, '--k');
+xlabel('Time [s]');
+ylabel('t-value');
+title('CBPT debug: t-curve on binned post-stimulus grid', 'Interpreter', 'none');
+xlim([min(t_plot_cb) - dt_cb/2, max(t_plot_cb) + dt_cb/2]);
+box off;
+set(gca, 'FontSize', fsz - 4);
+pause(0.05); drawnow;
+saveas(gcf, fullfile(fig_dir, [out_name, '_CBPT_debug.png']));
+close(gcf);
+end
+
+function [X_bin, t_bin] = bin_average_timecourses(X, t_vec, bin_ms, fs)
+t_vec = t_vec(:)';
+bin_samp = max(1, round(bin_ms / 1000 * fs));
+nT = size(X, 2);
+n_bins = floor(nT / bin_samp);
+if n_bins < 1
+    X_bin = X;
+    t_bin = t_vec;
+    return
+end
+trim_n = n_bins * bin_samp;
+X_trim = X(:, 1:trim_n);
+t_trim = t_vec(1:trim_n);
+X_3d = reshape(X_trim', [bin_samp, n_bins, size(X, 1)]);
+X_bin = permute(mean(X_3d, 1, 'omitnan'), [3 2 1]);
+t_3d = reshape(t_trim, [bin_samp, n_bins]);
+t_bin = mean(t_3d, 1);
+end
+
+function [low_cb, high_cb, t_cb, n_pairs, dt_cb, drop_info] = prepare_paired_cbpt_bins(low, high, t_vec, bin_ms, fs)
+min_pairs = 3;
+n_subjects_input = size(low, 1);
+[low_b, t_b] = bin_average_timecourses(low, t_vec, bin_ms, fs);
+[high_b, ~] = bin_average_timecourses(high, t_vec, bin_ms, fs);
+post = t_b >= 0 & t_b <= 2;
+low_post = low_b(:, post);
+high_post = high_b(:, post);
+t_post = t_b(post);
+n_bins_post_stim = numel(t_post);
+complete = all(isfinite(low_post) & isfinite(high_post), 2);
+n_subjects_dropped = sum(~complete);
+low_cb = low_post(complete, :);
+high_cb = high_post(complete, :);
+n_pairs = size(low_cb, 1);
+ok_t = sum(isfinite(low_cb) & isfinite(high_cb), 1) >= min_pairs;
+n_bins_dropped = sum(~ok_t);
+low_cb = low_cb(:, ok_t);
+high_cb = high_cb(:, ok_t);
+t_cb = t_post(ok_t);
+if n_pairs < min_pairs
+    error('Fewer than %d subjects with complete post-stimulus binned data for CBPT.', min_pairs);
+end
+if isempty(t_cb)
+    error('No valid post-stimulus bins remain for CBPT.');
+end
+dt_cb = mean(diff(t_cb), 'omitnan');
+drop_info = struct( ...
+    'n_subjects_input', n_subjects_input, ...
+    'n_subjects_cbpt', n_pairs, ...
+    'n_subjects_dropped', n_subjects_dropped, ...
+    'n_bins_post_stim', n_bins_post_stim, ...
+    'n_bins_cbpt', numel(t_cb), ...
+    'n_bins_dropped', n_bins_dropped, ...
+    'min_pairs', min_pairs, ...
+    'bin_ms', bin_ms);
+fprintf('CBPT exclusions: subjects %d -> %d (dropped %d); bins %d -> %d (dropped %d)\n', ...
+    drop_info.n_subjects_input, drop_info.n_subjects_cbpt, drop_info.n_subjects_dropped, ...
+    drop_info.n_bins_post_stim, drop_info.n_bins_cbpt, drop_info.n_bins_dropped);
+end
+
+function dz = paired_cohens_dz_curve(low, high, min_pairs)
+if nargin < 3, min_pairs = 3; end
+nT = size(low, 2);
+dz = nan(1, nT);
+for t = 1:nT
+    paired_ok = isfinite(low(:, t)) & isfinite(high(:, t));
+    if sum(paired_ok) < min_pairs, continue, end
+    diff_t = high(paired_ok, t) - low(paired_ok, t);
+    sd = std(diff_t);
+    if sd > 0
+        dz(t) = mean(diff_t) / sd;
+    end
+end
+end
+
+function ylims = ylim_from_effect_curve(d_curve)
+valid_d = d_curve(isfinite(d_curve));
+mx = max(abs(valid_d), [], 'omitnan');
+if isempty(valid_d) || ~isfinite(mx) || mx == 0
+    ylims = [-0.6 0.6];
+else
+    ylims = [-max(mx + 0.1, 0.6), max(mx + 0.1, 0.6)];
+end
+end
+
+function shade_sig_clusters(ax, clusters, t_plot_cb, dt_cb, ylims, alpha_cbpt)
+axes(ax); %#ok<LAXES>
+sig = false(1, numel(t_plot_cb));
 for k = 1:numel(clusters)
-    if clusters(k).p < 0.05
+    if clusters(k).p < alpha_cbpt
         sig(clusters(k).idx) = true;
     end
 end
@@ -665,31 +733,15 @@ run_start = [false, diff(sig) == 1];
 run_end = [diff(sig) == -1, false];
 if ~isempty(sig) && sig(1), run_start(1) = true; end
 if ~isempty(sig) && sig(end), run_end(end) = true; end
-starts = find(run_start); ends = find(run_end);
-valid_d_values = cohens_d_curve(isfinite(cohens_d_curve));
-mx = max(abs(valid_d_values), [], 'omitnan');
-if isempty(valid_d_values) || ~isfinite(mx) || mx == 0
-    ylims = [-0.6 0.6];
-else
-    ylims = [-max(mx + 0.1, 0.6), max(mx + 0.1, 0.6)];
-end
+starts = find(run_start);
+ends = find(run_end);
 patch_alpha = 0.4 * ~any(sig) + 0.25 * any(sig);
 for k = 1:numel(starts)
-    t1 = max(0, t_plot_ds(starts(k)) - dt_ds/2);
-    t2 = t_plot_ds(ends(k)) + dt_ds/2;
-    patch([t1 t2 t2 t1], [ylims(1) ylims(1) ylims(2) ylims(2)], [0.5 0.5 0.5], 'FaceAlpha', patch_alpha, 'EdgeColor', 'none');
+    t1 = t_plot_cb(starts(k)) - dt_cb / 2;
+    t2 = t_plot_cb(ends(k)) + dt_cb / 2;
+    patch([t1 t2 t2 t1], [ylims(1) ylims(1) ylims(2) ylims(2)], [0.5 0.5 0.5], ...
+        'FaceAlpha', patch_alpha, 'EdgeColor', 'none');
 end
-ylim(ylims);
-plot(t_plot, cohens_d_curve, 'k-', 'LineWidth', 3.5);
-yline(0, '--');
-xline(0, '--k');
-xlabel('Time [s]');
-ylabel('Cohen''s d');
-xlim([-0.5 2]);
-box off; set(gca, 'FontSize', fsz-4);
-pause(0.05); drawnow;
-saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
-close(gcf);
 end
 
 function set_tc_cbpt_layout_margins(tl)
@@ -736,7 +788,13 @@ lines{end+1} = meta.split_info;
 lines{end+1} = sprintf('Subjects contributing both groups: n=%d (TC n=%d)', meta.n_low_split, meta.n_low_tc);
 lines{end+1} = sprintf('Outcome metric: %s', meta.metric);
 lines{end+1} = 'CBPT method: FieldTrip ft_timelockstatistics (montecarlo, cluster maxsum, depsamplesT)';
-lines{end+1} = 'Defaults: n_perm=10000, clusteralpha=0.05, two-tailed, latency=[0 2] s, ds_factor=10';
+lines{end+1} = 'Exclusions: no NaN imputation; subjects need complete post-stim bins; bins need >=3 paired subjects';
+if isfield(meta, 'bin_ms') && isfinite(meta.bin_ms)
+    lines{end+1} = sprintf('Defaults: n_perm=10000, clusteralpha=0.05, two-tailed, post-stimulus [0 2] s, bin_ms=%g', meta.bin_ms);
+else
+    lines{end+1} = 'Defaults: n_perm=10000, clusteralpha=0.05, two-tailed, post-stimulus [0 2] s';
+end
+lines{end+1} = sprintf('TC QC: subjects included for plotting if >=80%% finite samples in [0 2] s (n=%d of %d split subjects)', meta.n_low_tc, meta.n_low_split);
 lines{end+1} = '';
 append_lines_to_file(report_path, lines);
 end
@@ -752,16 +810,29 @@ else
     maxClExtent = max([0, arrayfun(@(k) R.clusters(k).extent, 1:numel(R.clusters))]);
 end
 lines = {};
-lines{end+1} = sprintf('  [%s] n=%d pairs tcrit=%.2f |t|>tcrit at %d timepts; max cluster mass=%.1f; max cluster extent=%d', ...
-    R.tag, R.nR, R.thr.tcrit, nExtreme, maxClMass, maxClExtent);
-lines{end+1} = sprintf('    Method: n_perm=%d, alpha=%.3f, two-tailed paired (%s vs %s), latency=[0 2] s, ds_factor=%d', ...
-    R.n_perm, R.alpha, lbl_lo, lbl_hi, R.ds_factor);
+if isfield(R, 'n_input')
+    n_line = sprintf('n=%d pairs (of %d input)', R.nR, R.n_input);
+else
+    n_line = sprintf('n=%d pairs', R.nR);
+end
+lines{end+1} = sprintf('  [%s] %s tcrit=%.2f |t|>tcrit at %d timepts; max cluster mass=%.1f; max cluster extent=%d', ...
+    R.tag, n_line, R.thr.tcrit, nExtreme, maxClMass, maxClExtent);
+lines{end+1} = sprintf('    Method: n_perm=%d, alpha=%.3f, two-tailed paired (%s vs %s), post-stim [0 2] s, bin_ms=%g', ...
+    R.n_perm, R.alpha, lbl_lo, lbl_hi, R.bin_ms);
+if isfield(R, 'drop_info') && ~isempty(R.drop_info)
+    d = R.drop_info;
+    lines{end+1} = sprintf('    Exclusions: subjects %d -> %d (dropped %d, %.1f%% kept)', ...
+        d.n_subjects_input, d.n_subjects_cbpt, d.n_subjects_dropped, ...
+        100 * d.n_subjects_cbpt / max(d.n_subjects_input, 1));
+    lines{end+1} = sprintf('    Exclusions: bins %d -> %d (dropped %d, %.1f%% kept; min_pairs=%d)', ...
+        d.n_bins_post_stim, d.n_bins_cbpt, d.n_bins_dropped, ...
+        100 * d.n_bins_cbpt / max(d.n_bins_post_stim, 1), d.min_pairs);
+end
 if ~isempty(R.clusters)
-    bin_width_ms = R.dt_ds * 1000;
     for k = 1:numel(R.clusters)
         idx = R.clusters(k).idx;
-        t_start = R.t_plot(idx(1)) - R.dt_ds / 2;
-        t_end = R.t_plot(idx(end)) + R.dt_ds / 2;
+        t_start = R.t_plot(idx(1)) - R.dt_cb / 2;
+        t_end = R.t_plot(idx(end)) + R.dt_cb / 2;
         status = 'n.s.';
         if R.clusters(k).p < R.alpha, status = 'SIGNIFICANT'; end
         lines{end+1} = sprintf('    Cluster %d: window [%.3f, %.3f] s; mass=%.1f; p=%.4f; %s', ...
@@ -794,27 +865,18 @@ for i = 1:numel(lines), fprintf(fid, '%s\n', lines{i}); end
 end
 
 function [clusters, tvals, thr] = ft_cluster_permutation_1d_paired(low_group_timecourses, high_group_timecourses, nPerm, alpha, tail, t_plot_ds)
-% Paired cluster permutation (depsamplesT). Inputs are nSubj x nTime.
+% Paired cluster permutation on post-stimulus binned data (no NaN imputation).
 if nargin < 5, tail = 'twotail'; end
 if nargin < 6, t_plot_ds = []; end
 nS = size(low_group_timecourses, 1);
 nT = size(low_group_timecourses, 2);
 if size(high_group_timecourses, 1) ~= nS || size(high_group_timecourses, 2) ~= nT
-    error('Low and high matrices must match for paired design.');
+    error('Low and high matrices must match for paired CBPT.');
+end
+if any(~isfinite(low_group_timecourses(:))) || any(~isfinite(high_group_timecourses(:)))
+    error('CBPT input must not contain NaN. Use prepare_paired_cbpt_bins first.');
 end
 df = nS - 1;
-
-for t = 1:nT
-    low_values = low_group_timecourses(:, t); high_values = high_group_timecourses(:, t);
-    paired_ok = isfinite(low_values) & isfinite(high_values);
-    if ~any(paired_ok)
-        low_values(:) = 0; high_values(:) = 0;
-    else
-        low_mean = mean(low_values(paired_ok)); high_mean = mean(high_values(paired_ok));
-        low_values(~paired_ok) = low_mean; high_values(~paired_ok) = high_mean;
-    end
-    low_group_timecourses(:, t) = low_values; high_group_timecourses(:, t) = high_values;
-end
 
 chan_label = 'metric';
 if ~isempty(t_plot_ds) && numel(t_plot_ds) == nT
@@ -839,11 +901,7 @@ cfg.minnbchan = 0;
 cfg.neighbours = cfg_neigh;
 cfg.numrandomization = nPerm;
 cfg.channel = chan_label;
-if ~isempty(t_plot_ds) && numel(t_plot_ds) == nT
-    cfg.latency = [0 2];
-else
-    cfg.latency = 'all';
-end
+cfg.latency = 'all';
 if strcmpi(tail, 'onetail_pos')
     cfg.tail = 1; cfg.clustertail = 1; cfg.alpha = alpha;
 elseif strcmpi(tail, 'onetail_neg')
@@ -857,13 +915,6 @@ cfg.ivar = 2;
 
 stat = ft_timelockstatistics(cfg, tl1, tl2);
 tvals = stat.stat(1, :);
-post_idx = find(t_plot_ds >= 0 & t_plot_ds <= 2);
-if ~isempty(t_plot_ds) && numel(t_plot_ds) == nT && size(tvals, 2) < nT && ~isempty(post_idx)
-    tvals_full = nan(1, nT);
-    n_sel = min(size(tvals, 2), numel(post_idx));
-    tvals_full(post_idx(1:n_sel)) = tvals(1:n_sel);
-    tvals = tvals_full;
-end
 
 clusters = struct('idx', {}, 'mass', {}, 'extent', {}, 'p', {}, 'p_extent', {});
 has_neg = isfield(stat, 'negclusters') && ~isempty(stat.negclusters);
@@ -883,7 +934,7 @@ for k = 1:numel(clist)
     idx = find(lmat(1, :) == k);
     if isempty(idx), continue, end
     idx = idx(1):idx(end);
-    clusters(end+1).idx = idx; %#ok<AGROW>
+    clusters(end+1).idx = idx;
     clusters(end).mass = sum(abs(tvals(idx)), 'omitnan');
     clusters(end).extent = numel(idx);
     clusters(end).p = clist(k).prob;

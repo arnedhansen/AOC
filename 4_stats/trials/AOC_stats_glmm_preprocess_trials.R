@@ -155,10 +155,10 @@ label_load_trials <- function(dat, task_config) {
       )
     }
     lab <- applied[as.character(cond)]
-    dat$Load <- factor(lab, levels = categories, ordered = TRUE)
+    dat$Load <- factor(lab, levels = categories, ordered = FALSE)
   } else {
     lab <- trimws(gsub("\\s+", " ", as.character(cond)))
-    dat$Load <- factor(lab, levels = categories, ordered = TRUE)
+    dat$Load <- factor(lab, levels = categories, ordered = FALSE)
   }
 
   dat$Subject <- as.factor(dat$ID)

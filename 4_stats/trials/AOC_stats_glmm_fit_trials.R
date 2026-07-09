@@ -145,7 +145,7 @@ fit_eeg_gaze_interaction_trials <- function(dat, gaze_var, model_label_full = NU
 
   gaze_c <- paste0(gaze_var, "_c")
   sub[[gaze_c]] <- sub[[gaze_var]] - mean(sub[[gaze_var]], na.rm = TRUE)
-  sub$Load <- factor(sub$Load, levels = levels(dat$Load), ordered = TRUE)
+  sub$Load <- factor(sub$Load, levels = levels(dat$Load), ordered = FALSE)
 
   re <- re_terms_trials(sub)
   re_lab <- re_label_trials(sub)

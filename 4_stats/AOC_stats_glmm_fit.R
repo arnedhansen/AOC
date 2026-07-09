@@ -110,7 +110,7 @@ fit_eeg_gaze_interaction <- function(dat, gaze_var, model_label_full, explorator
 
   gaze_c <- paste0(gaze_var, "_c")
   sub[[gaze_c]] <- sub[[gaze_var]] - mean(sub[[gaze_var]], na.rm = TRUE)
-  sub$Load <- factor(sub$Load, levels = levels(dat$Load), ordered = TRUE)
+  sub$Load <- factor(sub$Load, levels = levels(dat$Load), ordered = FALSE)
 
   form_full <- as.formula(sprintf("%s ~ %s * Load + (1 | Subject)", EEG_DV, gaze_c))
   form_red <- as.formula(sprintf("%s ~ %s + Load + (1 | Subject)", EEG_DV, gaze_c))

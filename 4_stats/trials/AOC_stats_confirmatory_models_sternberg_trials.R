@@ -27,7 +27,7 @@ dat$Trial <- as.factor(dat$Trial)
 dat$Load <- factor(
   c(`2` = "WM load 2", `4` = "WM load 4", `6` = "WM load 6")[as.character(as.numeric(dat$Condition))],
   levels = c("WM load 2", "WM load 4", "WM load 6"),
-  ordered = TRUE
+  ordered = FALSE
 )
 dat <- dat[!is.na(dat$Load), , drop = FALSE]
 

@@ -25,7 +25,7 @@ dat$Subject <- dat$ID
 dat$Load <- factor(
   c(`1` = "1-back", `2` = "2-back", `3` = "3-back")[as.character(as.numeric(dat$Condition))],
   levels = c("1-back", "2-back", "3-back"),
-  ordered = TRUE
+  ordered = FALSE
 )
 dat <- dat[!is.na(dat$Load), , drop = FALSE]
 

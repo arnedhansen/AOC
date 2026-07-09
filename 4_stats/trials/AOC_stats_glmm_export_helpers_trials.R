@@ -244,10 +244,15 @@ random_intercept_stats <- function(model) {
   )
 }
 
+is_load_poly_term <- function(term) {
+  grepl("Load\\.(L|Q)", as.character(term))
+}
+
 export_fixed_effects <- function(res, task, stats_dir, model = NULL, model_label = NULL) {
   if (is.null(model)) model <- res$model
   if (is.null(model_label)) model_label <- res$model_label
   fx <- broom.mixed::tidy(model, effects = "fixed", conf.int = TRUE)
+  fx <- fx[!is_load_poly_term(fx$term), , drop = FALSE]
 
   out <- data.frame(
     Task = task,

@@ -529,8 +529,9 @@ if win_sm > 1
 end
 nR = size(Rall, 1);
 figure('Position', fig_pos, 'Color', 'w');
-tiledlayout(3, 1, 'TileSpacing', 'compact');
-ax_gaze = nexttile([2 1]); hold on
+tl = tiledlayout(3, 1, 'TileSpacing', 'compact');
+set_tc_cbpt_layout_margins(tl);
+nexttile([2 1]); hold on
 mR = mean(Rall, 1, 'omitnan'); mA = mean(Aall, 1, 'omitnan');
 sR = std(Rall, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(Rall), 1)), 1);
 sA = std(Aall, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(Aall), 1)), 1);
@@ -542,12 +543,14 @@ set(e1.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.20);
 set(e2.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.20);
 set(e1.edge(1), 'Color', 'none'); set(e1.edge(2), 'Color', 'none');
 set(e2.edge(1), 'Color', 'none'); set(e2.edge(2), 'Color', 'none');
-xline(0, '--k'); ylabel(ylab); xlim([-0.5 2]); box off; set(gca, 'FontSize', fsz-4);
+xline(0, '--k'); ylabel(ylab); xlim([-0.5 2]);
+ylim(ylim_from_mean_sem(mR, sR, mA, sA));
+box off; set(gca, 'FontSize', fsz-4);
 leg_p1 = patch(NaN, NaN, colors(1,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(1,:), 'LineWidth', 1.5);
 leg_p2 = patch(NaN, NaN, colors(3,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(3,:), 'LineWidth', 1.5);
 legend([leg_p1 leg_p2], {[' ' lblLow], [' ' lblHigh]}, 'Location', 'best', 'FontSize', fsz*0.75, 'Box', 'off');
 
-ax_d = nexttile; hold on
+nexttile; hold on
 n_perm = 10000; alpha_cbpt = 0.05; tail_cbpt = 'twotail';
 d = nan(1, nT);
 for t = 1:nT
@@ -597,30 +600,30 @@ end
 ylim(ylims);
 plot(t_plot, d, 'k-', 'LineWidth', 3.5);
 yline(0, '--'); xline(0, '--k');
-xlabel('Time [s]'); ylabel('Cohen''s d_z');
+xlabel('Time [s]'); ylabel('Cohen''s d');
 xlim([-0.5 2]); box off; set(gca, 'FontSize', fsz-4);
-align_ylabel_to_reference(ax_d, ax_gaze);
 pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_MS_timecourse_%s_CBPT.png', save_tag)));
 close(gcf);
 end
 
-function align_ylabel_to_reference(ax_ref, ax_targets)
-fig = ancestor(ax_ref, 'figure');
-if isempty(fig), return, end
+function set_tc_cbpt_layout_margins(tl)
 drawnow;
-ref_lbl = ax_ref.YLabel; ref_lbl.Units = 'normalized'; ref_pos = ref_lbl.Position;
-ax_ref.Units = 'pixels'; ref_ax_pos_pix = ax_ref.Position;
-target_x_pix = ref_ax_pos_pix(1) + ref_pos(1) * ref_ax_pos_pix(3);
-if ~iscell(ax_targets), ax_list = {ax_targets}; else, ax_list = ax_targets; end
-for k = 1:numel(ax_list)
-    ax_t = ax_list{k};
-    if isequal(ax_t, ax_ref), continue, end
-    lbl = ax_t.YLabel; lbl.Units = 'normalized'; pos = lbl.Position;
-    ax_t.Units = 'pixels'; ax_t_pos_pix = ax_t.Position;
-    x_norm_new = (target_x_pix - ax_t_pos_pix(1)) / max(ax_t_pos_pix(3), eps);
-    lbl.Position = [x_norm_new, pos(2), pos(3)];
+op = tl.OuterPosition;
+left = 0.12;
+tl.OuterPosition = [left, op(2), 0.96 - left, op(4)];
 end
+
+function yl = ylim_from_mean_sem(m1, s1, m2, s2)
+lo = min([m1 - s1, m2 - s2], [], 'omitnan');
+hi = max([m1 + s1, m2 + s2], [], 'omitnan');
+if isempty(lo) || all(~isfinite(lo))
+    yl = [-1, 1];
+    return
+end
+span = max(max(hi, [], 'omitnan') - min(lo, [], 'omitnan'), eps);
+pad = 0.10 * span;
+yl = [min(lo, [], 'omitnan') - pad, max(hi, [], 'omitnan') + pad];
 end
 
 function init_cbpt_report_file(report_path, meta)

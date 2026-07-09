@@ -3,7 +3,7 @@
 % (within-subject median split, conditions pooled, common baseline).
 % Gaze deviation time courses are rebuilt from full dataET_* (includes
 % [-1.5 -0.5] s baseline), matched by Trial ID; conditions collapsed.
-% CBPT uses paired (depsamplesT) design.
+% CBPT uses paired (depsamplesT) design: each subject contributes both groups.
 
 %% Setup
 startup
@@ -106,15 +106,11 @@ tfr_low_all = {};
 tfr_high_all = {};
 metrics_ERSD = nan(nSubj, 2);
 metrics_Dev = nan(nSubj, 2);
-fs = 500;
-blink_win = 50; % 100 ms at 500 Hz
-min_trial_coverage = 0.8;
-t_full = -0.5:1/fs:2;
-t_plot = t_full(2:end);
-Tf = numel(t_plot);
+gaze_cfg = init_gaze_tc_cfg();
+t_plot = gaze_cfg.t_vec;
+Tf = gaze_cfg.n_samp;
 idx_viable = (t_plot >= 0) & (t_plot <= 2);
 dev_tc = nan(nSubj, 2, Tf);  % group: 1=low, 2=high
-eeg_tc = nan(nSubj, 2, Tf);
 missing_gaze = {};
 
 gaze_mat_file = fullfile(feat_dir, tk.gaze_trials_file);
@@ -135,11 +131,6 @@ for s = 1:nSubj
     metrics_ERSD(s, 1) = ersd_mean_low(s);
     metrics_ERSD(s, 2) = ersd_mean_high(s);
 
-    % EEG TC from prep (already occipital alpha dB)
-    t_ersd = subj_splits(s).time(:);
-    eeg_tc(s, 1, :) = interp1(t_ersd, subj_splits(s).ersd_tc_low(:), t_plot(:), 'linear', NaN);
-    eeg_tc(s, 2, :) = interp1(t_ersd, subj_splits(s).ersd_tc_high(:), t_plot(:), 'linear', NaN);
-
     if isfield(subj_splits(s), 'tfr_low') && ~isempty(subj_splits(s).tfr_low)
         tfr_low_all{end+1} = subj_splits(s).tfr_low; %#ok<AGROW>
         tfr_high_all{end+1} = subj_splits(s).tfr_high; %#ok<AGROW>
@@ -152,70 +143,19 @@ for s = 1:nSubj
         metrics_Dev(s, 2) = mean(rows.GazeDeviationFullBL(ismember(rows.Trial, ids_high)), 'omitnan');
     end
 
-    % Full ET (includes [-1.5 -0.5] baseline); match trials by Trial ID
+    % Full ET (includes [-1.5 -0.5] baseline); match trials by global Trial ID
     et_file = fullfile(feat_dir, subj_folder, 'gaze', tk.et_fname);
     if ~isfile(et_file)
         missing_gaze{end+1} = sid_str; %#ok<AGROW>
         continue
     end
-    [D, load_msg] = load_dataETlong_with_tmp_fallback(et_file);
-    if isempty(D) || ~isfield(D, 'dataETlong') || ~isfield(D.dataETlong, 'trial')
+    try
+        [tc_low, tc_high] = build_gaze_tc_pct_by_trial_ids(et_file, ids_low, ids_high, gaze_cfg);
+        dev_tc(s, 1, :) = tc_low;
+        dev_tc(s, 2, :) = tc_high;
+    catch ME
         missing_gaze{end+1} = sid_str; %#ok<AGROW>
-        fprintf('  Warning: ET load failed for %s (%s)\n', sid_str, load_msg);
-        continue
-    end
-    et = D.dataETlong;
-    trial_ids = parse_trial_ids(et.trialinfo);
-    if isempty(trial_ids)
-        missing_gaze{end+1} = sid_str; %#ok<AGROW>
-        continue
-    end
-
-    for g = 1:2
-        if g == 1, want = ids_low; else, want = ids_high; end
-        tr_idx = find(ismember(trial_ids, want));
-        if isempty(tr_idx), continue, end
-        dev_mat = nan(numel(tr_idx), Tf);
-        for k = 1:numel(tr_idx)
-            tr = tr_idx(k);
-            if tr > numel(et.trial) || tr > numel(et.time)
-                continue
-            end
-            data = double(et.trial{tr});
-            t = double(et.time{tr});
-            if size(data, 1) < 2 || isempty(t) || numel(t) ~= size(data, 2)
-                continue
-            end
-
-            % Match AOC_gaze_dev_* / gaze fex preprocessing
-            valid_idx = data(1, :) >= 0 & data(1, :) <= 800 & data(2, :) >= 0 & data(2, :) <= 600;
-            data = data(1:min(3, size(data, 1)), valid_idx);
-            t = t(valid_idx);
-            if isempty(t)
-                continue
-            end
-            data(2, :) = 600 - data(2, :);
-            data = remove_blinks(data, blink_win);
-
-            idx_base = (t >= -1.5) & (t <= -0.5);
-            if ~any(idx_base)
-                continue
-            end
-            dev = sqrt((data(1, :) - 400).^2 + (data(2, :) - 300).^2);
-            gd_base = mean(dev(idx_base), 'omitnan');
-            if ~isfinite(gd_base) || gd_base <= 0
-                continue
-            end
-            dev_pct = 100 * (dev - gd_base) ./ gd_base;
-            tc_interp = interp1(t, dev_pct, t_plot, 'linear', NaN);
-            if mean(isfinite(tc_interp(idx_viable))) < min_trial_coverage
-                continue
-            end
-            dev_mat(k, :) = tc_interp;
-        end
-        if any(isfinite(dev_mat(:)))
-            dev_tc(s, g, :) = mean(dev_mat, 1, 'omitnan');
-        end
+        fprintf('  Warning: GazeDev TC failed for %s (%s)\n', sid_str, ME.message);
     end
 end
 
@@ -255,24 +195,27 @@ rng(123)
 ds_factor = 10;
 tc_viz_smooth_sec = 0.05;
 t_vec = t_plot;
-tc_window_idx = (t_vec >= 0) & (t_vec <= 2);
+tc_window_idx = idx_viable;
 tc_complete_min_frac = 0.995;
 keep_tc = true(nSubj, 1);
 for g = 1:2
     Xg = reshape(dev_tc(:, g, :), nSubj, Tf);
+    [Xg, keep_g] = preprocess_gaze_subject_tc(Xg, idx_viable, gaze_cfg);
+    dev_tc(:, g, :) = reshape(Xg, [nSubj, 1, Tf]);
     frac = mean(isfinite(Xg(:, tc_window_idx)), 2);
     has_end = isfinite(Xg(:, end));
-    keep_tc = keep_tc & (frac >= tc_complete_min_frac) & has_end;
+    keep_tc = keep_tc & keep_g & (frac >= tc_complete_min_frac) & has_end;
 end
 dev_tc(~keep_tc, :, :) = NaN;
-eeg_tc(~keep_tc, :, :) = NaN;
 n_tc = sum(keep_tc);
 fprintf('Included subjects for TC: %d / %d\n', n_tc, nSubj);
 
 Rall = reshape(dev_tc(keep_tc, 1, :), n_tc, Tf);
 Aall = reshape(dev_tc(keep_tc, 2, :), n_tc, Tf);
-EegR = reshape(eeg_tc(keep_tc, 1, :), n_tc, Tf);
-EegA = reshape(eeg_tc(keep_tc, 2, :), n_tc, Tf);
+mean_tc_diff = mean(mean(Rall(:, tc_window_idx), 2, 'omitnan') - mean(Aall(:, tc_window_idx), 2, 'omitnan'), 'omitnan');
+mean_tc_corr = corr(mean(Rall, 1, 'omitnan')', mean(Aall, 1, 'omitnan')');
+fprintf('Group-mean gaze TC correlation: %.3f | mean subject summary diff (low-high): %.2f%%\n', ...
+    mean_tc_corr, mean_tc_diff);
 
 gaze_ylabel = sprintf('Gaze Deviation\nChange [%%]');
 cbpt_report_file = fullfile(stats_dir, sprintf('AOC_splitERSERD_GazeDev_%s_%s_CBPT_report.txt', task_tag, split_label));
@@ -292,11 +235,11 @@ init_cbpt_report_file(cbpt_report_file, struct( ...
 
 plot_paired_timecourse_CBPT(Rall, Aall, colors, gaze_ylabel, ...
     sprintf('%s_%s_GazeDev_pct', task_tag, split_label), ...
-    fig_dir_root, fig_pos, fontSizeTC, fs, ds_factor, t_vec, tc_viz_smooth_sec, ...
-    tk.group_lbl_low, tk.group_lbl_high, cbpt_report_file, EegR, EegA, 'ERSD [dB]');
+    fig_dir_root, fig_pos, fontSizeTC, gaze_cfg.fsample, ds_factor, t_vec, tc_viz_smooth_sec, ...
+    tk.group_lbl_low, tk.group_lbl_high, cbpt_report_file);
 plot_paired_timecourse_individuals(Rall, Aall, colors, gaze_ylabel, 'Collapsed over conditions', ...
     sprintf('%s_%s_GazeDev_pct_individuals_collapsed', task_tag, split_label), ...
-    fig_dir_task, fig_pos, fontSizeTC, fs, t_vec, tc_viz_smooth_sec, ...
+    fig_dir_task, fig_pos, fontSizeTC, gaze_cfg.fsample, t_vec, tc_viz_smooth_sec, ...
     tk.group_lbl_low, tk.group_lbl_high);
 
 %% CSV
@@ -340,17 +283,148 @@ fprintf('Missing gaze: %d\n', numel(unique(missing_gaze)));
 end
 
 %% ========================= Local Functions =========================
-function tids = parse_trial_ids(trialinfo)
-if isempty(trialinfo)
-    tids = [];
-    return
+function gaze_cfg = init_gaze_tc_cfg()
+gaze_cfg.fsample = 500;
+gaze_cfg.screenW = 800;
+gaze_cfg.screenH = 600;
+gaze_cfg.centreX = 400;
+gaze_cfg.centreY = 300;
+gaze_cfg.blink_win = 50;
+gaze_cfg.bl_win = [-1.5 -0.5];
+gaze_cfg.t_win = [-0.5 2];
+t_full = gaze_cfg.t_win(1):1/gaze_cfg.fsample:gaze_cfg.t_win(2);
+gaze_cfg.t_vec = t_full(2:end);
+gaze_cfg.n_samp = numel(gaze_cfg.t_vec);
+gaze_cfg.min_trial_coverage = 0.8;
+gaze_cfg.min_trials_per_group = 3;
+gaze_cfg.outlier_k_iqr = 1.5;
+gaze_cfg.max_interp_gap_sec = 0.20;
+gaze_cfg.min_subject_coverage = 0.85;
+gaze_cfg.smooth_sec = 0.05;
+gaze_cfg.win_sm = max(1, round(gaze_cfg.smooth_sec * gaze_cfg.fsample));
 end
-if isvector(trialinfo)
-    tids = trialinfo(:);
-elseif size(trialinfo, 2) >= 2
-    tids = trialinfo(:, 2);
+
+function [tc_low, tc_high] = build_gaze_tc_pct_by_trial_ids(et_file, ids_low, ids_high, gaze_cfg)
+[D, err_msg] = load_dataETlong_with_tmp_fallback(et_file);
+if isempty(D) || ~isfield(D, 'dataETlong') || ~isfield(D.dataETlong, 'trial')
+    error('Could not load ET from %s (%s).', et_file, err_msg);
+end
+et = D.dataETlong;
+if ~isfield(et, 'trialinfo') || size(et.trialinfo, 2) < 2
+    error('Missing trial IDs in %s.', et_file);
+end
+
+t_plot = gaze_cfg.t_vec;
+idx_viable = (t_plot >= 0) & (t_plot <= 2);
+dev_low = [];
+dev_high = [];
+
+for trl = 1:numel(et.trial)
+    tid = et.trialinfo(trl, 2);
+    is_low = ismember(tid, ids_low);
+    is_high = ismember(tid, ids_high);
+    if ~is_low && ~is_high
+        continue
+    end
+    if trl > numel(et.time)
+        continue
+    end
+
+    data = double(et.trial{trl});
+    t = double(et.time{trl});
+    if size(data, 1) < 2 || isempty(t) || numel(t) ~= size(data, 2)
+        continue
+    end
+
+    % Match AOC_gaze_fex_*_trials preprocessing order
+    data = data(1:min(3, size(data, 1)), :);
+    data(2, :) = gaze_cfg.screenH - data(2, :);
+    valid_idx = data(1, :) >= 0 & data(1, :) <= gaze_cfg.screenW & ...
+        data(2, :) >= 0 & data(2, :) <= gaze_cfg.screenH;
+    data = data(:, valid_idx);
+    t = t(valid_idx);
+    if isempty(t)
+        continue
+    end
+    data = remove_blinks(data, gaze_cfg.blink_win);
+
+    idx_base = (t >= gaze_cfg.bl_win(1)) & (t <= gaze_cfg.bl_win(2));
+    if ~any(idx_base)
+        continue
+    end
+    dev = sqrt((data(1, :) - gaze_cfg.centreX).^2 + (data(2, :) - gaze_cfg.centreY).^2);
+    gd_base = mean(dev(idx_base), 'omitnan');
+    if ~isfinite(gd_base) || gd_base <= 0
+        continue
+    end
+    dev_pct = 100 * (dev - gd_base) ./ gd_base;
+    tc_interp = interp1(t, dev_pct, t_plot, 'linear', NaN);
+    if mean(isfinite(tc_interp(idx_viable))) < gaze_cfg.min_trial_coverage
+        continue
+    end
+    if is_low
+        dev_low(end+1, :) = tc_interp; %#ok<AGROW>
+    end
+    if is_high
+        dev_high(end+1, :) = tc_interp; %#ok<AGROW>
+    end
+end
+
+tc_low = nan(1, gaze_cfg.n_samp);
+tc_high = nan(1, gaze_cfg.n_samp);
+if size(dev_low, 1) >= gaze_cfg.min_trials_per_group
+    tc_low = mean(dev_low, 1, 'omitnan');
+end
+if size(dev_high, 1) >= gaze_cfg.min_trials_per_group
+    tc_high = mean(dev_high, 1, 'omitnan');
+end
+end
+
+function [X, keep_subj] = preprocess_gaze_subject_tc(X, idx_viable, gaze_cfg)
+X(~isfinite(X)) = NaN;
+med_metric = median(X(:, idx_viable), 2, 'omitnan');
+[X, keep_subj] = exclude_outlier_trajectories(X, med_metric, gaze_cfg.outlier_k_iqr);
+max_interp_gap_smp = max(1, round(gaze_cfg.max_interp_gap_sec * gaze_cfg.fsample));
+for s = 1:size(X, 1)
+    X(s, :) = fill_short_nan_gaps(X(s, :), max_interp_gap_smp);
+end
+subj_cov = mean(isfinite(X(:, idx_viable)), 2);
+keep_subj = keep_subj & (subj_cov >= gaze_cfg.min_subject_coverage);
+X(~keep_subj, :) = NaN;
+if gaze_cfg.win_sm > 1
+    X = movmean(X, gaze_cfg.win_sm, 2, 'omitnan');
+end
+end
+
+function [X_keep, keep_subj] = exclude_outlier_trajectories(X, metric, k_iqr)
+med_m = median(metric, 'omitnan');
+iqr_m = iqr(metric);
+if ~isfinite(iqr_m) || iqr_m == 0
+    low_m = -inf; high_m = inf;
 else
-    tids = trialinfo(:, 1);
+    low_m = med_m - k_iqr * iqr_m;
+    high_m = med_m + k_iqr * iqr_m;
+end
+keep_subj = isfinite(metric) & (metric >= low_m) & (metric <= high_m);
+X_keep = X;
+X_keep(~keep_subj, :) = NaN;
+end
+
+function x = fill_short_nan_gaps(x, max_gap_smp)
+if isempty(x), return, end
+valid = isfinite(x);
+if all(~valid) || all(valid), return, end
+n = numel(x); i = 1;
+while i <= n
+    if valid(i), i = i + 1; continue, end
+    j = i;
+    while j <= n && ~valid(j), j = j + 1; end
+    gap_start = i; gap_end = j - 1; gap_len = gap_end - gap_start + 1;
+    left = gap_start - 1; right = gap_end + 1;
+    if left >= 1 && right <= n && valid(left) && valid(right) && gap_len <= max_gap_smp
+        x(gap_start:gap_end) = interp1([left right], [x(left) x(right)], gap_start:gap_end);
+    end
+    i = j;
 end
 end
 
@@ -575,135 +649,110 @@ saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_GazeDev_timecourse_%s.png
 close(gcf);
 end
 
-function plot_paired_timecourse_CBPT(Rall, Aall, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, ds_factor, t_vec, smooth_sec, lblLow, lblHigh, cbpt_report_file, EegR, EegA, eeg_ylab)
-if nargin < 16, EegR = []; EegA = []; end
-if nargin < 18, eeg_ylab = 'ERSD [dB]'; end
-nT = size(Rall,2); t_plot = t_vec(:); dt = mean(diff(t_plot),'omitnan');
+function plot_paired_timecourse_CBPT(Rall, Aall, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, ds_factor, t_vec, smooth_sec, lblLow, lblHigh, cbpt_report_file)
+nT = size(Rall, 2);
+t_plot = t_vec(:)';
+dt = mean(diff(t_plot), 'omitnan');
 win_sm = max(1, round(smooth_sec * fs));
 if win_sm > 1
     Rall = movmean(Rall, win_sm, 2, 'omitnan');
     Aall = movmean(Aall, win_sm, 2, 'omitnan');
 end
-nR = size(Rall,1);
-show_eeg = ~isempty(EegR) && ~isempty(EegA) && size(EegR,1)==nR;
+nR = size(Rall, 1);
 figure('Position', fig_pos, 'Color', 'w');
-if show_eeg, tiledlayout(5,1,'TileSpacing','compact'); else, tiledlayout(3,1,'TileSpacing','compact'); end
-ax_gaze = nexttile([2 1]); hold on
-mR = mean(Rall,1,'omitnan'); mA = mean(Aall,1,'omitnan');
-sR = std(Rall,0,1,'omitnan')./max(sqrt(sum(isfinite(Rall),1)),1);
-sA = std(Aall,0,1,'omitnan')./max(sqrt(sum(isfinite(Aall),1)),1);
+tl = tiledlayout(3, 1, 'TileSpacing', 'compact');
+set_tc_cbpt_layout_margins(tl);
+nexttile([2 1]); hold on
+mR = mean(Rall, 1, 'omitnan'); mA = mean(Aall, 1, 'omitnan');
+sR = std(Rall, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(Rall), 1)), 1);
+sA = std(Aall, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(Aall), 1)), 1);
 e1 = shadedErrorBar(t_plot, mR, sR, 'lineProps', {'-'}, 'transparent', true);
 e2 = shadedErrorBar(t_plot, mA, sA, 'lineProps', {'-'}, 'transparent', true);
-set(e1.mainLine,'Color',colors(1,:),'LineWidth',2.5); set(e2.mainLine,'Color',colors(3,:),'LineWidth',2.5);
-set(e1.patch,'FaceColor',colors(1,:),'FaceAlpha',0.20); set(e2.patch,'FaceColor',colors(3,:),'FaceAlpha',0.20);
-set(e1.edge(1),'Color','none'); set(e1.edge(2),'Color','none');
-set(e2.edge(1),'Color','none'); set(e2.edge(2),'Color','none');
-xline(0,'--k'); ylabel(ylab); xlim([-0.5 2]); box off; set(gca,'FontSize',fsz-4);
-leg_p1 = patch(NaN,NaN,colors(1,:),'FaceAlpha',0.25,'EdgeColor',colors(1,:),'LineWidth',1.5);
-leg_p2 = patch(NaN,NaN,colors(3,:),'FaceAlpha',0.25,'EdgeColor',colors(3,:),'LineWidth',1.5);
-legend([leg_p1 leg_p2], {[' ' lblLow], [' ' lblHigh]}, 'Location','best','FontSize',fsz*0.75,'Box','off');
+set(e1.mainLine, 'Color', colors(1,:), 'LineWidth', 2.5);
+set(e2.mainLine, 'Color', colors(3,:), 'LineWidth', 2.5);
+set(e1.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.20);
+set(e2.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.20);
+set(e1.edge(1), 'Color', 'none'); set(e1.edge(2), 'Color', 'none');
+set(e2.edge(1), 'Color', 'none'); set(e2.edge(2), 'Color', 'none');
+xline(0, '--k'); ylabel(ylab); xlim([-0.5 2]);
+ylim(ylim_from_mean_sem(mR, sR, mA, sA));
+box off; set(gca, 'FontSize', fsz-4);
+leg_p1 = patch(NaN, NaN, colors(1,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(1,:), 'LineWidth', 1.5);
+leg_p2 = patch(NaN, NaN, colors(3,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(3,:), 'LineWidth', 1.5);
+legend([leg_p1 leg_p2], {[' ' lblLow], [' ' lblHigh]}, 'Location', 'best', 'FontSize', fsz*0.75, 'Box', 'off');
 
-ax_d = nexttile; hold on
+nexttile; hold on
 n_perm = 10000; alpha_cbpt = 0.05; tail_cbpt = 'twotail';
-d = nan(1,nT);
+d = nan(1, nT);
 for t = 1:nT
-    x = Rall(:,t); y = Aall(:,t); ok = isfinite(x)&isfinite(y); x=x(ok); y=y(ok);
-    if numel(x)<3, continue, end
-    dd = y-x; d(t) = mean(dd)/max(std(dd),eps);
+    x = Rall(:, t); y = Aall(:, t);
+    ok = isfinite(x) & isfinite(y);
+    x = x(ok); y = y(ok);
+    if numel(x) < 3, continue, end
+    dd = y - x;
+    d(t) = mean(dd) / max(std(dd), eps);
 end
-Rall_ds = Rall(:,1:ds_factor:end); Aall_ds = Aall(:,1:ds_factor:end);
-t_plot_ds = t_plot(1:ds_factor:end); dt_ds = ds_factor*dt;
+Rall_ds = Rall(:, 1:ds_factor:end);
+Aall_ds = Aall(:, 1:ds_factor:end);
+t_plot_ds = t_plot(1:ds_factor:end);
+dt_ds = ds_factor * dt;
 [clusters, tvals_cl, thr] = ft_cluster_permutation_1d_paired(Rall_ds, Aall_ds, n_perm, alpha_cbpt, tail_cbpt, t_plot_ds);
 log_cbpt_report(cbpt_report_file, build_cbpt_report_lines(struct( ...
     'tag', save_tag, 'modality', 'gaze', 'nR', nR, 'nA', nR, 'lbl_low', lblLow, 'lbl_high', lblHigh, ...
     'n_perm', n_perm, 'alpha', alpha_cbpt, 'tail', tail_cbpt, 'nT_ds', numel(t_plot_ds), ...
-    'bin_ms', ds_factor*1000/fs, 'fs', fs, 'ds_factor', ds_factor, 'clusters', clusters, ...
+    'bin_ms', ds_factor * 1000 / fs, 'fs', fs, 'ds_factor', ds_factor, 'clusters', clusters, ...
     'tvals', tvals_cl, 'thr', thr, 't_plot', t_plot_ds, 'dt_ds', dt_ds)));
-sig = false(1,numel(t_plot_ds));
+sig = false(1, numel(t_plot_ds));
 for k = 1:numel(clusters)
-    if clusters(k).p < 0.05, sig(clusters(k).idx) = true; end
+    if clusters(k).p < 0.05
+        sig(clusters(k).idx) = true;
+    end
 end
-draw_cohen_panel(t_plot, t_plot_ds, d, sig, dt_ds, fsz);
-align_ylabel_to_reference(ax_d, ax_gaze);
-
-if show_eeg
-    if win_sm > 1
-        EegR = movmean(EegR, win_sm, 2, 'omitnan');
-        EegA = movmean(EegA, win_sm, 2, 'omitnan');
-    end
-    nexttile; hold on
-    mR_e = mean(EegR,1,'omitnan'); mA_e = mean(EegA,1,'omitnan');
-    sR_e = std(EegR,0,1,'omitnan')./max(sqrt(sum(isfinite(EegR),1)),1);
-    sA_e = std(EegA,0,1,'omitnan')./max(sqrt(sum(isfinite(EegA),1)),1);
-    ebR = shadedErrorBar(t_plot, mR_e, sR_e, 'lineProps', {'-'}, 'transparent', true);
-    ebA = shadedErrorBar(t_plot, mA_e, sA_e, 'lineProps', {'-'}, 'transparent', true);
-    set(ebR.mainLine,'Color',colors(1,:),'LineWidth',2.5); set(ebA.mainLine,'Color',colors(3,:),'LineWidth',2.5);
-    set(ebR.patch,'FaceColor',colors(1,:),'FaceAlpha',0.20); set(ebA.patch,'FaceColor',colors(3,:),'FaceAlpha',0.20);
-    set(ebR.edge(1),'Color','none'); set(ebR.edge(2),'Color','none');
-    set(ebA.edge(1),'Color','none'); set(ebA.edge(2),'Color','none');
-    yline(0,'--'); xline(0,'--k'); ylabel(eeg_ylab); xlabel('Time [s]'); xlim([-0.5 2]); box off; set(gca,'FontSize',fsz-4);
-    ax_eeg = gca;
-    ax_d_eeg = nexttile; hold on
-    d_eeg = nan(1,nT);
-    for t = 1:nT
-        x = EegR(:,t); y = EegA(:,t); ok = isfinite(x)&isfinite(y); x=x(ok); y=y(ok);
-        if numel(x)<3, continue, end
-        dd = y-x; d_eeg(t) = mean(dd)/max(std(dd),eps);
-    end
-    [clusters_e, tvals_e, thr_e] = ft_cluster_permutation_1d_paired(EegR(:,1:ds_factor:end), EegA(:,1:ds_factor:end), n_perm, alpha_cbpt, tail_cbpt, t_plot_ds);
-    log_cbpt_report(cbpt_report_file, build_cbpt_report_lines(struct( ...
-        'tag', [save_tag '_EEG'], 'modality', 'EEG', 'nR', nR, 'nA', nR, 'lbl_low', lblLow, 'lbl_high', lblHigh, ...
-        'n_perm', n_perm, 'alpha', alpha_cbpt, 'tail', tail_cbpt, 'nT_ds', numel(t_plot_ds), ...
-        'bin_ms', ds_factor*1000/fs, 'fs', fs, 'ds_factor', ds_factor, 'clusters', clusters_e, ...
-        'tvals', tvals_e, 'thr', thr_e, 't_plot', t_plot_ds, 'dt_ds', dt_ds)));
-    sig_e = false(1,numel(t_plot_ds));
-    for k = 1:numel(clusters_e)
-        if clusters_e(k).p < 0.05, sig_e(clusters_e(k).idx) = true; end
-    end
-    draw_cohen_panel(t_plot, t_plot_ds, d_eeg, sig_e, dt_ds, fsz);
-    ylabel('EEG Cohen''s d_z');
-    align_ylabel_to_reference(ax_d_eeg, ax_eeg);
+run_start = [false, diff(sig) == 1];
+run_end = [diff(sig) == -1, false];
+if ~isempty(sig) && sig(1), run_start(1) = true; end
+if ~isempty(sig) && sig(end), run_end(end) = true; end
+starts = find(run_start); ends = find(run_end);
+d_fin = d(isfinite(d));
+mx = max(abs(d_fin), [], 'omitnan');
+if isempty(d_fin) || ~isfinite(mx) || mx == 0
+    ylims = [-0.6 0.6];
+else
+    ylims = [-max(mx + 0.1, 0.6), max(mx + 0.1, 0.6)];
 end
+patch_alpha = 0.4 * ~any(sig) + 0.25 * any(sig);
+for k = 1:numel(starts)
+    t1 = max(0, t_plot_ds(starts(k)) - dt_ds/2);
+    t2 = t_plot_ds(ends(k)) + dt_ds/2;
+    patch([t1 t2 t2 t1], [ylims(1) ylims(1) ylims(2) ylims(2)], [0.5 0.5 0.5], 'FaceAlpha', patch_alpha, 'EdgeColor', 'none');
+end
+ylim(ylims);
+plot(t_plot, d, 'k-', 'LineWidth', 3.5);
+yline(0, '--'); xline(0, '--k');
+xlabel('Time [s]'); ylabel('Cohen''s d');
+xlim([-0.5 2]); box off; set(gca, 'FontSize', fsz-4);
 pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_GazeDev_timecourse_%s_CBPT.png', save_tag)));
 close(gcf);
 end
 
-function draw_cohen_panel(t_plot, t_plot_ds, d, sig, dt_ds, fsz)
-run_start = [false, diff(sig)==1]; run_end = [diff(sig)==-1, false];
-if ~isempty(sig) && sig(1), run_start(1)=true; end
-if ~isempty(sig) && sig(end), run_end(end)=true; end
-starts = find(run_start); ends = find(run_end);
-d_fin = d(isfinite(d)); mx = max(abs(d_fin), [], 'omitnan');
-if isempty(d_fin) || ~isfinite(mx) || mx==0, ylims=[-0.6 0.6];
-else, ylims=[-max(mx+0.1,0.6), max(mx+0.1,0.6)]; end
-patch_alpha = 0.4*(~any(sig)) + 0.25*any(sig);
-for k = 1:numel(starts)
-    t1 = max(0, t_plot_ds(starts(k))-dt_ds/2);
-    t2 = t_plot_ds(ends(k))+dt_ds/2;
-    patch([t1 t2 t2 t1], [ylims(1) ylims(1) ylims(2) ylims(2)], [0.5 0.5 0.5], 'FaceAlpha', patch_alpha, 'EdgeColor', 'none');
-end
-ylim(ylims); plot(t_plot, d, 'k-', 'LineWidth', 3.5);
-yline(0,'--'); xline(0,'--k'); xlabel('Time [s]'); ylabel('Cohen''s d_z');
-xlim([-0.5 2]); box off; set(gca,'FontSize',fsz-4);
+function set_tc_cbpt_layout_margins(tl)
+drawnow;
+op = tl.OuterPosition;
+left = 0.12;
+tl.OuterPosition = [left, op(2), 0.96 - left, op(4)];
 end
 
-function align_ylabel_to_reference(ax_ref, ax_targets)
-fig = ancestor(ax_ref, 'figure');
-if isempty(fig), return, end
-drawnow;
-ref_lbl = ax_ref.YLabel; ref_lbl.Units = 'normalized'; ref_pos = ref_lbl.Position;
-ax_ref.Units = 'pixels'; ref_ax_pos_pix = ax_ref.Position;
-target_x_pix = ref_ax_pos_pix(1) + ref_pos(1)*ref_ax_pos_pix(3);
-if ~iscell(ax_targets), ax_list = {ax_targets}; else, ax_list = ax_targets; end
-for k = 1:numel(ax_list)
-    ax_t = ax_list{k};
-    if isequal(ax_t, ax_ref), continue, end
-    lbl = ax_t.YLabel; lbl.Units = 'normalized'; pos = lbl.Position;
-    ax_t.Units = 'pixels'; ax_t_pos_pix = ax_t.Position;
-    x_norm_new = (target_x_pix - ax_t_pos_pix(1)) / max(ax_t_pos_pix(3), eps);
-    lbl.Position = [x_norm_new, pos(2), pos(3)];
+function yl = ylim_from_mean_sem(m1, s1, m2, s2)
+lo = min([m1 - s1, m2 - s2], [], 'omitnan');
+hi = max([m1 + s1, m2 + s2], [], 'omitnan');
+if isempty(lo) || all(~isfinite(lo))
+    yl = [-1, 1];
+    return
 end
+span = max(max(hi, [], 'omitnan') - min(lo, [], 'omitnan'), eps);
+pad = 0.10 * span;
+yl = [min(lo, [], 'omitnan') - pad, max(hi, [], 'omitnan') + pad];
 end
 
 function init_cbpt_report_file(report_path, meta)
@@ -719,6 +768,7 @@ lines{end+1} = meta.split_info;
 lines{end+1} = sprintf('Subjects contributing both groups: n=%d (TC n=%d)', meta.n_low_split, meta.n_low_tc);
 lines{end+1} = sprintf('Outcome metric: %s', meta.metric);
 lines{end+1} = 'CBPT method: FieldTrip ft_timelockstatistics (montecarlo, cluster maxsum, depsamplesT)';
+lines{end+1} = 'Defaults: n_perm=10000, clusteralpha=0.05, two-tailed, latency=[0 2] s, ds_factor=10';
 lines{end+1} = '';
 append_lines_to_file(report_path, lines);
 end
@@ -735,7 +785,7 @@ end
 lines = {};
 lines{end+1} = sprintf('  [%s] n=%d pairs tcrit=%.2f |t|>tcrit at %d timepts; max mass=%.1f; max extent=%d', ...
     R.tag, R.nR, R.thr.tcrit, nExtreme, maxClMass, maxClExtent);
-lines{end+1} = sprintf('    Method: n_perm=%d, alpha=%.3f, paired (%s vs %s), ds_factor=%d', ...
+lines{end+1} = sprintf('    Method: n_perm=%d, alpha=%.3f, two-tailed paired (%s vs %s), latency=[0 2] s, ds_factor=%d', ...
     R.n_perm, R.alpha, lbl_lo, lbl_hi, R.ds_factor);
 if ~isempty(R.clusters)
     for k = 1:numel(R.clusters)

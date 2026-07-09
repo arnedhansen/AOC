@@ -61,6 +61,8 @@ fig3.name = 'Figure3';
 fig3.nrow = 2;
 fig3.ncol = 2;
 fig3.figSize = [0 0 1512 982];
+fig3.rowHeights = [1, 1];
+fig3.colGap = 0.012;
 fig3.panels = {
     panelSpec(fullfile(rainDir, 'AOC_stats_rainclouds_rt_nback.png'), ...
         'A', 'N-back Reaction Time');
@@ -78,6 +80,8 @@ fig4.name = 'Figure4';
 fig4.nrow = 2;
 fig4.ncol = 2;
 fig4.figSize = [0 0 1512 982];
+fig4.rowHeights = [1, 1];
+fig4.colGap = 0.012;
 fig4.panels = {
     panelSpec(fullfile(rainDir, 'AOC_stats_rainclouds_gazedev_nback.png'), ...
         'A', 'N-back Gaze Deviation');
@@ -148,6 +152,8 @@ fig7.name = 'Figure7';
 fig7.nrow = 2;
 fig7.ncol = 2;
 fig7.figSize = [0 0 1512 982];
+fig7.rowHeights = [1, 1];
+fig7.colGap = 0.012;
 fig7.panels = {
     panelSpec(fullfile(rainDir, 'AOC_stats_rainclouds_gazedev_bl_nback.png'), ...
         'A', 'N-back Baselined Gaze Deviation');
@@ -167,9 +173,9 @@ fig8.ncol = 2;
 fig8.figSize = [0 0 1512 982];
 fig8.panels = {
     panelSpec(fullfile(rainDir, 'AOC_stats_rainclouds_pow_baselineWindow_nback.png'), ...
-        'A', 'N-back Baseline Window Power Spectrum');
+        'A', 'N-back Baseline Window Alpha Power');
     panelSpec(fullfile(rainDir, 'AOC_stats_rainclouds_pow_baselineWindow_sternberg.png'), ...
-        'B', 'Sternberg Baseline Window Power Spectrum');
+        'B', 'Sternberg Baseline Window Alpha Power');
     };
 
 %% Figure 9: Exploratory alpha split gaze coupling (2 x 2)
@@ -195,7 +201,7 @@ fig9.panels = {
 
 %% Assemble all figures
 figSpecs = {fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, fig9};
-for iFig = 8%:numel(figSpecs)
+for iFig = 1:numel(figSpecs)
     spec = figSpecs{iFig};
     outPng = fullfile(outDir, ['AOC_manuscript_' spec.name '.png']);
     assembleManuscriptFigure(spec, outPng, exportDpi);
@@ -251,11 +257,18 @@ if isfield(spec, 'rowHeights') && numel(spec.rowHeights) == spec.nrow
     end
 else
     % Tighten vertical spacing for multi-row composites (e.g. Figure 5)
-    if spec.nrow >= 3
+    if isfield(spec, 'tileSpacing') && ~isempty(spec.tileSpacing)
+        tileSpacing = spec.tileSpacing;
+    elseif spec.nrow >= 3
         tileSpacing = 'tight';
     else
         tileSpacing = 'compact';
     end
+    if ~ischar(tileSpacing) && ~isstring(tileSpacing)
+        error('AOC_assemble_manuscript_figures:InvalidTileSpacing', ...
+            'tileSpacing must be ''loose'', ''compact'', ''tight'', or ''none''.');
+    end
+    tileSpacing = char(tileSpacing);
     tl = tiledlayout(spec.nrow, spec.ncol, 'TileSpacing', tileSpacing, 'Padding', 'compact');
 
     for i = 1:numel(spec.panels)
@@ -272,7 +285,11 @@ end
 
 function layout = manuscriptPanelLayout(spec, figSize)
 pad = struct('left', 0.04, 'right', 0.04, 'top', 0.02, 'bottom', 0.02);
-gapX = 0.04;
+if isfield(spec, 'colGap') && ~isempty(spec.colGap)
+    gapX = spec.colGap;
+else
+    gapX = 0.04;
+end
 gapY = 0.012;
 titleH = 0.035;
 

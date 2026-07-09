@@ -28,7 +28,7 @@ GLMM_VARIABLES <- c(
   "Accuracy", "ReactionTime",
   "GazeDeviation", "MSRate",
   "GazeDeviationBL", "MSRateBL",
-  "AlphaPower", "ERSD"
+  "AlphaPower", "AlphaPower_baselineWindow", "ERSD"
 )
 
 NBACK_TASK_CONFIG <- list(

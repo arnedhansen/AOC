@@ -36,6 +36,7 @@ LOAD_SNAME <- c(
   MSRate = "ms",
   GazeDeviationBL = "gazedev_bl",
   MSRateBL = "ms_bl",
+  AlphaPower_baselineWindow = "pow_baselineWindow",
   ERSD = "ersd"
 )
 

@@ -63,6 +63,7 @@ R_BRACKET_VARS = {
     "Accuracy", "ReactionTime",
     "GazeDeviation", "MSRate",
     "GazeDeviationBL", "MSRateBL",
+    "AlphaPower_baselineWindow",
     "ERSD",
 }
 
@@ -355,16 +356,20 @@ def plot_raincloud(
     ymid = 0.5 * (ymin_cur + ymax_cur)
     ax.set_ylabel("")
     ax.yaxis.get_label().set_visible(False)
-    ylabel_x = YLABEL_GRID_X
-    ax.text(
-        ylabel_x,
-        ymid,
-        ylab,
-        transform=ax.get_yaxis_transform(which="grid"),
-        rotation=90,
-        ha="center",
-        va="center",
-    )
+    # Sternberg panels sit in the right column of manuscript composites (Figures 3,
+    # 4, 6, 7, 8). Omit the duplicate y-label and use a narrower left margin so
+    # the inter-column gutter is not doubled.
+    show_ylabel = task["name"] != "sternberg"
+    if show_ylabel:
+        ax.text(
+            YLABEL_GRID_X,
+            ymid,
+            ylab,
+            transform=ax.get_yaxis_transform(which="grid"),
+            rotation=90,
+            ha="center",
+            va="center",
+        )
 
     labels = bracket_labels_for_raincloud(
         dvar, var, task["comparisons"], pw, task["name"]
@@ -394,7 +399,7 @@ def plot_raincloud(
         ax.set_ylim(ymin, ymax_cap + 0.15 * (ymax_cap - ymin))
 
     fig.tight_layout()
-    left_pad = LEFT_PAD
+    left_pad = LEFT_PAD if show_ylabel else LEFT_PAD_NO_YLABEL
     fig.subplots_adjust(left=left_pad)
     out_path = os.path.join(output_dir, f"AOC_stats_rainclouds_{sname}_{task['name']}.png")
     fig.savefig(
@@ -437,6 +442,7 @@ mpl.rcParams.update({
 
 YLABEL_GRID_X = -0.15
 LEFT_PAD = 0.17
+LEFT_PAD_NO_YLABEL = 0.10
 
 sns.set_style("white")
 
@@ -484,7 +490,7 @@ yticks_map = {
     "GazeDeviationBL": np.arange(-50, 350, 50),
     "MSRateBL": np.arange(-100, 125, 25),
     "AlphaPower_bl": np.arange(-4, 4.1, 1),
-    "AlphaPower_baselineWindow": np.arange(0, 12, 1),
+    "AlphaPower_baselineWindow": np.arange(0, 8, 1.5),
     "IAF": np.arange(8, 15, 1),
     "ERSD": np.arange(-3, 4, 1),
 }
@@ -497,7 +503,7 @@ ylims_map = {
     "GazeDeviationBL": (-50, 300),
     "MSRateBL": (-110, 110),
     "AlphaPower_bl": (-4, 4),
-    "AlphaPower_baselineWindow": (0, 11),
+    "AlphaPower_baselineWindow": (0, 7.5),
     "IAF": (8, 14),
     "ERSD": (-3.75, 3.75),
 }

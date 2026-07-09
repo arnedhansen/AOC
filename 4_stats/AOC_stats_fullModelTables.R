@@ -89,6 +89,7 @@ merge_pairwise_effectsizes <- function(pair_df, eff_df, task_name, dv_name) {
 display_dv <- function(dv) {
   out <- as.character(dv)
   out[out == "ERSD"] <- "ERS/ERD"
+  out[out == "AlphaPower_baselineWindow"] <- "Baseline-window alpha power"
   out
 }
 
@@ -288,6 +289,7 @@ dv_unit <- function(dv_name) {
     MSRate = "Hz",
     GazeDeviationBL = "px",
     MSRateBL = "Hz",
+    AlphaPower_baselineWindow = "\u03bcV\u00b2/Hz",
     ERSD = "dB",
     ""
   )
@@ -302,6 +304,7 @@ summary_table_title <- function(dv_name) {
     MSRate = "Microsaccade rate",
     GazeDeviationBL = "Gaze deviation (baseline-corrected)",
     MSRateBL = "Microsaccade rate (baseline-corrected)",
+    AlphaPower_baselineWindow = "Baseline-window alpha power",
     ERSD = "ERS/ERD",
     display_dv(dv_name)
   )
@@ -798,6 +801,18 @@ model_specs <- list(
     title = "Sternberg ERS/ERD",
     fixed = "AOC_mixedlm_fixed_ersd_sternberg.csv",
     pair_src = if (nrow(pair_stern) > 0) pair_stern[pair_stern$Variable == "ERSD", ] else NULL
+  ),
+  list(
+    id = "nback_pow_baselineWindow",
+    title = "N-back Baseline-Window Alpha Power (exploratory)",
+    fixed = "AOC_mixedlm_fixed_pow_baselineWindow_nback.csv",
+    pair_src = if (nrow(pair_nback) > 0) pair_nback[pair_nback$Variable == "AlphaPower_baselineWindow", ] else NULL
+  ),
+  list(
+    id = "sternberg_pow_baselineWindow",
+    title = "Sternberg Baseline-Window Alpha Power (exploratory)",
+    fixed = "AOC_mixedlm_fixed_pow_baselineWindow_sternberg.csv",
+    pair_src = if (nrow(pair_stern) > 0) pair_stern[pair_stern$Variable == "AlphaPower_baselineWindow", ] else NULL
   ),
   list(
     id = "nback_ersd_by_gazedeviation",
@@ -1422,7 +1437,8 @@ combined_specs <- list(
   list(id = "microsaccade_rate", dv = "MSRate"),
   list(id = "gaze_deviation_bl", dv = "GazeDeviationBL"),
   list(id = "microsaccade_rate_bl", dv = "MSRateBL"),
-  list(id = "ers_erd", dv = "ERSD")
+  list(id = "ers_erd", dv = "ERSD"),
+  list(id = "alpha_power_baselineWindow", dv = "AlphaPower_baselineWindow")
 )
 
 nback_dat <- load_task_data(NBACK_TASK_CONFIG)

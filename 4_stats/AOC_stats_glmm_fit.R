@@ -206,6 +206,10 @@ run_paper_glmm <- function(task_config) {
       dat, "GazeDeviationBL", "GazeDeviationBL ~ Load + (1|Subject)"
     ),
     MSRateBL = fit_dv_load(dat, "MSRateBL", "MSRateBL ~ Load + (1|Subject)"),
+    AlphaPower_baselineWindow = fit_dv_load(
+      dat, "AlphaPower_baselineWindow",
+      "AlphaPower_baselineWindow ~ Load + (1|Subject)"
+    ),
     ERSD = fit_dv_load(dat, EEG_DV, sprintf("%s ~ Load + (1|Subject)", EEG_DV))
   )
 

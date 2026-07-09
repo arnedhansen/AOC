@@ -76,8 +76,8 @@ if ispc
 
     %% 4 Split analyses
     run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_splits_AlphaAmpRed_Prep.m');
-    run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed_GazeDev.m');
-    run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_split_AlphaAmpRed_MS.m');
+    run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_spliERSD_GazeDev.m');
+    run('C:\Users\Administrator\Documents\GitHub\AOC\splits\AOC_splitERSD_MS.m');
 
     %% Stats
     % For the stats and raincloud plots, run the Python scripts.

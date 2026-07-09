@@ -157,8 +157,6 @@ idx_viable = (t_vec >= 0) & (t_vec <= 2);
 ms_ylabel = sprintf('Microsaccade\nRate Change [%%]');
 fontSizeTC = 40;
 rng(123)
-fs_ms = ms_cfg.fsample;
-bin_ms = 25;
 
 tc_window_idx = idx_viable;
 tc_complete_min_frac = 0.80;
@@ -190,18 +188,17 @@ init_cbpt_report_file(cbpt_report_file, struct( ...
     'n_high_split', nSubj, ...
     'n_low_tc', n_tc, ...
     'n_high_tc', n_tc, ...
-    'bin_ms', bin_ms, ...
     'metric', 'Microsaccade rate change [% baseline] (paired within subject)'));
 
 tc_base = sprintf('AOC_splitERSERD_%s_MS_timecourse', task_tag);
 report_tag = sprintf('%s_%s_MS', task_tag, split_label);
 plot_paired_timecourse_CBPT(low_group_timecourses, high_group_timecourses, colors, ms_ylabel, ...
     tc_base, report_tag, ...
-    fig_dir_root, fig_pos, fontSizeTC, fs_ms, bin_ms, t_vec, ...
+    fig_dir_root, fig_pos, fontSizeTC, t_vec, ...
     tk.group_lbl_low, tk.group_lbl_high, cbpt_report_file);
 plot_difference_timecourse_CBPT(low_group_timecourses, high_group_timecourses, ...
     sprintf('%s_HighMinusLow', tc_base), ...
-    fig_dir_root, fig_pos, fontSizeTC, fs_ms, bin_ms, t_vec);
+    fig_dir_root, fig_pos, fontSizeTC, t_vec);
 plot_paired_timecourse_individuals(low_group_timecourses, high_group_timecourses, colors, ms_ylabel, 'Collapsed over conditions', ...
     sprintf('%s_individuals', tc_base), ...
     fig_dir_root, fig_pos, fontSizeTC, t_vec, ...
@@ -500,10 +497,10 @@ saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
 close(gcf);
 end
 
-function plot_paired_timecourse_CBPT(low_group_timecourses, high_group_timecourses, colors, ylab, out_name, report_tag, fig_dir, fig_pos, fsz, fs, bin_ms, t_vec, lblLow, lblHigh, cbpt_report_file)
+function plot_paired_timecourse_CBPT(low_group_timecourses, high_group_timecourses, colors, ylab, out_name, report_tag, fig_dir, fig_pos, fsz, t_vec, lblLow, lblHigh, cbpt_report_file)
 t_plot = t_vec(:)';
 num_subjects_in = size(low_group_timecourses, 1);
-[low_cb, high_cb, t_cb, n_pairs, dt_cb, drop_info] = prepare_paired_cbpt_bins(low_group_timecourses, high_group_timecourses, t_plot, bin_ms, fs);
+[low_cb, high_cb, t_cb, n_pairs, dt_cb, drop_info] = prepare_paired_cbpt_poststim(low_group_timecourses, high_group_timecourses, t_plot);
 cohens_d_cb = paired_cohens_dz_curve(low_cb, high_cb);
 
 figure('Position', fig_pos, 'Color', 'w');
@@ -532,9 +529,8 @@ n_perm = 10000; alpha_cbpt = 0.05; tail_cbpt = 'twotail';
 [clusters, tvals_cl, thr] = ft_cluster_permutation_1d_paired(low_cb, high_cb, n_perm, alpha_cbpt, tail_cbpt, t_cb);
 report_cfg = struct('tag', report_tag, 'modality', 'MS', 'nR', n_pairs, 'n_input', num_subjects_in, ...
     'lbl_low', lblLow, 'lbl_high', lblHigh, 'n_perm', n_perm, 'alpha', alpha_cbpt, ...
-    'tail', tail_cbpt, 'nT_cb', numel(t_cb), 'bin_ms', bin_ms, 'fs', fs, ...
-    'clusters', clusters, 'tvals', tvals_cl, 'thr', thr, 't_plot', t_cb, 'dt_cb', dt_cb, ...
-    'drop_info', drop_info);
+    'tail', tail_cbpt, 'nT_cb', numel(t_cb), 'clusters', clusters, 'tvals', tvals_cl, 'thr', thr, ...
+    't_plot', t_cb, 'dt_cb', dt_cb, 'drop_info', drop_info);
 log_cbpt_report(cbpt_report_file, build_cbpt_report_lines(report_cfg));
 ylims = ylim_from_effect_curve(cohens_d_cb);
 shade_sig_clusters(gca, clusters, t_cb, dt_cb, ylims, alpha_cbpt);
@@ -549,7 +545,7 @@ saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
 close(gcf);
 end
 
-function plot_difference_timecourse_CBPT(low_group_timecourses, high_group_timecourses, out_name, fig_dir, fig_pos, fsz, fs, bin_ms, t_vec)
+function plot_difference_timecourse_CBPT(low_group_timecourses, high_group_timecourses, out_name, fig_dir, fig_pos, fsz, t_vec)
 t_plot = t_vec(:)';
 difference_timecourses = high_group_timecourses - low_group_timecourses;
 
@@ -572,7 +568,7 @@ box off; set(gca, 'FontSize', fsz-4);
 
 nexttile; hold on
 n_perm = 10000; alpha_cbpt = 0.05; tail_cbpt = 'twotail';
-[low_cb, high_cb, t_cb, ~, dt_cb] = prepare_paired_cbpt_bins(low_group_timecourses, high_group_timecourses, t_plot, bin_ms, fs);
+[low_cb, high_cb, t_cb, ~, dt_cb] = prepare_paired_cbpt_poststim(low_group_timecourses, high_group_timecourses, t_plot);
 cohens_d_cb = paired_cohens_dz_curve(low_cb, high_cb);
 [clusters, ~, ~] = ft_cluster_permutation_1d_paired(low_cb, high_cb, n_perm, alpha_cbpt, tail_cbpt, t_cb);
 ylims = ylim_from_effect_curve(cohens_d_cb);
@@ -591,34 +587,14 @@ saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
 close(gcf);
 end
 
-function [X_bin, t_bin] = bin_average_timecourses(X, t_vec, bin_ms, fs)
-t_vec = t_vec(:)';
-bin_samp = max(1, round(bin_ms / 1000 * fs));
-nT = size(X, 2);
-n_bins = floor(nT / bin_samp);
-if n_bins < 1
-    X_bin = X;
-    t_bin = t_vec;
-    return
-end
-trim_n = n_bins * bin_samp;
-X_trim = X(:, 1:trim_n);
-t_trim = t_vec(1:trim_n);
-X_3d = reshape(X_trim', [bin_samp, n_bins, size(X, 1)]);
-X_bin = permute(mean(X_3d, 1, 'omitnan'), [3 2 1]);
-t_3d = reshape(t_trim, [bin_samp, n_bins]);
-t_bin = mean(t_3d, 1);
-end
-
-function [low_cb, high_cb, t_cb, n_pairs, dt_cb, drop_info] = prepare_paired_cbpt_bins(low, high, t_vec, bin_ms, fs)
+function [low_cb, high_cb, t_cb, n_pairs, dt_cb, drop_info] = prepare_paired_cbpt_poststim(low, high, t_vec)
 min_pairs = 3;
 n_subjects_input = size(low, 1);
-[low_b, t_b] = bin_average_timecourses(low, t_vec, bin_ms, fs);
-[high_b, ~] = bin_average_timecourses(high, t_vec, bin_ms, fs);
-post = t_b >= 0 & t_b <= 2;
-low_post = low_b(:, post);
-high_post = high_b(:, post);
-t_post = t_b(post);
+t_vec = t_vec(:)';
+post = t_vec >= 0 & t_vec <= 2;
+low_post = low(:, post);
+high_post = high(:, post);
+t_post = t_vec(post);
 n_bins_post_stim = numel(t_post);
 complete = all(isfinite(low_post) & isfinite(high_post), 2);
 n_subjects_dropped = sum(~complete);
@@ -631,10 +607,10 @@ low_cb = low_cb(:, ok_t);
 high_cb = high_cb(:, ok_t);
 t_cb = t_post(ok_t);
 if n_pairs < min_pairs
-    error('Fewer than %d subjects with complete post-stimulus binned data for CBPT.', min_pairs);
+    error('Fewer than %d subjects with complete post-stimulus data for CBPT.', min_pairs);
 end
 if isempty(t_cb)
-    error('No valid post-stimulus bins remain for CBPT.');
+    error('No valid post-stimulus time points remain for CBPT.');
 end
 dt_cb = mean(diff(t_cb), 'omitnan');
 drop_info = struct( ...
@@ -644,9 +620,8 @@ drop_info = struct( ...
     'n_bins_post_stim', n_bins_post_stim, ...
     'n_bins_cbpt', numel(t_cb), ...
     'n_bins_dropped', n_bins_dropped, ...
-    'min_pairs', min_pairs, ...
-    'bin_ms', bin_ms);
-fprintf('CBPT exclusions: subjects %d -> %d (dropped %d); bins %d -> %d (dropped %d)\n', ...
+    'min_pairs', min_pairs);
+fprintf('CBPT exclusions: subjects %d -> %d (dropped %d); time points %d -> %d (dropped %d)\n', ...
     drop_info.n_subjects_input, drop_info.n_subjects_cbpt, drop_info.n_subjects_dropped, ...
     drop_info.n_bins_post_stim, drop_info.n_bins_cbpt, drop_info.n_bins_dropped);
 end
@@ -741,12 +716,8 @@ lines{end+1} = meta.split_info;
 lines{end+1} = sprintf('Subjects contributing both groups: n=%d (TC n=%d)', meta.n_low_split, meta.n_low_tc);
 lines{end+1} = sprintf('Outcome metric: %s', meta.metric);
 lines{end+1} = 'CBPT method: FieldTrip ft_timelockstatistics (montecarlo, cluster maxsum, depsamplesT)';
-lines{end+1} = 'Exclusions: no NaN imputation; subjects need complete post-stim bins; bins need >=3 paired subjects';
-if isfield(meta, 'bin_ms') && isfinite(meta.bin_ms)
-    lines{end+1} = sprintf('Defaults: n_perm=10000, clusteralpha=0.05, two-tailed, post-stimulus [0 2] s, bin_ms=%g', meta.bin_ms);
-else
-    lines{end+1} = 'Defaults: n_perm=10000, clusteralpha=0.05, two-tailed, post-stimulus [0 2] s';
-end
+lines{end+1} = 'Exclusions: no NaN imputation; subjects need complete post-stim time points; time points need >=3 paired subjects';
+lines{end+1} = 'Defaults: n_perm=10000, clusteralpha=0.05, two-tailed, post-stimulus [0 2] s, no temporal binning';
 lines{end+1} = sprintf('TC QC: subjects included for plotting if >=80%% finite samples in [0 2] s (n=%d of %d split subjects)', meta.n_low_tc, meta.n_low_split);
 lines{end+1} = '';
 append_lines_to_file(report_path, lines);
@@ -770,14 +741,14 @@ else
 end
 lines{end+1} = sprintf('  [%s] %s tcrit=%.2f |t|>tcrit at %d timepts; max cluster mass=%.1f; max cluster extent=%d', ...
     R.tag, n_line, R.thr.tcrit, nExtreme, maxClMass, maxClExtent);
-lines{end+1} = sprintf('    Method: n_perm=%d, alpha=%.3f, two-tailed paired (%s vs %s), post-stim [0 2] s, bin_ms=%g', ...
-    R.n_perm, R.alpha, lbl_lo, lbl_hi, R.bin_ms);
+lines{end+1} = sprintf('    Method: n_perm=%d, alpha=%.3f, two-tailed paired (%s vs %s), post-stim [0 2] s, no temporal binning', ...
+    R.n_perm, R.alpha, lbl_lo, lbl_hi);
 if isfield(R, 'drop_info') && ~isempty(R.drop_info)
     d = R.drop_info;
     lines{end+1} = sprintf('    Exclusions: subjects %d -> %d (dropped %d, %.1f%% kept)', ...
         d.n_subjects_input, d.n_subjects_cbpt, d.n_subjects_dropped, ...
         100 * d.n_subjects_cbpt / max(d.n_subjects_input, 1));
-    lines{end+1} = sprintf('    Exclusions: bins %d -> %d (dropped %d, %.1f%% kept; min_pairs=%d)', ...
+    lines{end+1} = sprintf('    Exclusions: time points %d -> %d (dropped %d, %.1f%% kept; min_pairs=%d)', ...
         d.n_bins_post_stim, d.n_bins_cbpt, d.n_bins_dropped, ...
         100 * d.n_bins_cbpt / max(d.n_bins_post_stim, 1), d.min_pairs);
 end
@@ -826,7 +797,7 @@ if size(high_group_timecourses, 1) ~= nS || size(high_group_timecourses, 2) ~= n
     error('Low and high matrices must match for paired CBPT.');
 end
 if any(~isfinite(low_group_timecourses(:))) || any(~isfinite(high_group_timecourses(:)))
-    error('CBPT input must not contain NaN. Use prepare_paired_cbpt_bins first.');
+    error('CBPT input must not contain NaN. Use prepare_paired_cbpt_poststim first.');
 end
 df = nS - 1;
 

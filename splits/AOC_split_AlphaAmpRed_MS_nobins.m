@@ -6,9 +6,8 @@ startup
 addpath(paths.seb_path);
 
 feat_dir = paths.features;
-nobins_output_dir = '/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/figures/splits/SplitERSERD/nobins';
-fig_dir_root = nobins_output_dir;
-stats_dir = nobins_output_dir;
+fig_dir_root = fullfile(paths.figures, 'splits', 'SplitERSERD', 'nobins');
+stats_dir = fig_dir_root;
 if ~isfolder(fig_dir_root), mkdir(fig_dir_root); end
 
 split_file = fullfile(paths.splits_stats, 'AOC_splitAlphaAmpRed_trialSplits.mat');

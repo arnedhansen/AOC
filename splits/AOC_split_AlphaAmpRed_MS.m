@@ -171,20 +171,19 @@ ms_tag_base = 'MS_pct';
 fontSizeTC = 40;
 rng(123)
 fs_ms = ms_cfg.fsample;
-ds_factor = 10;
+ds_factor = 25;
 tc_viz_smooth_sec = 0.05;
 
 % Completeness: both groups finite in analysis window
 tc_window_idx = idx_viable;
-tc_complete_min_frac = 0.995;
+tc_complete_min_frac = 0.90;
 keep_tc = true(nSubj, 1);
 for g = 1:2
     Xg = reshape(ms_tc(:, g, :), nSubj, ms_cfg.n_samp);
     [Xg, keep_g] = preprocess_ms_subject_tc(Xg, idx_viable, ms_cfg);
     ms_tc(:, g, :) = reshape(Xg, [nSubj, 1, ms_cfg.n_samp]);
     frac = mean(isfinite(Xg(:, tc_window_idx)), 2);
-    has_end = isfinite(Xg(:, end));
-    keep_tc = keep_tc & keep_g & (frac >= tc_complete_min_frac) & has_end;
+    keep_tc = keep_tc & keep_g & (frac >= tc_complete_min_frac);
 end
 ms_tc(~keep_tc, :, :) = NaN;
 n_tc = sum(keep_tc);
@@ -302,9 +301,9 @@ ms_cfg.t_vec = ms_cfg.t_comp_vec(ms_cfg.crop_idx);
 ms_cfg.bl_win = [-1.5 -0.5];
 ms_cfg.bl_idx_comp = ms_cfg.t_comp_vec >= ms_cfg.bl_win(1) & ms_cfg.t_comp_vec <= ms_cfg.bl_win(2);
 ms_cfg.min_trials_per_group = 3;
-ms_cfg.outlier_k_iqr = 1.5;
-ms_cfg.max_interp_gap_sec = 0.20;
-ms_cfg.min_subject_coverage = 0.85;
+ms_cfg.outlier_k_iqr = 2.5;
+ms_cfg.max_interp_gap_sec = 0.35;
+ms_cfg.min_subject_coverage = 0.70;
 ms_cfg.smooth_sec = 0.05;
 ms_cfg.win_sm = max(1, round(ms_cfg.smooth_sec * ms_cfg.fsample));
 end

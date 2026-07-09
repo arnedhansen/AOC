@@ -192,19 +192,18 @@ plot_paired_raincloud(metrics_Dev(:,1), metrics_Dev(:,2), colors, tk.group_lbl_l
 close all
 fontSizeTC = 40;
 rng(123)
-ds_factor = 10;
+ds_factor = 25;
 tc_viz_smooth_sec = 0.05;
 t_vec = t_plot;
 tc_window_idx = idx_viable;
-tc_complete_min_frac = 0.995;
+tc_complete_min_frac = 0.90;
 keep_tc = true(nSubj, 1);
 for g = 1:2
     Xg = reshape(dev_tc(:, g, :), nSubj, Tf);
     [Xg, keep_g] = preprocess_gaze_subject_tc(Xg, idx_viable, gaze_cfg);
     dev_tc(:, g, :) = reshape(Xg, [nSubj, 1, Tf]);
     frac = mean(isfinite(Xg(:, tc_window_idx)), 2);
-    has_end = isfinite(Xg(:, end));
-    keep_tc = keep_tc & keep_g & (frac >= tc_complete_min_frac) & has_end;
+    keep_tc = keep_tc & keep_g & (frac >= tc_complete_min_frac);
 end
 dev_tc(~keep_tc, :, :) = NaN;
 n_tc = sum(keep_tc);
@@ -295,11 +294,11 @@ gaze_cfg.t_win = [-0.5 2];
 t_full = gaze_cfg.t_win(1):1/gaze_cfg.fsample:gaze_cfg.t_win(2);
 gaze_cfg.t_vec = t_full(2:end);
 gaze_cfg.n_samp = numel(gaze_cfg.t_vec);
-gaze_cfg.min_trial_coverage = 0.8;
+gaze_cfg.min_trial_coverage = 0.65;
 gaze_cfg.min_trials_per_group = 3;
-gaze_cfg.outlier_k_iqr = 1.5;
-gaze_cfg.max_interp_gap_sec = 0.20;
-gaze_cfg.min_subject_coverage = 0.85;
+gaze_cfg.outlier_k_iqr = 2.5;
+gaze_cfg.max_interp_gap_sec = 0.35;
+gaze_cfg.min_subject_coverage = 0.70;
 gaze_cfg.smooth_sec = 0.05;
 gaze_cfg.win_sm = max(1, round(gaze_cfg.smooth_sec * gaze_cfg.fsample));
 end

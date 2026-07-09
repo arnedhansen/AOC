@@ -481,21 +481,22 @@ low_curves(~isfinite(low_curves)) = NaN; high_curves(~isfinite(high_curves)) = N
 colR_light = colors(1, :) * 0.35 + 0.65;
 colA_light = colors(3, :) * 0.35 + 0.65;
 figure('Position', fig_pos, 'Color', 'w');
-axLow = create_tc_individual_axes(1); hold(axLow, 'on');
-plot(axLow, t_plot, low_curves', 'Color', colR_light, 'LineWidth', 0.8);
-plot(axLow, t_plot, mean(low_curves, 1, 'omitnan'), 'Color', colors(1, :), 'LineWidth', 2.5);
-xline(axLow, 0, '--k'); xlim(axLow, [-0.5 2]); ylabel(axLow, ylab);
-title(axLow, sprintf('%s (n=%d) - %s', lblLow, size(low_curves, 1), title_tag), 'Interpreter', 'none');
-set(axLow, 'FontSize', fsz - 6); box(axLow, 'off')
-axHigh = create_tc_individual_axes(2); hold(axHigh, 'on');
-plot(axHigh, t_plot, high_curves', 'Color', colA_light, 'LineWidth', 0.8);
-plot(axHigh, t_plot, mean(high_curves, 1, 'omitnan'), 'Color', colors(3, :), 'LineWidth', 2.5);
-xline(axHigh, 0, '--k'); xlim(axHigh, [-0.5 2]); xlabel(axHigh, 'Time [s]'); ylabel(axHigh, ylab);
-title(axHigh, sprintf('%s (n=%d) - %s', lblHigh, size(high_curves, 1), title_tag), 'Interpreter', 'none');
-set(axHigh, 'FontSize', fsz - 6); box(axHigh, 'off')
-linkaxes([axLow, axHigh], 'x');
-drawnow;
-exportgraphics(gcf, fullfile(fig_dir, [out_name, '.png']), 'Resolution', 150, 'BackgroundColor', 'white');
+tl = tiledlayout(2, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+nexttile; hold on
+plot(t_plot, low_curves', 'Color', colR_light, 'LineWidth', 0.8);
+plot(t_plot, mean(low_curves, 1, 'omitnan'), 'Color', colors(1, :), 'LineWidth', 2.5);
+xline(0, '--k'); xlim([-0.5 2]); ylabel(ylab);
+title(sprintf('%s (n=%d) - %s', lblLow, size(low_curves, 1), title_tag), 'Interpreter', 'none');
+set(gca, 'FontSize', fsz - 6); box off
+nexttile; hold on
+plot(t_plot, high_curves', 'Color', colA_light, 'LineWidth', 0.8);
+plot(t_plot, mean(high_curves, 1, 'omitnan'), 'Color', colors(3, :), 'LineWidth', 2.5);
+xline(0, '--k'); xlim([-0.5 2]); xlabel('Time [s]'); ylabel(ylab);
+title(sprintf('%s (n=%d) - %s', lblHigh, size(high_curves, 1), title_tag), 'Interpreter', 'none');
+set(gca, 'FontSize', fsz - 6); box off
+finalize_tc_tiledlayout(tl);
+pause(0.05); drawnow;
+saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
 close(gcf);
 end
 
@@ -506,8 +507,8 @@ num_subjects_in = size(low_group_timecourses, 1);
 cohens_d_cb = paired_cohens_dz_curve(low_cb, high_cb);
 
 figure('Position', fig_pos, 'Color', 'w');
-[axMain, axEffect] = create_tc_cbpt_axes();
-axes(axMain); hold on
+tl = tiledlayout(3, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+nexttile([2 1]); hold on
 low_group_mean = mean(low_group_timecourses, 1, 'omitnan'); high_group_mean = mean(high_group_timecourses, 1, 'omitnan');
 low_group_sem = std(low_group_timecourses, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(low_group_timecourses), 1)), 1);
 high_group_sem = std(high_group_timecourses, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(high_group_timecourses), 1)), 1);
@@ -519,14 +520,14 @@ set(low_group_plot.patch, 'FaceColor', colors(1,:), 'FaceAlpha', 0.20);
 set(high_group_plot.patch, 'FaceColor', colors(3,:), 'FaceAlpha', 0.20);
 set(low_group_plot.edge(1), 'Color', 'none'); set(low_group_plot.edge(2), 'Color', 'none');
 set(high_group_plot.edge(1), 'Color', 'none'); set(high_group_plot.edge(2), 'Color', 'none');
-xline(axMain, 0, '--k'); ylabel(axMain, ylab); xlim(axMain, [-0.5 2]);
-ylim(axMain, ylim_from_mean_sem(low_group_mean, low_group_sem, high_group_mean, high_group_sem));
-box(axMain, 'off'); set(axMain, 'FontSize', fsz-4);
-leg_p1 = patch(axMain, NaN, NaN, colors(1,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(1,:), 'LineWidth', 1.5);
-leg_p2 = patch(axMain, NaN, NaN, colors(3,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(3,:), 'LineWidth', 1.5);
-legend(axMain, [leg_p1 leg_p2], {[' ' lblLow], [' ' lblHigh]}, 'Location', 'best', 'FontSize', fsz*0.75, 'Box', 'off');
+xline(0, '--k'); ylabel(ylab); xlim([-0.5 2]);
+ylim(ylim_from_mean_sem(low_group_mean, low_group_sem, high_group_mean, high_group_sem));
+box off; set(gca, 'FontSize', fsz-4);
+leg_p1 = patch(NaN, NaN, colors(1,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(1,:), 'LineWidth', 1.5);
+leg_p2 = patch(NaN, NaN, colors(3,:), 'FaceAlpha', 0.25, 'EdgeColor', colors(3,:), 'LineWidth', 1.5);
+legend([leg_p1 leg_p2], {[' ' lblLow], [' ' lblHigh]}, 'Location', 'best', 'FontSize', fsz*0.75, 'Box', 'off');
 
-axes(axEffect); hold on
+nexttile; hold on
 n_perm = 10000; alpha_cbpt = 0.05; tail_cbpt = 'twotail';
 [clusters, tvals_cl, thr] = ft_cluster_permutation_1d_paired(low_cb, high_cb, n_perm, alpha_cbpt, tail_cbpt, t_cb);
 report_cfg = struct('tag', report_tag, 'modality', 'MS', 'nR', n_pairs, 'n_input', num_subjects_in, ...
@@ -536,14 +537,15 @@ report_cfg = struct('tag', report_tag, 'modality', 'MS', 'nR', n_pairs, 'n_input
     'drop_info', drop_info);
 log_cbpt_report(cbpt_report_file, build_cbpt_report_lines(report_cfg));
 ylims = ylim_from_effect_curve(cohens_d_cb);
-shade_sig_clusters(axEffect, clusters, t_cb, dt_cb, ylims, alpha_cbpt);
-ylim(axEffect, ylims);
-plot(axEffect, t_cb, cohens_d_cb, 'k-', 'LineWidth', 3.5);
-yline(axEffect, 0, '--'); xline(axEffect, 0, '--k');
-xlabel(axEffect, 'Time [s]'); ylabel(axEffect, 'Cohen''s d_z');
-xlim(axEffect, [-0.5 2]); box(axEffect, 'off'); set(axEffect, 'FontSize', fsz-4);
-drawnow;
-exportgraphics(gcf, fullfile(fig_dir, [out_name, '.png']), 'Resolution', 150, 'BackgroundColor', 'white');
+shade_sig_clusters(gca, clusters, t_cb, dt_cb, ylims, alpha_cbpt);
+ylim(ylims);
+plot(t_cb, cohens_d_cb, 'k-', 'LineWidth', 3.5);
+yline(0, '--'); xline(0, '--k');
+xlabel('Time [s]'); ylabel('Cohen''s d_z');
+xlim([-0.5 2]); box off; set(gca, 'FontSize', fsz-4);
+finalize_tc_tiledlayout(tl);
+pause(0.05); drawnow;
+saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
 close(gcf);
 end
 
@@ -552,8 +554,8 @@ t_plot = t_vec(:)';
 difference_timecourses = high_group_timecourses - low_group_timecourses;
 
 figure('Position', fig_pos, 'Color', 'w');
-[axMain, axEffect] = create_tc_cbpt_axes();
-axes(axMain); hold on
+tl = tiledlayout(3, 1, 'TileSpacing', 'compact', 'Padding', 'compact');
+nexttile([2 1]); hold on
 difference_mean = mean(difference_timecourses, 1, 'omitnan');
 difference_sem = std(difference_timecourses, 0, 1, 'omitnan') ./ max(sqrt(sum(isfinite(difference_timecourses), 1)), 1);
 difference_ci = 1.96 * difference_sem;
@@ -561,30 +563,31 @@ difference_plot = shadedErrorBar(t_plot, difference_mean, difference_ci, 'linePr
 set(difference_plot.mainLine, 'Color', [0.1 0.1 0.1], 'LineWidth', 2.8);
 set(difference_plot.patch, 'FaceColor', [0.4 0.4 0.4], 'FaceAlpha', 0.20);
 set(difference_plot.edge(1), 'Color', 'none'); set(difference_plot.edge(2), 'Color', 'none');
-yline(axMain, 0, '--');
-xline(axMain, 0, '--k');
-xlim(axMain, [-0.5 2]);
-ylim(axMain, ylim_from_single_mean_err(difference_mean, difference_ci));
-ylabel(axMain, 'High - Low Change [%]');
-box(axMain, 'off'); set(axMain, 'FontSize', fsz-4);
+yline(0, '--');
+xline(0, '--k');
+xlim([-0.5 2]);
+ylim(ylim_from_single_mean_err(difference_mean, difference_ci));
+ylabel('High - Low Change [%]');
+box off; set(gca, 'FontSize', fsz-4);
 
-axes(axEffect); hold on
+nexttile; hold on
 n_perm = 10000; alpha_cbpt = 0.05; tail_cbpt = 'twotail';
 [low_cb, high_cb, t_cb, ~, dt_cb] = prepare_paired_cbpt_bins(low_group_timecourses, high_group_timecourses, t_plot, bin_ms, fs);
 cohens_d_cb = paired_cohens_dz_curve(low_cb, high_cb);
 [clusters, ~, ~] = ft_cluster_permutation_1d_paired(low_cb, high_cb, n_perm, alpha_cbpt, tail_cbpt, t_cb);
 ylims = ylim_from_effect_curve(cohens_d_cb);
-shade_sig_clusters(axEffect, clusters, t_cb, dt_cb, ylims, alpha_cbpt);
-ylim(axEffect, ylims);
-plot(axEffect, t_cb, cohens_d_cb, 'k-', 'LineWidth', 3.5);
-yline(axEffect, 0, '--');
-xline(axEffect, 0, '--k');
-xlabel(axEffect, 'Time [s]');
-ylabel(axEffect, 'Cohen''s d_z');
-xlim(axEffect, [-0.5 2]);
-box(axEffect, 'off'); set(axEffect, 'FontSize', fsz-4);
-drawnow;
-exportgraphics(gcf, fullfile(fig_dir, [out_name, '.png']), 'Resolution', 150, 'BackgroundColor', 'white');
+shade_sig_clusters(gca, clusters, t_cb, dt_cb, ylims, alpha_cbpt);
+ylim(ylims);
+plot(t_cb, cohens_d_cb, 'k-', 'LineWidth', 3.5);
+yline(0, '--');
+xline(0, '--k');
+xlabel('Time [s]');
+ylabel('Cohen''s d_z');
+xlim([-0.5 2]);
+box off; set(gca, 'FontSize', fsz-4);
+finalize_tc_tiledlayout(tl);
+pause(0.05); drawnow;
+saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
 close(gcf);
 end
 
@@ -696,18 +699,9 @@ for k = 1:numel(starts)
 end
 end
 
-function [axMain, axEffect] = create_tc_cbpt_axes()
-axMain = axes('Position', [0.08, 0.30, 0.89, 0.53]);
-axEffect = axes('Position', [0.08, 0.08, 0.89, 0.17]);
-linkaxes([axMain, axEffect], 'x');
-end
-
-function ax = create_tc_individual_axes(panelIdx)
-if panelIdx == 1
-    ax = axes('Position', [0.08, 0.52, 0.89, 0.40]);
-else
-    ax = axes('Position', [0.08, 0.08, 0.89, 0.40]);
-end
+function finalize_tc_tiledlayout(tl)
+drawnow;
+tl.OuterPosition = [0.06, 0.04, 0.90, 0.92];
 end
 
 function yl = ylim_from_single_mean_err(m, e)

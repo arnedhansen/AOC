@@ -208,13 +208,15 @@ init_cbpt_report_file(cbpt_report_file, struct( ...
     'n_high_tc', n_tc, ...
     'metric', 'Microsaccade rate change [% baseline] (paired within subject)'));
 
+tc_base = sprintf('AOC_splitERSERD_timecourse_%s_MS', task_tag);
+report_tag = sprintf('%s_%s_%s', task_tag, split_label, ms_tag_base);
 plot_paired_timecourse_CBPT(Rall, Aall, colors, ms_ylabel, ...
-    sprintf('%s_%s_%s', task_tag, split_label, ms_tag_base), ...
+    tc_base, report_tag, ...
     fig_dir_root, fig_pos, fontSizeTC, fs_ms, ds_factor, t_vec, tc_viz_smooth_sec, ...
     tk.group_lbl_low, tk.group_lbl_high, cbpt_report_file);
 plot_paired_timecourse_individuals(Rall, Aall, colors, ms_ylabel, 'Collapsed over conditions', ...
-    sprintf('%s_%s_%s_individuals_collapsed', task_tag, split_label, ms_tag_base), ...
-    fig_dir_task, fig_pos, fontSizeTC, fs_ms, t_vec, tc_viz_smooth_sec, ...
+    sprintf('%s_individuals', tc_base), ...
+    fig_dir_root, fig_pos, fontSizeTC, fs_ms, t_vec, tc_viz_smooth_sec, ...
     tk.group_lbl_low, tk.group_lbl_high);
 
 %% CSV export (subject x group)
@@ -301,7 +303,7 @@ ms_cfg.t_vec = ms_cfg.t_comp_vec(ms_cfg.crop_idx);
 ms_cfg.bl_win = [-1.5 -0.5];
 ms_cfg.bl_idx_comp = ms_cfg.t_comp_vec >= ms_cfg.bl_win(1) & ms_cfg.t_comp_vec <= ms_cfg.bl_win(2);
 ms_cfg.min_trials_per_group = 3;
-ms_cfg.outlier_k_iqr = 2.5;
+ms_cfg.outlier_k_iqr = 1.5;
 ms_cfg.max_interp_gap_sec = 0.35;
 ms_cfg.min_subject_coverage = 0.70;
 ms_cfg.smooth_sec = 0.05;
@@ -486,7 +488,7 @@ scatter(x_box + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, .
     'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
 end
 
-function plot_paired_timecourse_individuals(Rall, Aall, colors, ylab, title_tag, save_tag, fig_dir, fig_pos, fsz, fs, t_vec, smooth_sec, lblLow, lblHigh)
+function plot_paired_timecourse_individuals(Rall, Aall, colors, ylab, title_tag, out_name, fig_dir, fig_pos, fsz, fs, t_vec, smooth_sec, lblLow, lblHigh)
 nT = size(Rall, 2);
 t_plot = t_vec(:)';
 win_sm = max(1, round(smooth_sec * fs));
@@ -513,11 +515,11 @@ xline(0, '--k'); xlim([-0.5 2]); xlabel('Time [s]'); ylabel(ylab);
 title(sprintf('%s (n=%d) - %s', lblHigh, size(A, 1), title_tag), 'Interpreter', 'none');
 set(gca, 'FontSize', fsz - 6); box off
 pause(0.05); drawnow;
-saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_MS_timecourse_%s.png', save_tag)));
+saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
 close(gcf);
 end
 
-function plot_paired_timecourse_CBPT(Rall, Aall, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, ds_factor, t_vec, smooth_sec, lblLow, lblHigh, cbpt_report_file)
+function plot_paired_timecourse_CBPT(Rall, Aall, colors, ylab, out_name, report_tag, fig_dir, fig_pos, fsz, fs, ds_factor, t_vec, smooth_sec, lblLow, lblHigh, cbpt_report_file)
 nT = size(Rall, 2);
 t_plot = t_vec(:)';
 dt = mean(diff(t_plot), 'omitnan');
@@ -565,7 +567,7 @@ Aall_ds = Aall(:, 1:ds_factor:end);
 t_plot_ds = t_plot(1:ds_factor:end);
 dt_ds = ds_factor * dt;
 [clusters, tvals_cl, thr] = ft_cluster_permutation_1d_paired(Rall_ds, Aall_ds, n_perm, alpha_cbpt, tail_cbpt, t_plot_ds);
-report_cfg = struct('tag', save_tag, 'modality', 'MS', 'nR', nR, 'nA', nR, ...
+report_cfg = struct('tag', report_tag, 'modality', 'MS', 'nR', nR, 'nA', nR, ...
     'lbl_low', lblLow, 'lbl_high', lblHigh, 'n_perm', n_perm, 'alpha', alpha_cbpt, ...
     'tail', tail_cbpt, 'nT_ds', numel(t_plot_ds), 'bin_ms', ds_factor * 1000 / fs, ...
     'fs', fs, 'ds_factor', ds_factor, 'clusters', clusters, 'tvals', tvals_cl, ...
@@ -602,7 +604,7 @@ yline(0, '--'); xline(0, '--k');
 xlabel('Time [s]'); ylabel('Cohen''s d');
 xlim([-0.5 2]); box off; set(gca, 'FontSize', fsz-4);
 pause(0.05); drawnow;
-saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_MS_timecourse_%s_CBPT.png', save_tag)));
+saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
 close(gcf);
 end
 

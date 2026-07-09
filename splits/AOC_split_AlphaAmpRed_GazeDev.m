@@ -232,13 +232,15 @@ init_cbpt_report_file(cbpt_report_file, struct( ...
     'n_high_tc', n_tc, ...
     'metric', 'Gaze deviation change [% baseline] (paired within subject)'));
 
+tc_base = sprintf('AOC_splitERSERD_timecourse_%s_GazeDev', task_tag);
+report_tag = sprintf('%s_%s_GazeDev_pct', task_tag, split_label);
 plot_paired_timecourse_CBPT(Rall, Aall, colors, gaze_ylabel, ...
-    sprintf('%s_%s_GazeDev_pct', task_tag, split_label), ...
+    tc_base, report_tag, ...
     fig_dir_root, fig_pos, fontSizeTC, gaze_cfg.fsample, ds_factor, t_vec, tc_viz_smooth_sec, ...
     tk.group_lbl_low, tk.group_lbl_high, cbpt_report_file);
 plot_paired_timecourse_individuals(Rall, Aall, colors, gaze_ylabel, 'Collapsed over conditions', ...
-    sprintf('%s_%s_GazeDev_pct_individuals_collapsed', task_tag, split_label), ...
-    fig_dir_task, fig_pos, fontSizeTC, gaze_cfg.fsample, t_vec, tc_viz_smooth_sec, ...
+    sprintf('%s_individuals', tc_base), ...
+    fig_dir_root, fig_pos, fontSizeTC, gaze_cfg.fsample, t_vec, tc_viz_smooth_sec, ...
     tk.group_lbl_low, tk.group_lbl_high);
 
 %% CSV
@@ -294,9 +296,8 @@ gaze_cfg.t_win = [-0.5 2];
 t_full = gaze_cfg.t_win(1):1/gaze_cfg.fsample:gaze_cfg.t_win(2);
 gaze_cfg.t_vec = t_full(2:end);
 gaze_cfg.n_samp = numel(gaze_cfg.t_vec);
-gaze_cfg.min_trial_coverage = 0.65;
 gaze_cfg.min_trials_per_group = 3;
-gaze_cfg.outlier_k_iqr = 2.5;
+gaze_cfg.outlier_k_iqr = 1.5;
 gaze_cfg.max_interp_gap_sec = 0.35;
 gaze_cfg.min_subject_coverage = 0.70;
 gaze_cfg.smooth_sec = 0.05;
@@ -314,7 +315,6 @@ if ~isfield(et, 'trialinfo') || size(et.trialinfo, 2) < 2
 end
 
 t_plot = gaze_cfg.t_vec;
-idx_viable = (t_plot >= 0) & (t_plot <= 2);
 dev_low = [];
 dev_high = [];
 
@@ -358,9 +358,6 @@ for trl = 1:numel(et.trial)
     end
     dev_pct = 100 * (dev - gd_base) ./ gd_base;
     tc_interp = interp1(t, dev_pct, t_plot, 'linear', NaN);
-    if mean(isfinite(tc_interp(idx_viable))) < gaze_cfg.min_trial_coverage
-        continue
-    end
     if is_low
         dev_low(end+1, :) = tc_interp; %#ok<AGROW>
     end
@@ -625,7 +622,7 @@ scatter(x_box + jit, y, dot_size, col, 'filled', 'MarkerFaceAlpha', dot_alpha, .
     'MarkerEdgeColor', [0.5 0.5 0.5], 'LineWidth', 0.5);
 end
 
-function plot_paired_timecourse_individuals(Rall, Aall, colors, ylab, title_tag, save_tag, fig_dir, fig_pos, fsz, fs, t_vec, smooth_sec, lblLow, lblHigh)
+function plot_paired_timecourse_individuals(Rall, Aall, colors, ylab, title_tag, out_name, fig_dir, fig_pos, fsz, fs, t_vec, smooth_sec, lblLow, lblHigh)
 nT = size(Rall, 2); t_plot = t_vec(:);
 win_sm = max(1, round(smooth_sec * fs));
 R = Rall; A = Aall; R(~isfinite(R)) = NaN; A(~isfinite(A)) = NaN;
@@ -644,11 +641,11 @@ xline(0,'--k'); xlim([-0.5 2]); xlabel('Time [s]'); ylabel(ylab);
 title(sprintf('%s (n=%d) - %s', lblHigh, size(A,1), title_tag), 'Interpreter','none');
 set(gca,'FontSize',fsz-6); box off
 pause(0.05); drawnow;
-saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_GazeDev_timecourse_%s.png', save_tag)));
+saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
 close(gcf);
 end
 
-function plot_paired_timecourse_CBPT(Rall, Aall, colors, ylab, save_tag, fig_dir, fig_pos, fsz, fs, ds_factor, t_vec, smooth_sec, lblLow, lblHigh, cbpt_report_file)
+function plot_paired_timecourse_CBPT(Rall, Aall, colors, ylab, out_name, report_tag, fig_dir, fig_pos, fsz, fs, ds_factor, t_vec, smooth_sec, lblLow, lblHigh, cbpt_report_file)
 nT = size(Rall, 2);
 t_plot = t_vec(:)';
 dt = mean(diff(t_plot), 'omitnan');
@@ -697,7 +694,7 @@ t_plot_ds = t_plot(1:ds_factor:end);
 dt_ds = ds_factor * dt;
 [clusters, tvals_cl, thr] = ft_cluster_permutation_1d_paired(Rall_ds, Aall_ds, n_perm, alpha_cbpt, tail_cbpt, t_plot_ds);
 log_cbpt_report(cbpt_report_file, build_cbpt_report_lines(struct( ...
-    'tag', save_tag, 'modality', 'gaze', 'nR', nR, 'nA', nR, 'lbl_low', lblLow, 'lbl_high', lblHigh, ...
+    'tag', report_tag, 'modality', 'gaze', 'nR', nR, 'nA', nR, 'lbl_low', lblLow, 'lbl_high', lblHigh, ...
     'n_perm', n_perm, 'alpha', alpha_cbpt, 'tail', tail_cbpt, 'nT_ds', numel(t_plot_ds), ...
     'bin_ms', ds_factor * 1000 / fs, 'fs', fs, 'ds_factor', ds_factor, 'clusters', clusters, ...
     'tvals', tvals_cl, 'thr', thr, 't_plot', t_plot_ds, 'dt_ds', dt_ds)));
@@ -731,7 +728,7 @@ yline(0, '--'); xline(0, '--k');
 xlabel('Time [s]'); ylabel('Cohen''s d');
 xlim([-0.5 2]); box off; set(gca, 'FontSize', fsz-4);
 pause(0.05); drawnow;
-saveas(gcf, fullfile(fig_dir, sprintf('AOC_splitERSERD_GazeDev_timecourse_%s_CBPT.png', save_tag)));
+saveas(gcf, fullfile(fig_dir, [out_name, '.png']));
 close(gcf);
 end
 

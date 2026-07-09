@@ -31,8 +31,8 @@ tasks(1).et_fname = 'dataET_sternberg.mat';
 tasks(1).gaze_trials_file = 'AOC_gaze_matrix_sternberg_trials.mat';
 tasks(1).gaze_trials_var = 'gaze_data_sternberg_trials';
 tasks(1).topo_latency = [1 2];
-tasks(1).group_lbl_low = 'ERD';
-tasks(1).group_lbl_high = 'ERS';
+tasks(1).group_lbl_low = 'Low Alpha';
+tasks(1).group_lbl_high = 'High Alpha';
 tasks(1).ersd_var = 'ERSD_late';
 
 tasks(2).tag = 'nback';
@@ -41,8 +41,8 @@ tasks(2).et_fname = 'dataET_nback.mat';
 tasks(2).gaze_trials_file = 'AOC_gaze_matrix_nback_trials.mat';
 tasks(2).gaze_trials_var = 'gaze_data_nback_trials';
 tasks(2).topo_latency = [0 2];
-tasks(2).group_lbl_low = 'More ERD';
-tasks(2).group_lbl_high = 'Less ERD';
+tasks(2).group_lbl_low = 'Low Alpha';
+tasks(2).group_lbl_high = 'High Alpha';
 tasks(2).ersd_var = 'ERSD_full';
 
 for ti = 1:numel(tasks)

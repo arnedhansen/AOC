@@ -3,8 +3,8 @@
 % baseline in [-1.5 -0.5] s (dB), reduce occipital ROI x 8-14 Hz x split
 % latency, then median-split ALL trials within each subject (conditions pooled).
 %
-% Sternberg split metric: ERSD late window [1 2] s -> ERD vs ERS
-% N-back split metric:    ERSD full window [0 2] s -> More ERD vs Less ERD
+% Sternberg split metric: ERSD late window [1 2] s -> Low Alpha vs High Alpha
+% N-back split metric:    ERSD full window [0 2] s -> Low Alpha vs High Alpha
 %
 % Saves trial indices + scalars for MS / GazeDev split scripts, plus sanity
 % ERSD time-course figures (toggle single-subject figures below).
@@ -37,8 +37,8 @@ tasks(1).cond_out = [2 4 6];
 tasks(1).toi = -1.5:0.05:3;
 tasks(1).split_latency = [1 2];
 tasks(1).ersd_var = 'ERSD_late';
-tasks(1).group_lbl_low = 'ERD';
-tasks(1).group_lbl_high = 'ERS';
+tasks(1).group_lbl_low = 'Low Alpha';
+tasks(1).group_lbl_high = 'High Alpha';
 
 tasks(2).tag = 'nback';
 tasks(2).data_fname = 'dataEEG_TFR_nback.mat';
@@ -48,8 +48,8 @@ tasks(2).cond_out = [1 2 3];
 tasks(2).toi = -1.5:0.05:2.25;
 tasks(2).split_latency = [0 2];
 tasks(2).ersd_var = 'ERSD_full';
-tasks(2).group_lbl_low = 'More ERD';
-tasks(2).group_lbl_high = 'Less ERD';
+tasks(2).group_lbl_low = 'Low Alpha';
+tasks(2).group_lbl_high = 'High Alpha';
 
 fprintf('\n=== AOC Split AlphaAmpRed Prep (trial-level, common baseline) ===\n');
 fprintf('SAVE_SINGLE_SUBJECT_FIGS = %d\n', SAVE_SINGLE_SUBJECT_FIGS);

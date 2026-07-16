@@ -19,24 +19,38 @@ script_dir <- {
 source(file.path(script_dir, "AOC_stats_glmm_preprocess.R"))
 
 stats_dir <- "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC/data/stats"
-out_dir <- file.path(stats_dir, "FullModelTables")
-combined_dir <- file.path(out_dir, "combined_tables")
+full_dir <- file.path(stats_dir, "fullModelTables")
+old_dir <- file.path(full_dir, "old_singleTask")
+combined_dir <- file.path(stats_dir, "combinedTables")
+out_dir <- old_dir
 
-if (!dir.exists(out_dir)) {
-  dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-}
-if (!dir.exists(combined_dir)) {
-  dir.create(combined_dir, recursive = TRUE, showWarnings = FALSE)
+for (d in c(full_dir, old_dir, combined_dir)) {
+  if (!dir.exists(d)) {
+    dir.create(d, recursive = TRUE, showWarnings = FALSE)
+  }
 }
 
 # Usable text width for a standard Word page with 1-inch margins (letter).
 SUMMARY_PAIRWISE_TABLE_WIDTH_IN <- 6.5
 
 # Font size (pt) for the combined summary results tables.
-SUMMARY_FONT_SIZE <- 7
+SUMMARY_FONT_SIZE <- 6
 
 fmt_num <- function(x) {
   ifelse(is.na(x), "", sprintf("%.3f", as.numeric(x)))
+}
+
+fmt_se <- function(x) {
+  ifelse(is.na(x), "", sprintf("%.4f", as.numeric(x)))
+}
+
+fmt_lr_effect <- function(x) {
+  x <- as.numeric(x)
+  ifelse(
+    is.na(x),
+    "",
+    ifelse(is.finite(x) & x > 0 & x < 0.001, sprintf("%.4f", x), sprintf("%.3f", x))
+  )
 }
 
 fmt_p <- function(p) {
@@ -49,7 +63,15 @@ fmt_p <- function(p) {
 }
 
 fmt_ci <- function(lo, hi) {
-  paste0("[", sprintf("%.3f", as.numeric(lo)), ", ", sprintf("%.3f", as.numeric(hi)), "]")
+  lo <- as.numeric(lo)
+  hi <- as.numeric(hi)
+  n <- max(length(lo), length(hi))
+  lo <- rep(lo, length.out = n)
+  hi <- rep(hi, length.out = n)
+  out <- rep("", n)
+  ok <- is.finite(lo) & is.finite(hi)
+  out[ok] <- paste0("[", sprintf("%.3f", lo[ok]), ", ", sprintf("%.3f", hi[ok]), "]")
+  out
 }
 
 safe_read_csv <- function(path) {
@@ -95,16 +117,32 @@ display_dv <- function(dv) {
 
 prettify_model_label <- function(model_label, dv_label = NULL, predictor_label = NULL) {
   x <- as.character(model_label)
+  x <- gsub("_z", "", x)
   x <- gsub("^DV\\s*~", paste0(dv_label, " ~"), x)
   x <- gsub("\\(1\\|ID\\)", "(1|Subject)", x)
   x <- gsub("\\(1\\|SubjectID\\)", "(1|Subject)", x)
-  x <- gsub("_c\\b", "", x)
   x <- gsub("\\s+", " ", x)
   x <- trimws(x)
   if (!is.null(predictor_label) && nzchar(predictor_label)) {
     x <- gsub(predictor_label, predictor_label, x, fixed = TRUE)
   }
   x
+}
+
+measure_model_text_from_spec <- function(spec) {
+  dv_label <- summary_table_title(spec$dv)
+  fixed_nb <- safe_read_csv(file.path(stats_dir, spec$nback_fixed))
+  fixed_st <- safe_read_csv(file.path(stats_dir, spec$sternberg_fixed))
+  model_labels <- unique(c(
+    if (!is.null(fixed_nb) && "ModelLabel" %in% names(fixed_nb)) as.character(fixed_nb$ModelLabel[1]) else NA_character_,
+    if (!is.null(fixed_st) && "ModelLabel" %in% names(fixed_st)) as.character(fixed_st$ModelLabel[1]) else NA_character_
+  ))
+  model_labels <- model_labels[!is.na(model_labels) & nzchar(model_labels)]
+  if (length(model_labels) >= 1L) {
+    prettify_model_label(model_labels[1], dv_label = dv_label)
+  } else {
+    paste0(dv_label, " ~ Load + (1|Subject)")
+  }
 }
 
 format_load_level <- function(lvl, load_ref = NULL) {
@@ -120,12 +158,10 @@ clean_term <- function(term, load_ref = NULL) {
   out <- term
   out[out == "Intercept"] <- "Intercept"
   out[out == "Group Var"] <- "Random intercept variance (Subject)"
+  out[out == "Trial Var"] <- "Random intercept variance (Trial)"
+  out[out == "Residual SD"] <- "Residual SD"
   out[out == "Load"] <- "Load"
   out[out == "Interaction"] <- "Interaction term"
-  out[out == "GazeDeviation_c"] <- "Gaze deviation"
-  out[out == "MSRate_c"] <- "Microsaccade rate"
-  out[out == "GazeDeviationBL_c"] <- "Gaze deviation baseline"
-  out[out == "MSRateBL_c"] <- "Microsaccade rate baseline"
 
   # lme4 Load main effects (orthogonal polynomial or treatment coding)
   load_main <- grepl("^Load", out) & !grepl(":", out)
@@ -142,23 +178,14 @@ clean_term <- function(term, load_ref = NULL) {
     )
   }
 
-  # lme4 gaze:Load interactions
-  int_lme4 <- grepl("_c:Load|^Load.*_c:", out)
+  # lme4 gaze_z:Load interactions
+  int_lme4 <- grepl("_z:Load|^Load.*_z:", out)
   if (any(int_lme4)) {
     for (i in which(int_lme4)) {
       parts <- strsplit(out[i], ":", fixed = TRUE)[[1]]
       pred <- parts[1]
       load_part <- parts[2]
       lvl <- sub("^Load", "", load_part)
-      pred <- gsub("_c$", "", pred)
-      pred <- switch(
-        pred,
-        GazeDeviation = "Gaze deviation",
-        MSRate = "Microsaccade rate",
-        GazeDeviationBL = "Gaze deviation baseline",
-        MSRateBL = "Microsaccade rate baseline",
-        pred
-      )
       load_txt <- if (lvl %in% c(".L", "Load.L")) {
         "linear trend"
       } else if (lvl %in% c(".Q", "Load.Q")) {
@@ -170,32 +197,203 @@ clean_term <- function(term, load_ref = NULL) {
     }
   }
 
-  # statsmodels legacy Condition terms (fallback)
-  cond_pattern <- "^C\\(Condition, Treatment\\(reference=\"([^\"]+)\"\\)\\)\\[T\\.(.+)\\]$"
-  cond_hits <- grepl(cond_pattern, out)
-  if (any(cond_hits)) {
-    refs <- sub(cond_pattern, "\\1", out[cond_hits])
-    lvls <- sub(cond_pattern, "\\2", out[cond_hits])
-    out[cond_hits] <- paste0("Condition: ", lvls, " vs ", refs)
-  }
+  out <- gsub("_z", "", out, fixed = FALSE)
 
-  int_pattern <- "^([A-Za-z0-9_]+):C\\(Condition, Treatment\\(reference=\"([^\"]+)\"\\)\\)\\[T\\.(.+)\\]$"
-  int_hits <- grepl(int_pattern, out)
-  if (any(int_hits)) {
-    pred <- sub(int_pattern, "\\1", out[int_hits])
-    ref <- sub(int_pattern, "\\2", out[int_hits])
-    lvl <- sub(int_pattern, "\\3", out[int_hits])
-    pred <- ifelse(pred == "GazeDeviation_c", "Gaze deviation", pred)
-    pred <- ifelse(pred == "MSRate_c", "Microsaccade rate", pred)
-    out[int_hits] <- paste0("Interaction: ", pred, " x Condition (", lvl, " vs ", ref, ")")
-  }
-  gsub(" \\(centered\\)", "", out, fixed = FALSE)
+  out
+}
+
+predictor_display_term <- function(term) {
+  gsub("_z$", "", as.character(term))
 }
 
 # Ordered-factor Load expands to polynomial contrasts (Load.L / Load.Q).
 # Load effects are reported via emmeans pairwise contrasts, not these terms.
 is_load_poly_term <- function(term) {
   grepl("Load\\.(L|Q)", as.character(term))
+}
+
+load_ref_for_task <- function(task_name) {
+  if (tolower(task_name) == "nback") "1-back" else "WM load 2"
+}
+
+generic_load_contrast <- function(x, y, low, mid, high) {
+  if (x == mid && y == low) {
+    "middle vs lowest"
+  } else if (x == high && y == low) {
+    "highest vs lowest"
+  } else if (x == high && y == mid) {
+    "highest vs middle"
+  } else {
+    paste0(x, " vs ", y)
+  }
+}
+
+genericize_term <- function(term, task_name, task_config = NBACK_TASK_CONFIG) {
+  term <- as.character(term)
+  if (tolower(task_name) == "sternberg") {
+    task_config <- STERNBERG_TASK_CONFIG
+  }
+  cats <- task_config$categories
+  low <- cats[1]
+  mid <- cats[2]
+  high <- cats[3]
+
+  if (grepl("^Load: ", term)) {
+    m <- regmatches(term, regexec("^Load: (.+) vs (.+)$", term))[[1]]
+    if (length(m) == 3) {
+      return(paste0("Load: ", generic_load_contrast(m[2], m[3], low, mid, high)))
+    }
+  }
+
+  if (grepl("^Interaction: .+ x Load \\(.+\\)$", term)) {
+    m <- regmatches(term, regexec("^Interaction: (.+) x Load \\((.+) vs (.+)\\)$", term))[[1]]
+    if (length(m) == 4) {
+      return(paste0(
+        "Interaction: ", m[2], " x Load (",
+        generic_load_contrast(m[3], m[4], low, mid, high), ")"
+      ))
+    }
+  }
+
+  term
+}
+
+order_generic_terms <- function(terms) {
+  terms <- unique(as.character(terms))
+  # Normalize intercept label variants before ordering.
+  terms[terms %in% c("Intercept", "(Intercept)")] <- "(Intercept)"
+  priority <- c(
+    "(Intercept)",
+    "Load: middle vs lowest",
+    "Load: highest vs lowest"
+  )
+  ordered <- priority[priority %in% terms]
+  rest <- terms[!terms %in% priority]
+  rest_main <- sort(rest[!grepl("^Interaction:", rest)])
+  rest_int <- rest[grepl("^Interaction:", rest)]
+  # Prefer middle-before-highest within interaction blocks.
+  rest_int <- c(
+    rest_int[grepl("middle vs lowest", rest_int)],
+    rest_int[grepl("highest vs lowest", rest_int)],
+    rest_int[!grepl("middle vs lowest|highest vs lowest", rest_int)]
+  )
+  # Predictor main effects sit between intercept and load terms.
+  load_idx <- which(ordered %in% c("Load: middle vs lowest", "Load: highest vs lowest"))
+  if (length(rest_main) > 0 && length(load_idx) > 0) {
+    pre <- ordered[seq_len(load_idx[1] - 1L)]
+    loads <- ordered[load_idx]
+    c(pre, rest_main, loads, rest_int)
+  } else {
+    c(ordered, rest_main, rest_int)
+  }
+}
+
+order_random_terms <- function(terms) {
+  terms <- unique(as.character(terms))
+  priority <- c(
+    "Random intercept variance (Subject)",
+    "Random intercept variance (Trial)",
+    "Residual SD"
+  )
+  ordered <- priority[priority %in% terms]
+  c(ordered, terms[!terms %in% priority])
+}
+
+DUAL_TASK_FIRST_COL_WIDTH <- 1.75
+DUAL_TASK_PER_TASK_WIDTHS <- c(0.38, 0.32, 0.40, 0.32, 0.85)
+DUAL_TASK_RANDOM_PER_TASK_WIDTHS <- c(0.55, 0.50, 0.85)
+DUAL_TASK_STAT_HEADER <- c("\u03b2", "SE", "Statistic", "p", "CI")
+DUAL_TASK_RANDOM_HEADER <- c("Variance", "SE", "CI")
+
+build_aligned_effect_matrix <- function(
+  raw_nb,
+  raw_st,
+  task_nb = "nback",
+  task_st = "sternberg",
+  random = FALSE
+) {
+  load_ref_nb <- load_ref_for_task(task_nb)
+  load_ref_st <- load_ref_for_task(task_st)
+
+  prep <- function(raw, load_ref, task) {
+    if (is.null(raw) || nrow(raw) == 0) {
+      return(NULL)
+    }
+    mask_random <- vapply(raw$Term, is_random_export_term, logical(1))
+    if (random) {
+      df <- raw[mask_random, , drop = FALSE]
+    } else {
+      df <- raw[!mask_random & !is_load_poly_term(raw$Term), , drop = FALSE]
+    }
+    if (nrow(df) == 0) {
+      return(NULL)
+    }
+    df$TermLabel <- clean_term(df$Term, load_ref = load_ref)
+    df$TermGeneric <- vapply(
+      seq_len(nrow(df)),
+      function(i) genericize_term(df$TermLabel[i], task),
+      character(1)
+    )
+    df
+  }
+
+  nb <- prep(raw_nb, load_ref_nb, task_nb)
+  st <- prep(raw_st, load_ref_st, task_st)
+  if (random) {
+    labels <- order_random_terms(c(
+      if (!is.null(nb)) nb$TermLabel else character(),
+      if (!is.null(st)) st$TermLabel else character()
+    ))
+  } else {
+    labels <- order_generic_terms(c(
+      if (!is.null(nb)) nb$TermGeneric else character(),
+      if (!is.null(st)) st$TermGeneric else character()
+    ))
+  }
+
+  fill_mat <- function(df, n_labels) {
+    ncol_mat <- if (random) 3L else 5L
+    mat <- matrix("", nrow = n_labels, ncol = ncol_mat)
+    if (!is.null(df)) {
+      for (i in seq_along(labels)) {
+        row <- if (random) {
+          df[df$TermLabel == labels[i], , drop = FALSE]
+        } else {
+          df[df$TermGeneric == labels[i], , drop = FALSE]
+        }
+        if (nrow(row) > 0) {
+          if (random) {
+            mat[i, ] <- c(
+              fmt_num(row$beta[1]),
+              fmt_se(row$SE[1]),
+              fmt_ci(row$CI_low[1], row$CI_high[1])
+            )
+          } else {
+            mat[i, ] <- c(
+              fmt_num(row$beta[1]),
+              fmt_num(row$SE[1]),
+              fmt_num(row$stat[1]),
+              fmt_p(row$p[1]),
+              fmt_ci(row$CI_low[1], row$CI_high[1])
+            )
+          }
+        }
+      }
+    }
+    out <- as.data.frame(mat, stringsAsFactors = FALSE)
+    if (random) {
+      names(out) <- c("variance", "se", "ci")
+    } else {
+      names(out) <- c("beta", "se", "statistic", "p", "ci")
+    }
+    out
+  }
+
+  list(
+    labels = labels,
+    nback = fill_mat(nb, length(labels)),
+    sternberg = fill_mat(st, length(labels))
+  )
 }
 
 clean_fixed <- function(df, load_ref = NULL) {
@@ -257,9 +455,9 @@ clean_pairwise <- function(df) {
   out$SE <- fmt_num(out$SE)
   out$Statistic <- fmt_num(out$z)
   if ("p_adj" %in% names(out)) {
-    out$padj <- fmt_p(out$p_adj)
+    out$`p_adj` <- fmt_p(out$p_adj)
   } else {
-    out$padj <- fmt_p(out$p)
+    out$`p_adj` <- fmt_p(out$p)
   }
   if ("CI95_low" %in% names(out)) {
     out$CI <- fmt_ci(out$CI95_low, out$CI95_high)
@@ -268,7 +466,7 @@ clean_pairwise <- function(df) {
   }
   if (!("Cohens_dz" %in% names(out))) out$Cohens_dz <- NA_real_
   out$`Cohen's d` <- fmt_num(out$Cohens_dz)
-  out[, c("Contrast", "β", "SE", "Statistic", "padj", "CI", "Cohen's d")]
+  out[, c("Contrast", "β", "SE", "Statistic", "p_adj", "CI", "Cohen's d")]
 }
 
 task_display_label <- function(task_name) {
@@ -404,7 +602,7 @@ pairwise_task_rows <- function(pair_df, eff_df, task_name, dv_name, comparisons)
 }
 
 pairwise_task_matrix <- function(rows, n_contrasts) {
-  cols <- c("beta", "ci", "statistic", "padj", "cohens_d")
+  cols <- c("beta", "se", "ci", "statistic", "p_adj", "cohens_d")
   if (is.null(rows)) {
     empty <- as.data.frame(
       matrix("", nrow = n_contrasts, ncol = length(cols)),
@@ -418,6 +616,7 @@ pairwise_task_matrix <- function(rows, n_contrasts) {
     lapply(rows, function(row) {
       c(
         fmt_num(row$beta),
+        fmt_se(row$se),
         fmt_ci(row$ci_low, row$ci_high),
         fmt_num(row$statistic),
         fmt_p(row$padj),
@@ -519,13 +718,14 @@ make_descriptive_flextable <- function(desc_tbl) {
   ft <- add_header_row(ft, values = c("", "N-back", "", "Sternberg"), top = TRUE)
   ft <- style_summary_ft(
     ft,
-    col_widths = c(2.4, 1.35, SUMMARY_SPACER_WIDTH_IN, 1.35)
+    col_widths = c(2.4, 1.35, SUMMARY_SPACER_WIDTH_IN, 1.35),
+    full_width = TRUE
   )
   add_task_header_rules(ft, title_row = 1, j_nback = 2, j_stern = 4)
 }
 
 make_pairwise_flextable <- function(pair_tbl) {
-  stat_header <- c("\u03b2", "CI", PAIRWISE_STAT_LABEL, "padj", "Cohen's d")
+  stat_header <- c("\u03b2", "SE", "CI", PAIRWISE_STAT_LABEL, PADJ_HEADER_TOKEN, "Cohen's d")
   n_task_cols <- length(stat_header)
   src <- pair_tbl$body
   nback_block <- src[, 2:(1 + n_task_cols), drop = FALSE]
@@ -553,10 +753,15 @@ make_pairwise_flextable <- function(pair_tbl) {
   ft <- add_header_row(ft, values = task_row, top = TRUE)
   ft <- merge_at(ft, i = 1, j = j_nback, part = "header")
   ft <- merge_at(ft, i = 1, j = j_stern, part = "header")
-  # Relative widths (beta, CI, t-value, padj, Cohen's d); scaled to the page
-  # width in style_summary_ft(). CI holds the confidence interval and the last
-  # column is wide enough to keep the "Cohen's d" header on one line.
-  per_task_widths <- c(0.40, 0.95, 0.45, 0.33, 0.55)
+  padj_j <- which(stat_header == PADJ_HEADER_TOKEN)
+  if (length(padj_j) > 0) {
+    for (jj in c(j_nback[padj_j], j_stern[padj_j])) {
+      ft <- compose(ft, part = "header", j = jj, value = padj_flextable_header())
+    }
+  }
+  # Relative widths (beta, SE, CI, t-value, padj, Cohen's d); scaled to the page
+  # width in style_summary_ft().
+  per_task_widths <- c(0.35, 0.30, 0.80, 0.38, 0.30, 0.48)
   ft <- style_summary_ft(
     ft,
     col_widths = c(1.15, per_task_widths, SUMMARY_SPACER_WIDTH_IN, per_task_widths),
@@ -566,8 +771,9 @@ make_pairwise_flextable <- function(pair_tbl) {
 }
 
 doc_add_section_table <- function(doc, section_title, ft) {
+  doc <- body_add_fpar(doc, table_section_spacer_fpar(SUMMARY_FONT_SIZE))
   doc <- doc_add_title(doc, section_title, size = SUMMARY_FONT_SIZE)
-  body_add_flextable(doc, ft)
+  body_add_flextable(doc, value = ft, align = "left")
 }
 
 build_measure_results_doc <- function(
@@ -594,25 +800,29 @@ build_measure_results_doc <- function(
 
   doc <- read_docx()
   doc <- doc_add_title(doc, summary_table_title(spec$dv), size = SUMMARY_FONT_SIZE)
-  doc <- body_add_par(doc, "")
-  doc <- doc_add_section_table(doc, "Descriptive Statistics", make_descriptive_flextable(desc_tbl))
-  doc <- body_add_par(doc, "")
-  doc <- doc_add_section_table(doc, "Pairwise Contrasts", make_pairwise_flextable(pair_tbl))
-  doc <- body_add_par(doc, "")
   doc <- body_add_fpar(
     doc,
-    fpar(
-      ftext(
+    fpar(ftext(paste0("Model: ", measure_model_text_from_spec(spec)), fp_text(font.size = SUMMARY_FONT_SIZE)))
+  )
+  doc <- doc_add_section_table(doc, "Descriptive Statistics", make_descriptive_flextable(desc_tbl))
+  doc <- doc_add_section_table(doc, "Pairwise Contrasts", make_pairwise_flextable(pair_tbl))
+  doc <- body_add_fpar(
+    doc,
+    assemble_table_note_fpar(c(
+      note_label_chunks(font_size = SUMMARY_FONT_SIZE),
+      list(ftext(
         paste(
-          "Note. Descriptive statistics are means with standard deviations in parentheses.",
-          "Pairwise contrasts are from linear mixed-effects models with random intercepts for Subject.",
-          "\u03b2 reflects the higher-load minus lower-load contrast within each task.",
-          "padj = FDR-adjusted p-value.",
-          "Full model estimates are reported in the supplementary tables."
+          "Descriptive statistics are means and standard deviations.",
+          "Pairwise contrasts are from linear mixed-effects models with random intercepts for Subject."
         ),
         fp_text(font.size = SUMMARY_FONT_SIZE)
-      )
-    )
+      )),
+      padj_note_chunks(font_size = SUMMARY_FONT_SIZE),
+      list(ftext(
+        " Full model estimates are reported in the supplements.",
+        fp_text(font.size = SUMMARY_FONT_SIZE)
+      ))
+    ))
   )
 
   print(doc, target = out_path)
@@ -622,7 +832,7 @@ build_measure_results_doc <- function(
 
 style_ft <- function(ft, col_widths = NULL) {
   ft <- theme_booktabs(ft)
-  ft <- fontsize(ft, size = 8, part = "all")
+  ft <- fontsize(ft, size = SUMMARY_FONT_SIZE, part = "all")
   ft <- bold(ft, part = "header")
   ft <- padding(ft, padding = 1, part = "all")
   ft <- align(ft, align = "left", j = 1, part = "all")
@@ -660,14 +870,14 @@ style_summary_ft <- function(ft, col_widths, full_width = FALSE) {
   ft <- height_all(ft, height = SUMMARY_ROW_HEIGHT_IN, part = "all")
   if (full_width && !is.null(col_widths)) {
     # Scale columns so they exactly fill the page width, keeping the font at
-    # 8pt. fit_to_width() is avoided here because it shrinks the font instead.
+    # SUMMARY_FONT_SIZE. fit_to_width() is avoided here because it shrinks the font.
     col_widths <- col_widths * (SUMMARY_PAIRWISE_TABLE_WIDTH_IN / sum(col_widths))
   }
   if (!is.null(col_widths) && length(col_widths) == ncol(ft$body$dataset)) {
     ft <- width(ft, j = seq_along(col_widths), width = col_widths)
-    ft <- set_table_properties(ft, layout = "fixed")
+    ft <- set_table_properties(ft, layout = "fixed", align = "left")
   } else {
-    ft <- set_table_properties(ft, layout = "fixed")
+    ft <- set_table_properties(ft, layout = "fixed", align = "left")
     ft <- autofit(ft)
   }
   ft <- align(ft, align = "center", part = "header")
@@ -683,6 +893,25 @@ doc_add_title <- function(doc, text, size = 10) {
   )
 }
 
+compile_alltables_docx <- function(folder, out_name, doc_title) {
+  docs <- list.files(
+    folder,
+    pattern = "(_full_model_table|_results_table)\\.docx$",
+    full.names = TRUE
+  )
+  docs <- docs[!grepl("ALLTABLES|~\\$", basename(docs))]
+  docs <- sort(docs)
+  master <- read_docx()
+  master <- body_add_fpar(master, fpar(ftext(doc_title, fp_text(bold = TRUE, font.size = 12))))
+  for (d in docs) {
+    master <- body_add_par(master, "")
+    master <- body_add_fpar(master, fpar(ftext(basename(d), fp_text(bold = TRUE, font.size = 9))))
+    master <- body_add_docx(master, src = d)
+  }
+  print(master, target = file.path(folder, out_name))
+  message("Wrote compiled tables -> ", file.path(folder, out_name))
+}
+
 doc_add_table <- function(doc, title, df, table_type = c("fixed", "random", "lrt", "pairwise")) {
   table_type <- match.arg(table_type)
   ft <- flextable(df)
@@ -692,6 +921,7 @@ doc_add_table <- function(doc, title, df, table_type = c("fixed", "random", "lrt
     ft <- style_ft(ft, col_widths = c(2.5, 0.7, 1.0, 1.0, 0.9, 0.8))
   } else {
     ft <- style_ft(ft, col_widths = c(2.2, 0.9, 0.8, 1.0, 0.95, 1.2, 0.95))
+    ft <- apply_padj_column_headers(ft)
   }
   doc <- doc_add_title(doc, title, size = 10)
   body_add_flextable(doc, ft)
@@ -736,10 +966,6 @@ if (is.null(pair_nback)) pair_nback <- data.frame()
 if (is.null(pair_stern)) pair_stern <- data.frame()
 eff_nback <- safe_read_csv(file.path(stats_dir, "AOC_pairwise_effectsizes_nback.csv"))
 eff_stern <- safe_read_csv(file.path(stats_dir, "AOC_pairwise_effectsizes_sternberg.csv"))
-
-load_ref_for_task <- function(task_name) {
-  if (tolower(task_name) == "nback") "1-back" else "WM load 2"
-}
 
 model_specs <- list(
   list(
@@ -1012,6 +1238,8 @@ model_specs <- list(
   )
 )
 
+model_specs <- filter_interaction_full_model_specs(model_specs, stats_dir)
+
 built <- list()
 
 for (spec in model_specs) {
@@ -1023,7 +1251,7 @@ for (spec in model_specs) {
   fixed_raw <- read.csv(fixed_path, stringsAsFactors = FALSE)
   task_name <- tolower(as.character(unique(fixed_raw$Task)[1]))
   load_ref <- load_ref_for_task(task_name)
-  random_mask <- grepl("Var$|Cov$|Group Var", fixed_raw$Term)
+  random_mask <- vapply(fixed_raw$Term, is_random_export_term, logical(1))
   fixed_tbl <- clean_fixed(fixed_raw[!random_mask, , drop = FALSE], load_ref = load_ref)
   random_tbl <- NULL
   if (any(random_mask)) {
@@ -1157,9 +1385,29 @@ build_covariation_lrt_matrix <- function(lrt_df) {
   )
 }
 
+build_covariation_lrt_matrix_full <- function(lrt_df) {
+  if (is.null(lrt_df) || nrow(lrt_df) == 0) {
+    return(data.frame(
+      chi2 = "", df = "", p = "", r2 = "", f2 = "",
+      stringsAsFactors = FALSE
+    ))
+  }
+  row <- lrt_df[lrt_df$Term == "Interaction", , drop = FALSE]
+  if (nrow(row) == 0) row <- lrt_df[1, , drop = FALSE]
+  data.frame(
+    chi2 = fmt_num(row$LR_Chi2[1]),
+    df = as.character(row$df[1]),
+    p = fmt_p(row$p[1]),
+    r2 = fmt_lr_effect(row$R2_LR[1]),
+    f2 = fmt_lr_effect(row$f2_LR[1]),
+    stringsAsFactors = FALSE
+  )
+}
+
 build_covariation_pairwise_matrix <- function(contr_df, comparisons) {
   n <- length(comparisons)
   beta <- character(n)
+  se <- character(n)
   ci <- character(n)
   p <- character(n)
   if (!is.null(contr_df) && nrow(contr_df) > 0) {
@@ -1167,16 +1415,18 @@ build_covariation_pairwise_matrix <- function(contr_df, comparisons) {
       low <- comparisons[[i]][1]
       high <- comparisons[[i]][2]
       # Contrast rows are stored as Group1 = higher load, Group2 = lower load,
-      # so Estimate already reflects the higher-load minus lower-load direction.
+      # with Estimate = lower − higher. Negate to report higher − lower, matching
+      # fixed-effect Load terms and pairwise_task_rows() / Tables 2–6.
       row <- contr_df[contr_df$Group1 == high & contr_df$Group2 == low, , drop = FALSE]
       if (nrow(row) > 0) {
-        beta[i] <- fmt_num(row$Estimate[1])
-        ci[i] <- fmt_ci(row$CI95_low[1], row$CI95_high[1])
+        beta[i] <- fmt_num(-as.numeric(row$Estimate[1]))
+        se[i] <- fmt_se(row$SE[1])
+        ci[i] <- fmt_ci(-as.numeric(row$CI95_high[1]), -as.numeric(row$CI95_low[1]))
         p[i] <- fmt_p(row$p_adj[1])
       }
     }
   }
-  data.frame(beta = beta, ci = ci, p = p, stringsAsFactors = FALSE)
+  data.frame(beta = beta, se = se, ci = ci, p = p, stringsAsFactors = FALSE)
 }
 
 make_grouped_two_task_ft <- function(first_header, stat_header, row_labels,
@@ -1208,6 +1458,12 @@ make_grouped_two_task_ft <- function(first_header, stat_header, row_labels,
   ft <- add_header_row(ft, values = task_row, top = TRUE)
   ft <- merge_at(ft, i = 1, j = j_nback, part = "header")
   ft <- merge_at(ft, i = 1, j = j_stern, part = "header")
+  padj_j <- which(stat_header == PADJ_HEADER_TOKEN)
+  if (length(padj_j) > 0) {
+    for (jj in c(j_nback[padj_j], j_stern[padj_j])) {
+      ft <- compose(ft, part = "header", j = jj, value = padj_flextable_header())
+    }
+  }
   ft <- style_summary_ft(
     ft,
     col_widths = c(first_col_width, per_task_widths, SUMMARY_SPACER_WIDTH_IN, per_task_widths),
@@ -1220,7 +1476,7 @@ build_covariation_results_doc <- function(spec, out_path, variant = NULL) {
   exploratory <- isTRUE(spec$exploratory)
   # Gaze / MS main effect only. Load is reported via emmeans pairwise contrasts below.
   terms <- list(
-    list(term = spec$fixed_term, label = spec$label)
+    list(term = spec$fixed_term, label = predictor_display_term(spec$fixed_term))
   )
   term_labels <- vapply(terms, function(t) t$label, character(1))
 
@@ -1251,7 +1507,7 @@ build_covariation_results_doc <- function(spec, out_path, variant = NULL) {
   )
   write.csv(
     cbind(
-      effect = paste0("Load x ", spec$label),
+      effect = paste0("Load x ", predictor_display_term(spec$fixed_term)),
       nback = lrt_nb_mat,
       sternberg = lrt_st_mat
     ),
@@ -1270,9 +1526,9 @@ build_covariation_results_doc <- function(spec, out_path, variant = NULL) {
 
   beta_sym <- "\u03b2"
   chi_sym <- "\u03c7\u00b2"
-  interaction_label <- paste0("Load \u00d7 ", spec$label)
+  interaction_label <- paste0("Load \u00d7 ", predictor_display_term(spec$fixed_term))
 
-  model_predictor <- sub("_c$", "", spec$fixed_term)
+  model_predictor <- predictor_display_term(spec$fixed_term)
   model_labels <- c()
   if (!is.null(fixed_nb) && nrow(fixed_nb) > 0 && "ModelLabel" %in% names(fixed_nb)) {
     model_labels <- c(model_labels, as.character(fixed_nb$ModelLabel[1]))
@@ -1332,7 +1588,6 @@ build_covariation_results_doc <- function(spec, out_path, variant = NULL) {
     doc,
     fpar(ftext(paste0("Model: ", model_text), fp_text(font.size = SUMMARY_FONT_SIZE)))
   )
-  doc <- body_add_par(doc, "")
   doc <- doc_add_section_table(
     doc,
     "Interaction (Likelihood-Ratio Test)",
@@ -1345,7 +1600,6 @@ build_covariation_results_doc <- function(spec, out_path, variant = NULL) {
       per_task_widths = c(0.7, 0.7, 0.7)
     )
   )
-  doc <- body_add_par(doc, "")
   doc <- doc_add_section_table(
     doc,
     "Fixed Effects",
@@ -1357,19 +1611,18 @@ build_covariation_results_doc <- function(spec, out_path, variant = NULL) {
       fixed_st_mat
     )
   )
-  doc <- body_add_par(doc, "")
   doc <- doc_add_section_table(
     doc,
     "Pairwise Contrasts",
     make_grouped_two_task_ft(
       "Contrast",
-      c(beta_sym, "CI", "padj"),
+      c(beta_sym, "SE", "CI", PADJ_HEADER_TOKEN),
       PAIRWISE_CONTRAST_LABELS,
       pw_nb_mat,
-      pw_st_mat
+      pw_st_mat,
+      per_task_widths = c(0.45, 0.35, 0.85, 0.40)
     )
   )
-  doc <- body_add_par(doc, "")
   exploratory_note <- if (exploratory) {
     "This analysis is exploratory. "
   } else {
@@ -1377,23 +1630,27 @@ build_covariation_results_doc <- function(spec, out_path, variant = NULL) {
   }
   doc <- body_add_fpar(
     doc,
-    fpar(
-      ftext(
+    assemble_table_note_fpar(c(
+      note_label_chunks(font_size = SUMMARY_FONT_SIZE),
+      list(ftext(
         paste0(
-          "Note. ", exploratory_note,
+          exploratory_note,
           "ERS/ERD coupling with ", tolower(spec$label),
           " was tested with linear mixed-effects models (random intercepts for Subject). ",
           "The preregistered full model was ", full_model_text, ". ",
           "A likelihood-ratio test compared this model to the additive model (",
           model_predictor, " + Load). ",
           note_body,
-          "\u03b2 in the pairwise section reflects the higher-load minus lower-load contrast. ",
-          "padj = FDR-adjusted p-value. ",
-          "Full model estimates are reported in the supplementary tables."
+          STANDARDIZED_GAZE_BETA_NOTE
         ),
         fp_text(font.size = SUMMARY_FONT_SIZE)
-      )
-    )
+      )),
+      padj_note_chunks(font_size = SUMMARY_FONT_SIZE),
+      list(ftext(
+        " Full model estimates are reported in the supplements.",
+        fp_text(font.size = SUMMARY_FONT_SIZE)
+      ))
+    ))
   )
 
   print(doc, target = out_path)
@@ -1401,44 +1658,375 @@ build_covariation_results_doc <- function(spec, out_path, variant = NULL) {
   invisible(out_path)
 }
 
+build_measure_full_model_doc <- function(
+  spec,
+  nback_dat,
+  stern_dat,
+  pair_nback,
+  pair_stern,
+  eff_nback,
+  eff_stern,
+  out_path
+) {
+  fixed_nb <- safe_read_csv(file.path(stats_dir, spec$nback_fixed))
+  fixed_st <- safe_read_csv(file.path(stats_dir, spec$sternberg_fixed))
+  if (is.null(fixed_nb) || is.null(fixed_st)) {
+    message("Skipping dual full model ", spec$id, " (missing fixed-effect CSV).")
+    return(invisible(NULL))
+  }
+
+  desc_tbl <- build_descriptive_table(nback_dat, stern_dat, spec$dv)
+  pair_tbl <- build_pairwise_table(pair_nback, pair_stern, eff_nback, eff_stern, spec$dv)
+  if (is.null(pair_tbl)) {
+    message("Skipping dual full model ", spec$id, " (no pairwise contrasts available).")
+    return(invisible(NULL))
+  }
+
+  fixed_aligned <- build_aligned_effect_matrix(fixed_nb, fixed_st, random = FALSE)
+  random_aligned <- build_aligned_effect_matrix(fixed_nb, fixed_st, random = TRUE)
+
+  write.csv(desc_tbl$body, file.path(full_dir, paste0(spec$id, "_descriptive.csv")), row.names = FALSE)
+  write.csv(pair_tbl$body, file.path(full_dir, paste0(spec$id, "_pairwise.csv")), row.names = FALSE)
+  write.csv(
+    cbind(term = fixed_aligned$labels, nback = fixed_aligned$nback, sternberg = fixed_aligned$sternberg),
+    file.path(full_dir, paste0(spec$id, "_fixed.csv")),
+    row.names = FALSE
+  )
+  if (length(random_aligned$labels) > 0) {
+    write.csv(
+      cbind(term = random_aligned$labels, nback = random_aligned$nback, sternberg = random_aligned$sternberg),
+      file.path(full_dir, paste0(spec$id, "_random.csv")),
+      row.names = FALSE
+    )
+  }
+
+  dv_label <- summary_table_title(spec$dv)
+  model_text <- measure_model_text_from_spec(spec)
+
+  doc <- read_docx()
+  doc <- doc_add_title(doc, dv_label, size = SUMMARY_FONT_SIZE)
+  doc <- body_add_fpar(
+    doc,
+    fpar(ftext(paste0("Model: ", model_text), fp_text(font.size = SUMMARY_FONT_SIZE)))
+  )
+  doc <- doc_add_section_table(doc, "Descriptive Statistics", make_descriptive_flextable(desc_tbl))
+  doc <- doc_add_section_table(
+    doc,
+    "Fixed Effects",
+    make_grouped_two_task_ft(
+      "Term",
+      DUAL_TASK_STAT_HEADER,
+      fixed_aligned$labels,
+      fixed_aligned$nback,
+      fixed_aligned$sternberg,
+      first_col_width = DUAL_TASK_FIRST_COL_WIDTH,
+      per_task_widths = DUAL_TASK_PER_TASK_WIDTHS
+    )
+  )
+  if (length(random_aligned$labels) > 0) {
+    doc <- doc_add_section_table(
+      doc,
+      "Random Effects",
+      make_grouped_two_task_ft(
+        "Term",
+        DUAL_TASK_RANDOM_HEADER,
+        random_aligned$labels,
+        random_aligned$nback,
+        random_aligned$sternberg,
+        first_col_width = DUAL_TASK_FIRST_COL_WIDTH,
+        per_task_widths = DUAL_TASK_RANDOM_PER_TASK_WIDTHS
+      )
+    )
+  }
+  doc <- doc_add_section_table(doc, "Pairwise Contrasts", make_pairwise_flextable(pair_tbl))
+  doc <- body_add_fpar(
+    doc,
+    assemble_table_note_fpar(c(
+      note_label_chunks(font_size = SUMMARY_FONT_SIZE),
+      list(ftext(
+        paste(
+          "Descriptive statistics are means and standard deviations.",
+          "Fixed and random effects are from linear mixed-effects models with random intercepts for Subject.",
+          "Subject variance is reported as a variance component. Residual error is reported as SD."
+        ),
+        fp_text(font.size = SUMMARY_FONT_SIZE)
+      )),
+      padj_note_chunks(font_size = SUMMARY_FONT_SIZE)
+    ))
+  )
+
+  print(doc, target = out_path)
+  message("Wrote dual full model table -> ", out_path)
+  invisible(out_path)
+}
+
+build_covariation_full_model_doc <- function(spec, out_path, variant = NULL) {
+  exploratory <- isTRUE(spec$exploratory)
+  fixed_nb <- read_covariation_csv("fixed", spec$key, "nback", exploratory = exploratory, variant = variant)
+  fixed_st <- read_covariation_csv("fixed", spec$key, "sternberg", exploratory = exploratory, variant = variant)
+  lrt_nb <- read_covariation_csv("lrtTbl", spec$key, "nback", exploratory = exploratory)
+  lrt_st <- read_covariation_csv("lrtTbl", spec$key, "sternberg", exploratory = exploratory)
+  contr_nb <- read_covariation_csv("contrasts", spec$key, "nback", exploratory = exploratory, variant = variant)
+  contr_st <- read_covariation_csv("contrasts", spec$key, "sternberg", exploratory = exploratory, variant = variant)
+
+  if (is.null(fixed_nb) && is.null(fixed_st)) {
+    message("Skipping dual covariation full model ", spec$id)
+    return(invisible(NULL))
+  }
+
+  fixed_aligned <- build_aligned_effect_matrix(fixed_nb, fixed_st, random = FALSE)
+  random_aligned <- build_aligned_effect_matrix(fixed_nb, fixed_st, random = TRUE)
+  lrt_nb_mat <- build_covariation_lrt_matrix_full(lrt_nb)
+  lrt_st_mat <- build_covariation_lrt_matrix_full(lrt_st)
+  pw_nb_mat <- build_covariation_pairwise_matrix(contr_nb, NBACK_TASK_CONFIG$comparisons)
+  pw_st_mat <- build_covariation_pairwise_matrix(contr_st, STERNBERG_TASK_CONFIG$comparisons)
+
+  id_suffix <- if (is.null(variant) || !nzchar(variant)) "" else paste0("_", variant)
+
+  write.csv(
+    cbind(term = fixed_aligned$labels, nback = fixed_aligned$nback, sternberg = fixed_aligned$sternberg),
+    file.path(full_dir, paste0(spec$id, id_suffix, "_fixed.csv")),
+    row.names = FALSE
+  )
+  if (length(random_aligned$labels) > 0) {
+    write.csv(
+      cbind(term = random_aligned$labels, nback = random_aligned$nback, sternberg = random_aligned$sternberg),
+      file.path(full_dir, paste0(spec$id, id_suffix, "_random.csv")),
+      row.names = FALSE
+    )
+  }
+  write.csv(
+    cbind(
+      effect = paste0("Load x ", predictor_display_term(spec$fixed_term)),
+      nback = lrt_nb_mat,
+      sternberg = lrt_st_mat
+    ),
+    file.path(full_dir, paste0(spec$id, id_suffix, "_interaction_lrt.csv")),
+    row.names = FALSE
+  )
+  write.csv(
+    cbind(contrast = PAIRWISE_CONTRAST_LABELS, nback = pw_nb_mat, sternberg = pw_st_mat),
+    file.path(full_dir, paste0(spec$id, id_suffix, "_pairwise.csv")),
+    row.names = FALSE
+  )
+
+  beta_sym <- "\u03b2"
+  chi_sym <- "\u03c7\u00b2"
+  interaction_label <- paste0("Load \u00d7 ", predictor_display_term(spec$fixed_term))
+  model_predictor <- predictor_display_term(spec$fixed_term)
+  model_labels <- c()
+  if (!is.null(fixed_nb) && nrow(fixed_nb) > 0 && "ModelLabel" %in% names(fixed_nb)) {
+    model_labels <- c(model_labels, as.character(fixed_nb$ModelLabel[1]))
+  }
+  if (!is.null(fixed_st) && nrow(fixed_st) > 0 && "ModelLabel" %in% names(fixed_st)) {
+    model_labels <- c(model_labels, as.character(fixed_st$ModelLabel[1]))
+  }
+  model_labels <- unique(model_labels[!is.na(model_labels) & nzchar(model_labels)])
+  model_text <- if (length(model_labels) == 1L) {
+    prettify_model_label(model_labels[1], dv_label = "ERS/ERD")
+  } else if (identical(variant, "reduced")) {
+    paste0("ERS/ERD ~ ", model_predictor, " + Load + (1|Subject)")
+  } else {
+    paste0("ERS/ERD ~ ", model_predictor, " * Load + (1|Subject)")
+  }
+  full_model_text <- paste0("ERS/ERD ~ ", model_predictor, " * Load + (1|Subject)")
+  reduced_model_text <- paste0("ERS/ERD ~ ", model_predictor, " + Load + (1|Subject)")
+
+  variant_tag <- if (identical(variant, "full")) {
+    " [full interaction model]"
+  } else if (identical(variant, "reduced")) {
+    " [additive model]"
+  } else {
+    ""
+  }
+  doc_title <- paste0("ERS/ERD Co-Variation with ", spec$label, variant_tag)
+  if (exploratory) {
+    doc_title <- paste0(doc_title, " (exploratory)")
+  }
+
+  note_body <- if (identical(variant, "full")) {
+    paste0(
+      "Fixed effects and pairwise load contrasts are reported from the full interaction model (",
+      full_model_text, "). "
+    )
+  } else if (identical(variant, "reduced")) {
+    paste0(
+      "Fixed effects and pairwise load contrasts are reported from the additive model (",
+      reduced_model_text, "). "
+    )
+  } else {
+    paste0(
+      "When the interaction was not significant (p \u2265 .05), the interaction term was removed; ",
+      "fixed effects and pairwise load contrasts are then reported from the selected model (",
+      model_text, "). ",
+      "Separate tables also report the full interaction model and the additive model. "
+    )
+  }
+
+  doc <- read_docx()
+  doc <- doc_add_title(doc, doc_title, size = SUMMARY_FONT_SIZE)
+  doc <- body_add_fpar(
+    doc,
+    fpar(ftext(paste0("Model: ", model_text), fp_text(font.size = SUMMARY_FONT_SIZE)))
+  )
+  doc <- doc_add_section_table(
+    doc,
+    "Interaction (Likelihood-Ratio Test)",
+    make_grouped_two_task_ft(
+      "Effect",
+      c(chi_sym, "df", "p", "R2 (LR)", "f2 (LR)"),
+      interaction_label,
+      lrt_nb_mat,
+      lrt_st_mat,
+      first_col_width = DUAL_TASK_FIRST_COL_WIDTH,
+      per_task_widths = c(0.55, 0.45, 0.45, 0.55, 0.55)
+    )
+  )
+  doc <- doc_add_section_table(
+    doc,
+    "Fixed Effects",
+    make_grouped_two_task_ft(
+      "Term",
+      DUAL_TASK_STAT_HEADER,
+      fixed_aligned$labels,
+      fixed_aligned$nback,
+      fixed_aligned$sternberg,
+      first_col_width = DUAL_TASK_FIRST_COL_WIDTH,
+      per_task_widths = DUAL_TASK_PER_TASK_WIDTHS
+    )
+  )
+  if (length(random_aligned$labels) > 0) {
+    doc <- doc_add_section_table(
+      doc,
+      "Random Effects",
+      make_grouped_two_task_ft(
+        "Term",
+        DUAL_TASK_RANDOM_HEADER,
+        random_aligned$labels,
+        random_aligned$nback,
+        random_aligned$sternberg,
+        first_col_width = DUAL_TASK_FIRST_COL_WIDTH,
+        per_task_widths = DUAL_TASK_RANDOM_PER_TASK_WIDTHS
+      )
+    )
+  }
+  doc <- doc_add_section_table(
+    doc,
+    "Pairwise Contrasts",
+    make_grouped_two_task_ft(
+      "Contrast",
+      c(beta_sym, "SE", "CI", PADJ_HEADER_TOKEN),
+      PAIRWISE_CONTRAST_LABELS,
+      pw_nb_mat,
+      pw_st_mat,
+      per_task_widths = c(0.45, 0.35, 0.85, 0.40)
+    )
+  )
+  exploratory_note <- if (exploratory) "This analysis is exploratory. " else ""
+  doc <- body_add_fpar(
+    doc,
+    assemble_table_note_fpar(c(
+      note_label_chunks(font_size = SUMMARY_FONT_SIZE),
+      list(ftext(
+        paste0(
+          exploratory_note,
+          "ERS/ERD coupling with ", tolower(spec$label),
+          " was tested with linear mixed-effects models (random intercepts for Subject). ",
+          "The preregistered full model was ", full_model_text, ". ",
+          "A likelihood-ratio test compared this model to the additive model (",
+          model_predictor, " + Load). ",
+          note_body,
+          STANDARDIZED_GAZE_BETA_NOTE
+        ),
+        fp_text(font.size = SUMMARY_FONT_SIZE)
+      )),
+      padj_note_chunks(font_size = SUMMARY_FONT_SIZE)
+    ))
+  )
+
+  print(doc, target = out_path)
+  message("Wrote dual covariation full model table -> ", out_path)
+  invisible(out_path)
+}
+
 covariation_specs <- list(
   list(
     id = "ersd_gaze_deviation",
     key = "gazedeviation",
-    fixed_term = "GazeDeviation_c",
+    fixed_term = "GazeDeviation_z",
     label = "Gaze Deviation"
   ),
   list(
     id = "ersd_microsaccade_rate",
     key = "msrate",
-    fixed_term = "MSRate_c",
+    fixed_term = "MSRate_z",
     label = "Microsaccade Rate"
   ),
   list(
     id = "ersd_gaze_deviation_bl",
     key = "gazedev_bl",
-    fixed_term = "GazeDeviationBL_c",
+    fixed_term = "GazeDeviationBL_z",
     label = "Gaze Deviation (baseline-corrected)",
     exploratory = TRUE
   ),
   list(
     id = "ersd_microsaccade_rate_bl",
     key = "ms_bl",
-    fixed_term = "MSRateBL_c",
+    fixed_term = "MSRateBL_z",
     label = "Microsaccade Rate (baseline-corrected)",
     exploratory = TRUE
   )
 )
 
 combined_specs <- list(
-  list(id = "reaction_time", dv = "ReactionTime"),
-  list(id = "accuracy", dv = "Accuracy"),
-  list(id = "gaze_deviation", dv = "GazeDeviation"),
-  list(id = "microsaccade_rate", dv = "MSRate"),
-  list(id = "gaze_deviation_bl", dv = "GazeDeviationBL"),
-  list(id = "microsaccade_rate_bl", dv = "MSRateBL"),
-  list(id = "ers_erd", dv = "ERSD"),
-  list(id = "alpha_power_baselineWindow", dv = "AlphaPower_baselineWindow")
+  list(
+    id = "reaction_time",
+    dv = "ReactionTime",
+    nback_fixed = "AOC_mixedlm_fixed_rt_nback.csv",
+    sternberg_fixed = "AOC_mixedlm_fixed_rt_sternberg.csv"
+  ),
+  list(
+    id = "accuracy",
+    dv = "Accuracy",
+    nback_fixed = "AOC_mixedlm_fixed_acc_nback.csv",
+    sternberg_fixed = "AOC_mixedlm_fixed_acc_sternberg.csv"
+  ),
+  list(
+    id = "gaze_deviation",
+    dv = "GazeDeviation",
+    nback_fixed = "AOC_mixedlm_fixed_gazedev_nback.csv",
+    sternberg_fixed = "AOC_mixedlm_fixed_gazedev_sternberg.csv"
+  ),
+  list(
+    id = "microsaccade_rate",
+    dv = "MSRate",
+    nback_fixed = "AOC_mixedlm_fixed_ms_nback.csv",
+    sternberg_fixed = "AOC_mixedlm_fixed_ms_sternberg.csv"
+  ),
+  list(
+    id = "gaze_deviation_bl",
+    dv = "GazeDeviationBL",
+    nback_fixed = "AOC_mixedlm_fixed_gazedev_bl_nback.csv",
+    sternberg_fixed = "AOC_mixedlm_fixed_gazedev_bl_sternberg.csv"
+  ),
+  list(
+    id = "microsaccade_rate_bl",
+    dv = "MSRateBL",
+    nback_fixed = "AOC_mixedlm_fixed_ms_bl_nback.csv",
+    sternberg_fixed = "AOC_mixedlm_fixed_ms_bl_sternberg.csv"
+  ),
+  list(
+    id = "ers_erd",
+    dv = "ERSD",
+    nback_fixed = "AOC_mixedlm_fixed_ersd_nback.csv",
+    sternberg_fixed = "AOC_mixedlm_fixed_ersd_sternberg.csv"
+  ),
+  list(
+    id = "alpha_power_baselineWindow",
+    dv = "AlphaPower_baselineWindow",
+    nback_fixed = "AOC_mixedlm_fixed_pow_baselineWindow_nback.csv",
+    sternberg_fixed = "AOC_mixedlm_fixed_pow_baselineWindow_sternberg.csv"
+  )
 )
 
 nback_dat <- load_task_data(NBACK_TASK_CONFIG)
@@ -1462,15 +2050,68 @@ for (spec in combined_specs) {
 }
 
 for (spec in covariation_specs) {
-  for (variant in list(NULL, "full", "reduced")) {
+  dual_full <- covariation_dual_interaction_retained(
+    spec$key,
+    stats_dir,
+    exploratory = isTRUE(spec$exploratory),
+    trials = FALSE
+  )
+  variants <- list(NULL, "reduced")
+  if (dual_full) {
+    variants <- c(variants, list("full"))
+  }
+  for (variant in variants) {
     id_suffix <- if (is.null(variant)) "" else paste0("_", variant)
     build_covariation_results_doc(
       spec = spec,
       out_path = file.path(combined_dir, paste0(spec$id, id_suffix, "_results_table.docx")),
       variant = variant
     )
+    build_covariation_full_model_doc(
+      spec = spec,
+      out_path = file.path(full_dir, paste0(spec$id, id_suffix, "_full_model_table.docx")),
+      variant = variant
+    )
+  }
+  if (!dual_full) {
+    remove_dual_covariation_variant_artifacts(spec$id, "full", full_dir, combined_dir)
   }
 }
 
-message("Full model CSVs and DOCX tables generated in: ", out_dir)
+for (spec in combined_specs) {
+  if (!spec$dv %in% names(nback_dat) || !spec$dv %in% names(stern_dat)) {
+    next
+  }
+  if (
+    !file.exists(file.path(stats_dir, spec$nback_fixed)) ||
+    !file.exists(file.path(stats_dir, spec$sternberg_fixed))
+  ) {
+    message("Skipping dual full model ", spec$id, " (missing fixed-effect CSV).")
+    next
+  }
+  build_measure_full_model_doc(
+    spec = spec,
+    nback_dat = nback_dat,
+    stern_dat = stern_dat,
+    pair_nback = pair_nback,
+    pair_stern = pair_stern,
+    eff_nback = eff_nback,
+    eff_stern = eff_stern,
+    out_path = file.path(full_dir, paste0(spec$id, "_full_model_table.docx"))
+  )
+}
+
+compile_alltables_docx(
+  full_dir,
+  "fullModelTables_ALLTABLES.docx",
+  "Full Model Tables (N-back and Sternberg)"
+)
+compile_alltables_docx(
+  combined_dir,
+  "combinedTables_ALLTABLES.docx",
+  "Combined Results Tables (N-back and Sternberg)"
+)
+
+message("Single-task full model CSVs and DOCX tables generated in: ", out_dir)
+message("Dual-task full model tables generated in: ", full_dir)
 message("Summary results tables generated in: ", combined_dir)

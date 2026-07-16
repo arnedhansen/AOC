@@ -10,6 +10,17 @@ suppressPackageStartupMessages({
 
 options(scipen = 999)
 
+confirmatory_script_dir <- {
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- sub("--file=", "", args[grep("^--file=", args)])
+  if (length(file_arg) > 0) {
+    dirname(normalizePath(file_arg, winslash = "/", mustWork = FALSE))
+  } else {
+    getwd()
+  }
+}
+source(file.path(confirmatory_script_dir, "AOC_stats_glmm_helpers.R"))
+
 ######################
 ###### Load Data #####
 ######################
@@ -85,9 +96,9 @@ Anova(m_ersd, type = "II")
 ###### ERSD x GazeDeviation ##########
 ######################################
 
-dat$GazeDeviation_c <- dat$GazeDeviation - mean(dat$GazeDeviation, na.rm = TRUE)
-m_ersd_gaze_full <- lmer(ERSD ~ GazeDeviation_c * Load + (1 | Subject), data = dat, REML = FALSE)
-m_ersd_gaze_add <- lmer(ERSD ~ GazeDeviation_c + Load + (1 | Subject), data = dat, REML = FALSE)
+dat <- add_gaze_z_column(dat, "GazeDeviation")
+m_ersd_gaze_full <- lmer(ERSD ~ GazeDeviation_z * Load + (1 | Subject), data = dat, REML = FALSE)
+m_ersd_gaze_add <- lmer(ERSD ~ GazeDeviation_z + Load + (1 | Subject), data = dat, REML = FALSE)
 lrt_ersd_gaze <- anova(m_ersd_gaze_add, m_ersd_gaze_full)
 if (is.finite(lrt_ersd_gaze$`Pr(>Chisq)`[2]) && lrt_ersd_gaze$`Pr(>Chisq)`[2] < 0.05) {
   m_ersd_gaze_final <- m_ersd_gaze_full
@@ -101,9 +112,9 @@ Anova(m_ersd_gaze_final, type = "III")
 ######## ERSD x MSRate ###############
 ######################################
 
-dat$MSRate_c <- dat$MSRate - mean(dat$MSRate, na.rm = TRUE)
-m_ersd_ms_full <- lmer(ERSD ~ MSRate_c * Load + (1 | Subject), data = dat, REML = FALSE)
-m_ersd_ms_add <- lmer(ERSD ~ MSRate_c + Load + (1 | Subject), data = dat, REML = FALSE)
+dat <- add_gaze_z_column(dat, "MSRate")
+m_ersd_ms_full <- lmer(ERSD ~ MSRate_z * Load + (1 | Subject), data = dat, REML = FALSE)
+m_ersd_ms_add <- lmer(ERSD ~ MSRate_z + Load + (1 | Subject), data = dat, REML = FALSE)
 lrt_ersd_ms <- anova(m_ersd_ms_add, m_ersd_ms_full)
 if (is.finite(lrt_ersd_ms$`Pr(>Chisq)`[2]) && lrt_ersd_ms$`Pr(>Chisq)`[2] < 0.05) {
   m_ersd_ms_final <- m_ersd_ms_full
@@ -137,9 +148,9 @@ Anova(m_ms_bl, type = "II")
 ###### ERSD x GazeDeviationBL ########
 ######################################
 
-dat$GazeDeviationBL_c <- dat$GazeDeviationBL - mean(dat$GazeDeviationBL, na.rm = TRUE)
-m_ersd_gaze_bl_full <- lmer(ERSD ~ GazeDeviationBL_c * Load + (1 | Subject), data = dat, REML = FALSE)
-m_ersd_gaze_bl_add <- lmer(ERSD ~ GazeDeviationBL_c + Load + (1 | Subject), data = dat, REML = FALSE)
+dat <- add_gaze_z_column(dat, "GazeDeviationBL")
+m_ersd_gaze_bl_full <- lmer(ERSD ~ GazeDeviationBL_z * Load + (1 | Subject), data = dat, REML = FALSE)
+m_ersd_gaze_bl_add <- lmer(ERSD ~ GazeDeviationBL_z + Load + (1 | Subject), data = dat, REML = FALSE)
 lrt_ersd_gaze_bl <- anova(m_ersd_gaze_bl_add, m_ersd_gaze_bl_full)
 if (is.finite(lrt_ersd_gaze_bl$`Pr(>Chisq)`[2]) && lrt_ersd_gaze_bl$`Pr(>Chisq)`[2] < 0.05) {
   m_ersd_gaze_bl_final <- m_ersd_gaze_bl_full
@@ -153,9 +164,9 @@ Anova(m_ersd_gaze_bl_final, type = "III")
 ######## ERSD x MSRateBL #############
 ######################################
 
-dat$MSRateBL_c <- dat$MSRateBL - mean(dat$MSRateBL, na.rm = TRUE)
-m_ersd_ms_bl_full <- lmer(ERSD ~ MSRateBL_c * Load + (1 | Subject), data = dat, REML = FALSE)
-m_ersd_ms_bl_add <- lmer(ERSD ~ MSRateBL_c + Load + (1 | Subject), data = dat, REML = FALSE)
+dat <- add_gaze_z_column(dat, "MSRateBL")
+m_ersd_ms_bl_full <- lmer(ERSD ~ MSRateBL_z * Load + (1 | Subject), data = dat, REML = FALSE)
+m_ersd_ms_bl_add <- lmer(ERSD ~ MSRateBL_z + Load + (1 | Subject), data = dat, REML = FALSE)
 lrt_ersd_ms_bl <- anova(m_ersd_ms_bl_add, m_ersd_ms_bl_full)
 if (is.finite(lrt_ersd_ms_bl$`Pr(>Chisq)`[2]) && lrt_ersd_ms_bl$`Pr(>Chisq)`[2] < 0.05) {
   m_ersd_ms_bl_final <- m_ersd_ms_bl_full

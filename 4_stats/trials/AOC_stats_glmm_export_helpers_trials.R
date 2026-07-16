@@ -198,49 +198,12 @@ compute_cohens_d_trials <- function(res, task, comparisons, padj_lookup = NULL) 
   out
 }
 
-random_intercept_stats <- function(model) {
-  vc <- as.data.frame(VarCorr(model))
-  re_row <- vc[
-    vc$grp %in% c("Subject", "ID") & vc$var1 == "(Intercept)",
-    ,
-    drop = FALSE
-  ]
-  if (nrow(re_row) < 1) {
-    return(NULL)
-  }
-
-  var_est <- re_row$vcov[1]
-  sd_est <- re_row$sdcor[1]
-  ci_low <- ci_high <- se_var <- stat <- p <- NA_real_
-
-  ci_theta <- tryCatch(
-    confint(model, method = "profile", parm = "theta_", quiet = TRUE),
-    error = function(e) NULL
-  )
-  if (!is.null(ci_theta) && ".sig01" %in% rownames(ci_theta)) {
-    sd_ci <- ci_theta[".sig01", ]
-    ci_low <- sd_ci[1]^2
-    ci_high <- sd_ci[2]^2
-    sd_se <- (sd_ci[2] - sd_ci[1]) / (2 * stats::qnorm(0.975))
-    se_var <- 2 * sd_est * sd_se
-  }
-
-  lrt <- tryCatch(
-    suppressMessages(exactRLRT(model)),
-    error = function(e) NULL
-  )
-  if (!is.null(lrt)) {
-    stat <- as.numeric(lrt$stat)
-    p <- as.numeric(lrt$p.value)
-  }
-
-  list(
-    beta = var_est,
-    SE = se_var,
-    stat = stat,
-    p = p,
-    CI_low = ci_low,
-    CI_high = ci_high
+random_intercept_stats <- function(model, profile_cis = NULL) {
+  variance_component_stats(
+    model,
+    grp = "Subject",
+    profile_cis = profile_cis,
+    include_rlrt = TRUE
   )
 }
 
@@ -269,19 +232,63 @@ export_fixed_effects <- function(res, task, stats_dir, model = NULL, model_label
     stringsAsFactors = FALSE
   )
 
-  re_stats <- random_intercept_stats(model)
+  profile_cis <- profile_random_sd_cis(model)
+  re_stats <- random_intercept_stats(model, profile_cis = profile_cis)
   if (!is.null(re_stats)) {
     out <- rbind(
       out,
       data.frame(
         Task = task, DV = res$dv, ModelLabel = model_label,
-        Term = "Group Var",
+        Term = RE_TERM_SUBJECT,
         beta = re_stats$beta,
         SE = re_stats$SE,
         stat = re_stats$stat,
         p = re_stats$p,
         CI_low = re_stats$CI_low,
         CI_high = re_stats$CI_high,
+        N_obs = res$n_obs,
+        stringsAsFactors = FALSE
+      )
+    )
+  }
+
+  trial_stats <- variance_component_stats(
+    model,
+    grp = "Trial",
+    profile_cis = profile_cis,
+    include_rlrt = FALSE
+  )
+  if (!is.null(trial_stats)) {
+    out <- rbind(
+      out,
+      data.frame(
+        Task = task, DV = res$dv, ModelLabel = model_label,
+        Term = RE_TERM_TRIAL,
+        beta = trial_stats$beta,
+        SE = trial_stats$SE,
+        stat = trial_stats$stat,
+        p = trial_stats$p,
+        CI_low = trial_stats$CI_low,
+        CI_high = trial_stats$CI_high,
+        N_obs = res$n_obs,
+        stringsAsFactors = FALSE
+      )
+    )
+  }
+
+  resid_stats <- residual_sd_component(model)
+  if (!is.null(resid_stats)) {
+    out <- rbind(
+      out,
+      data.frame(
+        Task = task, DV = res$dv, ModelLabel = model_label,
+        Term = RE_TERM_RESIDUAL,
+        beta = resid_stats$beta,
+        SE = resid_stats$SE,
+        stat = resid_stats$stat,
+        p = resid_stats$p,
+        CI_low = resid_stats$CI_low,
+        CI_high = resid_stats$CI_high,
         N_obs = res$n_obs,
         stringsAsFactors = FALSE
       )
@@ -337,15 +344,19 @@ export_interaction_model <- function(res, task, gaze_sname, stats_dir, explorato
   model_full <- if (!is.null(res$model_full)) res$model_full else res$model
   model_red <- if (!is.null(res$model_reduced)) res$model_reduced else res$model
 
-  fixed_full_path <- file.path(
-    stats_dir, sprintf("%s_%s_%s_full_trials.csv", prefix_fixed, gaze_sname, task)
-  )
-  write.csv(
-    export_fixed_effects(res, task, stats_dir, model = model_full, model_label = label_full),
-    fixed_full_path,
-    row.names = FALSE
-  )
-  message("Saved ERSD fixed effects (full) → ", basename(fixed_full_path))
+  if (isTRUE(res$interaction_kept)) {
+    fixed_full_path <- file.path(
+      stats_dir, sprintf("%s_%s_%s_full_trials.csv", prefix_fixed, gaze_sname, task)
+    )
+    write.csv(
+      export_fixed_effects(res, task, stats_dir, model = model_full, model_label = label_full),
+      fixed_full_path,
+      row.names = FALSE
+    )
+    message("Saved ERSD fixed effects (full) → ", basename(fixed_full_path))
+  } else {
+    remove_interaction_full_exports(gaze_sname, task, stats_dir, exploratory = exploratory, trials = TRUE)
+  }
 
   fixed_red_path <- file.path(
     stats_dir, sprintf("%s_%s_%s_reduced_trials.csv", prefix_fixed, gaze_sname, task)
@@ -369,7 +380,7 @@ export_interaction_model <- function(res, task, gaze_sname, stats_dir, explorato
     N_obs = res$n_obs,
     Task = task,
     DV = res$dv,
-    GazePredictor = res$gaze_var,
+    GazePredictor = if (!is.null(res$gaze_z_var)) res$gaze_z_var else res$gaze_var,
     InteractionKept = isTRUE(res$interaction_kept),
     stringsAsFactors = FALSE
   )
@@ -381,7 +392,7 @@ export_interaction_model <- function(res, task, gaze_sname, stats_dir, explorato
 
   write_contrasts <- function(pw, model_label, suffix = NULL) {
     pw_df <- pairwise_to_export_df(pw, task, res$dv, model_label, res$n_obs)
-    pw_df$GazePredictor <- res$gaze_var
+    pw_df$GazePredictor <- if (!is.null(res$gaze_z_var)) res$gaze_z_var else res$gaze_var
     fname <- if (is.null(suffix)) {
       sprintf("%s_%s_%s_trials.csv", prefix_con, gaze_sname, task)
     } else {
@@ -393,9 +404,11 @@ export_interaction_model <- function(res, task, gaze_sname, stats_dir, explorato
   }
 
   write_contrasts(res$pairwise, res$model_label)
-  pw_full <- if (!is.null(res$pairwise_full)) res$pairwise_full else res$pairwise
+  if (isTRUE(res$interaction_kept)) {
+    pw_full <- if (!is.null(res$pairwise_full)) res$pairwise_full else res$pairwise
+    write_contrasts(pw_full, label_full, "full")
+  }
   pw_red <- if (!is.null(res$pairwise_reduced)) res$pairwise_reduced else res$pairwise
-  write_contrasts(pw_full, label_full, "full")
   write_contrasts(pw_red, label_red, "reduced")
 }
 

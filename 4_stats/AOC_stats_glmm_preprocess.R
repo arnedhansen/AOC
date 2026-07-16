@@ -1,5 +1,16 @@
 # Data loading and preprocessing for AOC GLMMs (matches Python raincloud pipeline).
 
+preprocess_script_dir <- {
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- sub("--file=", "", args[grep("^--file=", args)])
+  if (length(file_arg) > 0) {
+    dirname(normalizePath(file_arg, winslash = "/", mustWork = FALSE))
+  } else {
+    getwd()
+  }
+}
+source(file.path(preprocess_script_dir, "AOC_stats_glmm_helpers.R"))
+
 AOC_BASE_DIR <- "/Volumes/g_psyplafor_methlab$/Students/Arne/AOC"
 AOC_STATS_DIR <- file.path(AOC_BASE_DIR, "data", "stats")
 

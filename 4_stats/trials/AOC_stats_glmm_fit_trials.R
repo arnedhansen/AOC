@@ -143,18 +143,19 @@ fit_eeg_gaze_interaction_trials <- function(dat, gaze_var, model_label_full = NU
     return(NULL)
   }
 
-  gaze_c <- paste0(gaze_var, "_c")
-  sub[[gaze_c]] <- sub[[gaze_var]] - mean(sub[[gaze_var]], na.rm = TRUE)
+  gs <- grand_mean_zscore(sub[[gaze_var]])
+  gaze_z <- gaze_z_colname(gaze_var)
+  sub[[gaze_z]] <- gs$z
   sub$Load <- factor(sub$Load, levels = levels(dat$Load), ordered = FALSE)
 
   re <- re_terms_trials(sub)
   re_lab <- re_label_trials(sub)
   if (is.null(model_label_full)) {
-    model_label_full <- sprintf("%s ~ %s * Load + %s", EEG_DV_TRIALS, gaze_var, re_lab)
+    model_label_full <- sprintf("%s ~ %s * Load + %s", EEG_DV_TRIALS, gaze_z, re_lab)
   }
 
-  form_full <- as.formula(sprintf("%s ~ %s * Load + %s", EEG_DV_TRIALS, gaze_c, re))
-  form_red <- as.formula(sprintf("%s ~ %s + Load + %s", EEG_DV_TRIALS, gaze_c, re))
+  form_full <- as.formula(sprintf("%s ~ %s * Load + %s", EEG_DV_TRIALS, gaze_z, re))
+  form_red <- as.formula(sprintf("%s ~ %s + Load + %s", EEG_DV_TRIALS, gaze_z, re))
 
   full <- fit_lmer_gaussian_trials(form_full, sub)
   red <- fit_lmer_gaussian_trials(form_red, sub)
@@ -168,10 +169,9 @@ fit_eeg_gaze_interaction_trials <- function(dat, gaze_var, model_label_full = NU
 
   drop1_tbl <- tryCatch(as.data.frame(drop1(full)), error = function(e) NULL)
 
-  at_list <- setNames(list(0), gaze_c)
-  model_label_reduced <- sprintf("%s ~ %s + Load + %s", EEG_DV_TRIALS, gaze_var, re_lab)
+  at_list <- setNames(list(0), gaze_z)
+  model_label_reduced <- sprintf("%s ~ %s + Load + %s", EEG_DV_TRIALS, gaze_z, re_lab)
 
-  # Always summarize both models so tables can report full and additive fits.
   summarize_fit <- function(model, anova_type) {
     anova_tbl <- car::Anova(model, type = anova_type)
     confint_tbl <- tryCatch(
@@ -182,8 +182,12 @@ fit_eeg_gaze_interaction_trials <- function(dat, gaze_var, model_label_full = NU
     list(anova = anova_tbl, anova_type = anova_type, confint = confint_tbl, pairwise = pairwise)
   }
 
-  sum_full <- summarize_fit(full, 3L)
   sum_red <- summarize_fit(red, 2L)
+  sum_full <- if (interaction_kept) {
+    summarize_fit(full, 3L)
+  } else {
+    list(anova = NULL, anova_type = 3L, confint = NULL, pairwise = NULL)
+  }
   sum_final <- if (interaction_kept) sum_full else sum_red
 
   model_label <- if (interaction_kept) model_label_full else model_label_reduced
@@ -200,6 +204,9 @@ fit_eeg_gaze_interaction_trials <- function(dat, gaze_var, model_label_full = NU
     kind = "interaction",
     dv = EEG_DV_TRIALS,
     gaze_var = gaze_var,
+    gaze_z_var = gaze_z,
+    gaze_scale_mean = gs$mean,
+    gaze_scale_sd = gs$sd,
     exploratory = exploratory,
     model_label = model_label,
     model_label_full = model_label_full,
@@ -296,7 +303,7 @@ run_paper_glmm_trials <- function(task_config) {
       if (!is.null(res)) {
         message(sprintf(
           "  %s ~ %s * Load: interaction_kept=%s, Anova type %d, LRT p=%.4f",
-          res$dv, res$gaze_var, res$interaction_kept, res$anova_type,
+          res$dv, res$gaze_z_var, res$interaction_kept, res$anova_type,
           res$lrt_interaction$p[1]
         ))
       }

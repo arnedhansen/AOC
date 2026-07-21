@@ -8,7 +8,7 @@
 %   IAF (condition-wise): mtmfft+DPSS on retention window, trial-averaged (Sternberg [1 2] s), findpeaks [8 14] Hz
 %   Alpha power in (IAF-4, IAF+2) Hz (early/late/full; raw + dB); NaN if no valid IAF
 %   Lateralization index (late baselined)
-%   ERSD_early / ERSD_late / ERSD_full (fixed [8 14] Hz on baselined TFR, occipital ROI)
+%   ERSD_early / ERSD_late / ERSD_full ((IAF-4, IAF+2) Hz on baselined TFR, occipital ROI; NaN if no valid IAF)
 
 %% POWSPCTRM (Baseline + Early/Late/Full)
 % Setup
@@ -180,9 +180,11 @@ for subj = 1:length(subjects)
         [IAF6, powerIAF6] = iaf_from_retention_mtmfft(dataTFR, ind6, winIAF, chLabs, alphaRange);
 
         % ERSD from cached baselined TFR (avoid duplicate spectral transforms)
+        % Band is subject IAF (IAF-4, IAF+2) per condition; NaN when IAF undefined
         tfr_cache = load('tfr_stern.mat', 'tfr2_bl', 'tfr4_bl', 'tfr6_bl');
         [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars( ...
-            {tfr_cache.tfr2_bl, tfr_cache.tfr4_bl, tfr_cache.tfr6_bl}, tfr_cache.tfr2_bl.label);
+            {tfr_cache.tfr2_bl, tfr_cache.tfr4_bl, tfr_cache.tfr6_bl}, tfr_cache.tfr2_bl.label, ...
+            [IAF2; IAF4; IAF6], alphaRange);
 
         % Compute lateralization index on LATE BASELINED spectra (dB)
         powloads = {pow2_bl_late, pow4_bl_late, pow6_bl_late};
@@ -340,7 +342,7 @@ else
 end
 end
 
-function [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars(tfPack, labels)
+function [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars(tfPack, labels, iafVals, alphaRange)
 ERSD_early = nan(numel(tfPack), 1);
 ERSD_late = nan(numel(tfPack), 1);
 ERSD_full = nan(numel(tfPack), 1);
@@ -352,11 +354,15 @@ for ic = 1:numel(tfPack)
     if isempty(chUse)
         continue
     end
+    band = iaf_alpha_band(iafVals(ic), alphaRange);
+    if any(~isfinite(band)) || band(1) >= band(2)
+        continue
+    end
     for iw = 1:3
         cfgE = [];
         cfgE.channel = chUse;
         cfgE.avgoverchan = 'yes';
-        cfgE.frequency = [8 14];
+        cfgE.frequency = band;
         cfgE.avgoverfreq = 'yes';
         cfgE.latency = latencyWins{iw};
         cfgE.avgovertime = 'yes';

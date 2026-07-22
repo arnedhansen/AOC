@@ -7,7 +7,7 @@
 %   IAF (condition-wise): mtmfft+DPSS on retention window, trial-averaged (N-back [0 2] s), findpeaks [8 14] Hz
 %   Alpha power in (IAF-4, IAF+2) Hz (early/late/full; raw + dB); NaN if no valid IAF
 %   Lateralization index (late baselined)
-%   ERSD_early / ERSD_late / ERSD_full
+%   ERSD_early / ERSD_late / ERSD_full ((IAF-4, IAF+2) Hz on baselined TFR, occipital ROI; NaN if no valid IAF)
 
 %% POWSPCTRM (Baseline + Early/Late/Full) (subject-level)
 % Setup
@@ -62,10 +62,6 @@ for subj = 1:length(subjects)
 
         % Save trial-averaged TFR outputs
         save('tfr_nback.mat', 'tfr1', 'tfr2', 'tfr3', 'tfr1_bl', 'tfr2_bl', 'tfr3_bl')
-
-        % Save ERSD timecourse
-        ersd_timecourse = compute_ersd_timecourse({tfr1_bl, tfr2_bl, tfr3_bl}, tfr1_bl.label, [1; 2; 3]);
-        save('ersd_nback_timecourse.mat', 'ersd_timecourse')
 
         % Convert to window-collapsed POWSPCTRM (chan x freq)
         freq_range = [2 40];
@@ -180,9 +176,16 @@ for subj = 1:length(subjects)
         [IAF3, powerIAF3] = iaf_from_retention_mtmfft(dataTFR, ind3, winIAF, chLabs, alphaRange);
 
         % ERSD from cached baselined TFR (avoid duplicate spectral transforms)
+        % Band is subject IAF (IAF-4, IAF+2) per condition; NaN when IAF undefined
         tfr_cache = load('tfr_nback.mat', 'tfr1_bl', 'tfr2_bl', 'tfr3_bl');
         [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars( ...
-            {tfr_cache.tfr1_bl, tfr_cache.tfr2_bl, tfr_cache.tfr3_bl}, tfr_cache.tfr1_bl.label);
+            {tfr_cache.tfr1_bl, tfr_cache.tfr2_bl, tfr_cache.tfr3_bl}, tfr_cache.tfr1_bl.label, ...
+            [IAF1; IAF2; IAF3], alphaRange);
+
+        % ERSD timecourse (occipital, subject IAF (IAF-4, IAF+2) band, dB) per condition for later figures
+        ersd_timecourse = compute_ersd_timecourse( ...
+            {tfr_cache.tfr1_bl, tfr_cache.tfr2_bl, tfr_cache.tfr3_bl}, tfr_cache.tfr1_bl.label, ...
+            [1; 2; 3], [IAF1; IAF2; IAF3], alphaRange);
 
         % Compute lateralization index on LATE BASELINED spectra (dB)
         powloads = {pow1_bl_late, pow2_bl_late, pow3_bl_late};
@@ -234,6 +237,7 @@ for subj = 1:length(subjects)
         save alpha_power_nback powerIAF1 powerIAF2 powerIAF3
         save IAF_nback IAF1 IAF2 IAF3
         save lateralization_nback LatIdx1 LatIdx2 LatIdx3
+        save('ersd_nback_timecourse.mat', 'ersd_timecourse')
         eeg_data_nback = [eeg_data_nback; subj_data_eeg];
         clc
         fprintf(['Subject %s IAF: 1-back: %f Hz (Power: %f), 2-back: %f Hz (Power: %f), ' ...
@@ -345,7 +349,7 @@ else
 end
 end
 
-function [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars(tfPack, labels)
+function [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars(tfPack, labels, iafVals, alphaRange)
 ERSD_early = nan(numel(tfPack), 1);
 ERSD_late = nan(numel(tfPack), 1);
 ERSD_full = nan(numel(tfPack), 1);
@@ -357,11 +361,15 @@ for ic = 1:numel(tfPack)
     if isempty(chUse)
         continue
     end
+    band = iaf_alpha_band(iafVals(ic), alphaRange);
+    if any(~isfinite(band)) || band(1) >= band(2)
+        continue
+    end
     for iw = 1:3
         cfgE = [];
         cfgE.channel = chUse;
         cfgE.avgoverchan = 'yes';
-        cfgE.frequency = [8 14];
+        cfgE.frequency = band;
         cfgE.avgoverfreq = 'yes';
         cfgE.latency = latencyWins{iw};
         cfgE.avgovertime = 'yes';
@@ -395,7 +403,7 @@ if isempty(ch)
 end
 end
 
-function ersd_tc = compute_ersd_timecourse(tfPack, labels, condVals)
+function ersd_tc = compute_ersd_timecourse(tfPack, labels, condVals, iafVals, alphaRange)
 occ_ch = occ_channels_from_labels(labels);
 nCond = numel(tfPack);
 timeVec = tfPack{1}.time(:)';
@@ -407,10 +415,14 @@ for ic = 1:nCond
     if isempty(chUse)
         continue
     end
+    band = iaf_alpha_band(iafVals(ic), alphaRange);
+    if any(~isfinite(band)) || band(1) >= band(2)
+        continue
+    end
     cfgE = [];
     cfgE.channel = chUse;
     cfgE.avgoverchan = 'yes';
-    cfgE.frequency = [8 14];
+    cfgE.frequency = band;
     cfgE.avgoverfreq = 'yes';
     outE = ft_selectdata(cfgE, tf);
     tc(ic, :) = outE.powspctrm(:)';
@@ -418,5 +430,5 @@ end
 ersd_tc = struct();
 ersd_tc.time = timeVec;
 ersd_tc.condition = condVals(:);
-ersd_tc.ersd_occ_8_14_db = tc;
+ersd_tc.ersd_occ_iaf_db = tc;
 end

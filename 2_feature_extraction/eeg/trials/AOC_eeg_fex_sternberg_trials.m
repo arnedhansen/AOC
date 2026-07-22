@@ -1,9 +1,12 @@
 %% AOC EEG Feature Extraction Sternberg Trial Level ERSD
 % Compute trial level ERSD features for Sternberg only.
+% ERSD band is condition-wise IAF (IAF-4, IAF+2); fallback [8 14] when IAF undefined.
 % Output: `AOC_eeg_matrix_sternberg_trials.mat` with `eeg_data_sternberg_trials`.
 startup
 [subjects, paths, ~, ~] = setup('AOC');
 featPath = paths.features;
+alphaRange = [8 14];
+winIAF = [1 2];
 
 eeg_data_sternberg_trials = struct( ...
     'ID', {}, ...
@@ -33,6 +36,12 @@ for subj = 1:length(subjects)
         condIndices = {ind2, ind4, ind6};
         condOutVals = [2, 4, 6];
 
+        occ_ch = occ_channels_from_labels(dataTFR.label);
+        [IAF2, ~] = iaf_from_retention_mtmfft(dataTFR, ind2, winIAF, occ_ch, alphaRange);
+        [IAF4, ~] = iaf_from_retention_mtmfft(dataTFR, ind4, winIAF, occ_ch, alphaRange);
+        [IAF6, ~] = iaf_from_retention_mtmfft(dataTFR, ind6, winIAF, occ_ch, alphaRange);
+        iafVals = [IAF2, IAF4, IAF6];
+
         cfg = [];
         cfg.method = 'mtmconvol';
         cfg.output = 'pow';
@@ -59,7 +68,7 @@ for subj = 1:length(subjects)
             cfg.trials = trlIdx;
             tf = ft_freqanalysis(cfg, dataTFR);
             tf_bl = ft_freqbaseline(cfgb, tf);
-            [ersdEarly, ersdLate, ersdFull] = compute_trial_ersd(tf_bl);
+            [ersdEarly, ersdLate, ersdFull] = compute_trial_ersd(tf_bl, iafVals(c), alphaRange);
             trialIDs = tf_bl.trialinfo(:, 2);
             nTrials = numel(trialIDs);
 
@@ -87,14 +96,20 @@ end
 save(fullfile(featPath, 'AOC_eeg_matrix_sternberg_trials.mat'), 'eeg_data_sternberg_trials');
 writetable(struct2table(eeg_data_sternberg_trials), fullfile(featPath, 'AOC_eeg_matrix_sternberg_trials.csv'));
 
-function [ersdEarly, ersdLate, ersdFull] = compute_trial_ersd(tf_bl)
+function [ersdEarly, ersdLate, ersdFull] = compute_trial_ersd(tf_bl, iafVal, alphaRange)
 chUse = occ_channels_from_labels(tf_bl.label);
 chIdx = find(ismember(tf_bl.label, chUse));
 if isempty(chIdx)
     chIdx = 1:numel(tf_bl.label);
 end
 
-fMask = tf_bl.freq >= 8 & tf_bl.freq <= 14;
+nTrials = size(tf_bl.powspctrm, 1);
+ersdEarly = nan(nTrials, 1);
+ersdLate = nan(nTrials, 1);
+ersdFull = nan(nTrials, 1);
+
+band = ersd_alpha_band(iafVal, alphaRange);
+fMask = tf_bl.freq >= band(1) & tf_bl.freq <= band(2);
 tMaskEarly = tf_bl.time >= 0 & tf_bl.time <= 1;
 tMaskLate = tf_bl.time >= 1 & tf_bl.time <= 2;
 tMaskFull = tf_bl.time >= 0 & tf_bl.time <= 2;
@@ -127,5 +142,75 @@ for i = 1:numel(labels)
 end
 if isempty(ch)
     ch = labels;
+end
+end
+
+function [IAF, powerIAF] = iaf_from_retention_mtmfft(dataTFR, trialinds, winSec, chLabs, alphaRange)
+IAF = NaN;
+powerIAF = NaN;
+if isempty(trialinds) || isempty(chLabs)
+    return
+end
+try
+    cfg_sel = [];
+    cfg_sel.latency = winSec;
+    cfg_sel.trials = trialinds(:);
+    cfg_sel.channel = chLabs(:);
+    dw = ft_selectdata(cfg_sel, dataTFR);
+    if isempty(dw.trial)
+        return
+    end
+    cfgf = [];
+    cfgf.method = 'mtmfft';
+    cfgf.output = 'pow';
+    cfgf.taper = 'dpss';
+    cfgf.tapsmofrq = 2;
+    cfgf.foilim = [6 18];
+    cfgf.pad = 'nextpow2';
+    cfgf.keeptrials = 'no';
+    fr = ft_freqanalysis(cfgf, dw);
+    ps = mean(fr.powspctrm, 1);
+    [IAF, powerIAF] = iaf_peak_rules(fr.freq(:), ps(:), alphaRange);
+catch
+    IAF = NaN;
+    powerIAF = NaN;
+end
+end
+
+function [IAF, powerIAF] = iaf_peak_rules(freq, spec, alphaRange)
+freq = freq(:);
+spec = spec(:);
+IAF = NaN;
+powerIAF = NaN;
+amask = freq >= alphaRange(1) & freq <= alphaRange(2);
+alphaFreqs = freq(amask);
+alphaSpec = spec(amask);
+if numel(alphaSpec) < 3
+    return
+end
+[pks, locs] = findpeaks(alphaSpec);
+if isempty(pks)
+    return
+end
+[~, ind] = max(pks);
+IAF = alphaFreqs(locs(ind));
+bandIdx = freq > (IAF - 4) & freq < (IAF + 2);
+if any(bandIdx)
+    powerIAF = mean(spec(bandIdx));
+end
+if locs(ind) == 1 || locs(ind) == numel(alphaFreqs)
+    powerIAF = NaN;
+end
+end
+
+function band = ersd_alpha_band(IAF, alphaRange)
+% ERSD band: (IAF-4, IAF+2) when IAF is valid; otherwise fixed alphaRange ([8 14]).
+if ~isfinite(IAF)
+    band = alphaRange;
+else
+    band = [IAF - 4, IAF + 2];
+end
+if any(~isfinite(band)) || band(1) >= band(2)
+    band = alphaRange;
 end
 end

@@ -7,7 +7,7 @@
 %   IAF (condition-wise): mtmfft+DPSS on retention window, trial-averaged (N-back [0 2] s), findpeaks [8 14] Hz
 %   Alpha power in (IAF-4, IAF+2) Hz (early/late/full; raw + dB); NaN if no valid IAF
 %   Lateralization index (late baselined)
-%   ERSD_early / ERSD_late / ERSD_full ((IAF-4, IAF+2) Hz on baselined TFR, occipital ROI; NaN if no valid IAF)
+%   ERSD_early / ERSD_late / ERSD_full ((IAF-4, IAF+2) Hz on baselined TFR, occipital ROI; fallback [8 14] if no valid IAF)
 
 %% POWSPCTRM (Baseline + Early/Late/Full) (subject-level)
 % Setup
@@ -176,13 +176,13 @@ for subj = 1:length(subjects)
         [IAF3, powerIAF3] = iaf_from_retention_mtmfft(dataTFR, ind3, winIAF, chLabs, alphaRange);
 
         % ERSD from cached baselined TFR (avoid duplicate spectral transforms)
-        % Band is subject IAF (IAF-4, IAF+2) per condition; NaN when IAF undefined
+        % Band is subject IAF (IAF-4, IAF+2) per condition; fallback [8 14] when IAF undefined
         tfr_cache = load('tfr_nback.mat', 'tfr1_bl', 'tfr2_bl', 'tfr3_bl');
         [ERSD_early, ERSD_late, ERSD_full] = compute_ersd_scalars( ...
             {tfr_cache.tfr1_bl, tfr_cache.tfr2_bl, tfr_cache.tfr3_bl}, tfr_cache.tfr1_bl.label, ...
             [IAF1; IAF2; IAF3], alphaRange);
 
-        % ERSD timecourse (occipital, subject IAF (IAF-4, IAF+2) band, dB) per condition for later figures
+        % ERSD timecourse (occipital, IAF band with [8 14] fallback, dB) per condition for later figures
         ersd_timecourse = compute_ersd_timecourse( ...
             {tfr_cache.tfr1_bl, tfr_cache.tfr2_bl, tfr_cache.tfr3_bl}, tfr_cache.tfr1_bl.label, ...
             [1; 2; 3], [IAF1; IAF2; IAF3], alphaRange);
@@ -321,6 +321,18 @@ else
 end
 end
 
+function band = ersd_alpha_band(IAF, alphaRange)
+% ERSD band: (IAF-4, IAF+2) when IAF is valid; otherwise fixed alphaRange ([8 14]).
+if ~isfinite(IAF)
+    band = alphaRange;
+else
+    band = [IAF - 4, IAF + 2];
+end
+if any(~isfinite(band)) || band(1) >= band(2)
+    band = alphaRange;
+end
+end
+
 function v = robust_roi_pow(S, channelIdx, band)
 fmask = S.freq > band(1) & S.freq < band(2);
 if ~any(fmask)
@@ -361,10 +373,7 @@ for ic = 1:numel(tfPack)
     if isempty(chUse)
         continue
     end
-    band = iaf_alpha_band(iafVals(ic), alphaRange);
-    if any(~isfinite(band)) || band(1) >= band(2)
-        continue
-    end
+    band = ersd_alpha_band(iafVals(ic), alphaRange);
     for iw = 1:3
         cfgE = [];
         cfgE.channel = chUse;
@@ -415,10 +424,7 @@ for ic = 1:nCond
     if isempty(chUse)
         continue
     end
-    band = iaf_alpha_band(iafVals(ic), alphaRange);
-    if any(~isfinite(band)) || band(1) >= band(2)
-        continue
-    end
+    band = ersd_alpha_band(iafVals(ic), alphaRange);
     cfgE = [];
     cfgE.channel = chUse;
     cfgE.avgoverchan = 'yes';

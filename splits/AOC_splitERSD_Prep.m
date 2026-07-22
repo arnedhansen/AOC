@@ -1,7 +1,8 @@
 %% AOC Split Alpha Amp/Red Prep — Trial-Level Median Splits (Common Baseline)
 % Recompute keeptrials TFR from dataEEG_TFR_*, apply one subject-pooled
-% baseline in [-1.5 -0.5] s (dB), reduce occipital ROI x 8-14 Hz x split
-% latency, then median-split ALL trials within each subject (conditions pooled).
+% baseline in [-1.5 -0.5] s (dB), reduce occipital ROI x IAF band (IAF-4, IAF+2)
+% x split latency, then median-split ALL trials within each subject (conditions pooled).
+% Missing IAF for a condition falls back to fixed [8 14] Hz.
 %
 % Sternberg split metric: ERSD late window [1 2] s -> Low Alpha vs High Alpha
 % N-back split metric:    ERSD full window [0 2] s -> Low Alpha vs High Alpha
@@ -26,7 +27,7 @@ SAVE_SINGLE_SUBJECT_FIGS = false;  % true: save per-subject ERSD group time cour
 fig_pos = [0 0 1512 982];
 fontSize = 40;
 baseline_window = [-1.5 -0.5];
-alpha_band = [8 14];
+alphaRange = [8 14];  % peak search window for IAF; ERSD uses (IAF-4, IAF+2)
 plot_latency = [-0.5 2];
 
 tasks(1).tag = 'sternberg';
@@ -35,6 +36,7 @@ tasks(1).data_var = 'dataTFR';
 tasks(1).cond_codes = [22 24 26];
 tasks(1).cond_out = [2 4 6];
 tasks(1).toi = -1.5:0.05:3;
+tasks(1).winIAF = [1 2];
 tasks(1).split_latency = [1 2];
 tasks(1).ersd_var = 'ERSD_late';
 tasks(1).group_lbl_low = 'Low Alpha';
@@ -46,6 +48,7 @@ tasks(2).data_var = 'dataTFR';
 tasks(2).cond_codes = [21 22 23];
 tasks(2).cond_out = [1 2 3];
 tasks(2).toi = -1.5:0.05:2.25;
+tasks(2).winIAF = [0 2];
 tasks(2).split_latency = [0 2];
 tasks(2).ersd_var = 'ERSD_full';
 tasks(2).group_lbl_low = 'Low Alpha';
@@ -63,7 +66,8 @@ split_alpha_amp_red.meta.baseline_window = baseline_window;
 split_alpha_amp_red.meta.baseline_type = 'subject_pooled_db';
 split_alpha_amp_red.meta.baseline_note = ...
     'Mean raw power over all trials and time in baseline_window (chan x freq), then 10*log10(pow/baseline) per trial';
-split_alpha_amp_red.meta.alpha_band = alpha_band;
+split_alpha_amp_red.meta.alpha_band = 'IAF-4 to IAF+2 (condition-wise; fallback [8 14] Hz)';
+split_alpha_amp_red.meta.alphaRange_peak = alphaRange;
 split_alpha_amp_red.meta.roi = 'occipital O/I channels';
 split_alpha_amp_red.meta.split_rule = 'within-subject median across all trials (conditions pooled)';
 
@@ -142,14 +146,34 @@ for ti = 1:numel(tasks)
             if isempty(chIdx)
                 chIdx = 1:numel(tf_bl.label);
             end
-            fMask = tf_bl.freq >= alpha_band(1) & tf_bl.freq <= alpha_band(2);
             tMaskSplit = tf_bl.time >= tk.split_latency(1) & tf_bl.time <= tk.split_latency(2);
+            tMaskPlot = tf_bl.time >= plot_latency(1) & tf_bl.time <= plot_latency(2);
+            time_plot = tf_bl.time(tMaskPlot);
+
+            % Condition-wise IAF -> (IAF-4, IAF+2) band for each trial
+            iaf_by_cond = nan(numel(tk.cond_codes), 1);
+            for c = 1:numel(tk.cond_codes)
+                trlIdx = find(condCodes == tk.cond_codes(c));
+                [iaf_by_cond(c), ~] = iaf_from_retention_mtmfft(dataTFR, trlIdx, tk.winIAF, chUse, alphaRange);
+            end
 
             nTrials = size(tf_bl.powspctrm, 1);
             ersd = nan(nTrials, 1);
+            tc_all = nan(nTrials, numel(time_plot));
             for tr = 1:nTrials
+                c = find(tk.cond_codes == condCodes(tr), 1);
+                if isempty(c)
+                    continue
+                end
+                band = ersd_alpha_band(iaf_by_cond(c), alphaRange);
+                fMask = tf_bl.freq >= band(1) & tf_bl.freq <= band(2);
+                if ~any(fMask)
+                    continue
+                end
                 x = tf_bl.powspctrm(tr, chIdx, fMask, tMaskSplit);
                 ersd(tr) = mean(x(:), 'omitnan');
+                x = squeeze(mean(mean(tf_bl.powspctrm(tr, chIdx, fMask, tMaskPlot), 2, 'omitnan'), 3, 'omitnan'));
+                tc_all(tr, :) = x(:)';
             end
 
             valid = isfinite(ersd);
@@ -165,14 +189,6 @@ for ti = 1:numel(tasks)
                 error('Median split produced empty group (n_low=%d, n_high=%d).', sum(idx_low), sum(idx_high));
             end
 
-            % Occipital alpha time course per trial (for sanity + GA)
-            tMaskPlot = tf_bl.time >= plot_latency(1) & tf_bl.time <= plot_latency(2);
-            time_plot = tf_bl.time(tMaskPlot);
-            tc_all = nan(nTrials, numel(time_plot));
-            for tr = 1:nTrials
-                x = squeeze(mean(mean(tf_bl.powspctrm(tr, chIdx, fMask, tMaskPlot), 2, 'omitnan'), 3, 'omitnan'));
-                tc_all(tr, :) = x(:)';
-            end
             tc_low = mean(tc_all(idx_low, :), 1, 'omitnan');
             tc_high = mean(tc_all(idx_high, :), 1, 'omitnan');
 
@@ -316,6 +332,76 @@ for i = 1:numel(labels)
 end
 if isempty(ch)
     ch = labels;
+end
+end
+
+function [IAF, powerIAF] = iaf_from_retention_mtmfft(dataTFR, trialinds, winSec, chLabs, alphaRange)
+IAF = NaN;
+powerIAF = NaN;
+if isempty(trialinds) || isempty(chLabs)
+    return
+end
+try
+    cfg_sel = [];
+    cfg_sel.latency = winSec;
+    cfg_sel.trials = trialinds(:);
+    cfg_sel.channel = chLabs(:);
+    dw = ft_selectdata(cfg_sel, dataTFR);
+    if isempty(dw.trial)
+        return
+    end
+    cfgf = [];
+    cfgf.method = 'mtmfft';
+    cfgf.output = 'pow';
+    cfgf.taper = 'dpss';
+    cfgf.tapsmofrq = 2;
+    cfgf.foilim = [6 18];
+    cfgf.pad = 'nextpow2';
+    cfgf.keeptrials = 'no';
+    fr = ft_freqanalysis(cfgf, dw);
+    ps = mean(fr.powspctrm, 1);
+    [IAF, powerIAF] = iaf_peak_rules(fr.freq(:), ps(:), alphaRange);
+catch
+    IAF = NaN;
+    powerIAF = NaN;
+end
+end
+
+function [IAF, powerIAF] = iaf_peak_rules(freq, spec, alphaRange)
+freq = freq(:);
+spec = spec(:);
+IAF = NaN;
+powerIAF = NaN;
+amask = freq >= alphaRange(1) & freq <= alphaRange(2);
+alphaFreqs = freq(amask);
+alphaSpec = spec(amask);
+if numel(alphaSpec) < 3
+    return
+end
+[pks, locs] = findpeaks(alphaSpec);
+if isempty(pks)
+    return
+end
+[~, ind] = max(pks);
+IAF = alphaFreqs(locs(ind));
+bandIdx = freq > (IAF - 4) & freq < (IAF + 2);
+if any(bandIdx)
+    powerIAF = mean(spec(bandIdx));
+end
+if locs(ind) == 1 || locs(ind) == numel(alphaFreqs)
+    powerIAF = NaN;
+end
+end
+
+function band = ersd_alpha_band(IAF, alphaRange)
+% ERSD band: (IAF-4, IAF+2) when IAF is valid; otherwise fixed alphaRange ([8 14]).
+if ~isfinite(IAF)
+    band = alphaRange;
+else
+    band = [IAF - 4, IAF + 2];
+end
+if any(~isfinite(band)) || band(1) >= band(2)
+    band = alphaRange;
 end
 end
 

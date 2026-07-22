@@ -1,6 +1,6 @@
 %% AOC Master Matrix N Back Trial Level
 % Merge behavioral, gaze, and EEG trial matrices on ID Trial Condition.
-% EEG contract is ERSD only for trial level outputs.
+% EEG contract is ERSD only for trial level outputs (IAF-4, IAF+2 per condition; fallback [8 14]).
 startup
 [~, paths, ~, ~] = setup('AOC', 0);
 featPath = paths.features;

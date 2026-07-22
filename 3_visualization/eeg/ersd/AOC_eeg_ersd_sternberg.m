@@ -32,6 +32,7 @@ for subj = 1:numel(subjects)
     tfr2_all{end + 1} = ft_freqbaseline(cfgb, T.tfr2);
     tfr4_all{end + 1} = ft_freqbaseline(cfgb, T.tfr4);
     tfr6_all{end + 1} = ft_freqbaseline(cfgb, T.tfr6);
+    clc
     fprintf('Loaded Sternberg TFR %d / %d\n', subj, numel(subjects));
 end
 

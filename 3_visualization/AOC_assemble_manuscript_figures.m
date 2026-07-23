@@ -201,7 +201,7 @@ fig9.panels = {
 
 %% Assemble all figures
 figSpecs = {fig1, fig2, fig3, fig4, fig5, fig6, fig7, fig8, fig9};
-for iFig = 9%1:numel(figSpecs)
+for iFig = 1:numel(figSpecs)
     spec = figSpecs{iFig};
     outPng = fullfile(outDir, ['AOC_manuscript_' spec.name '.png']);
     assembleManuscriptFigure(spec, outPng, exportDpi);

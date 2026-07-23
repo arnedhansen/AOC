@@ -168,7 +168,7 @@ set(gca, 'FontSize', fontSize - 4);
 box off
 legend_handles = gobjects(1, 3);
 for c = 1:3
-    legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
+    legend_handles(c) = patch(NaN, NaN, colors(c, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(c, :), 'LineWidth', 1.5);
 end
 legend(legend_handles, cond_labels_legend, 'Location', 'northeast', 'FontSize', fontSize*0.666, 'Box', 'off');
 saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_nback.png'));
@@ -217,7 +217,7 @@ set(gca, 'FontSize', fontSize - 4);
 box off
 legend_handles = gobjects(1, 3);
 for c = 1:3
-    legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
+    legend_handles(c) = patch(NaN, NaN, colors(c, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(c, :), 'LineWidth', 1.5);
 end
 legend(legend_handles, cond_labels_legend, 'Location', 'northeast', 'FontSize', fontSize*0.666, 'Box', 'off');
 saveas(gcf, fullfile(fig_dir, 'AOC_gaze_dev_timecourse_nback_raw.png'));

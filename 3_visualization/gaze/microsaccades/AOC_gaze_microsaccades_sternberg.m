@@ -223,7 +223,7 @@ set(gca, 'FontSize', fontSize - 4);
 box off
 legend_handles = gobjects(1, nConds);
 for c = 1:nConds
-    legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
+    legend_handles(c) = patch(NaN, NaN, colors(c, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(c, :), 'LineWidth', 1.5);
 end
 legend(legend_handles, cLabels_legend, 'Location', 'northeast', 'FontSize', fontSize * 0.666, 'Box', 'off');
 saveas(gcf, fullfile(figpath, 'AOC_gaze_microsaccades_timecourse_sternberg.png'));
@@ -252,7 +252,7 @@ set(gca, 'FontSize', fontSize - 4);
 box off
 legend_handles = gobjects(1, nConds);
 for c = 1:nConds
-    legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
+    legend_handles(c) = patch(NaN, NaN, colors(c, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(c, :), 'LineWidth', 1.5);
 end
 legend(legend_handles, cLabels_legend, 'Location', 'northeast', 'FontSize', fontSize * 0.666, 'Box', 'off');
 saveas(gcf, fullfile(figpath, 'AOC_gaze_microsaccades_timecourse_sternberg_raw.png'));
@@ -325,7 +325,7 @@ xlim(t_win);
 ylabel('Microsaccade Rate [Hz]');
 legend_handles = gobjects(1, nConds);
 for c = 1:nConds
-    legend_handles(c) = patch(nan, nan, colors(c, :), 'EdgeColor', 'none', 'FaceAlpha', 0.60);
+    legend_handles(c) = patch(NaN, NaN, colors(c, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(c, :), 'LineWidth', 1.5);
 end
 legend(legend_handles, cLabels_legend, 'Location', 'northeast', 'FontSize', fontSize * 0.666, 'Box', 'off');
 set(gca, 'FontSize', fontSize - 4, 'XTickLabel', []);

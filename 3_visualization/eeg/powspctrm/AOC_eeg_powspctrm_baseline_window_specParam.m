@@ -59,7 +59,7 @@ close all
 figure('Position', [0 0 1512*0.4 982], 'Color', 'w');
 cfg = [];
 cfg.channel = channels;
-cfg.linewidth = 3;
+cfg.linewidth = 5;
 hold on;
 yline(0, '--')
 
@@ -135,7 +135,7 @@ close all
 figure('Position', [0 0 1512*0.4 982], 'Color', 'w');
 cfg = [];
 cfg.channel = channels;
-cfg.linewidth = 3;
+cfg.linewidth = 5;
 hold on;
 yline(0, '--')
 

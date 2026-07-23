@@ -182,7 +182,7 @@ for subj = 1:length(subjects)
             {tfr_cache.tfr1_bl, tfr_cache.tfr2_bl, tfr_cache.tfr3_bl}, tfr_cache.tfr1_bl.label, ...
             [IAF1; IAF2; IAF3], alphaRange);
 
-        % ERSD timecourse (occipital, IAF band with [8 14] fallback, dB) per condition for later figures
+        % ERSD timecourse for figures: same IAF band + [8 14] fallback as scalars
         ersd_timecourse = compute_ersd_timecourse( ...
             {tfr_cache.tfr1_bl, tfr_cache.tfr2_bl, tfr_cache.tfr3_bl}, tfr_cache.tfr1_bl.label, ...
             [1; 2; 3], [IAF1; IAF2; IAF3], alphaRange);
@@ -413,6 +413,7 @@ end
 end
 
 function ersd_tc = compute_ersd_timecourse(tfPack, labels, condVals, iafVals, alphaRange)
+% Occipital ERSD timecourse: condition-wise IAF-4/+2 via ersd_alpha_band ([8 14] fallback).
 occ_ch = occ_channels_from_labels(labels);
 nCond = numel(tfPack);
 timeVec = tfPack{1}.time(:)';

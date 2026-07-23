@@ -82,7 +82,7 @@ cfg = [];
 cfg.channel = channels;
 %cfg.channel = {'POz'};
 cfg. xlim = [-.5 2];
-cfg.linewidth = 2;
+cfg.linewidth = 5;
 ft_singleplotER(cfg, gaERP2, gaERP4, gaERP6);
 hold on
 xline(0, '--')

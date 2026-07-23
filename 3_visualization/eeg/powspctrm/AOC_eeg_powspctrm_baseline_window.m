@@ -51,7 +51,7 @@ close all
 figure('Position', [0 0 1512*0.4 982], 'Color', 'w');
 cfg = [];
 cfg.channel = channels;
-cfg.linewidth = 3;
+cfg.linewidth = 5;
 hold on;
 
 elecs = ismember(gapow2.label, cfg.channel);
@@ -141,7 +141,7 @@ close all
 figure('Position', [0 0 1512*0.4 982], 'Color', 'w');
 cfg = [];
 cfg.channel = channels;
-cfg.linewidth = 3;
+cfg.linewidth = 5;
 hold on;
 
 elecs = ismember(gapow1.label, cfg.channel);

@@ -68,7 +68,7 @@ conditions = {' 1-back', ' 2-back', ' 3-back'};
 cfg = [];
 cfg.channel = channels;
 cfg.figure = 'gcf';
-cfg.linewidth = 3;
+cfg.linewidth = 5;
 hold on;
 
 % Add shadedErrorBar

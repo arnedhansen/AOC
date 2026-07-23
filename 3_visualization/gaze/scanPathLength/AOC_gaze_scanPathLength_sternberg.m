@@ -115,12 +115,12 @@ col2 = colors(1,:);
 col4 = colors(2,:); 
 col6 = colors(3,:);
 
-shadedErrorBar(t_plot, grand_WM2, sem_WM2, 'lineProps', {'-','Color',col2,'LineWidth',2}, 'transparent', true);
-shadedErrorBar(t_plot, grand_WM4, sem_WM4, 'lineProps', {'-','Color',col4,'LineWidth',2}, 'transparent', true);
-shadedErrorBar(t_plot, grand_WM6, sem_WM6, 'lineProps', {'-','Color',col6,'LineWidth',2}, 'transparent', true);
+shadedErrorBar(t_plot, grand_WM2, sem_WM2, 'lineProps', {'-','Color',col2,'LineWidth',5}, 'transparent', true);
+shadedErrorBar(t_plot, grand_WM4, sem_WM4, 'lineProps', {'-','Color',col4,'LineWidth',5}, 'transparent', true);
+shadedErrorBar(t_plot, grand_WM6, sem_WM6, 'lineProps', {'-','Color',col6,'LineWidth',5}, 'transparent', true);
 
 % Black grand-average line on top
-plot(t_plot, grand_all, 'k', 'LineWidth', 2.2)
+plot(t_plot, grand_all, 'k', 'LineWidth', 5)
 
 xlabel('Time (s)')
 ylabel('Scan Path Length (px)')
@@ -143,9 +143,9 @@ col2 = colors(1,:);
 col4 = colors(2,:); 
 col6 = colors(3,:);
 
-shadedErrorBar(t_plot, grand_WM2, sem_WM2, 'lineProps', {'-','Color',col2,'LineWidth',2}, 'transparent', true);
-shadedErrorBar(t_plot, grand_WM4, sem_WM4, 'lineProps', {'-','Color',col4,'LineWidth',2}, 'transparent', true);
-shadedErrorBar(t_plot, grand_WM6, sem_WM6, 'lineProps', {'-','Color',col6,'LineWidth',2}, 'transparent', true);
+shadedErrorBar(t_plot, grand_WM2, sem_WM2, 'lineProps', {'-','Color',col2,'LineWidth',5}, 'transparent', true);
+shadedErrorBar(t_plot, grand_WM4, sem_WM4, 'lineProps', {'-','Color',col4,'LineWidth',5}, 'transparent', true);
+shadedErrorBar(t_plot, grand_WM6, sem_WM6, 'lineProps', {'-','Color',col6,'LineWidth',5}, 'transparent', true);
 
 xlabel('Time [s]')
 ylabel('Scan Path Length [px]')

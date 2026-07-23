@@ -129,7 +129,7 @@ for c = 1:n_cond
 end
 h = gobjects(1, n_cond);
 for c = 1:n_cond
-    h(c) = plot(toi, squeeze(exp_mean(c,:)), 'Color', colors(c,:), 'LineWidth', 2.5);
+    h(c) = plot(toi, squeeze(exp_mean(c,:)), 'Color', colors(c,:), 'LineWidth', 5);
 end
 xline(0, '--k', 'LineWidth', 1);
 xlabel('Time [s]', 'FontSize', fontSize);
@@ -153,7 +153,7 @@ for c = 1:n_cond
 end
 h = gobjects(1, n_cond);
 for c = 1:n_cond
-    h(c) = plot(toi, squeeze(off_mean(c,:)), 'Color', colors(c,:), 'LineWidth', 2.5);
+    h(c) = plot(toi, squeeze(off_mean(c,:)), 'Color', colors(c,:), 'LineWidth', 5);
 end
 xline(0, '--k', 'LineWidth', 1);
 xlabel('Time [s]', 'FontSize', fontSize);
@@ -174,7 +174,7 @@ figure('Position', [0 0 1512 982], 'Color', 'w');
 hold on
 fill([toi fliplr(toi)], [diff_exp+diff_exp_sem fliplr(diff_exp-diff_exp_sem)], ...
     [0.6 0.3 0.7], 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-plot(toi, diff_exp, 'Color', [0.6 0.3 0.7], 'LineWidth', 2.5);
+plot(toi, diff_exp, 'Color', [0.6 0.3 0.7], 'LineWidth', 5);
 yline(0, '--k', 'LineWidth', 1);
 xline(0, '--k', 'LineWidth', 1);
 xlabel('Time [s]', 'FontSize', fontSize);
@@ -194,7 +194,7 @@ figure('Position', [0 0 1512 982], 'Color', 'w');
 hold on
 fill([toi fliplr(toi)], [diff_off+diff_off_sem fliplr(diff_off-diff_off_sem)], ...
     [0.6 0.3 0.7], 'FaceAlpha', 0.2, 'EdgeColor', 'none');
-plot(toi, diff_off, 'Color', [0.6 0.3 0.7], 'LineWidth', 2.5);
+plot(toi, diff_off, 'Color', [0.6 0.3 0.7], 'LineWidth', 5);
 yline(0, '--k', 'LineWidth', 1);
 xline(0, '--k', 'LineWidth', 1);
 xlabel('Time [s]', 'FontSize', fontSize);

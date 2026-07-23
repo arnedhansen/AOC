@@ -1,5 +1,8 @@
 %% AOC EEG ERD/ERS Sternberg time course plus topos
-% Trial-averaged TFR is baselined [-1.5 -0.5] dB per subject, then grand-averaged
+% Trial-averaged TFR is baselined [-1.5 -0.5] dB per subject.
+% ERSD band matches stats/feature extraction: condition-wise IAF-4/+2 Hz,
+% with fallback to fixed [8 14] Hz when IAF is undefined. Band selection is
+% applied per subject x condition before grand-averaging (do not GA first).
 
 %% Setup
 startup
@@ -10,34 +13,48 @@ if ~isfolder(figDir), mkdir(figDir); end
 subjects = setdiff(subjects, {'361'});
 
 baseline_window = [-1.5 -0.5];
+alphaRange = [8 14];
 cfgb = [];
 cfgb.baseline = baseline_window;
 cfgb.baselinetype = 'db';
 
-%% Load trial-averaged TFR, baseline per subject
-tfr2_all = {};
-tfr4_all = {};
-tfr6_all = {};
-tfr2_raw_all = {};
-tfr4_raw_all = {};
-tfr6_raw_all = {};
+%% Load TFR, baseline, collapse to ERSD band per subject x condition
+tfr2_erd_all = {};
+tfr4_erd_all = {};
+tfr6_erd_all = {};
+tfr2_raw_alpha_all = {};
+tfr4_raw_alpha_all = {};
+tfr6_raw_alpha_all = {};
 
 for subj = 1:numel(subjects)
     dp = fullfile(path, subjects{subj}, 'eeg');
     f_tfr = fullfile(dp, 'tfr_stern.mat');
+    f_iaf = fullfile(dp, 'IAF_sternberg.mat');
     T = load(f_tfr, 'tfr2', 'tfr4', 'tfr6');
-    tfr2_raw_all{end + 1} = T.tfr2;
-    tfr4_raw_all{end + 1} = T.tfr4;
-    tfr6_raw_all{end + 1} = T.tfr6;
-    tfr2_all{end + 1} = ft_freqbaseline(cfgb, T.tfr2);
-    tfr4_all{end + 1} = ft_freqbaseline(cfgb, T.tfr4);
-    tfr6_all{end + 1} = ft_freqbaseline(cfgb, T.tfr6);
-    clc
+    I = load(f_iaf, 'IAF2', 'IAF4', 'IAF6');
+
+    tfr2_bl = ft_freqbaseline(cfgb, T.tfr2);
+    tfr4_bl = ft_freqbaseline(cfgb, T.tfr4);
+    tfr6_bl = ft_freqbaseline(cfgb, T.tfr6);
+
+    % ERSD: IAF band with [8 14] fallback (matches AOC_eeg_fex_sternberg)
+    tfr2_erd_all{end + 1} = select_ersd_band(tfr2_bl, I.IAF2, alphaRange, true); %#ok<AGROW>
+    tfr4_erd_all{end + 1} = select_ersd_band(tfr4_bl, I.IAF4, alphaRange, true); %#ok<AGROW>
+    tfr6_erd_all{end + 1} = select_ersd_band(tfr6_bl, I.IAF6, alphaRange, true); %#ok<AGROW>
+
+    % Baseline-window raw alpha: IAF band only (no fallback; skip if IAF missing)
+    raw2 = select_ersd_band(T.tfr2, I.IAF2, alphaRange, false);
+    raw4 = select_ersd_band(T.tfr4, I.IAF4, alphaRange, false);
+    raw6 = select_ersd_band(T.tfr6, I.IAF6, alphaRange, false);
+    if ~isempty(raw2), tfr2_raw_alpha_all{end + 1} = raw2; end %#ok<AGROW>
+    if ~isempty(raw4), tfr4_raw_alpha_all{end + 1} = raw4; end %#ok<AGROW>
+    if ~isempty(raw6), tfr6_raw_alpha_all{end + 1} = raw6; end %#ok<AGROW>
+
     fprintf('Loaded Sternberg TFR %d / %d\n', subj, numel(subjects));
 end
 
-nSubj = numel(tfr2_all);
-ref = tfr2_all{1};
+nSubj = numel(tfr2_erd_all);
+ref = tfr2_erd_all{1};
 chPlot = {};
 for i = 1:numel(ref.label)
     label = ref.label{i};
@@ -46,28 +63,16 @@ for i = 1:numel(ref.label)
     end
 end
 
-%% Grand average and select alpha band
+%% Grand average (keep individual subjects); frequency already collapsed
 cfg = [];
 cfg.keepindividual = 'yes';
-ga_sb_2 = ft_freqgrandaverage(cfg, tfr2_all{:});
-ga_sb_4 = ft_freqgrandaverage(cfg, tfr4_all{:});
-ga_sb_6 = ft_freqgrandaverage(cfg, tfr6_all{:});
+ga_sb_2_erd = ft_freqgrandaverage(cfg, tfr2_erd_all{:});
+ga_sb_4_erd = ft_freqgrandaverage(cfg, tfr4_erd_all{:});
+ga_sb_6_erd = ft_freqgrandaverage(cfg, tfr6_erd_all{:});
 
-cfg = [];
-cfg.frequency = [8 14];
-cfg.avgoverfreq = 'yes';
-ga_sb_2_erd = ft_selectdata(cfg, ga_sb_2);
-ga_sb_4_erd = ft_selectdata(cfg, ga_sb_4);
-ga_sb_6_erd = ft_selectdata(cfg, ga_sb_6);
-
-cfg_ga = [];
-cfg_ga.keepindividual = 'yes';
-ga_sb_2_raw = ft_freqgrandaverage(cfg_ga, tfr2_raw_all{:});
-ga_sb_4_raw = ft_freqgrandaverage(cfg_ga, tfr4_raw_all{:});
-ga_sb_6_raw = ft_freqgrandaverage(cfg_ga, tfr6_raw_all{:});
-ga_sb_2_raw_alpha = ft_selectdata(cfg, ga_sb_2_raw);
-ga_sb_4_raw_alpha = ft_selectdata(cfg, ga_sb_4_raw);
-ga_sb_6_raw_alpha = ft_selectdata(cfg, ga_sb_6_raw);
+ga_sb_2_raw_alpha = ft_freqgrandaverage(cfg, tfr2_raw_alpha_all{:});
+ga_sb_4_raw_alpha = ft_freqgrandaverage(cfg, tfr4_raw_alpha_all{:});
+ga_sb_6_raw_alpha = ft_freqgrandaverage(cfg, tfr6_raw_alpha_all{:});
 
 %% Plot ERSD time course (occipital ROI, mean +/- SEM across subjects)
 cfg = [];
@@ -109,7 +114,7 @@ eb2 = shadedErrorBar(x, y2, e2, 'lineProps', {'-', 'Color', colors(1, :)});
 ebs = [eb6, eb4, eb2];
 cIdx = [3, 2, 1];
 for k = 1:numel(ebs)
-    set(ebs(k).mainLine, 'LineWidth', 3, 'Color', colors(cIdx(k), :));
+    set(ebs(k).mainLine, 'LineWidth', 5, 'Color', colors(cIdx(k), :));
     set(ebs(k).patch, 'FaceColor', colors(cIdx(k), :), 'FaceAlpha', 0.25);
     set(ebs(k).edge(1), 'Color', 'none');
     set(ebs(k).edge(2), 'Color', 'none');
@@ -252,3 +257,37 @@ cb.FontSize = fontSize;
 cb.Label.FontSize = fontSize;
 drawnow; pause(0.05);
 saveas(gcf, fullfile(figDir, 'AOC_eeg_ersd_sternberg_topos_baseline_window.png'));
+
+%% Local helpers (match 2_feature_extraction/eeg/AOC_eeg_fex_sternberg.m)
+function out = select_ersd_band(tfr, iaf, alphaRange, allowFallback)
+band = ersd_alpha_band(iaf, alphaRange, allowFallback);
+if isempty(band)
+    out = [];
+    return
+end
+cfg = [];
+cfg.frequency = band;
+cfg.avgoverfreq = 'yes';
+out = ft_selectdata(cfg, tfr);
+end
+
+function band = ersd_alpha_band(IAF, alphaRange, allowFallback)
+% ERSD: (IAF-4, IAF+2) when IAF is valid; else fixed alphaRange if allowFallback.
+% AlphaPower-style (allowFallback=false): empty band when IAF missing.
+if ~isfinite(IAF)
+    if allowFallback
+        band = alphaRange;
+    else
+        band = [];
+    end
+    return
+end
+band = [IAF - 4, IAF + 2];
+if any(~isfinite(band)) || band(1) >= band(2)
+    if allowFallback
+        band = alphaRange;
+    else
+        band = [];
+    end
+end
+end

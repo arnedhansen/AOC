@@ -57,7 +57,7 @@ cfg = [];
 figure('Position', [0 0 1512*0.4 982], 'Color', 'w');
 cfg.channel   = channels;
 cfg.figure    = 'gcf';
-cfg.linewidth = 3;
+cfg.linewidth = 5;
 
 % Plot
 hold on;

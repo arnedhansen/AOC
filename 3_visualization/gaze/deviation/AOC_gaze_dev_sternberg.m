@@ -152,7 +152,7 @@ for c = 1:3
     [m, se] = winsorized_nanmean_se(X, winsor_pct);
 
     eb = shadedErrorBar(t_plot, m, se, 'lineProps', {'-'}, 'transparent', true);
-    set(eb.mainLine, 'Color', colors(c, :), 'LineWidth', 3);
+    set(eb.mainLine, 'Color', colors(c, :), 'LineWidth', 5);
     set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
     set(eb.edge(1), 'Color', 'none');
     set(eb.edge(2), 'Color', 'none');
@@ -201,7 +201,7 @@ for c = 1:3
     [m, se] = winsorized_nanmean_se(X, winsor_pct);
 
     eb = shadedErrorBar(t_plot, m, se, 'lineProps', {'-'}, 'transparent', true);
-    set(eb.mainLine, 'Color', colors(c, :), 'LineWidth', 3);
+    set(eb.mainLine, 'Color', colors(c, :), 'LineWidth', 5);
     set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
     set(eb.edge(1), 'Color', 'none');
     set(eb.edge(2), 'Color', 'none');

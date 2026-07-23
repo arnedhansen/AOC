@@ -995,28 +995,28 @@ model_specs <- list(
     pair_src = if (nrow(pair_stern) > 0) pair_stern[pair_stern$Variable == "ReactionTime", ] else NULL
   ),
   list(
-    id = "nback_gazedeviation",
-    title = "N-back Gaze Deviation",
-    fixed = "AOC_mixedlm_fixed_gazedev_nback_trials.csv",
-    pair_src = if (nrow(pair_nback) > 0) pair_nback[pair_nback$Variable == "GazeDeviation", ] else NULL
+    id = "nback_gazedev_bl",
+    title = "N-back Gaze Deviation (baseline-corrected)",
+    fixed = "AOC_mixedlm_fixed_gazedev_bl_nback_trials.csv",
+    pair_src = if (nrow(pair_nback) > 0) pair_nback[pair_nback$Variable == "GazeDeviationBL", ] else NULL
   ),
   list(
-    id = "sternberg_gazedeviation",
-    title = "Sternberg Gaze Deviation",
-    fixed = "AOC_mixedlm_fixed_gazedev_sternberg_trials.csv",
-    pair_src = if (nrow(pair_stern) > 0) pair_stern[pair_stern$Variable == "GazeDeviation", ] else NULL
+    id = "sternberg_gazedev_bl",
+    title = "Sternberg Gaze Deviation (baseline-corrected)",
+    fixed = "AOC_mixedlm_fixed_gazedev_bl_sternberg_trials.csv",
+    pair_src = if (nrow(pair_stern) > 0) pair_stern[pair_stern$Variable == "GazeDeviationBL", ] else NULL
   ),
   list(
-    id = "nback_msrate",
-    title = "N-back Microsaccade Rate",
-    fixed = "AOC_mixedlm_fixed_ms_nback_trials.csv",
-    pair_src = if (nrow(pair_nback) > 0) pair_nback[pair_nback$Variable == "MSRate", ] else NULL
+    id = "nback_ms_bl",
+    title = "N-back Microsaccade Rate (baseline-corrected)",
+    fixed = "AOC_mixedlm_fixed_ms_bl_nback_trials.csv",
+    pair_src = if (nrow(pair_nback) > 0) pair_nback[pair_nback$Variable == "MSRateBL", ] else NULL
   ),
   list(
-    id = "sternberg_msrate",
-    title = "Sternberg Microsaccade Rate",
-    fixed = "AOC_mixedlm_fixed_ms_sternberg_trials.csv",
-    pair_src = if (nrow(pair_stern) > 0) pair_stern[pair_stern$Variable == "MSRate", ] else NULL
+    id = "sternberg_ms_bl",
+    title = "Sternberg Microsaccade Rate (baseline-corrected)",
+    fixed = "AOC_mixedlm_fixed_ms_bl_sternberg_trials.csv",
+    pair_src = if (nrow(pair_stern) > 0) pair_stern[pair_stern$Variable == "MSRateBL", ] else NULL
   ),
   list(
     id = "nback_ersd",
@@ -1029,34 +1029,6 @@ model_specs <- list(
     title = "Sternberg ERS/ERD",
     fixed = "AOC_mixedlm_fixed_ersd_sternberg_trials.csv",
     pair_src = if (nrow(pair_stern) > 0) pair_stern[pair_stern$Variable == "ERSD", ] else NULL
-  ),
-  list(
-    id = "nback_ersd_by_gazedeviation",
-    title = "N-back ERS/ERD by GazeDeviation",
-    fixed = "AOC_ersd_fixed_gazedeviation_nback_trials.csv",
-    lrt = "AOC_ersd_lrtTbl_gazedeviation_nback_trials.csv",
-    pair = "AOC_ersd_contrasts_gazedeviation_nback_trials.csv"
-  ),
-  list(
-    id = "sternberg_ersd_by_gazedeviation",
-    title = "Sternberg ERS/ERD by GazeDeviation",
-    fixed = "AOC_ersd_fixed_gazedeviation_sternberg_trials.csv",
-    lrt = "AOC_ersd_lrtTbl_gazedeviation_sternberg_trials.csv",
-    pair = "AOC_ersd_contrasts_gazedeviation_sternberg_trials.csv"
-  ),
-  list(
-    id = "nback_ersd_by_msrate",
-    title = "N-back ERS/ERD by MSRate",
-    fixed = "AOC_ersd_fixed_msrate_nback_trials.csv",
-    lrt = "AOC_ersd_lrtTbl_msrate_nback_trials.csv",
-    pair = "AOC_ersd_contrasts_msrate_nback_trials.csv"
-  ),
-  list(
-    id = "sternberg_ersd_by_msrate",
-    title = "Sternberg ERS/ERD by MSRate",
-    fixed = "AOC_ersd_fixed_msrate_sternberg_trials.csv",
-    lrt = "AOC_ersd_lrtTbl_msrate_sternberg_trials.csv",
-    pair = "AOC_ersd_contrasts_msrate_sternberg_trials.csv"
   ),
   list(
     id = "nback_ersd_by_gazedev_bl",
@@ -1820,19 +1792,8 @@ build_covariation_full_model_doc <- function(spec, out_path, variant = NULL) {
   invisible(out_path)
 }
 
+# Trial-level co-variation tables use baseline-corrected gaze metrics only.
 covariation_specs <- list(
-  list(
-    id = "ersd_gaze_deviation",
-    key = "gazedeviation",
-    fixed_term = "GazeDeviation_z",
-    label = "Gaze Deviation"
-  ),
-  list(
-    id = "ersd_microsaccade_rate",
-    key = "msrate",
-    fixed_term = "MSRate_z",
-    label = "Microsaccade Rate"
-  ),
   list(
     id = "ersd_gaze_deviation_bl",
     key = "gazedev_bl",
@@ -1861,18 +1822,6 @@ combined_specs <- list(
     dv = "Accuracy",
     nback_fixed = "AOC_mixedlm_fixed_acc_nback_trials.csv",
     sternberg_fixed = "AOC_mixedlm_fixed_acc_sternberg_trials.csv"
-  ),
-  list(
-    id = "gaze_deviation",
-    dv = "GazeDeviation",
-    nback_fixed = "AOC_mixedlm_fixed_gazedev_nback_trials.csv",
-    sternberg_fixed = "AOC_mixedlm_fixed_gazedev_sternberg_trials.csv"
-  ),
-  list(
-    id = "microsaccade_rate",
-    dv = "MSRate",
-    nback_fixed = "AOC_mixedlm_fixed_ms_nback_trials.csv",
-    sternberg_fixed = "AOC_mixedlm_fixed_ms_sternberg_trials.csv"
   ),
   list(
     id = "gaze_deviation_bl",

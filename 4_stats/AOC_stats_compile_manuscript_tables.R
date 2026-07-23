@@ -122,8 +122,8 @@ main_text_specs <- build_numbered_specs(
     ),
     list(
       title = "ERS/ERD Co-Variation with Microsaccade Rate",
-      folder = combined_dir,
-      file = "ersd_microsaccade_rate_reduced_results_table.docx"
+      folder = full_dir,
+      file = "ersd_microsaccade_rate_full_model_table.docx"
     )
   ),
   "Table %d: %s",
@@ -144,7 +144,7 @@ supplement_entries <- list(
   list(
     title = "ERS/ERD Co-Variation with Microsaccade Rate",
     folder = full_dir,
-    file = "ersd_microsaccade_rate_reduced_full_model_table.docx"
+    file = "ersd_microsaccade_rate_full_model_table.docx"
   ),
   list(
     title = "Baselined Gaze Deviation",

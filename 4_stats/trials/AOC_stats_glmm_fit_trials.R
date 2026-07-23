@@ -146,6 +146,8 @@ fit_eeg_gaze_interaction_trials <- function(dat, gaze_var, model_label_full = NU
   gs <- grand_mean_zscore(sub[[gaze_var]])
   gaze_z <- gaze_z_colname(gaze_var)
   sub[[gaze_z]] <- gs$z
+  ys <- grand_mean_zscore(sub[[EEG_DV_TRIALS]])
+  sub[[EEG_DV_TRIALS]] <- ys$z
   sub$Load <- factor(sub$Load, levels = levels(dat$Load), ordered = FALSE)
 
   re <- re_terms_trials(sub)
@@ -207,6 +209,8 @@ fit_eeg_gaze_interaction_trials <- function(dat, gaze_var, model_label_full = NU
     gaze_z_var = gaze_z,
     gaze_scale_mean = gs$mean,
     gaze_scale_sd = gs$sd,
+    dv_scale_mean = ys$mean,
+    dv_scale_sd = ys$sd,
     exploratory = exploratory,
     model_label = model_label,
     model_label_full = model_label_full,
@@ -247,24 +251,16 @@ run_paper_glmm_trials <- function(task_config) {
     " | IQR: ", IQR_K_TRIALS, "× within Subject×Load"
   )
 
+  # Trial-level gaze analyses use baseline-corrected metrics only.
   load_models <- list(
     Accuracy = fit_dv_load_trials(dat, "Accuracy"),
     ReactionTime = fit_dv_load_trials(dat, "ReactionTime"),
-    GazeDeviation = fit_dv_load_trials(dat, "GazeDeviation"),
-    MSRate = fit_dv_load_trials(dat, "MSRate"),
     GazeDeviationBL = fit_dv_load_trials(dat, "GazeDeviationBL"),
     MSRateBL = fit_dv_load_trials(dat, "MSRateBL"),
     ERSD = fit_dv_load_trials(dat, EEG_DV_TRIALS)
   )
 
-  interaction_confirmatory <- list(
-    GazeDeviation = fit_eeg_gaze_interaction_trials(
-      dat, "GazeDeviation", exploratory = FALSE
-    ),
-    MSRate = fit_eeg_gaze_interaction_trials(
-      dat, "MSRate", exploratory = FALSE
-    )
-  )
+  interaction_confirmatory <- list()
 
   interaction_exploratory <- list(
     GazeDeviationBL = fit_eeg_gaze_interaction_trials(

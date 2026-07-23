@@ -111,6 +111,8 @@ fit_eeg_gaze_interaction <- function(dat, gaze_var, model_label_full, explorator
   gs <- grand_mean_zscore(sub[[gaze_var]])
   gaze_z <- gaze_z_colname(gaze_var)
   sub[[gaze_z]] <- gs$z
+  ys <- grand_mean_zscore(sub[[EEG_DV]])
+  sub[[EEG_DV]] <- ys$z
   sub$Load <- factor(sub$Load, levels = levels(dat$Load), ordered = FALSE)
 
   form_full <- as.formula(sprintf("%s ~ %s * Load + (1 | Subject)", EEG_DV, gaze_z))
@@ -168,6 +170,8 @@ fit_eeg_gaze_interaction <- function(dat, gaze_var, model_label_full, explorator
     gaze_z_var = gaze_z,
     gaze_scale_mean = gs$mean,
     gaze_scale_sd = gs$sd,
+    dv_scale_mean = ys$mean,
+    dv_scale_sd = ys$sd,
     exploratory = exploratory,
     model_label = model_label,
     model_label_full = model_label_full,

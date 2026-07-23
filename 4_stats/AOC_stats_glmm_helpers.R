@@ -1,7 +1,6 @@
 # Shared helpers for AOC GLMM fitting (condition- and trial-level).
 
-# Grand-mean z-score a continuous predictor: (x - mean) / SD over the analysis sample.
-# Slopes are then in DV units per 1 SD increase in the predictor.
+# Grand-mean z-score a continuous variable: (x - mean) / SD over the analysis sample.
 grand_mean_zscore <- function(x) {
   x <- as.numeric(x)
   mu <- mean(x, na.rm = TRUE)
@@ -24,8 +23,9 @@ add_gaze_z_column <- function(dat, gaze_var) {
 }
 
 STANDARDIZED_GAZE_BETA_NOTE <- paste0(
-  "Gaze predictor coefficients are grand-mean standardized. ",
-  "Pairwise load contrasts on ERS/ERD are in dB. "
+  "Gaze predictors and ERS/ERD were grand-mean standardized. ",
+  "Fixed-effect coefficients are fully standardized (change in SD of ERS/ERD per 1 SD ",
+  "increase in the gaze predictor). Pairwise load contrasts on ERS/ERD are in SD units. "
 )
 
 # Variance components appended to exported fixed-effects CSVs.

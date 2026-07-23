@@ -1,4 +1,12 @@
-%% AOC Split ERS/ERD (Trial-Level) — GazeDev (Sternberg + N-back)
+%% AOC Split by Raw Alpha Power — Full Pipeline (Prep + GazeDev + MS)
+% Within-subject median split on RAW occipital IAF-band alpha power
+% (no subject-pooled dB baseline), then GazeDev and MS analyses with CBPT.
+%
+% Sternberg split window: [1 2] s | N-back split window: [0 2] s
+% Alpha band: IAF-4 to IAF+2 (fallback [8 14] Hz)
+%
+% Figures:  .../figures/splits/SplitERSERD/rawAlpha/
+% Stats:    paths.splits_stats (distinct *rawAlpha* filenames)
 
 %% Setup
 startup
@@ -6,96 +14,319 @@ startup
 addpath(paths.seb_path);
 
 feat_dir = paths.features;
-fig_dir_root = fullfile(paths.figures, 'splits', 'SplitERSERD');
 stats_dir = paths.splits_stats;
-if ~isfolder(fig_dir_root), mkdir(fig_dir_root); end
+fig_dir_root = fullfile(paths.figures, 'splits', 'SplitERSERD', 'rawAlpha');
+fig_dir_prep = fullfile(fig_dir_root, 'Prep');
 if ~isfolder(stats_dir), mkdir(stats_dir); end
+if ~isfolder(fig_dir_root), mkdir(fig_dir_root); end
+if ~isfolder(fig_dir_prep), mkdir(fig_dir_prep); end
 
-split_file = fullfile(stats_dir, 'AOC_splitAlphaAmpRed_trialSplits.mat');
-if ~isfile(split_file)
-    error('Missing trial split file. Run AOC_splits_AlphaAmpRed_Prep.m first:\n  %s', split_file);
-end
-Ssplit = load(split_file, 'split_alpha_amp_red');
-split_alpha_amp_red = Ssplit.split_alpha_amp_red;
-
-fprintf('\n=== AOC Split ERS/ERD — Gaze Deviation (trial-level) ===\n');
-fprintf('Split file: %s\n', split_file);
-
+SAVE_SINGLE_SUBJECT_FIGS = false;
 fig_pos = [0 0 1512 982];
 fontSize = 40;
+alphaRange = [8 14];
+plot_latency = [-0.5 2];
 tfr_winsor_cfg = struct('enable', true, 'prctile', [2 98]);
+split_label = 'splitMedian_trial_rawAlpha';
 
 tasks(1).tag = 'sternberg';
-tasks(1).split_label = 'splitMedian_trial';
+tasks(1).data_fname = 'dataEEG_TFR_sternberg.mat';
+tasks(1).data_var = 'dataTFR';
+tasks(1).cond_codes = [22 24 26];
+tasks(1).cond_out = [2 4 6];
+tasks(1).toi = -1.5:0.05:3;
+tasks(1).winIAF = [1 2];
+tasks(1).split_latency = [1 2];
+tasks(1).topo_latency = [1 2];
+tasks(1).split_var = 'AlphaRaw_late';
 tasks(1).et_fname = 'dataET_sternberg.mat';
+tasks(1).et_fname_ms = 'dataET_sternberg';
 tasks(1).gaze_trials_file = 'AOC_gaze_matrix_sternberg_trials.mat';
 tasks(1).gaze_trials_var = 'gaze_data_sternberg_trials';
-tasks(1).topo_latency = [1 2];
 tasks(1).group_lbl_low = 'Low Alpha';
 tasks(1).group_lbl_high = 'High Alpha';
-tasks(1).ersd_var = 'ERSD_late';
 
 tasks(2).tag = 'nback';
-tasks(2).split_label = 'splitMedian_trial';
+tasks(2).data_fname = 'dataEEG_TFR_nback.mat';
+tasks(2).data_var = 'dataTFR';
+tasks(2).cond_codes = [21 22 23];
+tasks(2).cond_out = [1 2 3];
+tasks(2).toi = -1.5:0.05:2.25;
+tasks(2).winIAF = [0 2];
+tasks(2).split_latency = [0 2];
+tasks(2).topo_latency = [0 2];
+tasks(2).split_var = 'AlphaRaw_full';
 tasks(2).et_fname = 'dataET_nback.mat';
+tasks(2).et_fname_ms = 'dataET_nback';
 tasks(2).gaze_trials_file = 'AOC_gaze_matrix_nback_trials.mat';
 tasks(2).gaze_trials_var = 'gaze_data_nback_trials';
-tasks(2).topo_latency = [0 2];
 tasks(2).group_lbl_low = 'Low Alpha';
 tasks(2).group_lbl_high = 'High Alpha';
-tasks(2).ersd_var = 'ERSD_full';
 
+fprintf('\n=== AOC Split RAW Alpha — Full Pipeline (Prep + GazeDev + MS) ===\n');
+fprintf('Figures: %s\n', fig_dir_root);
+
+%% ========================= PART 1: PREP (raw alpha splits) =========================
+split_alpha_amp_red_raw = struct();
+split_alpha_amp_red_raw.meta.created = datestr(now, 31);
+split_alpha_amp_red_raw.meta.script = 'AOC_splitERSD_Prep_rawAlpha.m';
+split_alpha_amp_red_raw.meta.baseline_type = 'none_raw_power';
+split_alpha_amp_red_raw.meta.baseline_note = ...
+    'No baseline: split uses raw TFR power (occipital ROI x IAF band)';
+split_alpha_amp_red_raw.meta.alpha_band = 'IAF-4 to IAF+2 (condition-wise; fallback [8 14] Hz)';
+split_alpha_amp_red_raw.meta.alphaRange_peak = alphaRange;
+split_alpha_amp_red_raw.meta.roi = 'occipital O/I channels';
+split_alpha_amp_red_raw.meta.split_rule = 'within-subject median across all trials (conditions pooled)';
+
+for ti = 1:numel(tasks)
+    tk = tasks(ti);
+    task_tag = tk.tag;
+    fprintf('\n\n========== PREP RAW ALPHA: %s ==========\n', upper(task_tag));
+
+    fig_dir_subj = fullfile(fig_dir_prep, 'single_subjects', task_tag);
+    if SAVE_SINGLE_SUBJECT_FIGS && ~isfolder(fig_dir_subj)
+        mkdir(fig_dir_subj);
+    end
+
+    task_out = struct();
+    task_out.tag = task_tag;
+    task_out.split_label = split_label;
+    task_out.split_var = tk.split_var;
+    task_out.split_latency = tk.split_latency;
+    task_out.group_lbl_low = tk.group_lbl_low;
+    task_out.group_lbl_high = tk.group_lbl_high;
+    task_out.subjects = struct( ...
+        'ID', {}, 'Trial', {}, 'Condition', {}, 'AlphaRaw', {}, ...
+        'median_thr', {}, 'idx_low', {}, 'idx_high', {}, ...
+        'trial_ids_low', {}, 'trial_ids_high', {}, ...
+        'alpha_tc_low', {}, 'alpha_tc_high', {}, 'time', {}, ...
+        'tfr_low', {}, 'tfr_high', {}, 'n_low', {}, 'n_high', {});
+
+    ga_low = [];
+    ga_high = [];
+    ga_time = [];
+    n_ok = 0;
+    n_fail = 0;
+
+    for s = 1:numel(subjects)
+        sid_str = subjects{s};
+        sid = str2double(sid_str);
+        clc
+        fprintf('[PREP rawAlpha %s] Subject %d / %d (%s)\n', upper(task_tag), s, numel(subjects), sid_str);
+
+        eeg_dir = fullfile(feat_dir, sid_str, 'eeg');
+        data_file = fullfile(eeg_dir, tk.data_fname);
+        if ~isfile(data_file)
+            fprintf('  Missing %s\n', data_file);
+            n_fail = n_fail + 1;
+            continue
+        end
+
+        try
+            S = load(data_file, tk.data_var);
+            dataTFR = S.(tk.data_var);
+
+            condCodes = dataTFR.trialinfo(:, 1);
+            trialIDs = dataTFR.trialinfo(:, 2);
+            condSet = unique(condCodes(:))';
+            if ~all(ismember(condSet, tk.cond_codes))
+                error('Unexpected condition codes: %s', mat2str(condSet));
+            end
+
+            cfg = [];
+            cfg.method = 'mtmconvol';
+            cfg.output = 'pow';
+            cfg.taper = 'hanning';
+            cfg.foi = 2:2:40;
+            cfg.t_ftimwin = ones(size(cfg.foi)) * 0.5;
+            cfg.toi = tk.toi;
+            cfg.pad = 'nextpow2';
+            cfg.keeptrials = 'yes';
+            tf = ft_freqanalysis(cfg, dataTFR);
+
+            chUse = occ_channels_from_labels(tf.label);
+            chIdx = find(ismember(tf.label, chUse));
+            if isempty(chIdx)
+                chIdx = 1:numel(tf.label);
+            end
+            tMaskSplit = tf.time >= tk.split_latency(1) & tf.time <= tk.split_latency(2);
+            tMaskPlot = tf.time >= plot_latency(1) & tf.time <= plot_latency(2);
+            time_plot = tf.time(tMaskPlot);
+
+            iaf_by_cond = nan(numel(tk.cond_codes), 1);
+            for c = 1:numel(tk.cond_codes)
+                trlIdx = find(condCodes == tk.cond_codes(c));
+                [iaf_by_cond(c), ~] = iaf_from_retention_mtmfft(dataTFR, trlIdx, tk.winIAF, chUse, alphaRange);
+            end
+
+            nTrials = size(tf.powspctrm, 1);
+            alpha_raw = nan(nTrials, 1);
+            tc_all = nan(nTrials, numel(time_plot));
+            for tr = 1:nTrials
+                c = find(tk.cond_codes == condCodes(tr), 1);
+                if isempty(c)
+                    continue
+                end
+                band = ersd_alpha_band(iaf_by_cond(c), alphaRange);
+                fMask = tf.freq >= band(1) & tf.freq <= band(2);
+                if ~any(fMask)
+                    continue
+                end
+                x = tf.powspctrm(tr, chIdx, fMask, tMaskSplit);
+                alpha_raw(tr) = mean(x(:), 'omitnan');
+                x = squeeze(mean(mean(tf.powspctrm(tr, chIdx, fMask, tMaskPlot), 2, 'omitnan'), 3, 'omitnan'));
+                tc_all(tr, :) = x(:)';
+            end
+
+            valid = isfinite(alpha_raw);
+            if sum(valid) < 4
+                error('Too few finite trials for median split (%d).', sum(valid));
+            end
+            thr = median(alpha_raw(valid), 'omitnan');
+            idx_low = valid & (alpha_raw < thr);
+            idx_high = valid & (alpha_raw >= thr);
+            if ~any(idx_low) || ~any(idx_high)
+                error('Median split produced empty group (n_low=%d, n_high=%d).', sum(idx_low), sum(idx_high));
+            end
+
+            tc_low = mean(tc_all(idx_low, :), 1, 'omitnan');
+            tc_high = mean(tc_all(idx_high, :), 1, 'omitnan');
+            tfr_low = average_trials_freq(tf, idx_low);
+            tfr_high = average_trials_freq(tf, idx_high);
+
+            condOut = nan(nTrials, 1);
+            for c = 1:numel(tk.cond_codes)
+                condOut(condCodes == tk.cond_codes(c)) = tk.cond_out(c);
+            end
+
+            entry = struct();
+            entry.ID = sid;
+            entry.Trial = trialIDs(:);
+            entry.Condition = condOut(:);
+            entry.AlphaRaw = alpha_raw(:);
+            entry.median_thr = thr;
+            entry.idx_low = idx_low(:);
+            entry.idx_high = idx_high(:);
+            entry.trial_ids_low = trialIDs(idx_low);
+            entry.trial_ids_high = trialIDs(idx_high);
+            entry.alpha_tc_low = tc_low(:)';
+            entry.alpha_tc_high = tc_high(:)';
+            entry.time = time_plot(:)';
+            entry.tfr_low = tfr_low;
+            entry.tfr_high = tfr_high;
+            entry.n_low = sum(idx_low);
+            entry.n_high = sum(idx_high);
+            task_out.subjects(end + 1) = entry; %#ok<AGROW>
+
+            if isempty(ga_time)
+                ga_time = time_plot(:)';
+                ga_low = nan(numel(subjects), numel(ga_time));
+                ga_high = nan(numel(subjects), numel(ga_time));
+            end
+            if numel(time_plot) == numel(ga_time) && all(abs(time_plot(:) - ga_time) < 1e-9)
+                ga_low(s, :) = tc_low;
+                ga_high(s, :) = tc_high;
+            else
+                ga_low(s, :) = interp1(time_plot(:), tc_low(:), ga_time, 'linear', NaN);
+                ga_high(s, :) = interp1(time_plot(:), tc_high(:), ga_time, 'linear', NaN);
+            end
+            n_ok = n_ok + 1;
+
+            if SAVE_SINGLE_SUBJECT_FIGS
+                plot_rawalpha_group_timecourse(time_plot, tc_low, [], tc_high, [], ...
+                    colors, tk.group_lbl_low, tk.group_lbl_high, fontSize, fig_pos, ...
+                    sprintf('%s | subj %s (n_low=%d, n_high=%d)', task_tag, sid_str, sum(idx_low), sum(idx_high)), ...
+                    fullfile(fig_dir_subj, sprintf('AOC_split_rawAlpha_prep_%s_subj%s_timecourse.png', task_tag, sid_str)));
+            end
+
+            subj_split = rmfield(entry, {'tfr_low', 'tfr_high'});
+            save(fullfile(eeg_dir, sprintf('alphaAmpRed_trialSplit_rawAlpha_%s.mat', task_tag)), 'subj_split');
+
+        catch ME
+            fprintf('  FAILED %s: %s\n', sid_str, ME.message);
+            n_fail = n_fail + 1;
+        end
+    end
+
+    task_out.n_subjects_ok = n_ok;
+    task_out.n_subjects_fail = n_fail;
+    task_out.ga_time = ga_time;
+    task_out.ga_low = ga_low;
+    task_out.ga_high = ga_high;
+    split_alpha_amp_red_raw.(task_tag) = task_out;
+
+    if n_ok >= 2 && ~isempty(ga_time)
+        mL = mean(ga_low, 1, 'omitnan');
+        mH = mean(ga_high, 1, 'omitnan');
+        nL = sum(isfinite(ga_low), 1);
+        nH = sum(isfinite(ga_high), 1);
+        sL = std(ga_low, 0, 1, 'omitnan') ./ max(sqrt(nL), 1);
+        sH = std(ga_high, 0, 1, 'omitnan') ./ max(sqrt(nH), 1);
+        plot_rawalpha_group_timecourse(ga_time, mL, sL, mH, sH, ...
+            colors, tk.group_lbl_low, tk.group_lbl_high, fontSize, fig_pos, ...
+            sprintf('%s grand average raw alpha (n=%d subjects)', task_tag, n_ok), ...
+            fullfile(fig_dir_prep, sprintf('AOC_split_rawAlpha_prep_%s_GA_timecourse.png', task_tag)));
+    end
+    fprintf('Prep %s done: ok=%d fail=%d\n', task_tag, n_ok, n_fail);
+end
+
+out_file = fullfile(stats_dir, 'AOC_splitAlphaAmpRed_trialSplits_rawAlpha.mat');
+save(out_file, 'split_alpha_amp_red_raw', '-v7.3');
+fprintf('\nSaved trial splits to: %s\n', out_file);
+
+%% ========================= PART 2+3: GazeDev + MS per task =========================
 for ti = 1:numel(tasks)
 tk = tasks(ti);
 task_tag = tk.tag;
-split_label = tk.split_label;
-fig_prefix = sprintf('AOC_splitERSERD_%s_GazeDev', task_tag);
-
-fprintf('\n\n========== TASK: %s ==========\n', upper(task_tag));
-if ~isfield(split_alpha_amp_red, task_tag)
-    warning('Skipping %s: missing split field.', task_tag);
+if ~isfield(split_alpha_amp_red_raw, task_tag)
+    warning('Skipping outcomes for %s: missing prep field.', task_tag);
     continue
 end
-task_split = split_alpha_amp_red.(task_tag);
+task_split = split_alpha_amp_red_raw.(task_tag);
 subj_splits = task_split.subjects;
 nSubj = numel(subj_splits);
 if nSubj < 2
-    warning('Skipping %s: fewer than 2 subjects.', task_tag);
+    warning('Skipping outcomes for %s: fewer than 2 subjects.', task_tag);
     continue
 end
 
 uIDs = [subj_splits.ID]';
-split_info_str = sprintf('Within-subject median on %s (conditions pooled, common baseline)', tk.ersd_var);
-fprintf('%s\n', split_info_str);
+split_info_str = sprintf('Within-subject median on raw %s (conditions pooled, no baseline)', tk.split_var);
+fprintf('\n\n========== OUTCOMES: %s ==========\n%s\n', upper(task_tag), split_info_str);
 
-ersd_mean_low = nan(nSubj, 1);
-ersd_mean_high = nan(nSubj, 1);
-ersd_thr = nan(nSubj, 1);
+alpha_mean_low = nan(nSubj, 1);
+alpha_mean_high = nan(nSubj, 1);
+alpha_thr = nan(nSubj, 1);
+n_low = nan(nSubj, 1);
+n_high = nan(nSubj, 1);
 for s = 1:nSubj
-    ersd_mean_low(s) = mean(subj_splits(s).ERSD(subj_splits(s).idx_low), 'omitnan');
-    ersd_mean_high(s) = mean(subj_splits(s).ERSD(subj_splits(s).idx_high), 'omitnan');
-    ersd_thr(s) = subj_splits(s).median_thr;
+    alpha_mean_low(s) = mean(subj_splits(s).AlphaRaw(subj_splits(s).idx_low), 'omitnan');
+    alpha_mean_high(s) = mean(subj_splits(s).AlphaRaw(subj_splits(s).idx_high), 'omitnan');
+    alpha_thr(s) = subj_splits(s).median_thr;
+    n_low(s) = subj_splits(s).n_low;
+    n_high(s) = subj_splits(s).n_high;
 end
+fprintf('Subjects: %d | mean n_low=%.1f | mean n_high=%.1f\n', nSubj, mean(n_low), mean(n_high));
 
-%% Inclusion
+%% --- GazeDev ---
+fig_prefix_g = sprintf('AOC_split_rawAlpha_%s_GazeDev', task_tag);
+
 figure('Position', fig_pos, 'Color', 'w'); hold on
 x = (1:nSubj)';
-yline(0, '--', 'Color', [0.5 0.5 0.5], 'LineWidth', 2);
-plot(x, ersd_thr, 'k-', 'LineWidth', 1.2);
-h_low = scatter(x, ersd_mean_low, 70, colors(1, :), 'filled', 'MarkerFaceAlpha', 0.85);
-h_high = scatter(x, ersd_mean_high, 70, colors(3, :), 'filled', 'MarkerFaceAlpha', 0.85);
-xlabel('Participant (index)'); ylabel('Mean trial ERSD [dB]');
-title(sprintf('Trial-level median split [%s]', task_tag), 'Interpreter', 'none');
+plot(x, alpha_thr, 'k-', 'LineWidth', 1.2);
+h_low = scatter(x, alpha_mean_low, 70, colors(1, :), 'filled', 'MarkerFaceAlpha', 0.85);
+h_high = scatter(x, alpha_mean_high, 70, colors(3, :), 'filled', 'MarkerFaceAlpha', 0.85);
+xlabel('Participant (index)'); ylabel('Mean trial raw alpha');
+title(sprintf('Trial-level median split (raw alpha) [%s]', task_tag), 'Interpreter', 'none');
 legend([h_low, h_high], {tk.group_lbl_low, tk.group_lbl_high}, 'Location', 'best', 'FontSize', fontSize-4, 'Box', 'off');
 set(gca, 'FontSize', fontSize); box off
 pause(0.05); drawnow;
-saveas(gcf, fullfile(fig_dir_root, sprintf('%s_inclusion.png', fig_prefix)));
+saveas(gcf, fullfile(fig_dir_root, sprintf('%s_inclusion.png', fig_prefix_g)));
 close(gcf);
 
-%% Collect TFRs and ERSD / gaze metrics
 tfr_low_all = {};
 tfr_high_all = {};
-metrics_ERSD = nan(nSubj, 2);
+metrics_Alpha = nan(nSubj, 2);
 metrics_Dev = nan(nSubj, 2);
 gaze_cfg = init_gaze_tc_cfg();
 t_plot = gaze_cfg.t_vec;
@@ -108,10 +339,9 @@ gaze_mat_file = fullfile(feat_dir, tk.gaze_trials_file);
 Gmat = load(gaze_mat_file, tk.gaze_trials_var);
 Tg = struct2table(Gmat.(tk.gaze_trials_var));
 
-fprintf('\n=== Aggregating GazeDev / EEG within trial-split groups ===\n');
-fprintf('Gaze TC from full %s (baseline [-1.5 -0.5] s)\n', tk.et_fname);
+fprintf('\n=== Aggregating GazeDev within raw-alpha trial-split groups ===\n');
 for s = 1:nSubj
-    clc; fprintf('[SPLIT ERS/ERD GAZEDEV - %s] Subject %d / %d\n', upper(task_tag), s, nSubj);
+    clc; fprintf('[RAW ALPHA GAZEDEV - %s] Subject %d / %d\n', upper(task_tag), s, nSubj);
     sid = uIDs(s);
     sid_str = num2str(sid);
     subj_folder = resolve_subject_folder(subjects, sid);
@@ -119,12 +349,12 @@ for s = 1:nSubj
 
     ids_low = subj_splits(s).trial_ids_low(:);
     ids_high = subj_splits(s).trial_ids_high(:);
-    metrics_ERSD(s, 1) = ersd_mean_low(s);
-    metrics_ERSD(s, 2) = ersd_mean_high(s);
+    metrics_Alpha(s, 1) = alpha_mean_low(s);
+    metrics_Alpha(s, 2) = alpha_mean_high(s);
 
     if isfield(subj_splits(s), 'tfr_low') && ~isempty(subj_splits(s).tfr_low)
-        tfr_low_all{end+1} = subj_splits(s).tfr_low;
-        tfr_high_all{end+1} = subj_splits(s).tfr_high;
+        tfr_low_all{end+1} = subj_splits(s).tfr_low; %#ok<AGROW>
+        tfr_high_all{end+1} = subj_splits(s).tfr_high; %#ok<AGROW>
     end
 
     rows = Tg(Tg.ID == sid, :);
@@ -135,7 +365,7 @@ for s = 1:nSubj
 
     et_file = fullfile(feat_dir, subj_folder, 'gaze', tk.et_fname);
     if ~isfile(et_file)
-        missing_gaze{end+1} = sid_str;
+        missing_gaze{end+1} = sid_str; %#ok<AGROW>
         continue
     end
     try
@@ -143,46 +373,38 @@ for s = 1:nSubj
         dev_tc(s, 1, :) = tc_low;
         dev_tc(s, 2, :) = tc_high;
     catch ME
-        missing_gaze{end+1} = sid_str;
+        missing_gaze{end+1} = sid_str; %#ok<AGROW>
         fprintf('  Warning: GazeDev TC failed for %s (%s)\n', sid_str, ME.message);
     end
 end
 
-%% Channels from first TFR
 channels = {};
 if ~isempty(tfr_low_all)
     channels = occ_channels_from_labels(tfr_low_all{1}.label);
 elseif ~isempty(tfr_high_all)
     channels = occ_channels_from_labels(tfr_high_all{1}.label);
 end
-if isempty(channels)
-    warning('No TFR for channel definition; EEG TFR/topo panels will be skipped.');
-end
 
-%% TFR / topo (collapsed; both groups)
 color_map_tfr = customcolormap_preset('red-white-blue');
 if ~isempty(tfr_low_all) && ~isempty(tfr_high_all)
-    fprintf('\n=== Plotting collapsed TFRs ===\n');
+    fprintf('\n=== Plotting collapsed TFRs (raw power) ===\n');
     plot_group_tfrs_collapsed_paired(tfr_low_all, tfr_high_all, channels, headmodel, color_map_tfr, ...
-        fig_dir_root, fig_prefix, fig_pos, fontSize, tfr_winsor_cfg, tk.group_lbl_low, tk.group_lbl_high);
+        fig_dir_root, fig_prefix_g, fig_pos, fontSize, tfr_winsor_cfg, tk.group_lbl_low, tk.group_lbl_high);
     fprintf('\n=== Plotting collapsed topoplots ===\n');
     plot_group_topos_collapsed_paired(tfr_low_all, tfr_high_all, channels, headmodel, tk.topo_latency, ...
-        fig_dir_root, fig_prefix, fig_pos, fontSize, tk.group_lbl_low, tk.group_lbl_high);
+        fig_dir_root, fig_prefix_g, fig_pos, fontSize, tk.group_lbl_low, tk.group_lbl_high);
 end
 
-%% Rainclouds
-fprintf('\n=== Plotting rainclouds ===\n');
-plot_paired_raincloud(metrics_ERSD(:,1), metrics_ERSD(:,2), colors, tk.group_lbl_low, tk.group_lbl_high, ...
-    'ERSD [dB]', fig_dir_root, sprintf('%s_raincloud_ersd.png', fig_prefix), fig_pos, fontSize);
+fprintf('\n=== Plotting GazeDev rainclouds ===\n');
+plot_paired_raincloud_positive(metrics_Alpha(:,1), metrics_Alpha(:,2), colors, tk.group_lbl_low, tk.group_lbl_high, ...
+    'Raw alpha power', fig_dir_root, sprintf('%s_raincloud_alpha.png', fig_prefix_g), fig_pos, fontSize);
 plot_paired_raincloud(metrics_Dev(:,1), metrics_Dev(:,2), colors, tk.group_lbl_low, tk.group_lbl_high, ...
-    'Gaze deviation', fig_dir_root, sprintf('%s_raincloud_dev.png', fig_prefix), fig_pos, fontSize);
+    'Gaze deviation', fig_dir_root, sprintf('%s_raincloud_dev.png', fig_prefix_g), fig_pos, fontSize);
 
-%% Time courses
 close all
 fontSizeTC = 40;
 rng(123)
 t_vec = t_plot;
-
 tc_window_idx = idx_viable;
 tc_complete_min_frac = 0.80;
 keep_tc = true(nSubj, 1);
@@ -195,23 +417,19 @@ for g = 1:2
 end
 dev_tc(~keep_tc, :, :) = NaN;
 n_tc = sum(keep_tc);
-fprintf('Included subjects for TC: %d / %d\n', n_tc, nSubj);
+fprintf('Included subjects for GazeDev TC: %d / %d\n', n_tc, nSubj);
 
 low_group_timecourses = reshape(dev_tc(keep_tc, 1, :), n_tc, Tf);
 high_group_timecourses = reshape(dev_tc(keep_tc, 2, :), n_tc, Tf);
-mean_tc_diff = mean(mean(low_group_timecourses(:, tc_window_idx), 2, 'omitnan') - mean(high_group_timecourses(:, tc_window_idx), 2, 'omitnan'), 'omitnan');
-mean_tc_corr = corr(mean(low_group_timecourses, 1, 'omitnan')', mean(high_group_timecourses, 1, 'omitnan')');
-fprintf('Group-mean gaze TC correlation: %.3f | mean subject summary diff (low-high): %.2f%%\n', ...
-    mean_tc_corr, mean_tc_diff);
 
 gaze_ylabel = sprintf('Gaze Deviation\nChange [%%]');
-cbpt_report_file = fullfile(stats_dir, sprintf('AOC_splitERSERD_GazeDev_%s_%s_CBPT_report.txt', task_tag, split_label));
+cbpt_report_file = fullfile(stats_dir, sprintf('AOC_split_rawAlpha_GazeDev_%s_%s_CBPT_report.txt', task_tag, split_label));
 init_cbpt_report_file(cbpt_report_file, struct( ...
-    'script', 'AOC_split_AlphaAmpRed_GazeDev.m', ...
+    'script', 'AOC_splitERSD_Prep_rawAlpha.m', ...
     'task_tag', task_tag, ...
     'split_label', split_label, ...
     'split_info', split_info_str, ...
-    'ersd_var', tk.ersd_var, ...
+    'ersd_var', tk.split_var, ...
     'group_lbl_low', tk.group_lbl_low, ...
     'group_lbl_high', tk.group_lbl_high, ...
     'n_low_split', nSubj, ...
@@ -220,7 +438,7 @@ init_cbpt_report_file(cbpt_report_file, struct( ...
     'n_high_tc', n_tc, ...
     'metric', 'Gaze deviation change [% baseline] (paired within subject)'));
 
-tc_base = sprintf('AOC_splitERSERD_%s_GazeDev_timecourse', task_tag);
+tc_base = sprintf('AOC_split_rawAlpha_%s_GazeDev_timecourse', task_tag);
 report_tag = sprintf('%s_%s_GazeDev', task_tag, split_label);
 plot_paired_timecourse_CBPT(low_group_timecourses, high_group_timecourses, colors, gaze_ylabel, ...
     tc_base, report_tag, ...
@@ -234,45 +452,181 @@ plot_paired_timecourse_individuals(low_group_timecourses, high_group_timecourses
     fig_dir_root, fig_pos, fontSizeTC, t_vec, ...
     tk.group_lbl_low, tk.group_lbl_high);
 
-%% CSV
-fprintf('\n=== Exporting CSV ===\n');
 t_win = (t_vec >= 0) & (t_vec <= 2);
 dev_sum_low = mean(low_group_timecourses(:, t_win), 2, 'omitnan');
 dev_sum_high = mean(high_group_timecourses(:, t_win), 2, 'omitnan');
 ids_tc = uIDs(keep_tc);
 ID_col = []; Group_col = strings(0,1); Included_col = [];
-ERSD_col = []; GazeDev_col = []; GazeSummary_col = [];
+Alpha_col = []; GazeDev_col = []; GazeSummary_col = [];
 for s = 1:nSubj
     for g = 1:2
-        ID_col(end+1,1) = uIDs(s);
+        ID_col(end+1,1) = uIDs(s); %#ok<AGROW>
         if g == 1
-            Group_col(end+1,1) = string(tk.group_lbl_low);
-            ERSD_col(end+1,1) = metrics_ERSD(s,1);
-            GazeDev_col(end+1,1) = metrics_Dev(s,1);
+            Group_col(end+1,1) = string(tk.group_lbl_low); %#ok<AGROW>
+            Alpha_col(end+1,1) = metrics_Alpha(s,1); %#ok<AGROW>
+            GazeDev_col(end+1,1) = metrics_Dev(s,1); %#ok<AGROW>
         else
-            Group_col(end+1,1) = string(tk.group_lbl_high);
-            ERSD_col(end+1,1) = metrics_ERSD(s,2);
-            GazeDev_col(end+1,1) = metrics_Dev(s,2);
+            Group_col(end+1,1) = string(tk.group_lbl_high); %#ok<AGROW>
+            Alpha_col(end+1,1) = metrics_Alpha(s,2); %#ok<AGROW>
+            GazeDev_col(end+1,1) = metrics_Dev(s,2); %#ok<AGROW>
         end
         incl = keep_tc(s);
-        Included_col(end+1,1) = incl;
+        Included_col(end+1,1) = incl; %#ok<AGROW>
         if incl
             ix = find(ids_tc == uIDs(s), 1);
-            if g == 1, GazeSummary_col(end+1,1) = dev_sum_low(ix);
-            else, GazeSummary_col(end+1,1) = dev_sum_high(ix);
+            if g == 1, GazeSummary_col(end+1,1) = dev_sum_low(ix); %#ok<AGROW>
+            else, GazeSummary_col(end+1,1) = dev_sum_high(ix); %#ok<AGROW>
             end
         else
-            GazeSummary_col(end+1,1) = NaN;
+            GazeSummary_col(end+1,1) = NaN; %#ok<AGROW>
         end
     end
 end
-stats_tbl = table(ID_col, Group_col, Included_col, ERSD_col, GazeDev_col, GazeSummary_col, ...
-    'VariableNames', {'ID','Group','Included', tk.ersd_var, 'GazeDeviationFullBL', 'GazeDev_pct_0_2s'});
-csv_out = fullfile(stats_dir, sprintf('AOC_splitERSERD_GazeDev_%s_%s_stats_input.csv', task_tag, split_label));
+stats_tbl = table(ID_col, Group_col, Included_col, Alpha_col, GazeDev_col, GazeSummary_col, ...
+    'VariableNames', {'ID','Group','Included', tk.split_var, 'GazeDeviationFullBL', 'GazeDev_pct_0_2s'});
+csv_out = fullfile(stats_dir, sprintf('AOC_split_rawAlpha_GazeDev_%s_%s_stats_input.csv', task_tag, split_label));
 writetable(stats_tbl, csv_out);
-fprintf('CSV: %s\n', csv_out);
-fprintf('Missing gaze: %d\n', numel(unique(missing_gaze)));
+fprintf('GazeDev CSV: %s | missing gaze: %d\n', csv_out, numel(unique(missing_gaze)));
+
+%% --- MS ---
+fig_prefix_m = sprintf('AOC_split_rawAlpha_%s_MS', task_tag);
+ms_cfg = init_ms_tc_cfg();
+metrics_MS = nan(nSubj, 2);
+ms_tc = nan(nSubj, 2, ms_cfg.n_samp);
+missing_et = {};
+
+fprintf('\n=== Aggregating MS within raw-alpha trial-split groups ===\n');
+for s = 1:nSubj
+    clc; fprintf('[RAW ALPHA MS - %s] Subject %d / %d\n', upper(task_tag), s, nSubj);
+    sid = uIDs(s);
+    sid_str = num2str(sid);
+    subj_folder = resolve_subject_folder(subjects, sid);
+    if isempty(subj_folder), subj_folder = sid_str; end
+
+    ids_low = subj_splits(s).trial_ids_low(:);
+    ids_high = subj_splits(s).trial_ids_high(:);
+
+    rows = Tg(Tg.ID == sid, :);
+    if ~isempty(rows) && ismember('MSRateFullBL', rows.Properties.VariableNames)
+        metrics_MS(s, 1) = mean(rows.MSRateFullBL(ismember(rows.Trial, ids_low)), 'omitnan');
+        metrics_MS(s, 2) = mean(rows.MSRateFullBL(ismember(rows.Trial, ids_high)), 'omitnan');
+    end
+
+    et_file = fullfile(feat_dir, subj_folder, 'gaze', [tk.et_fname_ms, '.mat']);
+    if ~isfile(et_file)
+        missing_et{end+1} = sid_str; %#ok<AGROW>
+        continue
+    end
+    try
+        [tc_low, tc_high] = build_ms_tc_pct_by_trial_ids(et_file, ids_low, ids_high, ms_cfg);
+        ms_tc(s, 1, :) = tc_low;
+        ms_tc(s, 2, :) = tc_high;
+    catch ME
+        missing_et{end+1} = sid_str; %#ok<AGROW>
+        fprintf('  Warning: MS TC failed for %s (%s)\n', sid_str, ME.message);
+    end
 end
+
+fprintf('\n=== Plotting MS rainclouds ===\n');
+plot_paired_raincloud(metrics_MS(:, 1), metrics_MS(:, 2), colors, ...
+    tk.group_lbl_low, tk.group_lbl_high, 'Microsaccade rate', ...
+    fig_dir_root, sprintf('%s_raincloud_ms.png', fig_prefix_m), fig_pos, fontSize);
+
+close all
+fprintf('\n=== Preparing microsaccade time courses ===\n');
+t_vec = ms_cfg.t_vec;
+idx_viable = (t_vec >= 0) & (t_vec <= 2);
+ms_ylabel = sprintf('Microsaccade\nRate Change [%%]');
+rng(123)
+tc_window_idx = idx_viable;
+keep_tc = true(nSubj, 1);
+for g = 1:2
+    Xg = reshape(ms_tc(:, g, :), nSubj, ms_cfg.n_samp);
+    [Xg, keep_g] = preprocess_ms_subject_tc(Xg, idx_viable, ms_cfg);
+    ms_tc(:, g, :) = reshape(Xg, [nSubj, 1, ms_cfg.n_samp]);
+    frac = mean(isfinite(Xg(:, tc_window_idx)), 2);
+    keep_tc = keep_tc & keep_g & (frac >= tc_complete_min_frac);
+end
+ms_tc(~keep_tc, :, :) = NaN;
+n_tc = sum(keep_tc);
+fprintf('Included subjects for MS TC: %d / %d\n', n_tc, nSubj);
+
+low_group_timecourses = reshape(ms_tc(keep_tc, 1, :), n_tc, ms_cfg.n_samp);
+high_group_timecourses = reshape(ms_tc(keep_tc, 2, :), n_tc, ms_cfg.n_samp);
+
+cbpt_report_file = fullfile(stats_dir, sprintf('AOC_split_rawAlpha_MS_%s_%s_CBPT_report.txt', task_tag, split_label));
+init_cbpt_report_file(cbpt_report_file, struct( ...
+    'script', 'AOC_splitERSD_Prep_rawAlpha.m', ...
+    'task_tag', task_tag, ...
+    'split_label', split_label, ...
+    'split_info', split_info_str, ...
+    'ersd_var', tk.split_var, ...
+    'group_lbl_low', tk.group_lbl_low, ...
+    'group_lbl_high', tk.group_lbl_high, ...
+    'n_low_split', nSubj, ...
+    'n_high_split', nSubj, ...
+    'n_low_tc', n_tc, ...
+    'n_high_tc', n_tc, ...
+    'metric', 'Microsaccade rate change [% baseline] (paired within subject)'));
+
+tc_base = sprintf('AOC_split_rawAlpha_%s_MS_timecourse', task_tag);
+report_tag = sprintf('%s_%s_MS', task_tag, split_label);
+plot_paired_timecourse_CBPT(low_group_timecourses, high_group_timecourses, colors, ms_ylabel, ...
+    tc_base, report_tag, ...
+    fig_dir_root, fig_pos, fontSizeTC, t_vec, ...
+    tk.group_lbl_low, tk.group_lbl_high, cbpt_report_file);
+plot_difference_timecourse_CBPT(low_group_timecourses, high_group_timecourses, ...
+    sprintf('%s_HighMinusLow', tc_base), ...
+    fig_dir_root, fig_pos, fontSizeTC, t_vec);
+plot_paired_timecourse_individuals(low_group_timecourses, high_group_timecourses, colors, ms_ylabel, 'Collapsed over conditions', ...
+    sprintf('%s_individuals', tc_base), ...
+    fig_dir_root, fig_pos, fontSizeTC, t_vec, ...
+    tk.group_lbl_low, tk.group_lbl_high);
+
+t_win = (t_vec >= 0) & (t_vec <= 2);
+ms_sum_low = mean(low_group_timecourses(:, t_win), 2, 'omitnan');
+ms_sum_high = mean(high_group_timecourses(:, t_win), 2, 'omitnan');
+ids_tc = uIDs(keep_tc);
+ID_col = []; Group_col = strings(0, 1); Included_col = [];
+Alpha_col = []; MS_col = []; MSSummary_col = [];
+for s = 1:nSubj
+    sid = uIDs(s);
+    for g = 1:2
+        ID_col(end+1, 1) = sid; %#ok<AGROW>
+        if g == 1
+            Group_col(end+1, 1) = string(tk.group_lbl_low); %#ok<AGROW>
+            Alpha_col(end+1, 1) = alpha_mean_low(s); %#ok<AGROW>
+            MS_col(end+1, 1) = metrics_MS(s, 1); %#ok<AGROW>
+        else
+            Group_col(end+1, 1) = string(tk.group_lbl_high); %#ok<AGROW>
+            Alpha_col(end+1, 1) = alpha_mean_high(s); %#ok<AGROW>
+            MS_col(end+1, 1) = metrics_MS(s, 2); %#ok<AGROW>
+        end
+        incl = keep_tc(s);
+        Included_col(end+1, 1) = incl; %#ok<AGROW>
+        if incl
+            ix = find(ids_tc == sid, 1);
+            if g == 1
+                MSSummary_col(end+1, 1) = ms_sum_low(ix); %#ok<AGROW>
+            else
+                MSSummary_col(end+1, 1) = ms_sum_high(ix); %#ok<AGROW>
+            end
+        else
+            MSSummary_col(end+1, 1) = NaN; %#ok<AGROW>
+        end
+    end
+end
+stats_tbl = table(ID_col, Group_col, Included_col, Alpha_col, MS_col, MSSummary_col, ...
+    'VariableNames', {'ID', 'Group', 'Included', tk.split_var, 'MSRateFullBL', 'MS_pct_0_2s'});
+csv_out = fullfile(stats_dir, sprintf('AOC_split_rawAlpha_MS_%s_%s_stats_input.csv', task_tag, split_label));
+writetable(stats_tbl, csv_out);
+fprintf('MS CSV: %s | missing ET: %d\n', csv_out, numel(unique(missing_et)));
+end
+
+fprintf('\n=== Raw-alpha full pipeline done ===\n');
+fprintf('Figures: %s\n', fig_dir_root);
+
+%% ========================= Local Functions =========================
 
 function gaze_cfg = init_gaze_tc_cfg()
 gaze_cfg.fsample = 500;
@@ -512,12 +866,12 @@ freq_idx = ga_low.freq >= 5 & ga_low.freq <= 30;
 time_idx = ga_low.time >= -0.5 & ga_low.time <= 2;
 Ared = mean_over_channels_tfr(ga_low, ch_idx);
 Aamp = mean_over_channels_tfr(ga_high, ch_idx);
-mx = max([max(abs(Ared(freq_idx, time_idx)), [], 'all'), max(abs(Aamp(freq_idx, time_idx)), [], 'all')]);
+mx = max([max(Ared(freq_idx, time_idx), [], 'all'), max(Aamp(freq_idx, time_idx), [], 'all')]);
 if ~isfinite(mx) || mx <= 0, mx = 0.1; end
-clim_abs = [-0.9*mx, 0.9*mx];
+clim_abs = [0, 0.9*mx];
 
 cfg = [];
-cfg.channel = channels; cfg.colorbar = 'no'; cfg.zlim = 'maxabs';
+cfg.channel = channels; cfg.colorbar = 'no'; cfg.zlim = clim_abs;
 cfg.xlim = [-0.5 2]; cfg.ylim = [5 30]; cfg.layout = headmodel.layANThead;
 fsz_tfr = round(fsz * 0.8);
 figure('Position', [0 0 1512*0.666 982], 'Color', 'w');
@@ -525,12 +879,12 @@ ax = subplot(2,1,1); cfg.figure = ax; ft_singleplotTFR(cfg, ga_low);
 colormap(ax, color_map); set(ax, 'CLim', clim_abs); cbar = colorbar(ax);
 xlabel(ax, 'Time [s]', 'FontSize', fsz_tfr); ylabel(ax, 'Frequency [Hz]', 'FontSize', fsz_tfr);
 set(ax, 'FontSize', fsz_tfr); rectangle('Position', [0 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
-cbar.Label.String = 'Power [dB]'; title(ax, lblLow, 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
+cbar.Label.String = 'Raw Power'; title(ax, lblLow, 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
 ax = subplot(2,1,2); cfg.figure = ax; ft_singleplotTFR(cfg, ga_high);
 colormap(ax, color_map); set(ax, 'CLim', clim_abs); cbar = colorbar(ax);
 xlabel(ax, 'Time [s]', 'FontSize', fsz_tfr); ylabel(ax, 'Frequency [Hz]', 'FontSize', fsz_tfr);
 set(ax, 'FontSize', fsz_tfr); rectangle('Position', [0 8 2 6], 'EdgeColor', 'k', 'LineWidth', 2);
-cbar.Label.String = 'Power [dB]'; title(ax, lblHigh, 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
+cbar.Label.String = 'Raw Power'; title(ax, lblHigh, 'FontSize', fsz_tfr+4, 'Interpreter', 'none');
 pause(0.05); drawnow;
 saveas(gcf, fullfile(fig_dir, sprintf('%s_tfr_collapsedConditions.png', fig_prefix)));
 close(gcf);
@@ -1006,3 +1360,269 @@ else
     thr.tcrit = tinv(1 - alpha/2, df);
 end
 end
+
+function ms_cfg = init_ms_tc_cfg()
+ms_cfg.fsample = 500;
+ms_cfg.screenW = 800;
+ms_cfg.screenH = 600;
+ms_cfg.blink_win = 50;
+ms_cfg.sigma_ms = 50;
+sigma_samp = round(ms_cfg.sigma_ms / (1000 / ms_cfg.fsample));
+kHalf = 3 * sigma_samp;
+x_kern = -kHalf:kHalf;
+ms_cfg.gKernel = exp(-x_kern.^2 / (2 * sigma_samp^2));
+ms_cfg.gKernel = ms_cfg.gKernel / sum(ms_cfg.gKernel);
+ms_cfg.t_comp = [-1.5 2.5];
+ms_cfg.n_comp = round(diff(ms_cfg.t_comp) * ms_cfg.fsample) + 1;
+ms_cfg.t_comp_vec = linspace(ms_cfg.t_comp(1), ms_cfg.t_comp(2), ms_cfg.n_comp);
+ms_cfg.t_win = [-0.5 2];
+[~, crop_start] = min(abs(ms_cfg.t_comp_vec - ms_cfg.t_win(1)));
+[~, crop_end] = min(abs(ms_cfg.t_comp_vec - ms_cfg.t_win(2)));
+ms_cfg.crop_idx = crop_start:crop_end;
+ms_cfg.n_samp = numel(ms_cfg.crop_idx);
+ms_cfg.t_vec = ms_cfg.t_comp_vec(ms_cfg.crop_idx);
+ms_cfg.bl_win = [-1.5 -0.5];
+ms_cfg.bl_idx_comp = ms_cfg.t_comp_vec >= ms_cfg.bl_win(1) & ms_cfg.t_comp_vec <= ms_cfg.bl_win(2);
+ms_cfg.min_trials_per_group = 3;
+ms_cfg.outlier_k_iqr = 1.5;
+ms_cfg.max_interp_gap_sec = 0.50;
+ms_cfg.min_subject_coverage = 0.60;
+ms_cfg.smooth_sec = 0.025;
+ms_cfg.win_sm = max(1, round(ms_cfg.smooth_sec * ms_cfg.fsample));
+end
+
+function [tc_low, tc_high] = build_ms_tc_pct_by_trial_ids(et_file, ids_low, ids_high, ms_cfg)
+S = load(et_file);
+if isfield(S, 'dataETlong')
+    et = S.dataETlong;
+elseif isfield(S, 'dataet')
+    et = S.dataet;
+else
+    error('No ET struct in %s.', et_file);
+end
+fsample = ms_cfg.fsample;
+n_comp = ms_cfg.n_comp;
+spikes_low = [];
+spikes_high = [];
+
+for trl = 1:numel(et.trial)
+    if size(et.trialinfo, 2) > 1
+        tid = et.trialinfo(trl, 2);
+    else
+        continue
+    end
+    is_low = ismember(tid, ids_low);
+    is_high = ismember(tid, ids_high);
+    if ~is_low && ~is_high
+        continue
+    end
+
+    raw = et.trial{trl};
+    t = et.time{trl};
+    raw = raw(1:min(3, size(raw, 1)), :);
+    raw(2, :) = ms_cfg.screenH - raw(2, :);
+    oob = raw(1,:) < 0 | raw(1,:) > ms_cfg.screenW | raw(2,:) < 0 | raw(2,:) > ms_cfg.screenH;
+    raw(:, oob) = NaN;
+    raw = remove_blinks(raw, ms_cfg.blink_win);
+
+    idx_win = t >= ms_cfg.t_comp(1) & t <= ms_cfg.t_comp(2);
+    gx = raw(1, idx_win);
+    gy = raw(2, idx_win);
+    if sum(isfinite(gx) & isfinite(gy)) < 50
+        continue
+    end
+    velData = [gx; gy];
+    [~, msDetails] = detect_microsaccades(fsample, velData, length(gx));
+    spikeVec = zeros(1, length(gx));
+    if ~isempty(msDetails.Onset)
+        onsets = msDetails.Onset(msDetails.Onset >= 1 & msDetails.Onset <= length(gx));
+        spikeVec(onsets) = 1;
+    end
+    if length(spikeVec) >= n_comp
+        spikeVec = spikeVec(1:n_comp);
+    else
+        spikeVec(end+1:n_comp) = 0;
+    end
+    if is_low
+        spikes_low(end+1, :) = spikeVec;
+    end
+    if is_high
+        spikes_high(end+1, :) = spikeVec;
+    end
+end
+
+tc_low = spikes_to_pct_tc(spikes_low, ms_cfg);
+tc_high = spikes_to_pct_tc(spikes_high, ms_cfg);
+end
+
+function tc = spikes_to_pct_tc(spikes, ms_cfg)
+tc = nan(1, ms_cfg.n_samp);
+if size(spikes, 1) < ms_cfg.min_trials_per_group
+    return
+end
+rate = mean(spikes, 1) * ms_cfg.fsample;
+smoothed = conv(rate, ms_cfg.gKernel, 'same');
+bl_mean = nanmean(smoothed(ms_cfg.bl_idx_comp));
+if isfinite(bl_mean) && bl_mean > 0
+    smoothed_pct = (smoothed - bl_mean) ./ bl_mean * 100;
+else
+    smoothed_pct = nan(size(smoothed));
+end
+tc = smoothed_pct(ms_cfg.crop_idx);
+end
+
+function [X, keep_subj] = preprocess_ms_subject_tc(X, idx_viable, ms_cfg)
+X(~isfinite(X)) = NaN;
+med_metric = median(X(:, idx_viable), 2, 'omitnan');
+[X, keep_subj] = exclude_outlier_trajectories(X, med_metric, ms_cfg.outlier_k_iqr);
+max_interp_gap_smp = max(1, round(ms_cfg.max_interp_gap_sec * ms_cfg.fsample));
+for s = 1:size(X, 1)
+    X(s, :) = fill_short_nan_gaps(X(s, :), max_interp_gap_smp);
+end
+subj_cov = mean(isfinite(X(:, idx_viable)), 2);
+keep_subj = keep_subj & (subj_cov >= ms_cfg.min_subject_coverage);
+X(~keep_subj, :) = NaN;
+if ms_cfg.win_sm > 1
+    X = movmean(X, ms_cfg.win_sm, 2, 'omitnan');
+end
+end
+
+
+function tfr_avg = average_trials_freq(tf, tr_mask)
+tfr_avg = tf;
+P = tf.powspctrm(tr_mask, :, :, :);
+tfr_avg.powspctrm = squeeze(mean(P, 1, 'omitnan')); % chan x freq x time
+if isfield(tfr_avg, 'trialinfo')
+    tfr_avg.trialinfo = tf.trialinfo(tr_mask, :);
+end
+tfr_avg.dimord = 'chan_freq_time';
+if isfield(tfr_avg, 'cumtapcnt')
+    tfr_avg = rmfield(tfr_avg, 'cumtapcnt');
+end
+end
+
+function [IAF, powerIAF] = iaf_from_retention_mtmfft(dataTFR, trialinds, winSec, chLabs, alphaRange)
+IAF = NaN;
+powerIAF = NaN;
+if isempty(trialinds) || isempty(chLabs)
+    return
+end
+try
+    cfg_sel = [];
+    cfg_sel.latency = winSec;
+    cfg_sel.trials = trialinds(:);
+    cfg_sel.channel = chLabs(:);
+    dw = ft_selectdata(cfg_sel, dataTFR);
+    if isempty(dw.trial)
+        return
+    end
+    cfgf = [];
+    cfgf.method = 'mtmfft';
+    cfgf.output = 'pow';
+    cfgf.taper = 'dpss';
+    cfgf.tapsmofrq = 2;
+    cfgf.foilim = [6 18];
+    cfgf.pad = 'nextpow2';
+    cfgf.keeptrials = 'no';
+    fr = ft_freqanalysis(cfgf, dw);
+    ps = mean(fr.powspctrm, 1);
+    [IAF, powerIAF] = iaf_peak_rules(fr.freq(:), ps(:), alphaRange);
+catch
+    IAF = NaN;
+    powerIAF = NaN;
+end
+end
+
+function [IAF, powerIAF] = iaf_peak_rules(freq, spec, alphaRange)
+freq = freq(:);
+spec = spec(:);
+IAF = NaN;
+powerIAF = NaN;
+amask = freq >= alphaRange(1) & freq <= alphaRange(2);
+alphaFreqs = freq(amask);
+alphaSpec = spec(amask);
+if numel(alphaSpec) < 3
+    return
+end
+[pks, locs] = findpeaks(alphaSpec);
+if isempty(pks)
+    return
+end
+[~, ind] = max(pks);
+IAF = alphaFreqs(locs(ind));
+bandIdx = freq > (IAF - 4) & freq < (IAF + 2);
+if any(bandIdx)
+    powerIAF = mean(spec(bandIdx));
+end
+if locs(ind) == 1 || locs(ind) == numel(alphaFreqs)
+    powerIAF = NaN;
+end
+end
+
+function band = ersd_alpha_band(IAF, alphaRange)
+% Alpha band: (IAF-4, IAF+2) when IAF is valid; otherwise fixed alphaRange ([8 14]).
+if ~isfinite(IAF)
+    band = alphaRange;
+else
+    band = [IAF - 4, IAF + 2];
+end
+if any(~isfinite(band)) || band(1) >= band(2)
+    band = alphaRange;
+end
+end
+
+function plot_rawalpha_group_timecourse(t, yLow, eLow, yHigh, eHigh, colors, lblLow, lblHigh, fsz, fig_pos, ttl, out_file)
+figure('Position', fig_pos, 'Color', 'w');
+hold on
+legendFontSize = fsz * 0.666;
+if isempty(eLow), eLow = zeros(size(yLow)); end
+if isempty(eHigh), eHigh = zeros(size(yHigh)); end
+ebL = shadedErrorBar(t, yLow, eLow, 'lineProps', {'-', 'Color', colors(1, :)});
+ebH = shadedErrorBar(t, yHigh, eHigh, 'lineProps', {'-', 'Color', colors(3, :)});
+set(ebL.mainLine, 'LineWidth', 3, 'Color', colors(1, :));
+set(ebH.mainLine, 'LineWidth', 3, 'Color', colors(3, :));
+set(ebL.patch, 'FaceColor', colors(1, :), 'FaceAlpha', 0.25);
+set(ebH.patch, 'FaceColor', colors(3, :), 'FaceAlpha', 0.25);
+set(ebL.edge(1), 'Color', 'none'); set(ebL.edge(2), 'Color', 'none');
+set(ebH.edge(1), 'Color', 'none'); set(ebH.edge(2), 'Color', 'none');
+xline(0, '--', 'Color', [0.75 0.75 0.75], 'LineWidth', 1);
+set(gca, 'FontSize', fsz);
+xlabel('Time [s]');
+ylabel('Raw Alpha Power');
+xlim([-0.5 2]);
+title(ttl, 'Interpreter', 'none', 'FontSize', fsz * 0.7);
+leg1 = patch(NaN, NaN, colors(1, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(1, :), 'LineWidth', 1.5);
+leg2 = patch(NaN, NaN, colors(3, :), 'FaceAlpha', 0.25, 'EdgeColor', colors(3, :), 'LineWidth', 1.5);
+legend([leg1, leg2], {[' ' lblLow], [' ' lblHigh]}, ...
+    'Location', 'southeast', 'FontSize', legendFontSize, 'Box', 'off');
+box off
+drawnow; pause(0.05);
+saveas(gcf, out_file);
+close(gcf);
+end
+
+
+function plot_paired_raincloud_positive(yLow, yHigh, colors, lblLow, lblHigh, ylab, fig_dir, out_name, fig_pos, fsz)
+all_vals = [yLow(:); yHigh(:)]; all_vals = all_vals(isfinite(all_vals));
+figure('Position', fig_pos, 'Color', 'w'); hold on
+draw_one_cloud(yLow, 1, colors(1,:), 0.35, 96, 0.45);
+draw_one_cloud(yHigh, 2, colors(3,:), 0.35, 96, 0.45);
+for i = 1:numel(yLow)
+    if isfinite(yLow(i)) && isfinite(yHigh(i))
+        plot([1 2], [yLow(i) yHigh(i)], '-', 'Color', [0.7 0.7 0.7], 'LineWidth', 0.8);
+    end
+end
+if isempty(all_vals)
+    ylim([0 1]);
+else
+    ymin = min(all_vals); ymax = max(all_vals);
+    pad = max((ymax - ymin) * 0.10, eps);
+    ylim([max(0, ymin - pad), ymax + pad]);
+end
+set(gca, 'XTick', [1 2], 'XTickLabel', {lblLow, lblHigh}, 'FontSize', fsz-2);
+ylabel(ylab, 'Interpreter', 'none');
+title('Within-subject trial split (conditions collapsed)', 'Interpreter', 'none');
+box off; pause(0.05); drawnow;
+saveas(gcf, fullfile(fig_dir, out_name)); close(gcf);
+end
+

@@ -209,8 +209,8 @@ for c = 1:nConds
     [m, se] = summarize_subject_tc(X, idx_viable, outlier_k_iqr, ...
         max_interp_gap_sec, fsample, min_subject_coverage, win_sm, winsor_pct);
     eb = shadedErrorBar(t_vec, m, se, 'lineProps', {'-'}, 'transparent', true);
-    set(eb.mainLine, 'Color', colors(c, :), 'LineWidth', 2.5);
-    set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.20);
+    set(eb.mainLine, 'Color', colors(c, :), 'LineWidth', 3);
+    set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
     set(eb.edge(1), 'Color', 'none');
     set(eb.edge(2), 'Color', 'none');
 end
@@ -237,8 +237,8 @@ for c = 1:nConds
     [m, se] = summarize_subject_tc(X, idx_viable, outlier_k_iqr, ...
         max_interp_gap_sec, fsample, min_subject_coverage, win_sm, winsor_pct);
     eb = shadedErrorBar(t_vec, m, se, 'lineProps', {'-'}, 'transparent', true);
-    set(eb.mainLine, 'Color', colors(c, :), 'LineWidth', 2.5);
-    set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.20);
+    set(eb.mainLine, 'Color', colors(c, :), 'LineWidth', 3);
+    set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
     set(eb.edge(1), 'Color', 'none');
     set(eb.edge(2), 'Color', 'none');
 end
@@ -315,8 +315,8 @@ for c = 1:nConds
     [m, se] = summarize_subject_tc(X, idx_viable, outlier_k_iqr, ...
         max_interp_gap_sec, fsample, min_subject_coverage, win_sm, winsor_pct);
     eb = shadedErrorBar(t_vec, m, se, 'lineProps', {'-'}, 'transparent', true);
-    set(eb.mainLine, 'Color', colors(c, :), 'LineWidth', 2.5);
-    set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.20);
+    set(eb.mainLine, 'Color', colors(c, :), 'LineWidth', 3);
+    set(eb.patch, 'FaceColor', colors(c, :), 'FaceAlpha', 0.25);
     set(eb.edge(1), 'Color', 'none');
     set(eb.edge(2), 'Color', 'none');
 end

@@ -108,8 +108,8 @@ eb1 = shadedErrorBar(x, y1, e1, 'lineProps', {'-', 'Color', colors(1, :)});
 ebs = [eb3, eb2, eb1];
 cIdx = [3, 2, 1];
 for k = 1:numel(ebs)
-    set(ebs(k).mainLine, 'LineWidth', 2, 'Color', colors(cIdx(k), :));
-    set(ebs(k).patch, 'FaceColor', colors(cIdx(k), :), 'FaceAlpha', 0.20);
+    set(ebs(k).mainLine, 'LineWidth', 3, 'Color', colors(cIdx(k), :));
+    set(ebs(k).patch, 'FaceColor', colors(cIdx(k), :), 'FaceAlpha', 0.25);
     set(ebs(k).edge(1), 'Color', 'none');
     set(ebs(k).edge(2), 'Color', 'none');
 end

@@ -205,8 +205,8 @@ end
 
 hold on
 eb = shadedErrorBar(t_plot, summary.m, summary.se, 'lineProps', {'-'}, 'transparent', true);
-set(eb.mainLine, 'Color', [0.10 0.10 0.10], 'LineWidth', 2.5);
-set(eb.patch, 'FaceColor', [0.10 0.10 0.10], 'FaceAlpha', 0.20);
+set(eb.mainLine, 'Color', [0.10 0.10 0.10], 'LineWidth', 3);
+set(eb.patch, 'FaceColor', [0.10 0.10 0.10], 'FaceAlpha', 0.25);
 set(eb.edge(1), 'Color', 'none');
 set(eb.edge(2), 'Color', 'none');
 

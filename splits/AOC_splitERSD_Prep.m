@@ -413,10 +413,10 @@ if isempty(eLow), eLow = zeros(size(yLow)); end
 if isempty(eHigh), eHigh = zeros(size(yHigh)); end
 ebL = shadedErrorBar(t, yLow, eLow, 'lineProps', {'-', 'Color', colors(1, :)});
 ebH = shadedErrorBar(t, yHigh, eHigh, 'lineProps', {'-', 'Color', colors(3, :)});
-set(ebL.mainLine, 'LineWidth', 2, 'Color', colors(1, :));
-set(ebH.mainLine, 'LineWidth', 2, 'Color', colors(3, :));
-set(ebL.patch, 'FaceColor', colors(1, :), 'FaceAlpha', 0.20);
-set(ebH.patch, 'FaceColor', colors(3, :), 'FaceAlpha', 0.20);
+set(ebL.mainLine, 'LineWidth', 3, 'Color', colors(1, :));
+set(ebH.mainLine, 'LineWidth', 3, 'Color', colors(3, :));
+set(ebL.patch, 'FaceColor', colors(1, :), 'FaceAlpha', 0.25);
+set(ebH.patch, 'FaceColor', colors(3, :), 'FaceAlpha', 0.25);
 set(ebL.edge(1), 'Color', 'none'); set(ebL.edge(2), 'Color', 'none');
 set(ebH.edge(1), 'Color', 'none'); set(ebH.edge(2), 'Color', 'none');
 xline(0, '--', 'Color', [0.75 0.75 0.75], 'LineWidth', 1);

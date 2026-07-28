@@ -35,28 +35,31 @@ for subj = 1:length(subjects)
     load('dataEEG_TFR_sternberg.mat');
 
     % Identify indices of trials belonging to conditions
-    ind2 = find(dataTFR.trialinfo == 22); % WM load 2
-    ind4 = find(dataTFR.trialinfo == 24); % WM load 4
-    ind6 = find(dataTFR.trialinfo == 26); % WM load 6
+    % trialinfo is N x 2: col1 = condition (22/24/26), col2 = trial ID
+    ind2 = find(dataTFR.trialinfo(:, 1) == 22); % WM load 2
+    ind4 = find(dataTFR.trialinfo(:, 1) == 24); % WM load 4
+    ind6 = find(dataTFR.trialinfo(:, 1) == 26); % WM load 6
 
     % Select data per condition
+    cfg = [];
     cfg.trials = ind2;
     dat2 = ft_selectdata(cfg, dataTFR);
+    cfg = [];
     cfg.trials = ind4;
     dat4 = ft_selectdata(cfg, dataTFR);
+    cfg = [];
     cfg.trials = ind6;
     dat6 = ft_selectdata(cfg, dataTFR);
 
-    % Baseline
+    % Baseline per trial, then average
     cfg = [];
-    cfg.baseline = [-1.5 -0.5];
-    dat2bl = ft_timelockbaseline(cfg, dat2);
-    dat4bl = ft_timelockbaseline(cfg, dat4);
-    dat6bl = ft_timelockbaseline(cfg, dat6);
+    cfg.demean = 'yes';
+    cfg.baselinewindow = [-1.5 -0.5];
+    dat2 = ft_preprocessing(cfg, dat2);
+    dat4 = ft_preprocessing(cfg, dat4);
+    dat6 = ft_preprocessing(cfg, dat6);
 
-    % Compute ERP
     cfg = [];
-    cfg.keepindividual = 'no';
     erp2{subj} = ft_timelockanalysis(cfg, dat2);
     erp4{subj} = ft_timelockanalysis(cfg, dat4);
     erp6{subj} = ft_timelockanalysis(cfg, dat6);
